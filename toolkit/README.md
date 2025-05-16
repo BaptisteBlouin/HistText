@@ -72,7 +72,7 @@ HistText Toolkit is a Python command-line toolkit designed for ingesting, proces
 
 ```bash
 git clone https://github.com/BaptisteBlouin/hisstext.git
-cd histtext/toolkit/histtext_toolkit
+cd histtext/toolkit
 pip install .
 ```
 
@@ -92,6 +92,7 @@ pip install .[gliner]
 
 # Chinese text processing
 pip install .[chinese]
+pip install git+https://github.com/hhhuang/ChineseWordSegmenter.git
 
 # Document embeddings and semantic search
 pip install .[embeddings]

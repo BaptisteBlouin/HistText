@@ -1,5 +1,4 @@
 """Package setup file for HistText Toolkit."""
-
 from setuptools import find_packages, setup
 
 setup(
@@ -9,6 +8,7 @@ setup(
     author="Baptiste Blouin",
     author_email="histtext@gmail.com",
     packages=find_packages(),
+    python_requires=">=3.8",  # Specify Python version requirements
     install_requires=[
         "aiohttp>=3.8.0",
         "jsonlines>=2.0.0",
@@ -21,8 +21,7 @@ setup(
         "transformers": ["transformers>=4.10.0", "torch>=1.9.0"],
         "gliner": ["gliner>=0.1.0"],
         "chinese": [
-            "hanziconv>=0.3.2",
-            "ChineseWordSegmenter @ git+https://github.com/hhhuang/ChineseWordSegmenter.git",
+            "hanziconv>=0.3.2"
         ],
         "fasttext": ["fasttext>=0.9.2"],
         "word2vec": ["gensim>=4.0.0"],
@@ -45,7 +44,6 @@ setup(
             "torch>=1.9.0",
             "gliner>=0.1.0",
             "hanziconv>=0.3.2",
-            "ChineseWordSegmenter @ git+https://github.com/hhhuang/ChineseWordSegmenter.git",
             "fasttext>=0.9.2",
             "gensim>=4.0.0",
             "sentence-transformers>=2.0.0",

@@ -60,6 +60,7 @@ mkdir -p data/postgres data/solr data/histtext-tmp data/ssh data/embeddings
 Each directory serves a specific purpose:
 - `data/postgres`: PostgreSQL database files
 - `data/solr`: Local Solr data 
+   - You may need to do : `chown 1000:1000 data/solr` according to the `user: "1000:1000"` set in `docker-compose.yml`
 - `data/histtext-tmp`: Temporary files used by the application
 - `data/ssh`: SSH keys for remote Solr connections
 - `data/embeddings`: Word embedding models

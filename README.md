@@ -1,6 +1,6 @@
 # HistText
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-Dual%20License-orange.svg)
 
 HistText is a Rust/TypeScript web application for historical text analysis, built with a PostgreSQL database and Solr for search functionality. This README provides detailed instructions for setting up and running the application both with and without Docker.
