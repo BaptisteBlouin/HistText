@@ -1,0 +1,48 @@
+# Rust
+**/target/
+**/*.rs.bk
+Cargo.lock
+!Cargo.toml
+*build-log*.txt
+**/.cargo/
+!cargo/bin/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+.nuxt/
+dist/
+out/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.env
+!.env.example
+!*.env.example
+*.egg-info/
+.installed.cfg
+*.egg
+docs/build/
+toolkit/output
+toolkit/cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Project specific
+app/frontend/public/build/

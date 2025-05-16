@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["documents","embeddings","metadata","ner","stats","tokenizer"]};

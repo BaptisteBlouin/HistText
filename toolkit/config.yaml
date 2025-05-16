@@ -1,0 +1,49 @@
+# Solr connection settings
+solr:
+  host: localhost
+  port: 8983
+  username: null
+  password: null
+
+# Models directory
+models_dir: ./models
+
+# Cache settings
+cache:
+  root_dir: ./cache
+  enabled: true
+
+# Model configurations
+models:
+  # spaCy models
+  spacy_en:
+    name: en_core_web_sm
+    type: spacy
+    path: en_core_web_sm
+  
+  spacy_zh:
+    name: zh_core_web_sm
+    type: spacy
+    path: zh_core_web_sm
+  
+  # Transformers models
+  bert_ner:
+    name: dbmdz/bert-large-cased-finetuned-conll03-english
+    type: transformers
+    path: dbmdz/bert-large-cased-finetuned-conll03-english
+    max_length: 512
+    aggregation_strategy: FIRST
+  
+  bert_tokenizer:
+    name: bert-base-multilingual-cased
+    type: transformers
+    path: bert-base-multilingual-cased
+    max_length: 512
+  
+  # GLiNER model
+  gliner_medium:
+    name: urchade/gliner_medium-v2.1
+    type: gliner
+    path: urchade/gliner_medium-v2.1
+    max_chunk_size: 296
+    threshold: 0.5

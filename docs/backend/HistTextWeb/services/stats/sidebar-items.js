@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["clear_embeddings_cache","get_dashboard_stats","get_embeddings_stats"],"struct":["DashboardStats","StatsHandler"]};

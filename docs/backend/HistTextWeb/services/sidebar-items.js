@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["crud","database","role_permissions","solr_database","solr_database_info","solr_database_permissions","stats","user_permissions","user_roles","users"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_solr_database_permission","delete_solr_database_permission","get_solr_database_permission","get_solr_database_permissions"],"struct":["NewSolrDatabasePermission","SolrDatabasePermission","SolrDatabasePermissionHandler"]};

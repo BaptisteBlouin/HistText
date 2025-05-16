@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["byte_size","checksum","content_type","created_at","file_name","id","key","service_name","star"]};

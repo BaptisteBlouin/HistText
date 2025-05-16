@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["solr_database_permissions","solr_databases"]};

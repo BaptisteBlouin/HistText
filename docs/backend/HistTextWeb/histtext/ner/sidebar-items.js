@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["extract_doc_id","fetch_ner_data","get_ner_annotation_batch"],"struct":["ANNOTATION_CACHE","INDEX_CACHE","PathQueryParams"]};

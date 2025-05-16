@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["contains_cjk","is_latin_script","tokenize","tokenize_text"],"struct":["JIEBA","RE_CLEAN","TokenizeRequest","TokenizeResponse"]};

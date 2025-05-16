@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_roles (user_id, role, created_at) \n             VALUES ($1, 'Admin', NOW())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1e093b71c89925ec42631528239015977963904bb41f0d4b0598b8f0fb6cc7d7"
+}

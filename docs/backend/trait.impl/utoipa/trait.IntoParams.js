@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["HistTextWeb",[["impl IntoParams for <a class=\"struct\" href=\"HistTextWeb/histtext/documents/struct.CollectionQueryParams.html\" title=\"struct HistTextWeb::histtext::documents::CollectionQueryParams\">CollectionQueryParams</a>"],["impl IntoParams for <a class=\"struct\" href=\"HistTextWeb/histtext/embeddings/struct.NeighborsRequest.html\" title=\"struct HistTextWeb::histtext::embeddings::NeighborsRequest\">NeighborsRequest</a>"],["impl IntoParams for <a class=\"struct\" href=\"HistTextWeb/histtext/metadata/struct.DatabaseIdQueryParams.html\" title=\"struct HistTextWeb::histtext::metadata::DatabaseIdQueryParams\">DatabaseIdQueryParams</a>"],["impl IntoParams for <a class=\"struct\" href=\"HistTextWeb/histtext/metadata/struct.MetadataQueryParams.html\" title=\"struct HistTextWeb::histtext::metadata::MetadataQueryParams\">MetadataQueryParams</a>"],["impl IntoParams for <a class=\"struct\" href=\"HistTextWeb/histtext/ner/struct.PathQueryParams.html\" title=\"struct HistTextWeb::histtext::ner::PathQueryParams\">PathQueryParams</a>"],["impl IntoParams for <a class=\"struct\" href=\"HistTextWeb/histtext/stats/struct.PathQueryParams.html\" title=\"struct HistTextWeb::histtext::stats::PathQueryParams\">PathQueryParams</a>"],["impl IntoParams for <a class=\"struct\" href=\"HistTextWeb/histtext/tokenizer/struct.TokenizeRequest.html\" title=\"struct HistTextWeb::histtext::tokenizer::TokenizeRequest\">TokenizeRequest</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[1439]}

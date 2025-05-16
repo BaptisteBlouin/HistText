@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Database"],"type":["Connection","DbCon","DieselBackend","Pool"]};

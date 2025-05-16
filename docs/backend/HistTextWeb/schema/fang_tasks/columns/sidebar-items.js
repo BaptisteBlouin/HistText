@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["created_at","error_message","id","metadata","retries","scheduled_at","star","state","task_type","uniq_hash","updated_at"]};

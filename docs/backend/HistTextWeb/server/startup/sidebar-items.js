@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["preload_embeddings"]};

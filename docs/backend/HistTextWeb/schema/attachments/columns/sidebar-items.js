@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["blob_id","created_at","id","name","record_id","record_type","star"]};

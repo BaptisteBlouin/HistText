@@ -1,0 +1,1458 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>histtext_toolkit.operations.tokenize &mdash; HistText Toolkit 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            HistText Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/core.html">Core Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/operations.html">Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/utils.html">Utilities</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">HistText Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">histtext_toolkit.operations.tokenize</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for histtext_toolkit.operations.tokenize</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Tokenization operations module.</span>
+
+<span class="sd">This module provides functionality for tokenizing text and processing</span>
+<span class="sd">tokenization operations on documents.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..models.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Token</span><span class="p">,</span> <span class="n">TokenizationModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..models.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_tokenization_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..solr.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">SolrClient</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># Try to import HanziConv for Chinese text conversion</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">hanziconv</span><span class="w"> </span><span class="kn">import</span> <span class="n">HanziConv</span>
+
+    <span class="n">HANZICONV_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;HanziConv not available. Install with `pip install hanziconv`&quot;</span><span class="p">)</span>
+    <span class="n">HANZICONV_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="apply_tokenization">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.apply_tokenization">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_tokenization</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">tokens</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply tokenization to text.</span>
+
+<span class="sd">    Converts a list of token dictionaries into a space-separated string.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        text: Original text to tokenize</span>
+<span class="sd">        tokens: List of token dictionaries with position information</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: Tokenized text with spaces between tokens</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tokenized_text</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">tokens</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_pos&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">token</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_pos&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="n">token</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;end&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;end_pos&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">tokenized_text</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="n">text</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">tokenized_text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="TokenizationProcessor">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.TokenizationProcessor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TokenizationProcessor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Processor for tokenization operations with batch processing support.</span>
+<span class="sd">    </span>
+<span class="sd">    Works with any TokenizationModel, including the adaptive ChineseSegmenterModel.</span>
+<span class="sd">    Provides methods for tokenizing text, processing batches, and handling </span>
+<span class="sd">    different output formats.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TokenizationProcessor.__init__">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.TokenizationProcessor.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">TokenizationModel</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the tokenization processor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model: Tokenization model to use for processing text</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span></div>
+
+
+<div class="viewcode-block" id="TokenizationProcessor.tokenize">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tokenize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Token</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tokenize text into individual tokens.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            text: Input text to tokenize</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Token]: Extracted tokens as Token objects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TokenizationProcessor.tokenize_to_dict">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_to_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tokenize_to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tokenize text and return as dictionaries.</span>
+
+<span class="sd">        Converts Token objects to dictionaries for easier serialization.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            text: Input text to tokenize</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Dict[str, Any]]: Tokens as dictionaries with text, position and confidence</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">token</span><span class="o">.</span><span class="n">text</span><span class="p">,</span>
+                <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="n">token</span><span class="o">.</span><span class="n">start_pos</span><span class="p">,</span>
+                <span class="s2">&quot;end&quot;</span><span class="p">:</span> <span class="n">token</span><span class="o">.</span><span class="n">end_pos</span><span class="p">,</span>
+                <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="n">token</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">tokens</span>
+        <span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="TokenizationProcessor.tokenize_text">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_text">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tokenize_text</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tokenize text and return as a string with spaces between tokens.</span>
+
+<span class="sd">        Handles texts of any length by chunking them if needed.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            text: Input text to tokenize</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: Tokenized text with tokens separated by spaces</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="c1"># Get max_length from the model or use default</span>
+        <span class="n">max_length</span> <span class="o">=</span> <span class="mi">512</span>  <span class="c1"># Default for BERT models</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;max_length&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">max_length</span><span class="p">:</span>
+            <span class="n">max_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">max_length</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;_tokenizer&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_tokenizer</span><span class="p">,</span> <span class="s2">&quot;model_max_length&quot;</span>
+        <span class="p">):</span>
+            <span class="n">max_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_tokenizer</span><span class="o">.</span><span class="n">model_max_length</span>
+
+        <span class="c1"># For models that don&#39;t set a max_length or have unreasonable values</span>
+        <span class="k">if</span> <span class="n">max_length</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">max_length</span> <span class="o">&gt;</span> <span class="mi">10000</span><span class="p">:</span>
+            <span class="n">max_length</span> <span class="o">=</span> <span class="mi">512</span>  <span class="c1"># Use a safe default</span>
+
+        <span class="c1"># If text is shorter than max_length, tokenize directly</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">max_length</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tokenize_chunk</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+        <span class="c1"># For longer texts, use a chunking strategy</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tokenize_long_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">max_length</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TokenizationProcessor.tokenize_batch">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_batch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tokenize_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">texts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tokenize a batch of texts in parallel.</span>
+
+<span class="sd">        Uses batch tokenization if supported by the model, otherwise falls back</span>
+<span class="sd">        to processing texts individually.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            texts: List of input texts to tokenize</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[str]: List of tokenized texts with tokens separated by spaces</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check if the model supports batch tokenization</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;tokenize_batch&quot;</span><span class="p">):</span>
+            <span class="c1"># First, we&#39;ll handle empty texts</span>
+            <span class="n">processed_texts</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">non_empty_texts</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">non_empty_indices</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">text</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">texts</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+                    <span class="n">processed_texts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">non_empty_texts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+                    <span class="n">non_empty_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">non_empty_texts</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">processed_texts</span>
+
+            <span class="c1"># Process non-empty texts with batch tokenization</span>
+            <span class="n">tokens_batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">tokenize_batch</span><span class="p">(</span><span class="n">non_empty_texts</span><span class="p">)</span>
+
+            <span class="c1"># Convert tokens to text</span>
+            <span class="n">tokenized_texts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">texts</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">tokens</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tokens_batch</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">tokens</span><span class="p">:</span>
+                    <span class="n">tokenized_text</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">token</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">tokens</span><span class="p">])</span>
+                    <span class="n">original_idx</span> <span class="o">=</span> <span class="n">non_empty_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="n">tokenized_texts</span><span class="p">[</span><span class="n">original_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">tokenized_text</span>
+
+            <span class="k">return</span> <span class="n">tokenized_texts</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Fall back to individual processing</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tokenize_text</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="k">for</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">texts</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_tokenize_long_text</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tokenize a long text by breaking it into manageable chunks.</span>
+
+<span class="sd">        Splits text by paragraphs and sentences to ensure each chunk is within</span>
+<span class="sd">        the model&#39;s maximum length.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            text: Long input text to tokenize</span>
+<span class="sd">            max_length: Maximum sequence length the model can handle</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: Tokenized text with tokens separated by spaces</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># First try splitting by paragraphs</span>
+        <span class="n">paragraphs</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># If any paragraph is still too long, split it further</span>
+        <span class="n">result_paragraphs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">paragraph</span> <span class="ow">in</span> <span class="n">paragraphs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">paragraph</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+                <span class="c1"># Skip empty paragraphs but preserve new lines</span>
+                <span class="n">result_paragraphs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">paragraph</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">max_length</span><span class="p">:</span>
+                <span class="c1"># Short paragraph, tokenize directly</span>
+                <span class="n">tokenized_paragraph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tokenize_chunk</span><span class="p">(</span><span class="n">paragraph</span><span class="p">)</span>
+                <span class="n">result_paragraphs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tokenized_paragraph</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Long paragraph, split into sentences</span>
+                <span class="n">sentences</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_into_sentences</span><span class="p">(</span><span class="n">paragraph</span><span class="p">)</span>
+                <span class="n">tokenized_sentences</span> <span class="o">=</span> <span class="p">[]</span>
+
+                <span class="c1"># Tokenize each sentence or chunk it further if needed</span>
+                <span class="n">current_chunk</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                <span class="k">for</span> <span class="n">sentence</span> <span class="ow">in</span> <span class="n">sentences</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sentence</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_length</span><span class="p">:</span>
+                        <span class="c1"># Very long sentence, chunk it</span>
+                        <span class="k">if</span> <span class="n">current_chunk</span><span class="p">:</span>
+                            <span class="c1"># Process accumulated chunk first</span>
+                            <span class="n">tokenized_sentences</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_tokenize_chunk</span><span class="p">(</span><span class="n">current_chunk</span><span class="p">)</span>
+                            <span class="p">)</span>
+                            <span class="n">current_chunk</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+                        <span class="c1"># Split the long sentence by character chunks</span>
+                        <span class="n">sentence_chunks</span> <span class="o">=</span> <span class="p">[</span>
+                            <span class="n">sentence</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="n">max_length</span> <span class="o">-</span> <span class="mi">50</span><span class="p">]</span>
+                            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sentence</span><span class="p">),</span> <span class="n">max_length</span> <span class="o">-</span> <span class="mi">50</span><span class="p">)</span>
+                        <span class="p">]</span>
+                        <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">sentence_chunks</span><span class="p">:</span>
+                            <span class="n">tokenized_sentences</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tokenize_chunk</span><span class="p">(</span><span class="n">chunk</span><span class="p">))</span>
+                    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_chunk</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">sentence</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&gt;</span> <span class="n">max_length</span><span class="p">:</span>
+                        <span class="c1"># Adding this sentence would exceed max_length</span>
+                        <span class="n">tokenized_sentences</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tokenize_chunk</span><span class="p">(</span><span class="n">current_chunk</span><span class="p">))</span>
+                        <span class="n">current_chunk</span> <span class="o">=</span> <span class="n">sentence</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Add to current chunk</span>
+                        <span class="k">if</span> <span class="n">current_chunk</span><span class="p">:</span>
+                            <span class="n">current_chunk</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="n">sentence</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">current_chunk</span> <span class="o">=</span> <span class="n">sentence</span>
+
+                <span class="c1"># Process any remaining chunk</span>
+                <span class="k">if</span> <span class="n">current_chunk</span><span class="p">:</span>
+                    <span class="n">tokenized_sentences</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tokenize_chunk</span><span class="p">(</span><span class="n">current_chunk</span><span class="p">))</span>
+
+                <span class="n">result_paragraphs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tokenized_sentences</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">result_paragraphs</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_split_into_sentences</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Split text into sentences.</span>
+
+<span class="sd">        Uses basic heuristics to split text at sentence boundaries.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            text: Input text to split into sentences</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[str]: List of sentences</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Simple sentence splitting (this could be more sophisticated)</span>
+        <span class="c1"># Handle common sentence endings with space after</span>
+        <span class="k">for</span> <span class="n">end</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;. &quot;</span><span class="p">,</span> <span class="s2">&quot;! &quot;</span><span class="p">,</span> <span class="s2">&quot;? &quot;</span><span class="p">,</span> <span class="s2">&quot;; &quot;</span><span class="p">]:</span>
+            <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">end</span><span class="p">,</span> <span class="n">end</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Split by newlines and filter empty strings</span>
+        <span class="n">sentences</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+
+        <span class="k">return</span> <span class="n">sentences</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_tokenize_chunk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tokenize a single chunk of text.</span>
+
+<span class="sd">        Uses the model to tokenize a chunk that&#39;s guaranteed to be within</span>
+<span class="sd">        the model&#39;s length limits.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            text: Input text chunk to tokenize</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: Tokenized text with tokens separated by spaces</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenize_to_dict</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">apply_tokenization</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">tokens</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TokenizationProcessor.process_csv">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.TokenizationProcessor.process_csv">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_csv</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">input_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">output_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">text_column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Text&quot;</span><span class="p">,</span>
+            <span class="n">simplify_chinese</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Process a CSV file with tokenization.</span>
+
+<span class="sd">            Reads a CSV file, tokenizes the text in the specified column, and </span>
+<span class="sd">            writes the results to a new CSV file with an additional &quot;Tokenized&quot; column.</span>
+
+<span class="sd">            Args:</span>
+<span class="sd">                input_file: Input CSV file path</span>
+<span class="sd">                output_file: Output CSV file path</span>
+<span class="sd">                text_column: Column containing the text to tokenize</span>
+<span class="sd">                simplify_chinese: Whether to convert traditional Chinese to simplified</span>
+
+<span class="sd">            Returns:</span>
+<span class="sd">                int: Number of rows processed</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="c1"># Check if HanziConv is available for Chinese simplification</span>
+            <span class="n">hanziconv_available</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="n">simplify_chinese</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="kn">from</span><span class="w"> </span><span class="nn">hanziconv</span><span class="w"> </span><span class="kn">import</span> <span class="n">HanziConv</span>
+
+                    <span class="n">hanziconv_available</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="s2">&quot;HanziConv not available, Chinese simplification disabled&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">simplify_chinese</span> <span class="o">=</span> <span class="kc">False</span>
+
+            <span class="n">rows_processed</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Open input and output files</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fin</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span>
+                    <span class="n">output_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+                <span class="p">)</span> <span class="k">as</span> <span class="n">fout</span><span class="p">:</span>
+                    <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictReader</span><span class="p">(</span><span class="n">fin</span><span class="p">)</span>
+
+                    <span class="c1"># Make sure the text column exists</span>
+                    <span class="k">if</span> <span class="n">text_column</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">reader</span><span class="o">.</span><span class="n">fieldnames</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Text column &#39;</span><span class="si">{</span><span class="n">text_column</span><span class="si">}</span><span class="s2">&#39; not found in CSV header&quot;</span><span class="p">)</span>
+                        <span class="k">return</span> <span class="mi">0</span>
+
+                    <span class="c1"># Create a writer with the same fieldnames plus &quot;Tokenized&quot;</span>
+                    <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictWriter</span><span class="p">(</span><span class="n">fout</span><span class="p">,</span> <span class="n">reader</span><span class="o">.</span><span class="n">fieldnames</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;Tokenized&quot;</span><span class="p">])</span>
+                    <span class="n">writer</span><span class="o">.</span><span class="n">writeheader</span><span class="p">()</span>
+
+                    <span class="c1"># Process rows in batches for better performance</span>
+                    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">50</span>
+                    <span class="n">batch_rows</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="n">batch_texts</span> <span class="o">=</span> <span class="p">[]</span>
+
+                    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">reader</span><span class="p">:</span>
+                        <span class="n">text</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">text_column</span><span class="p">]</span>
+
+                        <span class="c1"># Convert to simplified Chinese if requested</span>
+                        <span class="k">if</span> <span class="n">simplify_chinese</span> <span class="ow">and</span> <span class="n">hanziconv_available</span><span class="p">:</span>
+                            <span class="n">text</span> <span class="o">=</span> <span class="n">HanziConv</span><span class="o">.</span><span class="n">toSimplified</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+                        <span class="n">batch_rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+                        <span class="n">batch_texts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+                        <span class="c1"># When we have a full batch, process it</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">batch_rows</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">batch_size</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_process_csv_batch</span><span class="p">(</span><span class="n">batch_rows</span><span class="p">,</span> <span class="n">batch_texts</span><span class="p">,</span> <span class="n">writer</span><span class="p">)</span>
+                            <span class="n">rows_processed</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">batch_rows</span><span class="p">)</span>
+                            <span class="n">batch_rows</span> <span class="o">=</span> <span class="p">[]</span>
+                            <span class="n">batch_texts</span> <span class="o">=</span> <span class="p">[]</span>
+
+                    <span class="c1"># Process any remaining rows</span>
+                    <span class="k">if</span> <span class="n">batch_rows</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_process_csv_batch</span><span class="p">(</span><span class="n">batch_rows</span><span class="p">,</span> <span class="n">batch_texts</span><span class="p">,</span> <span class="n">writer</span><span class="p">)</span>
+                        <span class="n">rows_processed</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">batch_rows</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error processing CSV: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="mi">0</span>
+
+            <span class="k">return</span> <span class="n">rows_processed</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_csv_batch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">rows</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span> <span class="n">texts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">writer</span><span class="p">:</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictWriter</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process a batch of CSV rows.</span>
+
+<span class="sd">        Uses batch processing if available, otherwise processes rows individually.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rows: List of CSV rows as dictionaries</span>
+<span class="sd">            texts: List of texts to tokenize</span>
+<span class="sd">            writer: CSV writer to output the processed rows</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check if we can use batch tokenization</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;tokenize_batch&quot;</span><span class="p">):</span>
+            <span class="c1"># Process all texts at once</span>
+            <span class="n">tokenized_texts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenize_batch</span><span class="p">(</span><span class="n">texts</span><span class="p">)</span>
+
+            <span class="c1"># Update rows and write</span>
+            <span class="k">for</span> <span class="n">row</span><span class="p">,</span> <span class="n">tokenized</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">tokenized_texts</span><span class="p">):</span>
+                <span class="n">row</span><span class="p">[</span><span class="s2">&quot;Tokenized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tokenized</span>
+                <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Individual processing</span>
+            <span class="k">for</span> <span class="n">row</span><span class="p">,</span> <span class="n">text</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">texts</span><span class="p">):</span>
+                <span class="n">tokenized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenize_text</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+                <span class="n">row</span><span class="p">[</span><span class="s2">&quot;Tokenized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tokenized</span>
+                <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">row</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="tokenize_csv">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.tokenize_csv">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">tokenize_csv</span><span class="p">(</span>
+    <span class="n">model_config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">,</span>
+    <span class="n">input_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">text_column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Text&quot;</span><span class="p">,</span>
+    <span class="n">simplify_chinese</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tokenize text in a CSV file.</span>
+
+<span class="sd">    Creates a tokenization model, processes a CSV file, and releases resources.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model_config: Model configuration with model type and parameters</span>
+<span class="sd">        input_file: Input CSV file path</span>
+<span class="sd">        output_file: Output CSV file path</span>
+<span class="sd">        text_column: Column containing the text to tokenize</span>
+<span class="sd">        simplify_chinese: Whether to convert traditional Chinese to simplified</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int: Number of rows processed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Create model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">create_tokenization_model</span><span class="p">(</span><span class="n">model_config</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">load</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model </span><span class="si">{</span><span class="n">model_config</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="c1"># Create processor</span>
+    <span class="n">processor</span> <span class="o">=</span> <span class="n">TokenizationProcessor</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+    <span class="c1"># Process CSV</span>
+    <span class="n">rows_processed</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">process_csv</span><span class="p">(</span>
+        <span class="n">input_file</span><span class="p">,</span> <span class="n">output_file</span><span class="p">,</span> <span class="n">text_column</span><span class="p">,</span> <span class="n">simplify_chinese</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Unload model</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">unload</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">rows_processed</span></div>
+
+
+
+<div class="viewcode-block" id="tokenize_text">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.tokenize_text">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">tokenize_text</span><span class="p">(</span>
+    <span class="n">model_config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">simplify_chinese</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tokenize a text string.</span>
+
+<span class="sd">    Creates a tokenization model, processes a single text, and releases resources.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model_config: Model configuration with model type and parameters</span>
+<span class="sd">        text: Input text to tokenize</span>
+<span class="sd">        simplify_chinese: Whether to convert traditional Chinese to simplified</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: Tokenized text with tokens separated by spaces</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Convert to simplified Chinese if requested</span>
+    <span class="k">if</span> <span class="n">simplify_chinese</span> <span class="ow">and</span> <span class="n">HANZICONV_AVAILABLE</span><span class="p">:</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">HanziConv</span><span class="o">.</span><span class="n">toSimplified</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+    <span class="c1"># Create model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">create_tokenization_model</span><span class="p">(</span><span class="n">model_config</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">load</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model </span><span class="si">{</span><span class="n">model_config</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">text</span>
+
+    <span class="c1"># Create processor</span>
+    <span class="n">processor</span> <span class="o">=</span> <span class="n">TokenizationProcessor</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+    <span class="c1"># Tokenize text</span>
+    <span class="n">tokenized</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">tokenize_text</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+    <span class="c1"># Unload model</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">unload</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">tokenized</span></div>
+
+
+
+<div class="viewcode-block" id="tokenize_solr_documents">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.tokenize_solr_documents">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">tokenize_solr_documents</span><span class="p">(</span>
+    <span class="n">solr_client</span><span class="p">:</span> <span class="n">SolrClient</span><span class="p">,</span>
+    <span class="n">collection</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">text_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">model_config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">,</span>
+    <span class="n">start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="n">num_batches</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">filter_query</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">target_field</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tokenized_text&quot;</span><span class="p">,</span>
+    <span class="n">target_collection</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">simplify_chinese</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tokenize documents from a Solr collection and upload to a new collection.</span>
+
+<span class="sd">    Fetches documents from a source collection, tokenizes the specified field,</span>
+<span class="sd">    and uploads the results to a target collection.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        solr_client: Solr client instance</span>
+<span class="sd">        collection: Name of the source collection</span>
+<span class="sd">        text_field: Field containing the text to tokenize</span>
+<span class="sd">        model_config: Model configuration with model type and parameters</span>
+<span class="sd">        start: Start index for document retrieval</span>
+<span class="sd">        batch_size: Number of documents per batch</span>
+<span class="sd">        num_batches: Maximum number of batches to process</span>
+<span class="sd">        filter_query: Optional filter query to select documents</span>
+<span class="sd">        target_field: Field name for the tokenized text in the target collection</span>
+<span class="sd">        target_collection: Name of the target collection</span>
+<span class="sd">        simplify_chinese: Whether to convert traditional Chinese to simplified</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int: Number of documents processed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
+
+    <span class="c1"># Create model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">create_tokenization_model</span><span class="p">(</span><span class="n">model_config</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">load</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model </span><span class="si">{</span><span class="n">model_config</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="c1"># Create processor</span>
+    <span class="n">processor</span> <span class="o">=</span> <span class="n">TokenizationProcessor</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+    <span class="c1"># Check if Chinese simplification is requested but not available</span>
+    <span class="k">if</span> <span class="n">simplify_chinese</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">HANZICONV_AVAILABLE</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;HanziConv not available, Chinese simplification disabled&quot;</span><span class="p">)</span>
+        <span class="n">simplify_chinese</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># Set target collection name</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">target_collection</span><span class="p">:</span>
+        <span class="n">target_collection</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">-tok&quot;</span>
+
+    <span class="c1"># Check if target collection exists, if not, create it based on source schema</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Using _ to indicate unused variable</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">check_status</span><span class="p">(</span><span class="n">target_collection</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Target collection &#39;</span><span class="si">{</span><span class="n">target_collection</span><span class="si">}</span><span class="s2">&#39; already exists&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Creating target collection &#39;</span><span class="si">{</span><span class="n">target_collection</span><span class="si">}</span><span class="s2">&#39; based on source schema&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Get schema from source collection</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># This is a simplified approach - you may need to adapt this</span>
+            <span class="c1"># to properly copy the schema from the source collection</span>
+            <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">create_collection</span><span class="p">(</span><span class="n">target_collection</span><span class="p">)</span>
+
+            <span class="c1"># Copy fields from source collection</span>
+            <span class="c1"># This is a simplified approach - you may need to adapt this</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Schema copied from &#39;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">&#39; to &#39;</span><span class="si">{</span><span class="n">target_collection</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to create target collection: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">unload</span><span class="p">()</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="c1"># Process batches</span>
+    <span class="n">current_start</span> <span class="o">=</span> <span class="n">start</span>
+    <span class="n">current_batch</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">total_docs</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Starting tokenization from &#39;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">&#39; to &#39;</span><span class="si">{</span><span class="n">target_collection</span><span class="si">}</span><span class="s2">&#39;...&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Determine total number of documents for progress bar</span>
+    <span class="n">total_count</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">num_batches</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">total_count</span> <span class="o">=</span> <span class="n">num_batches</span> <span class="o">*</span> <span class="n">batch_size</span>
+
+    <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_count</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processing documents&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;docs&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">num_batches</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">current_batch</span> <span class="o">&lt;</span> <span class="n">num_batches</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Processing batch </span><span class="si">{</span><span class="n">current_batch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(docs </span><span class="si">{</span><span class="n">current_start</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">current_start</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">batch_size</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Get documents from Solr</span>
+            <span class="n">docs</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># We need to get all fields, not just the text field</span>
+                <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;*:*&quot;</span><span class="p">,</span> <span class="s2">&quot;rows&quot;</span><span class="p">:</span> <span class="n">batch_size</span><span class="p">,</span> <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="n">current_start</span><span class="p">}</span>
+                <span class="k">if</span> <span class="n">filter_query</span><span class="p">:</span>
+                    <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;fq&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_query</span>
+
+                <span class="n">select</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">collection_select</span><span class="p">(</span><span class="n">collection</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+                <span class="n">docs</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;response&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;docs&quot;</span><span class="p">,</span> <span class="p">[])</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">docs</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No more documents found&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error retrieving documents: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="c1"># Update progress bar total if needed</span>
+            <span class="k">if</span> <span class="n">pbar</span><span class="o">.</span><span class="n">total</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">docs</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">count_response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">collection_select</span><span class="p">(</span>
+                        <span class="n">collection</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;*:*&quot;</span><span class="p">,</span> <span class="s2">&quot;rows&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">count_response</span> <span class="ow">and</span> <span class="s2">&quot;response&quot;</span> <span class="ow">in</span> <span class="n">count_response</span><span class="p">:</span>
+                        <span class="n">total_doc_count</span> <span class="o">=</span> <span class="n">count_response</span><span class="p">[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                            <span class="s2">&quot;numFound&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+                        <span class="p">)</span>
+                        <span class="k">if</span> <span class="n">total_doc_count</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">):</span>
+                            <span class="n">pbar</span><span class="o">.</span><span class="n">total</span> <span class="o">=</span> <span class="n">total_doc_count</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not determine total document count: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Tokenize documents</span>
+            <span class="n">processed_docs</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span>
+                <span class="n">docs</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Tokenizing batch </span><span class="si">{</span><span class="n">current_batch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Get text to tokenize</span>
+                    <span class="n">text</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">text_field</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Document </span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> has no text in &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;field &#39;</span><span class="si">{</span><span class="n">text_field</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                        <span class="p">)</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># Apply Chinese simplification if requested</span>
+                    <span class="k">if</span> <span class="n">simplify_chinese</span> <span class="ow">and</span> <span class="n">HANZICONV_AVAILABLE</span><span class="p">:</span>
+                        <span class="n">text</span> <span class="o">=</span> <span class="n">HanziConv</span><span class="o">.</span><span class="n">toSimplified</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+                    <span class="c1"># Tokenize text</span>
+                    <span class="n">tokenized</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">tokenize_text</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+                    <span class="c1"># Create a new document with all original fields plus tokenized text</span>
+                    <span class="n">new_doc</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                    <span class="n">new_doc</span><span class="p">[</span><span class="n">target_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">tokenized</span>
+
+                    <span class="n">processed_docs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_doc</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Error processing document </span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
+            <span class="c1"># Upload processed documents to target collection</span>
+            <span class="k">if</span> <span class="n">processed_docs</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">success</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">upload_documents</span><span class="p">(</span>
+                        <span class="n">target_collection</span><span class="p">,</span> <span class="n">processed_docs</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">success</span><span class="p">:</span>
+                        <span class="n">total_docs</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">processed_docs</span><span class="p">)</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Uploaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">processed_docs</span><span class="p">)</span><span class="si">}</span><span class="s2"> documents to </span><span class="si">{</span><span class="n">target_collection</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to upload batch to </span><span class="si">{</span><span class="n">target_collection</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error uploading documents: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Update progress bar</span>
+            <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">))</span>
+            <span class="n">pbar</span><span class="o">.</span><span class="n">set_postfix</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_docs</span><span class="p">,</span> <span class="n">batch</span><span class="o">=</span><span class="n">current_batch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">batch_size</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Completed collection - no more docs&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="n">current_batch</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">current_start</span> <span class="o">+=</span> <span class="n">batch_size</span>
+
+    <span class="c1"># Unload model</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">unload</span><span class="p">()</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Processed </span><span class="si">{</span><span class="n">total_docs</span><span class="si">}</span><span class="s2"> documents from &#39;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">&#39; to &#39;</span><span class="si">{</span><span class="n">target_collection</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">total_docs</span></div>
+
+
+
+<div class="viewcode-block" id="cache_tokenization">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.tokenize.cache_tokenization">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">cache_tokenization</span><span class="p">(</span>
+    <span class="n">solr_client</span><span class="p">:</span> <span class="n">SolrClient</span><span class="p">,</span>
+    <span class="n">collection</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">text_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">model_config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">,</span>
+    <span class="n">cache_root</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="n">num_batches</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">filter_query</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">simplify_chinese</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cache tokenization results for documents from a Solr collection.</span>
+
+<span class="sd">    Processes documents in batches, applying tokenization and storing results</span>
+<span class="sd">    in the cache directory. Handles interruptions gracefully and provides</span>
+<span class="sd">    detailed progress reporting.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        solr_client: Solr client instance</span>
+<span class="sd">        collection: Name of the source collection</span>
+<span class="sd">        text_field: Field containing the text to tokenize</span>
+<span class="sd">        model_config: Model configuration with model type and parameters</span>
+<span class="sd">        cache_root: Root directory for caches</span>
+<span class="sd">        model_name: Name to use for the model in the cache hierarchy</span>
+<span class="sd">        start: Start index for document retrieval</span>
+<span class="sd">        batch_size: Number of documents per batch from Solr</span>
+<span class="sd">        num_batches: Maximum number of batches to process</span>
+<span class="sd">        filter_query: Optional filter query to select documents</span>
+<span class="sd">        simplify_chinese: Whether to convert traditional Chinese to simplified</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int: Number of documents processed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+    <span class="kn">import</span><span class="w"> </span><span class="nn">aiohttp</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">jsonlines</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
+
+    <span class="c1"># Define cache_dir early to ensure it&#39;s available in the finally block</span>
+    <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_root</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">collection</span><span class="p">,</span> <span class="n">text_field</span><span class="p">)</span>
+
+    <span class="c1"># Add timeout to solr client session</span>
+    <span class="k">if</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">_session</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">close_session</span><span class="p">()</span>
+
+    <span class="c1"># Start a new session with timeout</span>
+    <span class="n">auth</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">username</span> <span class="ow">and</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">password</span><span class="p">:</span>
+        <span class="n">auth</span> <span class="o">=</span> <span class="n">aiohttp</span><span class="o">.</span><span class="n">BasicAuth</span><span class="p">(</span><span class="n">solr_client</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+
+    <span class="n">timeout</span> <span class="o">=</span> <span class="n">aiohttp</span><span class="o">.</span><span class="n">ClientTimeout</span><span class="p">(</span>
+        <span class="n">total</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">connect</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">sock_connect</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">sock_read</span><span class="o">=</span><span class="mi">40</span>
+    <span class="p">)</span>
+    <span class="n">solr_client</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="n">aiohttp</span><span class="o">.</span><span class="n">ClientSession</span><span class="p">(</span><span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Created Solr session with timeout to prevent hanging&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Track processing state for graceful shutdown</span>
+    <span class="n">processing_state</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;running&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">&quot;current_batch&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;total_docs&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;skipped_docs&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;current_docs&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;current_jsonl_file&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Setup signal handler for graceful shutdown</span>
+    <span class="n">original_sigint</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">sigint_handler</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Received CTRL+C, initiating graceful shutdown...&quot;</span><span class="p">)</span>
+        <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># Allow the current batch to finish by not raising KeyboardInterrupt here</span>
+
+    <span class="c1"># Set custom signal handler</span>
+    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">sigint_handler</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Clear all loggers that might be noisy</span>
+        <span class="k">for</span> <span class="n">logger_name</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;simpletransformers&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;transformers&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pytorch_transformers&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;chinese_word_segmenter&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;tensorflow&quot;</span><span class="p">,</span>
+        <span class="p">]:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">logger_name</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+
+        <span class="c1"># Suppress FutureWarnings</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
+
+        <span class="c1"># Check if we&#39;re using ChineseSegmenter</span>
+        <span class="n">is_chinese_segmenter</span> <span class="o">=</span> <span class="n">model_config</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;chinese_segmenter&quot;</span>
+
+        <span class="c1"># Create model</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Creating and loading tokenization model (</span><span class="si">{</span><span class="n">model_config</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">)...&quot;</span>
+        <span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">create_tokenization_model</span><span class="p">(</span><span class="n">model_config</span><span class="p">)</span>
+        <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">load</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model </span><span class="si">{</span><span class="n">model_config</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="c1"># Create processor</span>
+        <span class="n">processor</span> <span class="o">=</span> <span class="n">TokenizationProcessor</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Special message for ChineseSegmenter</span>
+        <span class="k">if</span> <span class="n">is_chinese_segmenter</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using ChineseWordSegmenter with adaptive configuration...&quot;</span><span class="p">)</span>
+            <span class="c1"># Ensure all possible loggers are silenced</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;simpletransformers&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;transformers&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;pytorch_transformers&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;chinese_word_segmenter&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">tensorflow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tf</span>
+
+                <span class="n">tf</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TF_CPP_MIN_LOG_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3&quot;</span>  <span class="c1"># Suppress all TF messages</span>
+            <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># Check if Chinese simplification is requested but not available</span>
+        <span class="k">if</span> <span class="n">simplify_chinese</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">hanziconv</span><span class="w"> </span><span class="kn">import</span> <span class="n">HanziConv</span>
+
+                <span class="n">HANZICONV_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;HanziConv not available, Chinese simplification disabled&quot;</span>
+                <span class="p">)</span>
+                <span class="n">HANZICONV_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">simplify_chinese</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">HANZICONV_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Ensure cache directory exists</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Create schema YAML file based on source collection</span>
+        <span class="n">schema_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_root</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">.yaml&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">schema_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">schema_path</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;.&quot;</span><span class="p">,</span>
+            <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create schema if it doesn&#39;t exist</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">schema_path</span><span class="p">):</span>
+            <span class="c1"># Get collection fields to create schema</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Get schema from source collection</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">..solr.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+                    <span class="n">create_schema_dict</span><span class="p">,</span>
+                    <span class="n">get_collection_schema</span><span class="p">,</span>
+                    <span class="n">write_schema_to_file</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Getting schema for collection </span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+                <span class="n">fields</span> <span class="o">=</span> <span class="k">await</span> <span class="n">get_collection_schema</span><span class="p">(</span><span class="n">solr_client</span><span class="p">,</span> <span class="n">collection</span><span class="p">)</span>
+
+                <span class="c1"># Create schema file</span>
+                <span class="n">schema_dict</span> <span class="o">=</span> <span class="n">create_schema_dict</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+                <span class="n">write_success</span> <span class="o">=</span> <span class="n">write_schema_to_file</span><span class="p">(</span><span class="n">schema_dict</span><span class="p">,</span> <span class="n">schema_path</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">write_success</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created schema file </span><span class="si">{</span><span class="n">schema_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to write schema file </span><span class="si">{</span><span class="n">schema_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error creating schema file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Create a basic schema as fallback</span>
+                <span class="n">basic_fields</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;indexed&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="s2">&quot;stored&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="s2">&quot;multivalued&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="p">},</span>
+                    <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text_general&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;indexed&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="s2">&quot;stored&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="s2">&quot;multivalued&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="p">},</span>
+                <span class="p">}</span>
+                <span class="n">schema_dict</span> <span class="o">=</span> <span class="n">create_schema_dict</span><span class="p">(</span><span class="n">basic_fields</span><span class="p">)</span>
+                <span class="n">write_schema_to_file</span><span class="p">(</span><span class="n">schema_dict</span><span class="p">,</span> <span class="n">schema_path</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created basic schema file </span><span class="si">{</span><span class="n">schema_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache directory: </span><span class="si">{</span><span class="n">cache_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Check if the collection exists and has documents</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Checking collection &#39;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">&#39; status...&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Use _ to indicate unused variable</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">check_status</span><span class="p">(</span><span class="n">collection</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Collection status: OK&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Get document count</span>
+            <span class="n">count_response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">collection_select</span><span class="p">(</span>
+                <span class="n">collection</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;*:*&quot;</span><span class="p">,</span> <span class="s2">&quot;rows&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="n">doc_count</span> <span class="o">=</span> <span class="n">count_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;response&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;numFound&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Collection &#39;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">&#39; has </span><span class="si">{</span><span class="n">doc_count</span><span class="si">}</span><span class="s2"> documents&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">doc_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Collection &#39;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">&#39; is empty, aborting&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error checking collection: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="c1"># Get model&#39;s optimal batch size if it has one</span>
+        <span class="n">model_batch_size</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">is_chinese_segmenter</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;batch_size&quot;</span><span class="p">):</span>
+            <span class="n">model_batch_size</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;batch_size&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Using model&#39;s dynamically determined batch size: </span><span class="si">{</span><span class="n">model_batch_size</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Process batches</span>
+        <span class="n">current_start</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="n">current_batch</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">total_docs</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">skipped_docs</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;current_batch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_batch</span>
+        <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;total_docs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">total_docs</span>
+        <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;skipped_docs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">skipped_docs</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting tokenization for collection &#39;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">&#39;...&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Determine total number of documents for progress bar</span>
+        <span class="n">total_count</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_batches</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">total_count</span> <span class="o">=</span> <span class="n">num_batches</span> <span class="o">*</span> <span class="n">batch_size</span>
+
+        <span class="c1"># Setup progress bar with interrupt handling</span>
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_count</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processing documents&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;docs&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">while</span> <span class="p">(</span>
+                <span class="n">num_batches</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">current_batch</span> <span class="o">&lt;</span> <span class="n">num_batches</span>
+            <span class="p">)</span> <span class="ow">and</span> <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]:</span>
+                <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;current_batch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_batch</span>
+
+                <span class="c1"># For Chinese segmenter, adjust batch size based on model&#39;s determined capacity</span>
+                <span class="n">effective_batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
+                <span class="k">if</span> <span class="n">is_chinese_segmenter</span> <span class="ow">and</span> <span class="n">model_batch_size</span><span class="p">:</span>
+                    <span class="c1"># Use smaller batches for better progress updates</span>
+                    <span class="n">effective_batch_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Processing batch </span><span class="si">{</span><span class="n">current_batch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;(docs </span><span class="si">{</span><span class="n">current_start</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">current_start</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">effective_batch_size</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">)&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Processing batch </span><span class="si">{</span><span class="n">current_batch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;(docs </span><span class="si">{</span><span class="n">current_start</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">current_start</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">effective_batch_size</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">)&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># Get documents from Solr with a timeout</span>
+                <span class="n">docs</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Get all fields, not just the text field</span>
+                    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;*:*&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;rows&quot;</span><span class="p">:</span> <span class="n">effective_batch_size</span><span class="p">,</span>
+                        <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="n">current_start</span><span class="p">,</span>
+                    <span class="p">}</span>
+                    <span class="k">if</span> <span class="n">filter_query</span><span class="p">:</span>
+                        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;fq&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_query</span>
+
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Querying Solr for batch </span><span class="si">{</span><span class="n">current_batch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+                    <span class="n">select</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">collection_select</span><span class="p">(</span><span class="n">collection</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+                    <span class="n">docs</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;response&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;docs&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                    <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;current_docs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">docs</span>
+
+                    <span class="n">query_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+                    <span class="k">if</span> <span class="n">docs</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Retrieved </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span><span class="si">}</span><span class="s2"> documents in </span><span class="si">{</span><span class="n">query_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> seconds&quot;</span>
+                        <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No more documents found&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Timeout retrieving documents from Solr &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;(after </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s)&quot;</span>
+                    <span class="p">)</span>
+                    <span class="c1"># Try to reconnect and retry once</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">close_session</span><span class="p">()</span>
+                        <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">start_session</span><span class="p">()</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                            <span class="s2">&quot;Reconnected to Solr, retrying document retrieval...&quot;</span>
+                        <span class="p">)</span>
+                        <span class="n">select</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">collection_select</span><span class="p">(</span>
+                            <span class="n">collection</span><span class="p">,</span> <span class="n">payload</span>
+                        <span class="p">)</span>
+                        <span class="n">docs</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;response&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;docs&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                        <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;current_docs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">docs</span>
+                        <span class="k">if</span> <span class="n">docs</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Retrieved </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span><span class="si">}</span><span class="s2"> documents after retry&quot;</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No documents found after retry&quot;</span><span class="p">)</span>
+                            <span class="k">break</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to retry document retrieval: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error retrieving documents: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># Check if user interrupted</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="s2">&quot;Processing interrupted by user, finalizing current batch...&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># Update progress bar total if needed</span>
+                <span class="k">if</span> <span class="n">pbar</span><span class="o">.</span><span class="n">total</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">docs</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">count_response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">collection_select</span><span class="p">(</span>
+                            <span class="n">collection</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;*:*&quot;</span><span class="p">,</span> <span class="s2">&quot;rows&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+                        <span class="p">)</span>
+                        <span class="k">if</span> <span class="n">count_response</span> <span class="ow">and</span> <span class="s2">&quot;response&quot;</span> <span class="ow">in</span> <span class="n">count_response</span><span class="p">:</span>
+                            <span class="n">total_doc_count</span> <span class="o">=</span> <span class="n">count_response</span><span class="p">[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                                <span class="s2">&quot;numFound&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+                            <span class="p">)</span>
+                            <span class="k">if</span> <span class="n">total_doc_count</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">):</span>
+                                <span class="n">pbar</span><span class="o">.</span><span class="n">total</span> <span class="o">=</span> <span class="n">total_doc_count</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not determine total document count: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Process the batch</span>
+                <span class="k">if</span> <span class="n">is_chinese_segmenter</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;tokenize_batch&quot;</span><span class="p">):</span>
+                    <span class="n">batch_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+                    <span class="c1"># First extract all texts to tokenize</span>
+                    <span class="n">texts_to_process</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="n">doc_indices</span> <span class="o">=</span> <span class="p">[]</span>
+
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">docs</span><span class="p">):</span>
+                        <span class="n">text</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">text_field</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span> <span class="ow">or</span> <span class="n">text</span><span class="o">.</span><span class="n">isspace</span><span class="p">():</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Document </span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> has empty text &quot;</span>
+                                <span class="sa">f</span><span class="s2">&quot;in field &#39;</span><span class="si">{</span><span class="n">text_field</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                            <span class="p">)</span>
+                            <span class="n">skipped_docs</span> <span class="o">+=</span> <span class="mi">1</span>
+                            <span class="k">continue</span>
+
+                        <span class="c1"># Apply Chinese simplification if requested</span>
+                        <span class="k">if</span> <span class="n">simplify_chinese</span> <span class="ow">and</span> <span class="n">HANZICONV_AVAILABLE</span><span class="p">:</span>
+                            <span class="n">text</span> <span class="o">=</span> <span class="n">HanziConv</span><span class="o">.</span><span class="n">toSimplified</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+                        <span class="n">texts_to_process</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+                        <span class="n">doc_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">texts_to_process</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Batch processing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">texts_to_process</span><span class="p">)</span><span class="si">}</span><span class="s2"> documents...&quot;</span>
+                        <span class="p">)</span>
+
+                        <span class="c1"># Process texts with batch tokenization</span>
+                        <span class="c1"># Dynamic subbatch size based on model&#39;s determined capacity</span>
+                        <span class="n">subbatch_size</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="nb">min</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">model_batch_size</span><span class="p">)</span> <span class="k">if</span> <span class="n">model_batch_size</span> <span class="k">else</span> <span class="mi">20</span>
+                        <span class="p">)</span>
+
+                        <span class="n">all_tokens</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">texts_to_process</span><span class="p">),</span> <span class="n">subbatch_size</span><span class="p">):</span>
+                            <span class="c1"># Check for interruption</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]:</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                                    <span class="s2">&quot;Processing interrupted, finalizing current subbatch...&quot;</span>
+                                <span class="p">)</span>
+
+                            <span class="n">subbatch_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">subbatch_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">texts_to_process</span><span class="p">))</span>
+                            <span class="n">subbatch_texts</span> <span class="o">=</span> <span class="n">texts_to_process</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">subbatch_end</span><span class="p">]</span>
+
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="c1"># Get tokens for this subbatch</span>
+                                <span class="n">subbatch_tokens</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">tokenize_batch</span><span class="p">(</span><span class="n">subbatch_texts</span><span class="p">)</span>
+                                <span class="n">all_tokens</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">subbatch_tokens</span><span class="p">)</span>
+
+                                <span class="c1"># Log progress</span>
+                                <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">subbatch_size</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span>
+                                    <span class="n">subbatch_size</span> <span class="o">*</span> <span class="mi">2</span>
+                                <span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">subbatch_end</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">texts_to_process</span><span class="p">):</span>
+                                    <span class="n">percent_done</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+                                        <span class="mi">100</span><span class="p">,</span>
+                                        <span class="nb">int</span><span class="p">(</span><span class="mi">100</span> <span class="o">*</span> <span class="n">subbatch_end</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">texts_to_process</span><span class="p">)),</span>
+                                    <span class="p">)</span>
+                                    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">batch_start_time</span>
+                                    <span class="n">avg_time</span> <span class="o">=</span> <span class="p">(</span>
+                                        <span class="n">elapsed</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_tokens</span><span class="p">)</span> <span class="k">if</span> <span class="n">all_tokens</span> <span class="k">else</span> <span class="mi">0</span>
+                                    <span class="p">)</span>
+                                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                                        <span class="sa">f</span><span class="s2">&quot;Processed </span><span class="si">{</span><span class="n">subbatch_end</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">texts_to_process</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
+                                        <span class="sa">f</span><span class="s2">&quot;texts (</span><span class="si">{</span><span class="n">percent_done</span><span class="si">}</span><span class="s2">%) - </span><span class="si">{</span><span class="n">avg_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s per document&quot;</span>
+                                    <span class="p">)</span>
+                            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                                    <span class="sa">f</span><span class="s2">&quot;Error processing subbatch </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">subbatch_end</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                                <span class="p">)</span>
+                                <span class="c1"># Use empty tokens as placeholders</span>
+                                <span class="n">empty_tokens</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">subbatch_texts</span><span class="p">))]</span>
+                                <span class="n">all_tokens</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">empty_tokens</span><span class="p">)</span>
+                                <span class="n">skipped_docs</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">subbatch_texts</span><span class="p">)</span>
+
+                            <span class="c1"># If user interrupted, finish current subbatch then break</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="n">processing_state</span><span class="p">[</span>
+                                <span class="s2">&quot;running&quot;</span>
+                            <span class="p">]</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">+</span> <span class="n">subbatch_size</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">texts_to_process</span><span class="p">):</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                                    <span class="s2">&quot;Interruption detected, stopping after current subbatch&quot;</span>
+                                <span class="p">)</span>
+                                <span class="k">break</span>
+
+                        <span class="c1"># Log overall performance</span>
+                        <span class="n">tokenization_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">batch_start_time</span>
+                        <span class="k">if</span> <span class="n">all_tokens</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Tokenized </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_tokens</span><span class="p">)</span><span class="si">}</span><span class="s2"> documents in &quot;</span>
+                                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tokenization_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s &quot;</span>
+                                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">tokenization_time</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">all_tokens</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s per document)&quot;</span>
+                            <span class="p">)</span>
+
+                        <span class="c1"># Create processed documents</span>
+                        <span class="n">processed_docs</span> <span class="o">=</span> <span class="p">[]</span>
+
+                        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">tokens</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">doc_indices</span><span class="p">,</span> <span class="n">all_tokens</span><span class="p">):</span>
+                            <span class="n">doc</span> <span class="o">=</span> <span class="n">docs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                            <span class="c1"># Convert tokens to text</span>
+                            <span class="k">if</span> <span class="n">tokens</span><span class="p">:</span>
+                                <span class="n">tokenized_text</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                                    <span class="p">[</span><span class="n">token</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">tokens</span><span class="p">]</span>
+                                <span class="p">)</span>
+
+                                <span class="c1"># Create a new document without internal Solr fields</span>
+                                <span class="n">new_doc</span> <span class="o">=</span> <span class="p">{}</span>
+                                <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">doc</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                                    <span class="c1"># Skip internal Solr fields</span>
+                                    <span class="k">if</span> <span class="n">field_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+                                        <span class="k">continue</span>
+
+                                    <span class="c1"># Copy the field</span>
+                                    <span class="k">if</span> <span class="n">field_name</span> <span class="o">==</span> <span class="n">text_field</span><span class="p">:</span>
+                                        <span class="c1"># Replace with tokenized text</span>
+                                        <span class="n">new_doc</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">tokenized_text</span>
+                                    <span class="k">else</span><span class="p">:</span>
+                                        <span class="n">new_doc</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+                                <span class="n">processed_docs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_doc</span><span class="p">)</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                                    <span class="sa">f</span><span class="s2">&quot;No tokens for document </span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                                <span class="p">)</span>
+                                <span class="n">skipped_docs</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">processed_docs</span> <span class="o">=</span> <span class="p">[]</span>
+
+                    <span class="n">batch_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">batch_start_time</span>
+                    <span class="k">if</span> <span class="n">processed_docs</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Processed batch of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">processed_docs</span><span class="p">)</span><span class="si">}</span><span class="s2"> documents in &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">batch_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> seconds &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">batch_time</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">processed_docs</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">processed_docs</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;seconds per document)&quot;</span>
+                        <span class="p">)</span>
+
+                    <span class="c1"># Force garbage collection to free memory</span>
+                    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+                        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+                            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+                            <span class="c1"># Log memory usage</span>
+                            <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">current_device</span><span class="p">()</span>
+                            <span class="n">reserved</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_reserved</span><span class="p">(</span><span class="n">device</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">3</span>
+                            <span class="n">allocated</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_allocated</span><span class="p">(</span><span class="n">device</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">3</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;GPU Memory: Reserved </span><span class="si">{</span><span class="n">reserved</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB, &quot;</span>
+                                <span class="sa">f</span><span class="s2">&quot;Allocated </span><span class="si">{</span><span class="n">allocated</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span>
+                            <span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                        <span class="k">pass</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Original processing for other model types or if batch processing not available</span>
+                    <span class="n">processed_docs</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span>
+                        <span class="n">docs</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Tokenizing batch </span><span class="si">{</span><span class="n">current_batch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span>
+                    <span class="p">):</span>
+                        <span class="c1"># Check for interruption</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]:</span>
+                            <span class="k">break</span>
+
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="c1"># Get text to tokenize</span>
+                            <span class="n">text</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">text_field</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                                    <span class="sa">f</span><span class="s2">&quot;Document </span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> has no text &quot;</span>
+                                    <span class="sa">f</span><span class="s2">&quot;in field &#39;</span><span class="si">{</span><span class="n">text_field</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                                <span class="p">)</span>
+                                <span class="n">skipped_docs</span> <span class="o">+=</span> <span class="mi">1</span>
+                                <span class="k">continue</span>
+
+                            <span class="c1"># Apply Chinese simplification if requested</span>
+                            <span class="k">if</span> <span class="n">simplify_chinese</span> <span class="ow">and</span> <span class="n">HANZICONV_AVAILABLE</span><span class="p">:</span>
+                                <span class="n">text</span> <span class="o">=</span> <span class="n">HanziConv</span><span class="o">.</span><span class="n">toSimplified</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+                            <span class="c1"># Tokenize text</span>
+                            <span class="n">tokenized</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">tokenize_text</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+                            <span class="c1"># Create a new document without internal Solr fields</span>
+                            <span class="n">new_doc</span> <span class="o">=</span> <span class="p">{}</span>
+                            <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">doc</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                                <span class="c1"># Skip internal Solr fields</span>
+                                <span class="k">if</span> <span class="n">field_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+                                    <span class="k">continue</span>
+
+                                <span class="c1"># Copy the field</span>
+                                <span class="k">if</span> <span class="n">field_name</span> <span class="o">==</span> <span class="n">text_field</span><span class="p">:</span>
+                                    <span class="c1"># Replace with tokenized text</span>
+                                    <span class="n">new_doc</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">tokenized</span>
+                                <span class="k">else</span><span class="p">:</span>
+                                    <span class="n">new_doc</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+                            <span class="n">processed_docs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_doc</span><span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Error processing document </span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
+                            <span class="n">skipped_docs</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="c1"># Save processed documents to JSONL file</span>
+                <span class="k">if</span> <span class="n">processed_docs</span><span class="p">:</span>
+                    <span class="n">jsonl_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">current_start</span><span class="si">}</span><span class="s2">.jsonl&quot;</span><span class="p">)</span>
+                    <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;current_jsonl_file&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jsonl_file</span>
+
+                    <span class="k">with</span> <span class="n">jsonlines</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">jsonl_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">writer</span><span class="p">:</span>
+                        <span class="n">writer</span><span class="o">.</span><span class="n">write_all</span><span class="p">(</span><span class="n">processed_docs</span><span class="p">)</span>
+
+                    <span class="n">total_docs</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">processed_docs</span><span class="p">)</span>
+                    <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;total_docs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">total_docs</span>
+                    <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;skipped_docs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">skipped_docs</span>
+
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Cached </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">processed_docs</span><span class="p">)</span><span class="si">}</span><span class="s2"> documents to </span><span class="si">{</span><span class="n">jsonl_file</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total documents processed so far: </span><span class="si">{</span><span class="n">total_docs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Update progress bar</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">))</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">set_postfix</span><span class="p">(</span>
+                    <span class="n">total</span><span class="o">=</span><span class="n">total_docs</span><span class="p">,</span> <span class="n">skipped</span><span class="o">=</span><span class="n">skipped_docs</span><span class="p">,</span> <span class="n">batch</span><span class="o">=</span><span class="n">current_batch</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="p">)</span>
+
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">effective_batch_size</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Completed collection - no more docs&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># If user interrupted, break after saving current batch</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing interrupted, stopping after current batch&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+                <span class="n">current_batch</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">current_start</span> <span class="o">+=</span> <span class="n">effective_batch_size</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error during processing: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="c1"># Restore original signal handler</span>
+        <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">original_sigint</span><span class="p">)</span>
+
+        <span class="c1"># Unload model</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Unloading tokenization model...&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">]:</span>
+            <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unload</span><span class="p">()</span>
+
+        <span class="c1"># Generate upload command for user&#39;s convenience</span>
+        <span class="n">target_collection</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">-tok&quot;</span>
+        <span class="n">jsonl_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="s2">&quot;*.jsonl&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Create a command that includes the connection parameters</span>
+        <span class="n">upload_command</span> <span class="o">=</span> <span class="s2">&quot;python -m histtext_toolkit.main&quot;</span>
+
+        <span class="c1"># Add connection parameters</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">solr_client</span><span class="p">,</span> <span class="s2">&quot;host&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">solr_client</span><span class="p">,</span> <span class="s2">&quot;port&quot;</span><span class="p">):</span>
+            <span class="n">upload_command</span> <span class="o">+=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot; --solr-host </span><span class="si">{</span><span class="n">solr_client</span><span class="o">.</span><span class="n">host</span><span class="si">}</span><span class="s2"> --solr-port </span><span class="si">{</span><span class="n">solr_client</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Add the upload command with schema</span>
+        <span class="n">schema_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_root</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">.yaml&quot;</span><span class="p">)</span>
+        <span class="n">upload_command</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; upload </span><span class="si">{</span><span class="n">target_collection</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">jsonl_path</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">schema_path</span><span class="p">):</span>
+            <span class="n">upload_command</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; --schema </span><span class="si">{</span><span class="n">schema_path</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># Report status based on whether processing was interrupted</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Processing interrupted. Processed </span><span class="si">{</span><span class="n">processing_state</span><span class="p">[</span><span class="s1">&#39;total_docs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;documents, skipped </span><span class="si">{</span><span class="n">processing_state</span><span class="p">[</span><span class="s1">&#39;skipped_docs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Processed </span><span class="si">{</span><span class="n">processing_state</span><span class="p">[</span><span class="s1">&#39;total_docs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> documents, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;skipped </span><span class="si">{</span><span class="n">processing_state</span><span class="p">[</span><span class="s1">&#39;skipped_docs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tokenizations cached in: </span><span class="si">{</span><span class="n">cache_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;To upload these tokenizations to Solr, run:&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&gt; </span><span class="si">{</span><span class="n">upload_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">processing_state</span><span class="p">[</span><span class="s2">&quot;total_docs&quot;</span><span class="p">]</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Baptiste Blouin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

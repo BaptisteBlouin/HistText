@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["calculate_final_statistics","calculate_statistics","detect_language","process_documents","read_cache_file"],"struct":["Accumulator","CacheConfig","DashboardStats","PathQueryParams"]};

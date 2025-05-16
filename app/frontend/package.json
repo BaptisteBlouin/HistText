@@ -1,0 +1,117 @@
+{
+  "name": "histtext",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@ag-grid-community/client-side-row-model": "^32.3.3",
+    "@ag-grid-community/react": "^32.3.3",
+    "@ag-grid-community/styles": "^33.0.3",
+    "@apollo/client": "^3.11.4",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@headlessui/react": "^2.1.8",
+    "@mui/icons-material": "^5.16.7",
+    "@mui/material": "^5.16.14",
+    "@mui/styled-engine": "^6.1.1",
+    "@mui/x-data-grid": "^5.17.26",
+    "@radix-ui/react-tabs": "^1.1.2",
+    "@tanstack/react-table": "^8.20.6",
+    "@tippyjs/react": "^4.2.6",
+    "ag-grid-react": "^32.1.0",
+    "axios": "^1.7.7",
+    "bootstrap": "^5.3.3",
+    "chart.js": "^4.4.3",
+    "chinese-tokenizer": "^2.4.0",
+    "chokidar": "^3.6.0",
+    "clsx": "^2.1.1",
+    "d3-scale": "^4.0.2",
+    "dotenv": "^16.0.3",
+    "format": "^0.2.2",
+    "formik": "^2.4.6",
+    "graphql": "^16.8.1",
+    "graphql-ws": "^5.14.3",
+    "jieba-js": "^1.0.2",
+    "jieba-wasm": "^2.2.0",
+    "lucide-react": "^0.441.0",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.10.4",
+    "react-chartjs-2": "^5.2.0",
+    "react-d3-cloud": "^1.0.6",
+    "react-data-grid": "^7.0.0-beta.47",
+    "react-debounce-input": "^3.3.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.3.0",
+    "react-markdown": "^10.1.0",
+    "react-query": "^3.39.3",
+    "react-router-dom": "^6.8.1",
+    "react-select": "^5.10.0",
+    "react-table": "^7.7.0",
+    "react-toastify": "^10.0.5",
+    "react-tooltip": "^5.28.0",
+    "remark-gfm": "^4.0.1",
+    "segmentit": "^2.0.3",
+    "shadcn-ui": "^0.9.4",
+    "tailwind-merge": "^2.6.0",
+    "tippy.js": "^6.3.7",
+    "typescript": "^4.9.5",
+    "web-vitals": "^3.1.1"
+  },
+  "scripts": {
+    "start": "vite --host 0.0.0.0 --port 8000",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start:dev": "npm install && vite",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
+    "lint": "eslint src --ext .ts,.tsx --ignore-pattern \"**/*.js\" --fix"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.30.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/d3-scale": "^4.0.9",
+    "@types/node": "^18.13.0",
+    "@types/react": "^18.0.27",
+    "@types/react-dom": "^18.0.10",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "@vitejs/plugin-react": "^4.2.1",
+    "ansi-to-react": "^6.1.6",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.26.0",
+    "eslint-plugin": "^1.0.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "glob": "^8.1.0",
+    "jsdom": "^26.1.0",
+    "prettier": "^3.5.3",
+    "reconnecting-websocket": "4.4.0",
+    "typescript-eslint": "^8.32.1",
+    "vite": "^6.2.3"
+  },
+  "overrides": {
+    "ansi-to-react": {
+      "react": "^18",
+      "react-dom": "^18"
+    },
+    "d3-color": "^3.1.0"
+  }
+}

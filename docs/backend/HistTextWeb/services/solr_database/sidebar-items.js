@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_solr_database","delete_solr_database","get_solr_database_by_id","get_solr_databases","update_solr_database"],"struct":["NewSolrDatabase","SolrDatabase","SolrDatabaseHandler","UpdateSolrDatabase"]};

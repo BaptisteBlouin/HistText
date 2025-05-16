@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["fetch_metadata","get_aliases","get_collection_metadata","get_date_range"],"struct":["ANNOTATION_CACHE","DatabaseIdQueryParams","INDEX_CACHE","MetadataQueryParams"]};

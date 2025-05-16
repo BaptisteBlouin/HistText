@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_user_permission","delete_user_permission","get_user_permission_by_user_id_and_permission","get_user_permissions"],"struct":["NewUserPermission","UserPermission","UserPermissionHandler"]};

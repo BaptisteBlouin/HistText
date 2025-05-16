@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["attachment_blobs","attachments","fang_tasks","role_permissions","solr_database_info","solr_database_permissions","solr_databases","sql_types","user_oauth2_links","user_permissions","user_roles","user_sessions","users"]};

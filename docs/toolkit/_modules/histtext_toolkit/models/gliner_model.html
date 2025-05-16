@@ -1,0 +1,401 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>histtext_toolkit.models.gliner_model &mdash; HistText Toolkit 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            HistText Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/core.html">Core Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/operations.html">Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/utils.html">Utilities</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">HistText Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">histtext_toolkit.models.gliner_model</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for histtext_toolkit.models.gliner_model</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">GLiNER model implementation for named entity recognition.</span>
+
+<span class="sd">This module provides an implementation of NERModel using the GLiNER library</span>
+<span class="sd">for zero-shot and few-shot named entity recognition.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">NERModel</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># Try to import GLiNER without failing if unavailable</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">gliner</span><span class="w"> </span><span class="kn">import</span> <span class="n">GLiNER</span>
+
+    <span class="n">GLINER_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;GLiNER not available. Install with `pip install gliner`&quot;</span><span class="p">)</span>
+    <span class="n">GLINER_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+<span class="c1"># Default mapping from GLiNER labels to short codes</span>
+<span class="n">DEFAULT_LABEL_MAPPING</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Person&quot;</span><span class="p">:</span> <span class="s2">&quot;P&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Nationality&quot;</span><span class="p">:</span> <span class="s2">&quot;N&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Facility&quot;</span><span class="p">:</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Organization&quot;</span><span class="p">:</span> <span class="s2">&quot;O&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Geopolitical entity&quot;</span><span class="p">:</span> <span class="s2">&quot;G&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Location&quot;</span><span class="p">:</span> <span class="s2">&quot;L&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Product&quot;</span><span class="p">:</span> <span class="s2">&quot;PR&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Event&quot;</span><span class="p">:</span> <span class="s2">&quot;E&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Work of art&quot;</span><span class="p">:</span> <span class="s2">&quot;W&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Law&quot;</span><span class="p">:</span> <span class="s2">&quot;LA&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Date&quot;</span><span class="p">:</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Time&quot;</span><span class="p">:</span> <span class="s2">&quot;T&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Percent&quot;</span><span class="p">:</span> <span class="s2">&quot;PE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Money&quot;</span><span class="p">:</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Quantity&quot;</span><span class="p">:</span> <span class="s2">&quot;Q&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Ordinal&quot;</span><span class="p">:</span> <span class="s2">&quot;OR&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Cardinal&quot;</span><span class="p">:</span> <span class="s2">&quot;C&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Language&quot;</span><span class="p">:</span> <span class="s2">&quot;LG&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Misc&quot;</span><span class="p">:</span> <span class="s2">&quot;MI&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="GLiNERModel">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.gliner_model.GLiNERModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GLiNERModel</span><span class="p">(</span><span class="n">NERModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;GLiNER implementation of named entity recognition model.</span>
+<span class="sd">    </span>
+<span class="sd">    This model uses GLiNER, a generative large language model-based approach </span>
+<span class="sd">    for named entity recognition that can be used in zero-shot or few-shot scenarios.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        model_path (str): Path or name of the model to load.</span>
+<span class="sd">        max_chunk_size (int): Maximum chunk size for processing long texts.</span>
+<span class="sd">        threshold (float): Confidence threshold for entity detection.</span>
+<span class="sd">        device (str): Device used for processing (&#39;cuda&#39; or &#39;cpu&#39;).</span>
+<span class="sd">        label_mapping (Dict[str, str]): Mapping from GLiNER labels to short codes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GLiNERModel.__init__">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.gliner_model.GLiNERModel.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">max_chunk_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">296</span><span class="p">,</span>
+        <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">use_gpu</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">label_mapping</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the GLiNER model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model_path: Path or name of the model.</span>
+<span class="sd">            max_chunk_size: Maximum chunk size for processing long texts.</span>
+<span class="sd">            threshold: Confidence threshold for entity detection (0.0 to 1.0).</span>
+<span class="sd">            use_gpu: Force GPU usage if True, CPU if False, auto-detect if None.</span>
+<span class="sd">            label_mapping: Custom mapping from GLiNER labels to short codes.</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ImportError: If GLiNER is not installed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">GLINER_AVAILABLE</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+                <span class="s2">&quot;GLiNER is not installed. Please install it with `pip install gliner`&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span> <span class="o">=</span> <span class="n">model_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_chunk_size</span> <span class="o">=</span> <span class="n">max_chunk_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span> <span class="o">=</span> <span class="n">threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_gpu</span> <span class="o">=</span> <span class="n">use_gpu</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">label_mapping</span> <span class="o">=</span> <span class="n">label_mapping</span> <span class="ow">or</span> <span class="n">DEFAULT_LABEL_MAPPING</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Determine device</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_gpu</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_gpu</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span></div>
+
+
+<div class="viewcode-block" id="GLiNERModel.load">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.gliner_model.GLiNERModel.load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load the GLiNER model.</span>
+
+<span class="sd">        Loads the model from the specified path and sets it to the appropriate device.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if model loaded successfully, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">GLINER_AVAILABLE</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;GLiNER is not installed&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">GLiNER</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="p">,</span>
+                <span class="n">use_auth_token</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">trust_remote_code</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Set default values for tokenizer parameters</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">,</span> <span class="s2">&quot;tokenizer&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">tokenizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span> <span class="o">=</span> <span class="mi">512</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded GLiNER model from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="si">}</span><span class="s2"> on </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load GLiNER model: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="GLiNERModel.unload">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.gliner_model.GLiNERModel.unload">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">unload</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unload the GLiNER model from memory.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if successful, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_model&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Force GPU memory cleanup if available</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_loaded</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the model is loaded.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if the model is loaded, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="GLiNERModel.extract_entities">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.gliner_model.GLiNERModel.extract_entities">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">extract_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Entity</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract named entities from text using GLiNER.</span>
+
+<span class="sd">        Processes the text in chunks to handle long documents and extracts</span>
+<span class="sd">        entities based on the configured threshold.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            text: Input text to analyze.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Entity]: List of extracted entities with their positions and labels.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_loaded</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">():</span>
+                <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># Get available labels</span>
+        <span class="n">labels_gliner</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">label_mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="c1"># Process text in chunks if needed</span>
+        <span class="n">doc_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">entities</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">error_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">max_errors</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># Maximum consecutive errors before giving up on document</span>
+
+        <span class="k">while</span> <span class="n">offset</span> <span class="o">&lt;</span> <span class="n">doc_len</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+            <span class="c1"># Calculate chunk size dynamically if we&#39;re having trouble</span>
+            <span class="n">chunk_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_chunk_size</span>
+            <span class="k">if</span> <span class="n">error_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Reduce chunk size if we&#39;re encountering errors</span>
+                <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">chunk_size</span> <span class="o">//</span> <span class="p">(</span><span class="n">error_count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+            <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">offset</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="n">doc_len</span><span class="p">)</span>
+            <span class="n">chunk</span> <span class="o">=</span> <span class="n">text</span><span class="p">[</span><span class="n">offset</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+
+            <span class="c1"># Skip empty chunks</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span> <span class="ow">or</span> <span class="n">chunk</span><span class="o">.</span><span class="n">isspace</span><span class="p">():</span>
+                <span class="n">offset</span> <span class="o">=</span> <span class="n">end</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Try different chunk sizes if we encounter errors</span>
+            <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">retry_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="n">chunk_size</span><span class="p">,</span> <span class="n">chunk_size</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">chunk_size</span> <span class="o">//</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">50</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">retry_sizes</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">retry_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">offset</span> <span class="o">+</span> <span class="n">size</span><span class="p">,</span> <span class="n">doc_len</span><span class="p">)</span>
+                <span class="n">retry_chunk</span> <span class="o">=</span> <span class="n">text</span><span class="p">[</span><span class="n">offset</span><span class="p">:</span><span class="n">retry_end</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">retry_chunk</span> <span class="ow">or</span> <span class="n">retry_chunk</span><span class="o">.</span><span class="n">isspace</span><span class="p">():</span>
+                    <span class="n">offset</span> <span class="o">=</span> <span class="n">retry_end</span>
+                    <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">break</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">chunk_ents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict_entities</span><span class="p">(</span>
+                        <span class="n">retry_chunk</span><span class="p">,</span> <span class="n">labels_gliner</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">threshold</span>
+                    <span class="p">)</span>
+
+                    <span class="c1"># Process entities if any</span>
+                    <span class="k">if</span> <span class="n">chunk_ents</span><span class="p">:</span>
+                        <span class="c1"># Sort by start position for stable ordering</span>
+                        <span class="n">chunk_ents</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">])</span>
+
+                        <span class="c1"># Convert to our format</span>
+                        <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="n">chunk_ents</span><span class="p">:</span>
+                            <span class="n">entities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="n">Entity</span><span class="p">(</span>
+                                    <span class="n">text</span><span class="o">=</span><span class="n">ent</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">],</span>
+                                    <span class="n">labels</span><span class="o">=</span><span class="p">[</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">label_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                                            <span class="n">ent</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">],</span> <span class="n">ent</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
+                                        <span class="p">)</span>
+                                    <span class="p">],</span>
+                                    <span class="n">start_pos</span><span class="o">=</span><span class="n">ent</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">offset</span><span class="p">,</span>
+                                    <span class="n">end_pos</span><span class="o">=</span><span class="n">ent</span><span class="p">[</span><span class="s2">&quot;end&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">offset</span><span class="p">,</span>
+                                    <span class="n">confidence</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">ent</span><span class="p">[</span><span class="s2">&quot;score&quot;</span><span class="p">]),</span>
+                                <span class="p">)</span>
+                            <span class="p">)</span>
+
+                        <span class="c1"># Avoid splitting entity across chunks by advancing to end of last entity</span>
+                        <span class="n">offset</span> <span class="o">+=</span> <span class="n">chunk_ents</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;end&quot;</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># No entities in this chunk, move to next</span>
+                        <span class="n">offset</span> <span class="o">=</span> <span class="n">retry_end</span>
+
+                    <span class="c1"># Reset error count on success</span>
+                    <span class="n">error_count</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">break</span>
+
+                <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+                    <span class="c1"># Try smaller chunk</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;GLiNER indexing error with chunk size </span><span class="si">{</span><span class="n">size</span><span class="si">}</span><span class="s2">, trying smaller chunk&quot;</span>
+                    <span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="c1"># Try smaller chunk for other errors too</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GLiNER error with chunk size </span><span class="si">{</span><span class="n">size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">success</span><span class="p">:</span>
+                <span class="c1"># If all retries failed, log warning and skip ahead</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;GLiNER encountered an indexing error on chunk at position </span><span class="si">{</span><span class="n">offset</span><span class="si">}</span><span class="s2">. Skipping chunk.&quot;</span>
+                <span class="p">)</span>
+                <span class="n">error_count</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">error_count</span> <span class="o">&gt;=</span> <span class="n">max_errors</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="s2">&quot;Too many consecutive errors, skipping the rest of the document&quot;</span>
+                    <span class="p">)</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># Skip ahead more aggressively</span>
+                <span class="n">offset</span> <span class="o">+=</span> <span class="mi">10</span>
+
+        <span class="k">return</span> <span class="n">entities</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Baptiste Blouin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

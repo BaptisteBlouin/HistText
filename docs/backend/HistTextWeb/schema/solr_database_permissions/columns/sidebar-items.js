@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["collection_name","permission","solr_database_id","star"]};

@@ -1,0 +1,131 @@
+/* AccountPage.css */
+
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+}
+
+a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+button {
+  padding: 10px 15px;
+  margin-right: 10px;
+  background-color: #007bff; /* Primary blue color */
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+input[type='password'] {
+  padding: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Account page container */
+.account-page {
+  text-align: left;
+  padding: 20px;
+}
+
+/* Form styles */
+.Form {
+  margin-bottom: 20px;
+}
+
+.Form label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.Form input {
+  margin-bottom: 10px;
+}
+
+/* Permissions section */
+.permissions {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.permissions pre {
+  background-color: #e9ecef;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* Sessions section */
+.sessions-list {
+  margin-top: 20px;
+}
+
+.sessions-list div {
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #f1f3f5;
+  border-radius: 4px;
+}
+
+.sessions-list button {
+  margin-left: 10px;
+}
+
+/* Pagination styles */
+.pagination {
+  display: flex;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.pagination button {
+  padding: 5px 10px;
+}
+
+.pagination span {
+  margin: 0 10px;
+}
+.account-page {
+  padding: 20px;
+}
+
+.account-info {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+.permissions {
+  background-color: #f1f1f1;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["access_token","created_at","csrf_token","id","nonce","pkce_secret","provider","refresh_token","star","subject_id","updated_at","user_id"]};

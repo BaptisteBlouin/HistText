@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${DEV_PORT:-60012}:60012"
+      - "3000:3000"
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+      - ./data:/data
+      - ./data/ssh:/root/.ssh  # SSH keys volume with write permission
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+      - ./.env:/app/.env  # Mount .env file directly into the container
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-user}:${DB_PASSWORD:-password}@postgres:5432/${DB_NAME:-databasename}
+      - SOLR_NER_PORT=${SOLR_NER_PORT:-8982}
+      - RUST_LOG=${RUST_LOG:-debug}
+      - PATH_STORE_FILES=/data/histtext-tmp
+      - STATS_CACHE_PATH=/data/histtext-tmp/stats_cache.json
+      - NER_CACHE_PATH=/data/histtext-tmp/ner_cache.json
+      # Create-rust-app environment variables
+      - CRA_MANIFEST_PATH=/app/frontend/dist/.vite/manifest.json
+      - CRA_FRONTEND_DIR=/app/frontend/
+      - CRA_VIEWS_GLOB=/app/backend/views/**/*.html
+      # Add any other environment variables needed
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      solr:
+        condition: service_healthy
+    networks:
+      - histtext-network
+      
+  postgres:
+    image: postgres:15
+    ports:
+      - "${POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${DB_USER:-user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
+      - POSTGRES_DB=${DB_NAME:-databasename}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user} -d ${DB_NAME:-databasename} || pg_isready -U ${DB_USER:-user} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - histtext-network
+      
+  solr:
+    image: solr:9.4
+    user: "1000:1000"  # Adjust this to match your host user ID if needed
+    ports:
+      - "${SOLR_NER_PORT:-8982}:8983"
+    volumes:
+      - ./data/solr:/var/solr
+    command:
+      - solr-precreate
+      - ner
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8983/solr/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - histtext-network
+
+networks:
+  histtext-network:
+    driver: bridge
+    
+volumes:
+  cargo-cache:
+  target-cache:

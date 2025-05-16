@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Createbasis","PaginationResult","Updatebasis","basis"],"type":["Connection"]};

@@ -1,0 +1,646 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>histtext_toolkit.operations.ner &mdash; HistText Toolkit 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            HistText Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/core.html">Core Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/operations.html">Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/utils.html">Utilities</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">HistText Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">histtext_toolkit.operations.ner</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for histtext_toolkit.operations.ner</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">NER operations module.</span>
+
+<span class="sd">This module provides functionality for Named Entity Recognition operations,</span>
+<span class="sd">including precomputing and caching annotations.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..cache.manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_cache_manager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..models.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">NERModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..models.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_ner_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..solr.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">SolrClient</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="split_long_document">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.ner.split_long_document">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">split_long_document</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30_000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Split a long document into smaller chunks.</span>
+
+<span class="sd">    Splits text at natural boundaries (newlines) while respecting the </span>
+<span class="sd">    maximum chunk length.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        doc: Document text to split</span>
+<span class="sd">        max_length: Maximum length of each chunk</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List[str]: List of document chunks</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">splits</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">doc_splits</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">cur</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">split</span> <span class="ow">in</span> <span class="n">splits</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cur</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">split</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">max_length</span><span class="p">:</span>
+            <span class="n">cur</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">split</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">doc_splits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cur</span><span class="p">)</span>
+            <span class="n">cur</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">split</span>
+
+    <span class="k">if</span> <span class="n">cur</span><span class="p">:</span>
+        <span class="n">doc_splits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cur</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">doc_splits</span></div>
+
+
+
+<div class="viewcode-block" id="NERProcessor">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.ner.NERProcessor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NERProcessor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Processor for Named Entity Recognition operations.</span>
+<span class="sd">    </span>
+<span class="sd">    Provides methods for extracting entities from text and processing documents</span>
+<span class="sd">    in various formats.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="NERProcessor.__init__">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.ner.NERProcessor.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">NERModel</span><span class="p">,</span> <span class="n">cache_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the NER processor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model: NER model to use for entity extraction</span>
+<span class="sd">            cache_root: Optional root directory for caches</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_root</span> <span class="o">=</span> <span class="n">cache_root</span></div>
+
+
+<div class="viewcode-block" id="NERProcessor.extract_entities">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.ner.NERProcessor.extract_entities">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">extract_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Entity</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract entities from text.</span>
+
+<span class="sd">        Handles empty text and long documents by splitting them into</span>
+<span class="sd">        manageable chunks.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            text: Input text</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Entity]: Extracted entities</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Handle empty text</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># Handle long documents by splitting</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">30_000</span><span class="p">:</span>
+            <span class="n">entities</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">splits</span> <span class="o">=</span> <span class="n">split_long_document</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">split</span> <span class="ow">in</span> <span class="n">splits</span><span class="p">:</span>
+                <span class="n">split_entities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">extract_entities</span><span class="p">(</span><span class="n">split</span><span class="p">)</span>
+
+                <span class="c1"># Adjust offsets</span>
+                <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">split_entities</span><span class="p">:</span>
+                    <span class="n">entity</span><span class="o">.</span><span class="n">start_pos</span> <span class="o">+=</span> <span class="n">offset</span>
+                    <span class="n">entity</span><span class="o">.</span><span class="n">end_pos</span> <span class="o">+=</span> <span class="n">offset</span>
+
+                <span class="n">entities</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">split_entities</span><span class="p">)</span>
+                <span class="n">offset</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">split</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">entities</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">extract_entities</span><span class="p">(</span><span class="n">text</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NERProcessor.process_documents">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.ner.NERProcessor.process_documents">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_documents</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">documents</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process a batch of documents.</span>
+
+<span class="sd">        Extracts entities from multiple documents with progress tracking</span>
+<span class="sd">        and error handling.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            documents: Dictionary mapping document IDs to text</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, List[Dict[str, Any]]]: Dictionary mapping document IDs to entities</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
+
+        <span class="k">for</span> <span class="n">doc_id</span><span class="p">,</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span>
+            <span class="n">documents</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Extracting entities&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span> <span class="ow">or</span> <span class="n">text</span><span class="o">.</span><span class="n">isspace</span><span class="p">():</span>
+                    <span class="c1"># Skip empty documents</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping empty document: </span><span class="si">{</span><span class="n">doc_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="n">entities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_entities</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">entities</span><span class="p">:</span>  <span class="c1"># Only include documents with entities</span>
+                    <span class="n">results</span><span class="p">[</span><span class="n">doc_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">text</span><span class="p">,</span>
+                            <span class="s2">&quot;labels&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+                            <span class="s2">&quot;start_pos&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">start_pos</span><span class="p">,</span>
+                            <span class="s2">&quot;end_pos&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">end_pos</span><span class="p">,</span>
+                            <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span>
+                        <span class="p">}</span>
+                        <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">entities</span>
+                    <span class="p">]</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error processing document </span><span class="si">{</span><span class="n">doc_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">errors</span><span class="p">[</span><span class="n">doc_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Encountered errors in </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span><span class="si">}</span><span class="s2"> documents&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="NERProcessor.process_documents_short_format">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.ner.NERProcessor.process_documents_short_format">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_documents_short_format</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">documents</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process a batch of documents and return entities in short format.</span>
+
+<span class="sd">        Uses more compact field names suitable for storage in Solr.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            documents: Dictionary mapping document IDs to text</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, List[Dict[str, Any]]]: Dictionary mapping document IDs to entities in short format</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">doc_id</span><span class="p">,</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">documents</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">entities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_entities</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+            <span class="n">results</span><span class="p">[</span><span class="n">doc_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">short_format</span><span class="p">(</span><span class="n">entities</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="NERProcessor.process_and_cache">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.ner.NERProcessor.process_and_cache">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">process_and_cache</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">documents</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+        <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">collection</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">shorten</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">decimal_precision</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">jsonl_prefix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">format_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process documents and cache the results.</span>
+
+<span class="sd">        Extracts entities from documents and saves them to the cache</span>
+<span class="sd">        with the specified formatting options.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            documents: Dictionary mapping document IDs to text</span>
+<span class="sd">            model_name: Name of the model</span>
+<span class="sd">            collection: Name of the collection</span>
+<span class="sd">            field: Field name</span>
+<span class="sd">            shorten: Whether to use shortened field names</span>
+<span class="sd">            decimal_precision: Number of decimal places for confidence values</span>
+<span class="sd">            jsonl_prefix: Prefix for the JSONL file name</span>
+<span class="sd">            start: Start index</span>
+<span class="sd">            format_type: Format type (&#39;default&#39; or &#39;flat&#39;)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[str]: List of processed document IDs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_root</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Cache root not specified, results will not be cached&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># Process documents</span>
+        <span class="k">if</span> <span class="n">shorten</span><span class="p">:</span>
+            <span class="n">entities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_documents_short_format</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">entities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_documents</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+        <span class="c1"># Apply decimal precision if specified</span>
+        <span class="k">if</span> <span class="n">decimal_precision</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">doc_id</span><span class="p">,</span> <span class="n">doc_entities</span> <span class="ow">in</span> <span class="n">entities</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">doc_entities</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s2">&quot;confidence&quot;</span> <span class="ow">in</span> <span class="n">entity</span> <span class="ow">and</span> <span class="n">entity</span><span class="p">[</span><span class="s2">&quot;confidence&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">entity</span><span class="p">[</span><span class="s2">&quot;confidence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span>
+                            <span class="n">entity</span><span class="p">[</span><span class="s2">&quot;confidence&quot;</span><span class="p">],</span> <span class="n">decimal_precision</span>
+                        <span class="p">)</span>
+                    <span class="k">elif</span> <span class="s2">&quot;c&quot;</span> <span class="ow">in</span> <span class="n">entity</span> <span class="ow">and</span> <span class="n">entity</span><span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">entity</span><span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">entity</span><span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">],</span> <span class="n">decimal_precision</span><span class="p">)</span>
+
+        <span class="c1"># Cache results</span>
+        <span class="n">cache_manager</span> <span class="o">=</span> <span class="n">get_cache_manager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_root</span><span class="p">)</span>
+        <span class="n">cache_manager</span><span class="o">.</span><span class="n">save_annotations</span><span class="p">(</span>
+            <span class="n">model_name</span><span class="p">,</span>
+            <span class="n">collection</span><span class="p">,</span>
+            <span class="n">field</span><span class="p">,</span>
+            <span class="n">entities</span><span class="p">,</span>
+            <span class="n">jsonl_prefix</span><span class="p">,</span>
+            <span class="n">start</span><span class="p">,</span>
+            <span class="n">format_type</span><span class="p">,</span>
+            <span class="n">shorten</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">entities</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="precompute_ner">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.ner.precompute_ner">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">precompute_ner</span><span class="p">(</span>
+    <span class="n">solr_client</span><span class="p">:</span> <span class="n">SolrClient</span><span class="p">,</span>
+    <span class="n">collection</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">text_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">model_config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">,</span>
+    <span class="n">cache_root</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+    <span class="n">num_batches</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">filter_query</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">jsonl_prefix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">shorten</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">decimal_precision</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">format_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Precompute NER annotations for a collection.</span>
+
+<span class="sd">    Processes documents from a Solr collection in batches, extracting entities</span>
+<span class="sd">    and caching the results for later use.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        solr_client: Solr client instance</span>
+<span class="sd">        collection: Name of the collection</span>
+<span class="sd">        text_field: Field containing the text</span>
+<span class="sd">        model_config: Model configuration</span>
+<span class="sd">        cache_root: Root directory for caches</span>
+<span class="sd">        model_name: Name to use for the model in the cache hierarchy</span>
+<span class="sd">        start: Start index</span>
+<span class="sd">        batch_size: Number of documents per batch</span>
+<span class="sd">        num_batches: Maximum number of batches to process</span>
+<span class="sd">        filter_query: Optional filter query</span>
+<span class="sd">        jsonl_prefix: Prefix for the JSONL file name</span>
+<span class="sd">        shorten: Whether to use shortened field names</span>
+<span class="sd">        decimal_precision: Number of decimal places for confidence values</span>
+<span class="sd">        format_type: Format type (&#39;default&#39; or &#39;flat&#39;)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int: Number of documents processed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
+
+    <span class="c1"># Create model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">create_ner_model</span><span class="p">(</span><span class="n">model_config</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">load</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model </span><span class="si">{</span><span class="n">model_config</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="c1"># Create processor</span>
+    <span class="n">processor</span> <span class="o">=</span> <span class="n">NERProcessor</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">cache_root</span><span class="p">)</span>
+
+    <span class="c1"># Calculate and display cache directory path</span>
+    <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_root</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">collection</span><span class="p">,</span> <span class="n">text_field</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># If format is &#39;flat&#39;, create schema YAML file</span>
+    <span class="n">schema_path</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">format_type</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span><span class="p">:</span>
+        <span class="n">schema_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_root</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">.yaml&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">schema_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">schema_path</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;.&quot;</span><span class="p">,</span>
+            <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">schema_path</span><span class="p">):</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">..solr.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_schema_dict</span><span class="p">,</span> <span class="n">write_schema_to_file</span>
+
+            <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;c&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;pdoubles&quot;</span><span class="p">,</span> <span class="s2">&quot;multivalued&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+                <span class="s2">&quot;doc_id&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text_general&quot;</span><span class="p">,</span> <span class="s2">&quot;multivalued&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+                <span class="s2">&quot;e&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;plongs&quot;</span><span class="p">,</span> <span class="s2">&quot;multivalued&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+                <span class="s2">&quot;l&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text_general&quot;</span><span class="p">,</span> <span class="s2">&quot;multivalued&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+                <span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;plongs&quot;</span><span class="p">,</span> <span class="s2">&quot;multivalued&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+                <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text_general&quot;</span><span class="p">,</span> <span class="s2">&quot;multivalued&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+            <span class="p">}</span>
+
+            <span class="n">schema_dict</span> <span class="o">=</span> <span class="n">create_schema_dict</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">write_schema_to_file</span><span class="p">(</span><span class="n">schema_dict</span><span class="p">,</span> <span class="n">schema_path</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created schema file </span><span class="si">{</span><span class="n">schema_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache directory: </span><span class="si">{</span><span class="n">cache_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error writing schema file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Process batches</span>
+    <span class="n">current_start</span> <span class="o">=</span> <span class="n">start</span>
+    <span class="n">current_batch</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">total_docs</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">skipped_docs</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">error_docs</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting precomputation (</span><span class="si">{</span><span class="n">format_type</span><span class="si">}</span><span class="s2"> mode)...&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Determine total number of documents for progress bar</span>
+    <span class="n">total_count</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">num_batches</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">total_count</span> <span class="o">=</span> <span class="n">num_batches</span> <span class="o">*</span> <span class="n">batch_size</span>
+
+    <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">total_count</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processing documents&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;docs&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">num_batches</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">current_batch</span> <span class="o">&lt;</span> <span class="n">num_batches</span><span class="p">:</span>
+            <span class="c1"># Break long line into multiple lines</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Processing batch </span><span class="si">{</span><span class="n">current_batch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(docs </span><span class="si">{</span><span class="n">current_start</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">current_start</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">batch_size</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Get documents from Solr</span>
+            <span class="n">documents</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">get_document_batch</span><span class="p">(</span>
+                <span class="n">collection</span><span class="p">,</span> <span class="n">text_field</span><span class="p">,</span> <span class="n">current_start</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">filter_query</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">documents</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No more documents found&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="c1"># Update progress bar total if needed</span>
+            <span class="k">if</span> <span class="n">pbar</span><span class="o">.</span><span class="n">total</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">documents</span><span class="p">:</span>
+                <span class="c1"># Try to get total document count for more accurate progress</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">count_response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">collection_select</span><span class="p">(</span>
+                        <span class="n">collection</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;*:*&quot;</span><span class="p">,</span> <span class="s2">&quot;rows&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">count_response</span> <span class="ow">and</span> <span class="s2">&quot;response&quot;</span> <span class="ow">in</span> <span class="n">count_response</span><span class="p">:</span>
+                        <span class="n">total_doc_count</span> <span class="o">=</span> <span class="n">count_response</span><span class="p">[</span><span class="s2">&quot;response&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                            <span class="s2">&quot;numFound&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+                        <span class="p">)</span>
+                        <span class="k">if</span> <span class="n">total_doc_count</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">):</span>
+                            <span class="n">pbar</span><span class="o">.</span><span class="n">total</span> <span class="o">=</span> <span class="n">total_doc_count</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not determine total document count: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Process documents</span>
+            <span class="n">pbar</span><span class="o">.</span><span class="n">set_description</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing batch </span><span class="si">{</span><span class="n">current_batch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">doc_ids</span> <span class="o">=</span> <span class="k">await</span> <span class="n">processor</span><span class="o">.</span><span class="n">process_and_cache</span><span class="p">(</span>
+                <span class="n">documents</span><span class="p">,</span>
+                <span class="n">model_name</span><span class="p">,</span>
+                <span class="n">collection</span><span class="p">,</span>
+                <span class="n">text_field</span><span class="p">,</span>
+                <span class="n">shorten</span><span class="p">,</span>
+                <span class="n">decimal_precision</span><span class="p">,</span>
+                <span class="n">jsonl_prefix</span><span class="p">,</span>
+                <span class="n">current_start</span><span class="p">,</span>
+                <span class="n">format_type</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">total_docs</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">doc_ids</span><span class="p">)</span>
+            <span class="n">skipped_docs</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">doc_ids</span><span class="p">)</span>
+
+            <span class="c1"># Update progress bar</span>
+            <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">documents</span><span class="p">))</span>
+            <span class="n">pbar</span><span class="o">.</span><span class="n">set_postfix</span><span class="p">(</span>
+                <span class="n">total</span><span class="o">=</span><span class="n">total_docs</span><span class="p">,</span> <span class="n">skipped</span><span class="o">=</span><span class="n">skipped_docs</span><span class="p">,</span> <span class="n">batch</span><span class="o">=</span><span class="n">current_batch</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">doc_ids</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">batch_size</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Completed collection - no more docs&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="n">current_batch</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">current_start</span> <span class="o">+=</span> <span class="n">batch_size</span>
+
+    <span class="c1"># Unload model</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">unload</span><span class="p">()</span>
+
+    <span class="c1"># Generate upload command for user&#39;s convenience</span>
+    <span class="n">upload_collection</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">collection</span><span class="si">}</span><span class="s2">-ner&quot;</span>
+    <span class="n">jsonl_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="s2">&quot;*.jsonl&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Create a command that includes the connection parameters</span>
+    <span class="n">upload_command</span> <span class="o">=</span> <span class="s2">&quot;python -m histtext_toolkit.main&quot;</span>
+
+    <span class="c1"># Add connection parameters</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">solr_client</span><span class="p">,</span> <span class="s2">&quot;host&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">solr_client</span><span class="p">,</span> <span class="s2">&quot;port&quot;</span><span class="p">):</span>
+        <span class="n">upload_command</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot; --solr-host </span><span class="si">{</span><span class="n">solr_client</span><span class="o">.</span><span class="n">host</span><span class="si">}</span><span class="s2"> --solr-port </span><span class="si">{</span><span class="n">solr_client</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Add the upload command with schema</span>
+    <span class="n">upload_command</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; upload </span><span class="si">{</span><span class="n">upload_collection</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">jsonl_path</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="n">schema_path</span><span class="p">:</span>
+        <span class="n">upload_command</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; --schema </span><span class="si">{</span><span class="n">schema_path</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="c1"># Add a note about the importance of the schema</span>
+        <span class="n">schema_note</span> <span class="o">=</span> <span class="s2">&quot;# The schema file is required for proper field definitions&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">schema_note</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;# No schema file was generated - you may need to create the &quot;</span>
+            <span class="s2">&quot;collection manually&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Split long log messages into multiple lines</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Processed </span><span class="si">{</span><span class="n">total_docs</span><span class="si">}</span><span class="s2"> documents, skipped </span><span class="si">{</span><span class="n">skipped_docs</span><span class="si">}</span><span class="s2">, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;encountered errors in </span><span class="si">{</span><span class="n">error_docs</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Annotations cached in: </span><span class="si">{</span><span class="n">cache_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;To upload these annotations to Solr, run:&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&gt; </span><span class="si">{</span><span class="n">upload_command</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">schema_note</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">total_docs</span></div>
+
+
+
+<div class="viewcode-block" id="extract_entities_from_solr">
+<a class="viewcode-back" href="../../../modules/operations.html#histtext_toolkit.operations.ner.extract_entities_from_solr">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">extract_entities_from_solr</span><span class="p">(</span>
+    <span class="n">solr_client</span><span class="p">:</span> <span class="n">SolrClient</span><span class="p">,</span>
+    <span class="n">collection</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">doc_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">text_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">model_config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">,</span>
+    <span class="n">cache_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract entities from a document in Solr.</span>
+
+<span class="sd">    First checks the cache, then falls back to extracting entities from the</span>
+<span class="sd">    document text if not cached.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        solr_client: Solr client instance</span>
+<span class="sd">        collection: Name of the collection</span>
+<span class="sd">        doc_id: Document ID</span>
+<span class="sd">        text_field: Field containing the text</span>
+<span class="sd">        model_config: Model configuration</span>
+<span class="sd">        cache_root: Optional root directory for caches</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Optional[List[Dict[str, Any]]]: Extracted entities if successful, None otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check cache first</span>
+    <span class="k">if</span> <span class="n">cache_root</span><span class="p">:</span>
+        <span class="n">cache_manager</span> <span class="o">=</span> <span class="n">get_cache_manager</span><span class="p">(</span><span class="n">cache_root</span><span class="p">)</span>
+        <span class="n">cached</span> <span class="o">=</span> <span class="n">cache_manager</span><span class="o">.</span><span class="n">get_annotation</span><span class="p">(</span>
+            <span class="n">model_config</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">collection</span><span class="p">,</span> <span class="n">text_field</span><span class="p">,</span> <span class="n">doc_id</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">cached</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cached</span>
+
+    <span class="c1"># Get document from Solr</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="k">await</span> <span class="n">solr_client</span><span class="o">.</span><span class="n">get_document</span><span class="p">(</span><span class="n">collection</span><span class="p">,</span> <span class="n">doc_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">doc</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Document not found: </span><span class="si">{</span><span class="n">doc_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># Create model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">create_ner_model</span><span class="p">(</span><span class="n">model_config</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">load</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model </span><span class="si">{</span><span class="n">model_config</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># Create processor</span>
+    <span class="n">processor</span> <span class="o">=</span> <span class="n">NERProcessor</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">cache_root</span><span class="p">)</span>
+
+    <span class="c1"># Extract entities</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">text_field</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Empty text field &#39;</span><span class="si">{</span><span class="n">text_field</span><span class="si">}</span><span class="s2">&#39; for document </span><span class="si">{</span><span class="n">doc_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">entities</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">extract_entities</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+    <span class="c1"># Unload model</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">unload</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">text</span><span class="p">,</span>
+            <span class="s2">&quot;labels&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+            <span class="s2">&quot;start_pos&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">start_pos</span><span class="p">,</span>
+            <span class="s2">&quot;end_pos&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">end_pos</span><span class="p">,</span>
+            <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">entities</span>
+    <span class="p">]</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Baptiste Blouin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,980 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Operations &mdash; HistText Toolkit 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Utilities" href="utils.html" />
+    <link rel="prev" title="Models" href="models.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            HistText Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-histtext_toolkit.operations.embeddings">Embeddings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor"><code class="docutils literal notranslate"><span class="pre">EmbeddingsProcessor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor.__init__"><code class="docutils literal notranslate"><span class="pre">EmbeddingsProcessor.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor.compute_embedding"><code class="docutils literal notranslate"><span class="pre">EmbeddingsProcessor.compute_embedding()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor.compute_embeddings_batch"><code class="docutils literal notranslate"><span class="pre">EmbeddingsProcessor.compute_embeddings_batch()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor.save_embeddings"><code class="docutils literal notranslate"><span class="pre">EmbeddingsProcessor.save_embeddings()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.load_embeddings"><code class="docutils literal notranslate"><span class="pre">load_embeddings()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.get_default_params"><code class="docutils literal notranslate"><span class="pre">get_default_params()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.compute_embeddings"><code class="docutils literal notranslate"><span class="pre">compute_embeddings()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.auto_configure_embedding_params"><code class="docutils literal notranslate"><span class="pre">auto_configure_embedding_params()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.compute_word_embeddings"><code class="docutils literal notranslate"><span class="pre">compute_word_embeddings()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.embeddings.build_embedding_index"><code class="docutils literal notranslate"><span class="pre">build_embedding_index()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#named-entity-recognition">Named Entity Recognition</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.ner.split_long_document"><code class="docutils literal notranslate"><span class="pre">split_long_document()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.ner.NERProcessor"><code class="docutils literal notranslate"><span class="pre">NERProcessor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.ner.NERProcessor.__init__"><code class="docutils literal notranslate"><span class="pre">NERProcessor.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.ner.NERProcessor.extract_entities"><code class="docutils literal notranslate"><span class="pre">NERProcessor.extract_entities()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.ner.NERProcessor.process_documents"><code class="docutils literal notranslate"><span class="pre">NERProcessor.process_documents()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.ner.NERProcessor.process_documents_short_format"><code class="docutils literal notranslate"><span class="pre">NERProcessor.process_documents_short_format()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.ner.NERProcessor.process_and_cache"><code class="docutils literal notranslate"><span class="pre">NERProcessor.process_and_cache()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.ner.precompute_ner"><code class="docutils literal notranslate"><span class="pre">precompute_ner()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.ner.extract_entities_from_solr"><code class="docutils literal notranslate"><span class="pre">extract_entities_from_solr()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#tokenization">Tokenization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.apply_tokenization"><code class="docutils literal notranslate"><span class="pre">apply_tokenization()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor"><code class="docutils literal notranslate"><span class="pre">TokenizationProcessor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.__init__"><code class="docutils literal notranslate"><span class="pre">TokenizationProcessor.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize"><code class="docutils literal notranslate"><span class="pre">TokenizationProcessor.tokenize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_to_dict"><code class="docutils literal notranslate"><span class="pre">TokenizationProcessor.tokenize_to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_text"><code class="docutils literal notranslate"><span class="pre">TokenizationProcessor.tokenize_text()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_batch"><code class="docutils literal notranslate"><span class="pre">TokenizationProcessor.tokenize_batch()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.process_csv"><code class="docutils literal notranslate"><span class="pre">TokenizationProcessor.process_csv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.tokenize_csv"><code class="docutils literal notranslate"><span class="pre">tokenize_csv()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.tokenize_text"><code class="docutils literal notranslate"><span class="pre">tokenize_text()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.tokenize_solr_documents"><code class="docutils literal notranslate"><span class="pre">tokenize_solr_documents()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.tokenize.cache_tokenization"><code class="docutils literal notranslate"><span class="pre">cache_tokenization()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-histtext_toolkit.operations.upload">Upload</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.upload.split_in_batches"><code class="docutils literal notranslate"><span class="pre">split_in_batches()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.upload.upload_jsonl_files"><code class="docutils literal notranslate"><span class="pre">upload_jsonl_files()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.upload.create_ner_collection"><code class="docutils literal notranslate"><span class="pre">create_ner_collection()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.operations.upload.upload_precomputed_ner"><code class="docutils literal notranslate"><span class="pre">upload_precomputed_ner()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utilities</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">HistText Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Operations</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/modules/operations.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-histtext_toolkit.operations">
+<span id="operations"></span><h1>Operations<a class="headerlink" href="#module-histtext_toolkit.operations" title="Link to this heading"></a></h1>
+<section id="module-histtext_toolkit.operations.embeddings">
+<span id="embeddings"></span><h2>Embeddings<a class="headerlink" href="#module-histtext_toolkit.operations.embeddings" title="Link to this heading"></a></h2>
+<p>Embeddings operations module.</p>
+<p>This module provides functionality for generating and working with text embeddings,
+including computing embeddings for documents in Solr collections.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.EmbeddingsProcessor">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.embeddings.</span></span><span class="sig-name descname"><span class="pre">EmbeddingsProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#EmbeddingsProcessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Processor for embeddings operations with enhanced error handling.</p>
+<p>Initialize the embeddings processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>EmbeddingsModel</em>) – Embeddings model to use for generating embeddings</p></li>
+<li><p><strong>cache_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional root directory for caches</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.EmbeddingsProcessor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#EmbeddingsProcessor.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the embeddings processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>EmbeddingsModel</em>) – Embeddings model to use for generating embeddings</p></li>
+<li><p><strong>cache_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional root directory for caches</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.EmbeddingsProcessor.compute_embedding">
+<span class="sig-name descname"><span class="pre">compute_embedding</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#EmbeddingsProcessor.compute_embedding"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor.compute_embedding" title="Link to this definition"></a></dt>
+<dd><p>Compute embedding for a text with error recovery.</p>
+<p>Includes caching, error handling, and recovery strategies.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Input text to embed</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Embedding vector or None if failed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.EmbeddingsProcessor.compute_embeddings_batch">
+<span class="sig-name descname"><span class="pre">compute_embeddings_batch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">documents</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#EmbeddingsProcessor.compute_embeddings_batch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor.compute_embeddings_batch" title="Link to this definition"></a></dt>
+<dd><p>Compute embeddings for a batch of documents with adaptive processing.</p>
+<p>Processes documents in batches, with error handling and recovery.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>documents</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>]</em>) – Dictionary mapping document IDs to text content</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary mapping document IDs to embeddings</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.EmbeddingsProcessor.save_embeddings">
+<span class="sig-name descname"><span class="pre">save_embeddings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">embeddings</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'vec'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#EmbeddingsProcessor.save_embeddings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.EmbeddingsProcessor.save_embeddings" title="Link to this definition"></a></dt>
+<dd><p>Save embeddings to a file with error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>embeddings</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>ndarray</em></a><em>]</em>) – Dictionary mapping text/ID to embedding vector</p></li>
+<li><p><strong>output_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to save the embeddings</p></li>
+<li><p><strong>format</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Format to save in (‘vec’, ‘txt’, ‘binary’, ‘json’)</p></li>
+<li><p><strong>metadata</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional metadata to include in the saved file</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if successful, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.load_embeddings">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.embeddings.</span></span><span class="sig-name descname"><span class="pre">load_embeddings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#load_embeddings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.load_embeddings" title="Link to this definition"></a></dt>
+<dd><p>Load embeddings from a file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to the embeddings file</p></li>
+<li><p><strong>format</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Format of the embeddings file (‘vec’, ‘txt’, ‘binary’, ‘json’)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary mapping text/ID to embedding vector</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, np.ndarray]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="core.html#histtext_toolkit.core.errors.ResourceError" title="histtext_toolkit.core.errors.ResourceError"><strong>ResourceError</strong></a> – If there’s an error loading the embeddings</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.get_default_params">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.embeddings.</span></span><span class="sig-name descname"><span class="pre">get_default_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#get_default_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.get_default_params" title="Link to this definition"></a></dt>
+<dd><p>Return default parameters for word embedding models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary of default parameters</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.compute_embeddings">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.embeddings.</span></span><span class="sig-name descname"><span class="pre">compute_embeddings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_batches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'vec'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplify_chinese</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#compute_embeddings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.compute_embeddings" title="Link to this definition"></a></dt>
+<dd><p>Compute embeddings for documents in a Solr collection with robust error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the collection</p></li>
+<li><p><strong>text_field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field containing the text</p></li>
+<li><p><strong>model_config</strong> (<a class="reference internal" href="core.html#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a>) – Model configuration</p></li>
+<li><p><strong>output_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to save the embeddings</p></li>
+<li><p><strong>start</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Start index</p></li>
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of documents per batch</p></li>
+<li><p><strong>num_batches</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of batches to process</p></li>
+<li><p><strong>filter_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional filter query</p></li>
+<li><p><strong>output_format</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Format to save embeddings (‘vec’, ‘txt’, ‘binary’, ‘json’)</p></li>
+<li><p><strong>simplify_chinese</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to convert traditional Chinese to simplified</p></li>
+<li><p><strong>cache_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional root directory for caches</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of documents processed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If required parameters are empty</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.auto_configure_embedding_params">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.embeddings.</span></span><span class="sig-name descname"><span class="pre">auto_configure_embedding_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#auto_configure_embedding_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.auto_configure_embedding_params" title="Link to this definition"></a></dt>
+<dd><p>Automatically configure word embedding parameters based on collection characteristics.</p>
+<p>Analyzes the collection content to determine optimal parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the collection</p></li>
+<li><p><strong>text_field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field containing the text</p></li>
+<li><p><strong>sample_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of documents to sample</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Optimal parameters for word embeddings</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.compute_word_embeddings">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.embeddings.</span></span><span class="sig-name descname"><span class="pre">compute_word_embeddings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplify_chinese</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_header</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#compute_word_embeddings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.compute_word_embeddings" title="Link to this definition"></a></dt>
+<dd><p>Compute word embeddings from a Solr collection.</p>
+<p>Trains a word embedding model on text from a Solr collection and saves the results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the collection</p></li>
+<li><p><strong>text_field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field containing the text</p></li>
+<li><p><strong>model_config</strong> (<a class="reference internal" href="core.html#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a>) – Model configuration</p></li>
+<li><p><strong>output_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to save the word embeddings</p></li>
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of documents per batch</p></li>
+<li><p><strong>filter_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional filter query</p></li>
+<li><p><strong>output_format</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Format to save word embeddings (‘txt’, ‘vec’, ‘bin’, ‘gensim’)</p></li>
+<li><p><strong>simplify_chinese</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to convert traditional Chinese to simplified</p></li>
+<li><p><strong>include_header</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to include the vocabulary size and dimension header</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if successful, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If required parameters are empty</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.embeddings.build_embedding_index">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.embeddings.</span></span><span class="sig-name descname"><span class="pre">build_embedding_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_batches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplify_chinese</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_to_solr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/embeddings.html#build_embedding_index"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.embeddings.build_embedding_index" title="Link to this definition"></a></dt>
+<dd><p>Build a vector index for documents in a Solr collection.</p>
+<p>Computes embeddings and optionally adds them back to Solr documents.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the collection</p></li>
+<li><p><strong>text_field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field containing the text</p></li>
+<li><p><strong>model_config</strong> (<a class="reference internal" href="core.html#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a>) – Model configuration</p></li>
+<li><p><strong>index_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to save the index</p></li>
+<li><p><strong>start</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Start index</p></li>
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of documents per batch</p></li>
+<li><p><strong>num_batches</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of batches to process</p></li>
+<li><p><strong>filter_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional filter query</p></li>
+<li><p><strong>simplify_chinese</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to convert traditional Chinese to simplified</p></li>
+<li><p><strong>add_to_solr</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to add embeddings to Solr document fields</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if successful, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="named-entity-recognition">
+<h2>Named Entity Recognition<a class="headerlink" href="#named-entity-recognition" title="Link to this heading"></a></h2>
+<p id="module-histtext_toolkit.operations.ner">NER operations module.</p>
+<p>This module provides functionality for Named Entity Recognition operations,
+including precomputing and caching annotations.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.ner.split_long_document">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.ner.</span></span><span class="sig-name descname"><span class="pre">split_long_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">doc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/ner.html#split_long_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.ner.split_long_document" title="Link to this definition"></a></dt>
+<dd><p>Split a long document into smaller chunks.</p>
+<p>Splits text at natural boundaries (newlines) while respecting the
+maximum chunk length.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>doc</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Document text to split</p></li>
+<li><p><strong>max_length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Maximum length of each chunk</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of document chunks</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.ner.NERProcessor">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.ner.</span></span><span class="sig-name descname"><span class="pre">NERProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/ner.html#NERProcessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.ner.NERProcessor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Processor for Named Entity Recognition operations.</p>
+<p>Provides methods for extracting entities from text and processing documents
+in various formats.</p>
+<p>Initialize the NER processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>NERModel</em>) – NER model to use for entity extraction</p></li>
+<li><p><strong>cache_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional root directory for caches</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.ner.NERProcessor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/ner.html#NERProcessor.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.ner.NERProcessor.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the NER processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>NERModel</em>) – NER model to use for entity extraction</p></li>
+<li><p><strong>cache_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional root directory for caches</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.ner.NERProcessor.extract_entities">
+<span class="sig-name descname"><span class="pre">extract_entities</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/ner.html#NERProcessor.extract_entities"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.ner.NERProcessor.extract_entities" title="Link to this definition"></a></dt>
+<dd><p>Extract entities from text.</p>
+<p>Handles empty text and long documents by splitting them into
+manageable chunks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Input text</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Extracted entities</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Entity]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.ner.NERProcessor.process_documents">
+<span class="sig-name descname"><span class="pre">process_documents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">documents</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/ner.html#NERProcessor.process_documents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.ner.NERProcessor.process_documents" title="Link to this definition"></a></dt>
+<dd><p>Process a batch of documents.</p>
+<p>Extracts entities from multiple documents with progress tracking
+and error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>documents</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>]</em>) – Dictionary mapping document IDs to text</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary mapping document IDs to entities</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, List[Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.ner.NERProcessor.process_documents_short_format">
+<span class="sig-name descname"><span class="pre">process_documents_short_format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">documents</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/ner.html#NERProcessor.process_documents_short_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.ner.NERProcessor.process_documents_short_format" title="Link to this definition"></a></dt>
+<dd><p>Process a batch of documents and return entities in short format.</p>
+<p>Uses more compact field names suitable for storage in Solr.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>documents</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>]</em>) – Dictionary mapping document IDs to text</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary mapping document IDs to entities in short format</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, List[Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.ner.NERProcessor.process_and_cache">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">process_and_cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">documents</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shorten</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decimal_precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jsonl_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/ner.html#NERProcessor.process_and_cache"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.ner.NERProcessor.process_and_cache" title="Link to this definition"></a></dt>
+<dd><p>Process documents and cache the results.</p>
+<p>Extracts entities from documents and saves them to the cache
+with the specified formatting options.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>documents</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>]</em>) – Dictionary mapping document IDs to text</p></li>
+<li><p><strong>model_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the model</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the collection</p></li>
+<li><p><strong>field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field name</p></li>
+<li><p><strong>shorten</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to use shortened field names</p></li>
+<li><p><strong>decimal_precision</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Number of decimal places for confidence values</p></li>
+<li><p><strong>jsonl_prefix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Prefix for the JSONL file name</p></li>
+<li><p><strong>start</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Start index</p></li>
+<li><p><strong>format_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Format type (‘default’ or ‘flat’)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of processed document IDs</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.ner.precompute_ner">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.ner.</span></span><span class="sig-name descname"><span class="pre">precompute_ner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_batches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jsonl_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shorten</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decimal_precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'flat'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/ner.html#precompute_ner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.ner.precompute_ner" title="Link to this definition"></a></dt>
+<dd><p>Precompute NER annotations for a collection.</p>
+<p>Processes documents from a Solr collection in batches, extracting entities
+and caching the results for later use.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the collection</p></li>
+<li><p><strong>text_field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field containing the text</p></li>
+<li><p><strong>model_config</strong> (<a class="reference internal" href="core.html#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a>) – Model configuration</p></li>
+<li><p><strong>cache_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Root directory for caches</p></li>
+<li><p><strong>model_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name to use for the model in the cache hierarchy</p></li>
+<li><p><strong>start</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Start index</p></li>
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of documents per batch</p></li>
+<li><p><strong>num_batches</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of batches to process</p></li>
+<li><p><strong>filter_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional filter query</p></li>
+<li><p><strong>jsonl_prefix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Prefix for the JSONL file name</p></li>
+<li><p><strong>shorten</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to use shortened field names</p></li>
+<li><p><strong>decimal_precision</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Number of decimal places for confidence values</p></li>
+<li><p><strong>format_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Format type (‘default’ or ‘flat’)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of documents processed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.ner.extract_entities_from_solr">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.ner.</span></span><span class="sig-name descname"><span class="pre">extract_entities_from_solr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doc_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/ner.html#extract_entities_from_solr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.ner.extract_entities_from_solr" title="Link to this definition"></a></dt>
+<dd><p>Extract entities from a document in Solr.</p>
+<p>First checks the cache, then falls back to extracting entities from the
+document text if not cached.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the collection</p></li>
+<li><p><strong>doc_id</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Document ID</p></li>
+<li><p><strong>text_field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field containing the text</p></li>
+<li><p><strong>model_config</strong> (<a class="reference internal" href="core.html#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a>) – Model configuration</p></li>
+<li><p><strong>cache_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional root directory for caches</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Extracted entities if successful, None otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[List[Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="tokenization">
+<h2>Tokenization<a class="headerlink" href="#tokenization" title="Link to this heading"></a></h2>
+<p id="module-histtext_toolkit.operations.tokenize">Tokenization operations module.</p>
+<p>This module provides functionality for tokenizing text and processing
+tokenization operations on documents.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.apply_tokenization">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.tokenize.</span></span><span class="sig-name descname"><span class="pre">apply_tokenization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tokens</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#apply_tokenization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.apply_tokenization" title="Link to this definition"></a></dt>
+<dd><p>Apply tokenization to text.</p>
+<p>Converts a list of token dictionaries into a space-separated string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Original text to tokenize</p></li>
+<li><p><strong>tokens</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>]</em><em>]</em>) – List of token dictionaries with position information</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tokenized text with spaces between tokens</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.TokenizationProcessor">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.tokenize.</span></span><span class="sig-name descname"><span class="pre">TokenizationProcessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#TokenizationProcessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Processor for tokenization operations with batch processing support.</p>
+<p>Works with any TokenizationModel, including the adaptive ChineseSegmenterModel.
+Provides methods for tokenizing text, processing batches, and handling
+different output formats.</p>
+<p>Initialize the tokenization processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model</strong> (<em>TokenizationModel</em>) – Tokenization model to use for processing text</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.TokenizationProcessor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#TokenizationProcessor.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the tokenization processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model</strong> (<em>TokenizationModel</em>) – Tokenization model to use for processing text</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize">
+<span class="sig-name descname"><span class="pre">tokenize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#TokenizationProcessor.tokenize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize" title="Link to this definition"></a></dt>
+<dd><p>Tokenize text into individual tokens.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Input text to tokenize</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Extracted tokens as Token objects</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Token]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_to_dict">
+<span class="sig-name descname"><span class="pre">tokenize_to_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#TokenizationProcessor.tokenize_to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_to_dict" title="Link to this definition"></a></dt>
+<dd><p>Tokenize text and return as dictionaries.</p>
+<p>Converts Token objects to dictionaries for easier serialization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Input text to tokenize</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tokens as dictionaries with text, position and confidence</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_text">
+<span class="sig-name descname"><span class="pre">tokenize_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#TokenizationProcessor.tokenize_text"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_text" title="Link to this definition"></a></dt>
+<dd><p>Tokenize text and return as a string with spaces between tokens.</p>
+<p>Handles texts of any length by chunking them if needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Input text to tokenize</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tokenized text with tokens separated by spaces</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_batch">
+<span class="sig-name descname"><span class="pre">tokenize_batch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">texts</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#TokenizationProcessor.tokenize_batch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.tokenize_batch" title="Link to this definition"></a></dt>
+<dd><p>Tokenize a batch of texts in parallel.</p>
+<p>Uses batch tokenization if supported by the model, otherwise falls back
+to processing texts individually.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>texts</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>]</em>) – List of input texts to tokenize</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of tokenized texts with tokens separated by spaces</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.TokenizationProcessor.process_csv">
+<span class="sig-name descname"><span class="pre">process_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Text'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplify_chinese</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#TokenizationProcessor.process_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.TokenizationProcessor.process_csv" title="Link to this definition"></a></dt>
+<dd><p>Process a CSV file with tokenization.</p>
+<p>Reads a CSV file, tokenizes the text in the specified column, and
+writes the results to a new CSV file with an additional “Tokenized” column.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_file</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Input CSV file path</p></li>
+<li><p><strong>output_file</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Output CSV file path</p></li>
+<li><p><strong>text_column</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Column containing the text to tokenize</p></li>
+<li><p><strong>simplify_chinese</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to convert traditional Chinese to simplified</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of rows processed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.tokenize_csv">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.tokenize.</span></span><span class="sig-name descname"><span class="pre">tokenize_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Text'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplify_chinese</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#tokenize_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.tokenize_csv" title="Link to this definition"></a></dt>
+<dd><p>Tokenize text in a CSV file.</p>
+<p>Creates a tokenization model, processes a CSV file, and releases resources.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_config</strong> (<a class="reference internal" href="core.html#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a>) – Model configuration with model type and parameters</p></li>
+<li><p><strong>input_file</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Input CSV file path</p></li>
+<li><p><strong>output_file</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Output CSV file path</p></li>
+<li><p><strong>text_column</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Column containing the text to tokenize</p></li>
+<li><p><strong>simplify_chinese</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to convert traditional Chinese to simplified</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of rows processed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.tokenize_text">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.tokenize.</span></span><span class="sig-name descname"><span class="pre">tokenize_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplify_chinese</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#tokenize_text"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.tokenize_text" title="Link to this definition"></a></dt>
+<dd><p>Tokenize a text string.</p>
+<p>Creates a tokenization model, processes a single text, and releases resources.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_config</strong> (<a class="reference internal" href="core.html#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a>) – Model configuration with model type and parameters</p></li>
+<li><p><strong>text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Input text to tokenize</p></li>
+<li><p><strong>simplify_chinese</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to convert traditional Chinese to simplified</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tokenized text with tokens separated by spaces</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.tokenize_solr_documents">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.tokenize.</span></span><span class="sig-name descname"><span class="pre">tokenize_solr_documents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_batches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_field</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tokenized_text'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_collection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplify_chinese</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#tokenize_solr_documents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.tokenize_solr_documents" title="Link to this definition"></a></dt>
+<dd><p>Tokenize documents from a Solr collection and upload to a new collection.</p>
+<p>Fetches documents from a source collection, tokenizes the specified field,
+and uploads the results to a target collection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the source collection</p></li>
+<li><p><strong>text_field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field containing the text to tokenize</p></li>
+<li><p><strong>model_config</strong> (<a class="reference internal" href="core.html#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a>) – Model configuration with model type and parameters</p></li>
+<li><p><strong>start</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Start index for document retrieval</p></li>
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of documents per batch</p></li>
+<li><p><strong>num_batches</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of batches to process</p></li>
+<li><p><strong>filter_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional filter query to select documents</p></li>
+<li><p><strong>target_field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field name for the tokenized text in the target collection</p></li>
+<li><p><strong>target_collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Name of the target collection</p></li>
+<li><p><strong>simplify_chinese</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to convert traditional Chinese to simplified</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of documents processed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.tokenize.cache_tokenization">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.tokenize.</span></span><span class="sig-name descname"><span class="pre">cache_tokenization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_batches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simplify_chinese</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/tokenize.html#cache_tokenization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.tokenize.cache_tokenization" title="Link to this definition"></a></dt>
+<dd><p>Cache tokenization results for documents from a Solr collection.</p>
+<p>Processes documents in batches, applying tokenization and storing results
+in the cache directory. Handles interruptions gracefully and provides
+detailed progress reporting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the source collection</p></li>
+<li><p><strong>text_field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field containing the text to tokenize</p></li>
+<li><p><strong>model_config</strong> (<a class="reference internal" href="core.html#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a>) – Model configuration with model type and parameters</p></li>
+<li><p><strong>cache_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Root directory for caches</p></li>
+<li><p><strong>model_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name to use for the model in the cache hierarchy</p></li>
+<li><p><strong>start</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Start index for document retrieval</p></li>
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of documents per batch from Solr</p></li>
+<li><p><strong>num_batches</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of batches to process</p></li>
+<li><p><strong>filter_query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional filter query to select documents</p></li>
+<li><p><strong>simplify_chinese</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to convert traditional Chinese to simplified</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of documents processed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-histtext_toolkit.operations.upload">
+<span id="upload"></span><h2>Upload<a class="headerlink" href="#module-histtext_toolkit.operations.upload" title="Link to this heading"></a></h2>
+<p>Upload operations module.</p>
+<p>This module provides functionality for uploading documents to Solr.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.upload.split_in_batches">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.upload.</span></span><span class="sig-name descname"><span class="pre">split_in_batches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">items</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/upload.html#split_in_batches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.upload.split_in_batches" title="Link to this definition"></a></dt>
+<dd><p>Split a list of items into batches.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>items</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>]</em>) – List of items to split</p></li>
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Maximum size of each batch</p></li>
+</ul>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>List[Any]</em> – Batch of items</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.13)"><em>Iterator</em></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><em>List</em></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.upload.upload_jsonl_files">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.upload.</span></span><span class="sig-name descname"><span class="pre">upload_jsonl_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jsonl_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/upload.html#upload_jsonl_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.upload.upload_jsonl_files" title="Link to this definition"></a></dt>
+<dd><p>Upload JSONL files to Solr.</p>
+<p>Reads JSONL files and uploads the documents to a Solr collection.
+Can optionally set up a schema before uploading.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the collection</p></li>
+<li><p><strong>jsonl_files</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>]</em>) – List of JSONL file paths</p></li>
+<li><p><strong>schema_file</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional schema file path</p></li>
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of documents per batch</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of documents uploaded</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.upload.create_ner_collection">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.upload.</span></span><span class="sig-name descname"><span class="pre">create_ner_collection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/upload.html#create_ner_collection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.upload.create_ner_collection" title="Link to this definition"></a></dt>
+<dd><p>Create a new collection specifically for NER annotations.</p>
+<p>Sets up the collection with all required field types and fields
+for storing named entity recognition results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the collection to create</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if successful, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.operations.upload.upload_precomputed_ner">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.operations.upload.</span></span><span class="sig-name descname"><span class="pre">upload_precomputed_ner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr_client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solr_collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/operations/upload.html#upload_precomputed_ner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.operations.upload.upload_precomputed_ner" title="Link to this definition"></a></dt>
+<dd><p>Upload precomputed NER annotations to Solr.</p>
+<p>Looks for cached NER annotations and uploads them to a Solr collection.
+Uses a schema file if available.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr_client</strong> (<em>SolrClient</em>) – Solr client instance</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the target collection</p></li>
+<li><p><strong>cache_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Root directory for caches</p></li>
+<li><p><strong>model_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the model that produced the annotations</p></li>
+<li><p><strong>solr_collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the source collection</p></li>
+<li><p><strong>field</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Field name that was used for extraction</p></li>
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of documents per batch</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of documents uploaded</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="models.html" class="btn btn-neutral float-left" title="Models" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="utils.html" class="btn btn-neutral float-right" title="Utilities" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Baptiste Blouin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

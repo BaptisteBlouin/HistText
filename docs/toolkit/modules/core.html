@@ -1,0 +1,1223 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Core Components &mdash; HistText Toolkit 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Models" href="models.html" />
+    <link rel="prev" title="HistText Toolkit Documentation" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            HistText Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Core Components</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.config.SolrConfig"><code class="docutils literal notranslate"><span class="pre">SolrConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.SolrConfig.host"><code class="docutils literal notranslate"><span class="pre">SolrConfig.host</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.SolrConfig.port"><code class="docutils literal notranslate"><span class="pre">SolrConfig.port</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.SolrConfig.username"><code class="docutils literal notranslate"><span class="pre">SolrConfig.username</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.SolrConfig.password"><code class="docutils literal notranslate"><span class="pre">SolrConfig.password</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.SolrConfig.__init__"><code class="docutils literal notranslate"><span class="pre">SolrConfig.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.config.CacheConfig"><code class="docutils literal notranslate"><span class="pre">CacheConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.CacheConfig.root_dir"><code class="docutils literal notranslate"><span class="pre">CacheConfig.root_dir</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.CacheConfig.enabled"><code class="docutils literal notranslate"><span class="pre">CacheConfig.enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.CacheConfig.__init__"><code class="docutils literal notranslate"><span class="pre">CacheConfig.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig"><code class="docutils literal notranslate"><span class="pre">ModelConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.name"><code class="docutils literal notranslate"><span class="pre">ModelConfig.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.path"><code class="docutils literal notranslate"><span class="pre">ModelConfig.path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.type"><code class="docutils literal notranslate"><span class="pre">ModelConfig.type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.max_length"><code class="docutils literal notranslate"><span class="pre">ModelConfig.max_length</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.aggregation_strategy"><code class="docutils literal notranslate"><span class="pre">ModelConfig.aggregation_strategy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.dim"><code class="docutils literal notranslate"><span class="pre">ModelConfig.dim</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.binary"><code class="docutils literal notranslate"><span class="pre">ModelConfig.binary</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.use_precomputed"><code class="docutils literal notranslate"><span class="pre">ModelConfig.use_precomputed</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.additional_params"><code class="docutils literal notranslate"><span class="pre">ModelConfig.additional_params</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig.__init__"><code class="docutils literal notranslate"><span class="pre">ModelConfig.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.config.Config"><code class="docutils literal notranslate"><span class="pre">Config</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.Config.solr"><code class="docutils literal notranslate"><span class="pre">Config.solr</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.Config.models_dir"><code class="docutils literal notranslate"><span class="pre">Config.models_dir</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.Config.cache"><code class="docutils literal notranslate"><span class="pre">Config.cache</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.Config.models"><code class="docutils literal notranslate"><span class="pre">Config.models</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.config.Config.__init__"><code class="docutils literal notranslate"><span class="pre">Config.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.config.load_config"><code class="docutils literal notranslate"><span class="pre">load_config()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.config.get_config"><code class="docutils literal notranslate"><span class="pre">get_config()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.config.save_config"><code class="docutils literal notranslate"><span class="pre">save_config()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#error-handling">Error Handling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.HistTextError"><code class="docutils literal notranslate"><span class="pre">HistTextError</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.HistTextError.message"><code class="docutils literal notranslate"><span class="pre">HistTextError.message</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.HistTextError.details"><code class="docutils literal notranslate"><span class="pre">HistTextError.details</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.HistTextError.__init__"><code class="docutils literal notranslate"><span class="pre">HistTextError.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.ModelError"><code class="docutils literal notranslate"><span class="pre">ModelError</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.ModelError.model_name"><code class="docutils literal notranslate"><span class="pre">ModelError.model_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.ModelError.model_type"><code class="docutils literal notranslate"><span class="pre">ModelError.model_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.ModelError.__init__"><code class="docutils literal notranslate"><span class="pre">ModelError.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.EmbeddingError"><code class="docutils literal notranslate"><span class="pre">EmbeddingError</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.EmbeddingError.text_sample"><code class="docutils literal notranslate"><span class="pre">EmbeddingError.text_sample</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.EmbeddingError.__init__"><code class="docutils literal notranslate"><span class="pre">EmbeddingError.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.SolrError"><code class="docutils literal notranslate"><span class="pre">SolrError</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.SolrError.status_code"><code class="docutils literal notranslate"><span class="pre">SolrError.status_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.SolrError.collection"><code class="docutils literal notranslate"><span class="pre">SolrError.collection</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.SolrError.__init__"><code class="docutils literal notranslate"><span class="pre">SolrError.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.InputError"><code class="docutils literal notranslate"><span class="pre">InputError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.ResourceError"><code class="docutils literal notranslate"><span class="pre">ResourceError</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.ResourceError.resource_type"><code class="docutils literal notranslate"><span class="pre">ResourceError.resource_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.ResourceError.resource_path"><code class="docutils literal notranslate"><span class="pre">ResourceError.resource_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.ResourceError.__init__"><code class="docutils literal notranslate"><span class="pre">ResourceError.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.MemoryError"><code class="docutils literal notranslate"><span class="pre">MemoryError</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.MemoryError.estimated_required"><code class="docutils literal notranslate"><span class="pre">MemoryError.estimated_required</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.MemoryError.available"><code class="docutils literal notranslate"><span class="pre">MemoryError.available</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#histtext_toolkit.core.errors.MemoryError.__init__"><code class="docutils literal notranslate"><span class="pre">MemoryError.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.safe_embed"><code class="docutils literal notranslate"><span class="pre">safe_embed()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.handle_embedding_errors"><code class="docutils literal notranslate"><span class="pre">handle_embedding_errors()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.retry_with_backoff"><code class="docutils literal notranslate"><span class="pre">retry_with_backoff()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.log_error_and_continue"><code class="docutils literal notranslate"><span class="pre">log_error_and_continue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.errors.get_memory_info"><code class="docutils literal notranslate"><span class="pre">get_memory_info()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-histtext_toolkit.core.logging">Logging</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.logging.setup_logging"><code class="docutils literal notranslate"><span class="pre">setup_logging()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#histtext_toolkit.core.logging.get_logger"><code class="docutils literal notranslate"><span class="pre">get_logger()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations.html">Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utilities</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">HistText Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Core Components</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/modules/core.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="core-components">
+<h1>Core Components<a class="headerlink" href="#core-components" title="Link to this heading"></a></h1>
+<section id="configuration">
+<span id="module-histtext_toolkit.core"></span><h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p id="module-histtext_toolkit.core.config">Configuration module.</p>
+<p>This module provides functionality for loading, accessing, and saving configuration
+settings for the toolkit with support for Solr, caching, and model configurations.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.SolrConfig">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.config.</span></span><span class="sig-name descname"><span class="pre">SolrConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'localhost'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8983</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#SolrConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.SolrConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Configuration for Solr connection.</p>
+<p>Handles connection details for Apache Solr, including authentication
+parameters if needed.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.SolrConfig.host">
+<span class="sig-name descname"><span class="pre">host</span></span><a class="headerlink" href="#histtext_toolkit.core.config.SolrConfig.host" title="Link to this definition"></a></dt>
+<dd><p>Hostname or IP address of the Solr server</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.SolrConfig.port">
+<span class="sig-name descname"><span class="pre">port</span></span><a class="headerlink" href="#histtext_toolkit.core.config.SolrConfig.port" title="Link to this definition"></a></dt>
+<dd><p>Port number for the Solr server</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.SolrConfig.username">
+<span class="sig-name descname"><span class="pre">username</span></span><a class="headerlink" href="#histtext_toolkit.core.config.SolrConfig.username" title="Link to this definition"></a></dt>
+<dd><p>Username for authentication</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.SolrConfig.password">
+<span class="sig-name descname"><span class="pre">password</span></span><a class="headerlink" href="#histtext_toolkit.core.config.SolrConfig.password" title="Link to this definition"></a></dt>
+<dd><p>Password for authentication</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize Solr configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>host</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Solr host address (default: “localhost”)</p></li>
+<li><p><strong>port</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Solr port number (default: 8983)</p></li>
+<li><p><strong>username</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional username for authentication</p></li>
+<li><p><strong>password</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional password for authentication</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.SolrConfig.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'localhost'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8983</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#SolrConfig.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.SolrConfig.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize Solr configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>host</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Solr host address (default: “localhost”)</p></li>
+<li><p><strong>port</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Solr port number (default: 8983)</p></li>
+<li><p><strong>username</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional username for authentication</p></li>
+<li><p><strong>password</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Optional password for authentication</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.CacheConfig">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.config.</span></span><span class="sig-name descname"><span class="pre">CacheConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./cache'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#CacheConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.CacheConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Configuration for caching mechanism.</p>
+<p>Controls where and whether cached data is stored to improve performance.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.CacheConfig.root_dir">
+<span class="sig-name descname"><span class="pre">root_dir</span></span><a class="headerlink" href="#histtext_toolkit.core.config.CacheConfig.root_dir" title="Link to this definition"></a></dt>
+<dd><p>Root directory for storing cache files</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.CacheConfig.enabled">
+<span class="sig-name descname"><span class="pre">enabled</span></span><a class="headerlink" href="#histtext_toolkit.core.config.CacheConfig.enabled" title="Link to this definition"></a></dt>
+<dd><p>Whether caching is enabled</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize cache configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Root directory for cache files (default: “./cache”)</p></li>
+<li><p><strong>enabled</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether caching is enabled (default: True)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.CacheConfig.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./cache'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#CacheConfig.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.CacheConfig.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize cache configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Root directory for cache files (default: “./cache”)</p></li>
+<li><p><strong>enabled</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether caching is enabled (default: True)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.config.</span></span><span class="sig-name descname"><span class="pre">ModelConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'transformers'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregation_strategy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_precomputed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">additional_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#ModelConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Configuration for a model.</p>
+<p>Defines parameters for loading and using NLP models like
+named entity recognizers, tokenizers, and embedding models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.name" title="Link to this definition"></a></dt>
+<dd><p>Unique identifier for the model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.path">
+<span class="sig-name descname"><span class="pre">path</span></span><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.path" title="Link to this definition"></a></dt>
+<dd><p>Path or name of the model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.type">
+<span class="sig-name descname"><span class="pre">type</span></span><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.type" title="Link to this definition"></a></dt>
+<dd><p>Type of model (e.g., “transformers”, “spacy”)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.max_length">
+<span class="sig-name descname"><span class="pre">max_length</span></span><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.max_length" title="Link to this definition"></a></dt>
+<dd><p>Maximum sequence length for tokenization</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.aggregation_strategy">
+<span class="sig-name descname"><span class="pre">aggregation_strategy</span></span><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.aggregation_strategy" title="Link to this definition"></a></dt>
+<dd><p>Strategy for aggregating tokens</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.dim">
+<span class="sig-name descname"><span class="pre">dim</span></span><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.dim" title="Link to this definition"></a></dt>
+<dd><p>Dimension of embeddings for embedding models</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.binary">
+<span class="sig-name descname"><span class="pre">binary</span></span><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.binary" title="Link to this definition"></a></dt>
+<dd><p>Whether the model uses binary format (Word2Vec)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.use_precomputed">
+<span class="sig-name descname"><span class="pre">use_precomputed</span></span><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.use_precomputed" title="Link to this definition"></a></dt>
+<dd><p>Whether to use precomputed vectors (FastText)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.additional_params">
+<span class="sig-name descname"><span class="pre">additional_params</span></span><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.additional_params" title="Link to this definition"></a></dt>
+<dd><p>Additional model-specific parameters</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize model configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Unique identifier for the model</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path or name of the model to load</p></li>
+<li><p><strong>type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Type of model (default: “transformers”)</p></li>
+<li><p><strong>max_length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Maximum sequence length for tokenization</p></li>
+<li><p><strong>aggregation_strategy</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Strategy for aggregating tokens</p></li>
+<li><p><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Dimension of embeddings for embedding models</p></li>
+<li><p><strong>binary</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a><em> | </em><em>None</em>) – Whether the model uses binary format (for Word2Vec)</p></li>
+<li><p><strong>use_precomputed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a><em> | </em><em>None</em>) – Whether to use precomputed vectors (for FastText)</p></li>
+<li><p><strong>additional_params</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Additional model-specific parameters</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.ModelConfig.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'transformers'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregation_strategy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_precomputed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">additional_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#ModelConfig.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.ModelConfig.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize model configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Unique identifier for the model</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path or name of the model to load</p></li>
+<li><p><strong>type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Type of model (default: “transformers”)</p></li>
+<li><p><strong>max_length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Maximum sequence length for tokenization</p></li>
+<li><p><strong>aggregation_strategy</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Strategy for aggregating tokens</p></li>
+<li><p><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – Dimension of embeddings for embedding models</p></li>
+<li><p><strong>binary</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a><em> | </em><em>None</em>) – Whether the model uses binary format (for Word2Vec)</p></li>
+<li><p><strong>use_precomputed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a><em> | </em><em>None</em>) – Whether to use precomputed vectors (for FastText)</p></li>
+<li><p><strong>additional_params</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Additional model-specific parameters</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.Config">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.config.</span></span><span class="sig-name descname"><span class="pre">Config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./models'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#Config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.Config" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Main configuration for the toolkit.</p>
+<p>Contains all configuration settings including Solr connection,
+models, and caching parameters.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.Config.solr">
+<span class="sig-name descname"><span class="pre">solr</span></span><a class="headerlink" href="#histtext_toolkit.core.config.Config.solr" title="Link to this definition"></a></dt>
+<dd><p>Solr connection configuration</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#histtext_toolkit.core.config.SolrConfig" title="histtext_toolkit.core.config.SolrConfig">SolrConfig</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.Config.models_dir">
+<span class="sig-name descname"><span class="pre">models_dir</span></span><a class="headerlink" href="#histtext_toolkit.core.config.Config.models_dir" title="Link to this definition"></a></dt>
+<dd><p>Directory containing model files</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.Config.cache">
+<span class="sig-name descname"><span class="pre">cache</span></span><a class="headerlink" href="#histtext_toolkit.core.config.Config.cache" title="Link to this definition"></a></dt>
+<dd><p>Cache configuration</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#histtext_toolkit.core.config.CacheConfig" title="histtext_toolkit.core.config.CacheConfig">CacheConfig</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.Config.models">
+<span class="sig-name descname"><span class="pre">models</span></span><a class="headerlink" href="#histtext_toolkit.core.config.Config.models" title="Link to this definition"></a></dt>
+<dd><p>Dictionary of model configurations</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, <a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig">ModelConfig</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize toolkit configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr</strong> (<a class="reference internal" href="#histtext_toolkit.core.config.SolrConfig" title="histtext_toolkit.core.config.SolrConfig"><em>SolrConfig</em></a>) – Solr connection configuration</p></li>
+<li><p><strong>models_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Directory containing model files (default: “./models”)</p></li>
+<li><p><strong>cache</strong> (<a class="reference internal" href="#histtext_toolkit.core.config.CacheConfig" title="histtext_toolkit.core.config.CacheConfig"><em>CacheConfig</em></a><em> | </em><em>None</em>) – Cache configuration (default: CacheConfig())</p></li>
+<li><p><strong>models</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a><em>] </em><em>| </em><em>None</em>) – Dictionary mapping model names to configurations</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.Config.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./models'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#Config.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.Config.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize toolkit configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solr</strong> (<a class="reference internal" href="#histtext_toolkit.core.config.SolrConfig" title="histtext_toolkit.core.config.SolrConfig"><em>SolrConfig</em></a>) – Solr connection configuration</p></li>
+<li><p><strong>models_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Directory containing model files (default: “./models”)</p></li>
+<li><p><strong>cache</strong> (<a class="reference internal" href="#histtext_toolkit.core.config.CacheConfig" title="histtext_toolkit.core.config.CacheConfig"><em>CacheConfig</em></a><em> | </em><em>None</em>) – Cache configuration (default: CacheConfig())</p></li>
+<li><p><strong>models</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference internal" href="#histtext_toolkit.core.config.ModelConfig" title="histtext_toolkit.core.config.ModelConfig"><em>ModelConfig</em></a><em>] </em><em>| </em><em>None</em>) – Dictionary mapping model names to configurations</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.load_config">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.config.</span></span><span class="sig-name descname"><span class="pre">load_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#load_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.load_config" title="Link to this definition"></a></dt>
+<dd><p>Load configuration from a YAML file.</p>
+<p>Reads the configuration from a YAML file and initializes the
+global configuration object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to the configuration YAML file</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Loaded configuration object</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#histtext_toolkit.core.config.Config" title="histtext_toolkit.core.config.Config">Config</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.13)"><strong>FileNotFoundError</strong></a> – If the configuration file does not exist</p></li>
+<li><p><strong>yaml.YAMLError</strong> – If the configuration file contains invalid YAML</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="s2">&quot;config.yaml&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using Solr at </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">solr</span><span class="o">.</span><span class="n">host</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">solr</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.get_config">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.config.</span></span><span class="sig-name descname"><span class="pre">get_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#get_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.get_config" title="Link to this definition"></a></dt>
+<dd><p>Get the current configuration.</p>
+<p>Returns the current configuration, or creates a default
+configuration if none has been loaded.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current configuration object</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#histtext_toolkit.core.config.Config" title="histtext_toolkit.core.config.Config">Config</a></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">solr_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;http://</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">solr</span><span class="o">.</span><span class="n">host</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">solr</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">/solr/&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.config.save_config">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.config.</span></span><span class="sig-name descname"><span class="pre">save_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/config.html#save_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.config.save_config" title="Link to this definition"></a></dt>
+<dd><p>Save configuration to a YAML file.</p>
+<p>Serializes the configuration object to YAML format and saves
+it to the specified file path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference internal" href="#histtext_toolkit.core.config.Config" title="histtext_toolkit.core.config.Config"><em>Config</em></a>) – Configuration object to save</p></li>
+<li><p><strong>config_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path where to save the configuration</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if successful, False if an error occurred</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">config</span><span class="o">.</span><span class="n">models_dir</span> <span class="o">=</span> <span class="s2">&quot;/new/models/path&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">save_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;updated_config.yaml&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="error-handling">
+<h2>Error Handling<a class="headerlink" href="#error-handling" title="Link to this heading"></a></h2>
+<p id="module-histtext_toolkit.core.errors">Error handling module for HistText Toolkit.</p>
+<p>This module provides custom exceptions and error handling utilities
+to improve robustness of toolkit operations with structured logging
+and specialized error recovery strategies.</p>
+<dl class="py exception">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.HistTextError">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">HistTextError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#HistTextError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.HistTextError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
+<p>Base exception class for all HistText Toolkit errors.</p>
+<p>All custom exceptions in the toolkit inherit from this class,
+providing consistent error handling patterns.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.HistTextError.message">
+<span class="sig-name descname"><span class="pre">message</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.HistTextError.message" title="Link to this definition"></a></dt>
+<dd><p>Human-readable error description</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.HistTextError.details">
+<span class="sig-name descname"><span class="pre">details</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.HistTextError.details" title="Link to this definition"></a></dt>
+<dd><p>Additional structured error information</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.HistTextError.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#HistTextError.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.HistTextError.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.ModelError">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">ModelError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#ModelError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.ModelError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#histtext_toolkit.core.errors.HistTextError" title="histtext_toolkit.core.errors.HistTextError"><code class="xref py py-class docutils literal notranslate"><span class="pre">HistTextError</span></code></a></p>
+<p>Exception raised for errors in model operations.</p>
+<p>Used when errors occur during model loading, inference,
+or other model-related operations.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.ModelError.model_name">
+<span class="sig-name descname"><span class="pre">model_name</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.ModelError.model_name" title="Link to this definition"></a></dt>
+<dd><p>Name of the model that encountered the error</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.ModelError.model_type">
+<span class="sig-name descname"><span class="pre">model_type</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.ModelError.model_type" title="Link to this definition"></a></dt>
+<dd><p>Type of the model (e.g., “fasttext”, “spacy”)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>model_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Name of the model that encountered the error</p></li>
+<li><p><strong>model_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Type of the model (e.g., “fasttext”, “spacy”)</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.ModelError.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#ModelError.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.ModelError.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>model_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Name of the model that encountered the error</p></li>
+<li><p><strong>model_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Type of the model (e.g., “fasttext”, “spacy”)</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.EmbeddingError">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">EmbeddingError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_sample</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#EmbeddingError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.EmbeddingError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#histtext_toolkit.core.errors.ModelError" title="histtext_toolkit.core.errors.ModelError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelError</span></code></a></p>
+<p>Exception raised for errors in embedding operations.</p>
+<p>Used specifically for errors that occur during text embedding.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.EmbeddingError.text_sample">
+<span class="sig-name descname"><span class="pre">text_sample</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.EmbeddingError.text_sample" title="Link to this definition"></a></dt>
+<dd><p>Sample of problematic text that caused the error</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>model_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Name of the model that encountered the error</p></li>
+<li><p><strong>model_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Type of the model (e.g., “fasttext”, “spacy”)</p></li>
+<li><p><strong>text_sample</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Sample of problematic text that caused the error</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.EmbeddingError.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_sample</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#EmbeddingError.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.EmbeddingError.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>model_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Name of the model that encountered the error</p></li>
+<li><p><strong>model_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Type of the model (e.g., “fasttext”, “spacy”)</p></li>
+<li><p><strong>text_sample</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Sample of problematic text that caused the error</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.SolrError">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">SolrError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status_code</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#SolrError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.SolrError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#histtext_toolkit.core.errors.HistTextError" title="histtext_toolkit.core.errors.HistTextError"><code class="xref py py-class docutils literal notranslate"><span class="pre">HistTextError</span></code></a></p>
+<p>Exception raised for errors in Solr operations.</p>
+<p>Used when errors occur during Solr queries, updates, or other operations.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.SolrError.status_code">
+<span class="sig-name descname"><span class="pre">status_code</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.SolrError.status_code" title="Link to this definition"></a></dt>
+<dd><p>HTTP status code from Solr response</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.SolrError.collection">
+<span class="sig-name descname"><span class="pre">collection</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.SolrError.collection" title="Link to this definition"></a></dt>
+<dd><p>Name of the Solr collection</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>status_code</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – HTTP status code from Solr response</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Name of the Solr collection</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.SolrError.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status_code</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#SolrError.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.SolrError.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>status_code</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> | </em><em>None</em>) – HTTP status code from Solr response</p></li>
+<li><p><strong>collection</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Name of the Solr collection</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.InputError">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">InputError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#InputError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.InputError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#histtext_toolkit.core.errors.HistTextError" title="histtext_toolkit.core.errors.HistTextError"><code class="xref py py-class docutils literal notranslate"><span class="pre">HistTextError</span></code></a></p>
+<p>Exception raised for errors in user input.</p>
+<p>Used when user-provided input is invalid or cannot be processed.</p>
+<p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.ResourceError">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">ResourceError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#ResourceError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.ResourceError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#histtext_toolkit.core.errors.HistTextError" title="histtext_toolkit.core.errors.HistTextError"><code class="xref py py-class docutils literal notranslate"><span class="pre">HistTextError</span></code></a></p>
+<p>Exception raised for errors related to resources.</p>
+<p>Used when files, directories, or other resources are unavailable.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.ResourceError.resource_type">
+<span class="sig-name descname"><span class="pre">resource_type</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.ResourceError.resource_type" title="Link to this definition"></a></dt>
+<dd><p>Type of resource (e.g., “file”, “directory”)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.ResourceError.resource_path">
+<span class="sig-name descname"><span class="pre">resource_path</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.ResourceError.resource_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the resource</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>resource_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Type of resource (e.g., “file”, “directory”)</p></li>
+<li><p><strong>resource_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Path to the resource</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.ResourceError.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#ResourceError.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.ResourceError.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>resource_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Type of resource (e.g., “file”, “directory”)</p></li>
+<li><p><strong>resource_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Path to the resource</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.MemoryError">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">MemoryError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimated_required</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">available</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#MemoryError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.MemoryError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#histtext_toolkit.core.errors.ResourceError" title="histtext_toolkit.core.errors.ResourceError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ResourceError</span></code></a></p>
+<p>Exception raised for out-of-memory errors.</p>
+<p>Used when operations fail due to insufficient memory.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.MemoryError.estimated_required">
+<span class="sig-name descname"><span class="pre">estimated_required</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.MemoryError.estimated_required" title="Link to this definition"></a></dt>
+<dd><p>Estimated required memory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.MemoryError.available">
+<span class="sig-name descname"><span class="pre">available</span></span><a class="headerlink" href="#histtext_toolkit.core.errors.MemoryError.available" title="Link to this definition"></a></dt>
+<dd><p>Available memory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>estimated_required</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Estimated required memory (e.g., “4.2 GB”)</p></li>
+<li><p><strong>available</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Available memory (e.g., “2.1 GB”)</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.MemoryError.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimated_required</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">available</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#MemoryError.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.MemoryError.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Error message describing what went wrong</p></li>
+<li><p><strong>estimated_required</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Estimated required memory (e.g., “4.2 GB”)</p></li>
+<li><p><strong>available</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Available memory (e.g., “2.1 GB”)</p></li>
+<li><p><strong>details</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional dictionary with additional error details</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.safe_embed">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">safe_embed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">logger</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_return</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#safe_embed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.safe_embed" title="Link to this definition"></a></dt>
+<dd><p>Decorator for safely executing embedding functions.</p>
+<p>Catches exceptions during embedding operations and returns a default value
+instead of propagating the error, allowing batch processing to continue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>logger</strong> (<a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.13)"><em>Logger</em></a>) – Logger to use for recording error messages</p></li>
+<li><p><strong>default_return</strong> (<em>T</em><em> | </em><em>None</em>) – Default return value when an error occurs</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Decorated function that handles errors gracefully</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Callable</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nd">@safe_embed</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">default_return</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">300</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">embed_text</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="c1"># Implementation that might raise exceptions</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">get_embedding</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.handle_embedding_errors">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">handle_embedding_errors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#handle_embedding_errors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.handle_embedding_errors" title="Link to this definition"></a></dt>
+<dd><p>Decorator for handling embedding errors with model context.</p>
+<p>Converts generic exceptions into specialized HistText exceptions
+with additional context about the model and operation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Name of the model for context</p></li>
+<li><p><strong>model_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><em>None</em>) – Type of the model for context</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Decorated function that converts exceptions to HistText exceptions</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Callable</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nd">@handle_embedding_errors</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;fasttext-en&quot;</span><span class="p">,</span> <span class="n">model_type</span><span class="o">=</span><span class="s2">&quot;fasttext&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">load_model</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="c1"># Implementation that might raise exceptions</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.retry_with_backoff">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">retry_with_backoff</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_retries</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_delay</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#retry_with_backoff"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.retry_with_backoff" title="Link to this definition"></a></dt>
+<dd><p>Retry an async function with exponential backoff.</p>
+<p>Useful for operations that might fail temporarily, such as network requests.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.13)"><em>Callable</em></a>) – Async function to retry</p></li>
+<li><p><strong>max_retries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Maximum number of retry attempts</p></li>
+<li><p><strong>base_delay</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Base delay in seconds between retries</p></li>
+<li><p><strong>logger</strong> (<a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.13)"><em>Logger</em></a><em> | </em><em>None</em>) – Logger to use for recording retry attempts</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Result of the function if successful</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.13)"><strong>Exception</strong></a> – The last exception that occurred if all retries fail</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetch_data</span><span class="p">():</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="c1"># Implementation that might fail temporarily</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="k">return</span> <span class="k">await</span> <span class="n">api</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">retry_with_backoff</span><span class="p">(</span><span class="n">fetch_data</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.log_error_and_continue">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">log_error_and_continue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">error</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#log_error_and_continue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.log_error_and_continue" title="Link to this definition"></a></dt>
+<dd><p>Log an error and continue processing.</p>
+<p>Provides structured logging for errors during batch processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>error</strong> (<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.13)"><em>Exception</em></a>) – The exception that occurred</p></li>
+<li><p><strong>item_id</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Identifier for the item being processed</p></li>
+<li><p><strong>logger</strong> (<a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.13)"><em>Logger</em></a>) – Logger to use for recording error messages</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">try</span><span class="p">:</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="n">process_document</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="n">log_error_and_continue</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">doc</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="c1"># Continue with next document</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.errors.get_memory_info">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.errors.</span></span><span class="sig-name descname"><span class="pre">get_memory_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/errors.html#get_memory_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.errors.get_memory_info" title="Link to this definition"></a></dt>
+<dd><p>Get system memory information for RAM and GPU.</p>
+<p>Returns information about total and available memory for system diagnosis
+and resource planning.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Dictionary with memory information including:</dt><dd><ul class="simple">
+<li><p>ram_available_gb: Available RAM in GB</p></li>
+<li><p>ram_total_gb: Total RAM in GB</p></li>
+<li><p>gpu_available_gb: Available GPU memory in GB</p></li>
+<li><p>gpu_total_gb: Total GPU memory in GB</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">memory</span> <span class="o">=</span> <span class="n">get_memory_info</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Available RAM: </span><span class="si">{</span><span class="n">memory</span><span class="p">[</span><span class="s1">&#39;ram_available_gb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Available GPU: </span><span class="si">{</span><span class="n">memory</span><span class="p">[</span><span class="s1">&#39;gpu_available_gb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="module-histtext_toolkit.core.logging">
+<span id="logging"></span><h2>Logging<a class="headerlink" href="#module-histtext_toolkit.core.logging" title="Link to this heading"></a></h2>
+<p>Logging setup and configuration.</p>
+<p>This module provides utility functions for configuring the Python logging system
+with consistent formats and flexible handler configuration.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.logging.setup_logging">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.logging.</span></span><span class="sig-name descname"><span class="pre">setup_logging</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'INFO'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format_str</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'[%(asctime)s]</span> <span class="pre">%(levelname)s:</span> <span class="pre">%(message)s'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">handlers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/logging.html#setup_logging"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.logging.setup_logging" title="Link to this definition"></a></dt>
+<dd><p>Set up logging configuration for the entire application.</p>
+<p>Configures the root logger with the specified log level, format string,
+and handlers. By default, logs to stdout with a timestamp and level name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>level</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Logging level, either as string (e.g., “INFO”, “DEBUG”) or
+integer constant (e.g., logging.INFO)</p></li>
+<li><p><strong>format_str</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Format string for log messages</p></li>
+<li><p><strong>handlers</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><em>Dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Optional custom handlers configuration, a dictionary mapping
+handler types to their configurations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The configured root logger</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.13)">logging.Logger</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If the string log level is invalid</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Basic setup with default settings</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">logger</span> <span class="o">=</span> <span class="n">setup_logging</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Setup with custom level and file handler</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">logger</span> <span class="o">=</span> <span class="n">setup_logging</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">level</span><span class="o">=</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">handlers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="s2">&quot;app.log&quot;</span><span class="p">}}</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="histtext_toolkit.core.logging.get_logger">
+<span class="sig-prename descclassname"><span class="pre">histtext_toolkit.core.logging.</span></span><span class="sig-name descname"><span class="pre">get_logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/histtext_toolkit/core/logging.html#get_logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#histtext_toolkit.core.logging.get_logger" title="Link to this definition"></a></dt>
+<dd><p>Get a logger with the specified name.</p>
+<p>Returns a logger instance with the given name, which will inherit settings
+from the root logger if setup_logging() has been called. Module loggers
+should typically use __name__ as the logger name for proper hierarchical logging.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the logger, typically the module name using __name__</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The logger instance configured with the specified name</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.13)">logging.Logger</a></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># In a module file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;This is a log message&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="HistText Toolkit Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="models.html" class="btn btn-neutral float-right" title="Models" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Baptiste Blouin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

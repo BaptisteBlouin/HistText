@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["collection_name","description","embeddings","lang","solr_database_id","star","text_field","to_not_display","tokenizer"]};

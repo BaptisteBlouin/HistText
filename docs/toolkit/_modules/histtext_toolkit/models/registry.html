@@ -1,0 +1,459 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>histtext_toolkit.models.registry &mdash; HistText Toolkit 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            HistText Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/core.html">Core Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/operations.html">Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/utils.html">Utilities</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">HistText Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">histtext_toolkit.models.registry</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for histtext_toolkit.models.registry</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Model registry for easy access to all supported models.</span>
+
+<span class="sd">This module provides a central registry for all model implementations,</span>
+<span class="sd">making it easy to instantiate the right model based on configuration.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">EmbeddingsModel</span><span class="p">,</span> <span class="n">ModelType</span><span class="p">,</span> <span class="n">NERModel</span><span class="p">,</span> <span class="n">TokenizationModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.spacy_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">SpacyNERModel</span><span class="p">,</span> <span class="n">SpacyTokenizationModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.transformers_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">TransformersNERModel</span><span class="p">,</span> <span class="n">TransformersTokenizationModel</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># Import GLiNER support if available</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.gliner_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">GLINER_AVAILABLE</span><span class="p">,</span> <span class="n">GLiNERModel</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">GLINER_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;GLiNER support not available&quot;</span><span class="p">)</span>
+
+<span class="c1"># Import ChineseWordSegmenter support if available</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.chinese_segmenter</span><span class="w"> </span><span class="kn">import</span> <span class="n">CWSEG_AVAILABLE</span><span class="p">,</span> <span class="n">ChineseSegmenterModel</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">CWSEG_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;ChineseWordSegmenter support not available&quot;</span><span class="p">)</span>
+
+<span class="c1"># Import embedding models if available</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.fasttext_model</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">FASTTEXT_AVAILABLE</span><span class="p">,</span>
+        <span class="n">FastTextEmbeddingsModel</span><span class="p">,</span>
+        <span class="n">SentenceTransformersEmbeddingsModel</span><span class="p">,</span>
+        <span class="n">Word2VecEmbeddingsModel</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">FASTTEXT_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;FastText support not available&quot;</span><span class="p">)</span>
+
+<span class="c1"># Import word embeddings model if available</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.word_embeddings_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">CollectionWordEmbeddingsModel</span>
+
+    <span class="n">WORD_EMBEDDINGS_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">WORD_EMBEDDINGS_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Word embeddings support not available&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ModelRegistry">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.registry.ModelRegistry">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelRegistry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Registry for all model implementations.</span>
+<span class="sd">    </span>
+<span class="sd">    This class provides a centralized registry of all available model implementations</span>
+<span class="sd">    and factory methods to create model instances based on configuration.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        NER_IMPLEMENTATIONS: Mapping of model types to NER model implementations</span>
+<span class="sd">        TOKENIZATION_IMPLEMENTATIONS: Mapping of model types to tokenization model implementations</span>
+<span class="sd">        EMBEDDINGS_IMPLEMENTATIONS: Mapping of model types to embedding model implementations</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Map of model types to their implementations</span>
+    <span class="n">NER_IMPLEMENTATIONS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">ModelType</span><span class="o">.</span><span class="n">SPACY</span><span class="p">:</span> <span class="n">SpacyNERModel</span><span class="p">,</span>
+        <span class="n">ModelType</span><span class="o">.</span><span class="n">TRANSFORMERS</span><span class="p">:</span> <span class="n">TransformersNERModel</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">TOKENIZATION_IMPLEMENTATIONS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">ModelType</span><span class="o">.</span><span class="n">SPACY</span><span class="p">:</span> <span class="n">SpacyTokenizationModel</span><span class="p">,</span>
+        <span class="n">ModelType</span><span class="o">.</span><span class="n">TRANSFORMERS</span><span class="p">:</span> <span class="n">TransformersTokenizationModel</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">EMBEDDINGS_IMPLEMENTATIONS</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Add ChineseWordSegmenter if available</span>
+    <span class="k">if</span> <span class="n">CWSEG_AVAILABLE</span><span class="p">:</span>
+        <span class="n">TOKENIZATION_IMPLEMENTATIONS</span><span class="p">[</span><span class="n">ModelType</span><span class="o">.</span><span class="n">CHINESE_SEGMENTER</span><span class="p">]</span> <span class="o">=</span> <span class="n">ChineseSegmenterModel</span>
+
+    <span class="c1"># Add GLiNER if available</span>
+    <span class="k">if</span> <span class="n">GLINER_AVAILABLE</span><span class="p">:</span>
+        <span class="n">NER_IMPLEMENTATIONS</span><span class="p">[</span><span class="n">ModelType</span><span class="o">.</span><span class="n">GLINER</span><span class="p">]</span> <span class="o">=</span> <span class="n">GLiNERModel</span>
+
+    <span class="c1"># Add embedding models if available</span>
+    <span class="k">if</span> <span class="n">FASTTEXT_AVAILABLE</span><span class="p">:</span>
+        <span class="n">EMBEDDINGS_IMPLEMENTATIONS</span><span class="p">[</span><span class="n">ModelType</span><span class="o">.</span><span class="n">FASTTEXT</span><span class="p">]</span> <span class="o">=</span> <span class="n">FastTextEmbeddingsModel</span>
+        <span class="n">EMBEDDINGS_IMPLEMENTATIONS</span><span class="p">[</span><span class="n">ModelType</span><span class="o">.</span><span class="n">WORD2VEC</span><span class="p">]</span> <span class="o">=</span> <span class="n">Word2VecEmbeddingsModel</span>
+        <span class="n">EMBEDDINGS_IMPLEMENTATIONS</span><span class="p">[</span><span class="n">ModelType</span><span class="o">.</span><span class="n">SENTENCE_TRANSFORMERS</span><span class="p">]</span> <span class="o">=</span> <span class="n">SentenceTransformersEmbeddingsModel</span>
+
+    <span class="c1"># Add word embeddings model if available</span>
+    <span class="k">if</span> <span class="n">WORD_EMBEDDINGS_AVAILABLE</span><span class="p">:</span>
+        <span class="n">EMBEDDINGS_IMPLEMENTATIONS</span><span class="p">[</span><span class="n">ModelType</span><span class="o">.</span><span class="n">WORD_EMBEDDINGS</span><span class="p">]</span> <span class="o">=</span> <span class="n">CollectionWordEmbeddingsModel</span>
+
+<div class="viewcode-block" id="ModelRegistry.create_ner_model">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.registry.ModelRegistry.create_ner_model">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_ner_model</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NERModel</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a NER model based on the provided configuration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: Model configuration with type, path and parameters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            NERModel: The instantiated model instance.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the model type is not supported or no implementation is available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">model_type</span> <span class="o">=</span> <span class="n">ModelType</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported model type: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">model_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">NER_IMPLEMENTATIONS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;No NER implementation available for model type: </span><span class="si">{</span><span class="n">model_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">model_class</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">NER_IMPLEMENTATIONS</span><span class="p">[</span><span class="n">model_type</span><span class="p">]</span>
+
+        <span class="c1"># Build kwargs based on config</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">path</span><span class="p">}</span>
+
+        <span class="c1"># Add optional parameters if they exist in config</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">max_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;max_length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">max_length</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model_class</span><span class="p">,</span> <span class="s2">&quot;aggregation_strategy&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">aggregation_strategy</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;aggregation_strategy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">aggregation_strategy</span>
+
+        <span class="c1"># Add any additional parameters</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="p">)</span>
+
+        <span class="c1"># Create the model instance</span>
+        <span class="k">return</span> <span class="n">model_class</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModelRegistry.create_tokenization_model">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.registry.ModelRegistry.create_tokenization_model">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tokenization_model</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TokenizationModel</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a tokenization model based on the provided configuration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: Model configuration with type, path and parameters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TokenizationModel: The instantiated model instance.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the model type is not supported or no implementation is available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">model_type</span> <span class="o">=</span> <span class="n">ModelType</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported model type: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">model_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">TOKENIZATION_IMPLEMENTATIONS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;No tokenization implementation available for model type: </span><span class="si">{</span><span class="n">model_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">model_class</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">TOKENIZATION_IMPLEMENTATIONS</span><span class="p">[</span><span class="n">model_type</span><span class="p">]</span>
+
+        <span class="c1"># Build kwargs based on config</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">path</span><span class="p">}</span>
+
+        <span class="c1"># Add optional parameters if they exist in config</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">max_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;max_length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">max_length</span>
+
+        <span class="c1"># Add any additional parameters</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="p">)</span>
+
+        <span class="c1"># Create the model instance</span>
+        <span class="k">return</span> <span class="n">model_class</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModelRegistry.create_embeddings_model">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.registry.ModelRegistry.create_embeddings_model">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_embeddings_model</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EmbeddingsModel</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an embeddings model based on the provided configuration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: Model configuration with type, path and parameters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            EmbeddingsModel: The instantiated model instance.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the model type is not supported or no implementation is available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">model_type</span> <span class="o">=</span> <span class="n">ModelType</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported model type: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">model_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">EMBEDDINGS_IMPLEMENTATIONS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;No embeddings implementation available for model type: </span><span class="si">{</span><span class="n">model_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">model_class</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">EMBEDDINGS_IMPLEMENTATIONS</span><span class="p">[</span><span class="n">model_type</span><span class="p">]</span>
+
+        <span class="c1"># Special handling for word embeddings model</span>
+        <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="n">ModelType</span><span class="o">.</span><span class="n">WORD_EMBEDDINGS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">model_class</span><span class="p">(</span>
+                <span class="n">method</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;method&quot;</span><span class="p">,</span> <span class="s2">&quot;word2vec&quot;</span><span class="p">),</span>
+                <span class="n">dim</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dim&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+                <span class="n">window</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;window&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+                <span class="n">min_count</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_count&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+                <span class="n">workers</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;workers&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Build kwargs based on config</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">path</span><span class="p">}</span>
+
+        <span class="c1"># Add optional parameters if they exist in config</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">max_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;max_length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">max_length</span>
+
+        <span class="c1"># Add dimension if specified</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;dim&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">dim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;dim&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">dim</span>
+
+        <span class="c1"># Add binary flag for Word2Vec models</span>
+        <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="n">ModelType</span><span class="o">.</span><span class="n">WORD2VEC</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;binary&quot;</span><span class="p">):</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;binary&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">binary</span>
+
+        <span class="c1"># Add use_precomputed flag for FastText models</span>
+        <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="n">ModelType</span><span class="o">.</span><span class="n">FASTTEXT</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;use_precomputed&quot;</span><span class="p">):</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;use_precomputed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">use_precomputed</span>
+
+        <span class="c1"># Add any additional parameters</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">additional_params</span><span class="p">)</span>
+
+        <span class="c1"># Create the model instance</span>
+        <span class="k">return</span> <span class="n">model_class</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModelRegistry.get_available_model_types">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.registry.ModelRegistry.get_available_model_types">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_available_model_types</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get all available model types and their supported tasks.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, list]: Dictionary mapping model types to supported tasks.</span>
+<span class="sd">                             Each value is a list of tasks the model type supports</span>
+<span class="sd">                             (e.g., [&quot;ner&quot;, &quot;tokenization&quot;]).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">available</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="n">ModelType</span><span class="p">:</span>
+            <span class="n">tasks</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">if</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">NER_IMPLEMENTATIONS</span><span class="p">:</span>
+                <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;ner&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">TOKENIZATION_IMPLEMENTATIONS</span><span class="p">:</span>
+                <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;tokenization&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">EMBEDDINGS_IMPLEMENTATIONS</span><span class="p">:</span>
+                <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;embeddings&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">tasks</span><span class="p">:</span>
+                <span class="n">available</span><span class="p">[</span><span class="n">model_type</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="n">tasks</span>
+
+        <span class="k">return</span> <span class="n">available</span></div>
+</div>
+
+
+
+<span class="c1"># Convenience functions</span>
+<div class="viewcode-block" id="create_ner_model">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.registry.create_ner_model">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_ner_model</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NERModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a NER model based on the provided configuration.</span>
+
+<span class="sd">    This is a convenience function that delegates to :meth:`ModelRegistry.create_ner_model`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Model configuration.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        NERModel: The instantiated model.</span>
+<span class="sd">        </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the model type is not supported.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ModelRegistry</span><span class="o">.</span><span class="n">create_ner_model</span><span class="p">(</span><span class="n">config</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="create_tokenization_model">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.registry.create_tokenization_model">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_tokenization_model</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TokenizationModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a tokenization model based on the provided configuration.</span>
+<span class="sd">    </span>
+<span class="sd">    This is a convenience function that delegates to :meth:`ModelRegistry.create_tokenization_model`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Model configuration.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        TokenizationModel: The instantiated model.</span>
+<span class="sd">        </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the model type is not supported.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ModelRegistry</span><span class="o">.</span><span class="n">create_tokenization_model</span><span class="p">(</span><span class="n">config</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="create_embeddings_model">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.registry.create_embeddings_model">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_embeddings_model</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EmbeddingsModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create an embeddings model based on the provided configuration.</span>
+<span class="sd">    </span>
+<span class="sd">    This is a convenience function that delegates to :meth:`ModelRegistry.create_embeddings_model`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Model configuration.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        EmbeddingsModel: The instantiated model.</span>
+<span class="sd">        </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the model type is not supported.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ModelRegistry</span><span class="o">.</span><span class="n">create_embeddings_model</span><span class="p">(</span><span class="n">config</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_available_model_types">
+<a class="viewcode-back" href="../../../modules/models.html#histtext_toolkit.models.registry.get_available_model_types">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_available_model_types</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all available model types and their supported tasks.</span>
+<span class="sd">    </span>
+<span class="sd">    This is a convenience function that delegates to :meth:`ModelRegistry.get_available_model_types`.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dict[str, list]: Dictionary mapping model types to supported tasks.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ModelRegistry</span><span class="o">.</span><span class="n">get_available_model_types</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Baptiste Blouin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_user","delete_user","generate_salt","get_user_by_id","get_users","update_user"],"struct":["NewUser","UpdateUser","User","UserHandler"]};
