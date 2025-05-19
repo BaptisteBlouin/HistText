@@ -14,6 +14,7 @@ mod openapi;
 mod schema;
 mod server;
 mod services;
+mod auth;
 
 /// Core text processing modules
 mod histtext {

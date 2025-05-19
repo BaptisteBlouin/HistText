@@ -5,6 +5,15 @@
 //! It ensures consistent settings across the application and eliminates
 //! the need for scattered `std::env::var` calls throughout the codebase.
 
+// Updated config.rs with mail settings
+
+//! Application configuration management.
+//! 
+//! This module provides centralized configuration loading and validation,
+//! converting environment variables into a strongly-typed `Config` struct.
+//! It ensures consistent settings across the application and eliminates
+//! the need for scattered `std::env::var` calls throughout the codebase.
+
 use actix_web::web;
 use lazy_static::lazy_static;
 use serde::Deserialize;
@@ -116,6 +125,22 @@ pub struct Config {
     // Embeddings cache settings
     /// Maximum number of embedding files to keep in cache
     pub max_embeddings_files: usize,
+
+    // Email settings (SMTP)
+    /// SMTP server address
+    pub smtp_server: String,
+    
+    /// SMTP username
+    pub smtp_username: String,
+    
+    /// SMTP password
+    pub smtp_password: String,
+    
+    /// Email address to use as sender
+    pub smtp_from_address: String,
+    
+    /// Whether to actually send emails or just log them
+    pub send_mail: bool,
 }
 
 /// Errors that can occur during configuration loading
@@ -262,6 +287,13 @@ impl Config {
 
             // Embeddings cache settings - with a default of 3 if not specified
             max_embeddings_files: parse_with_default::<usize>("MAX_EMBEDDINGS_FILES", 3),
+            
+            // Email settings
+            smtp_server: get_with_default("SMTP_SERVER", "localhost"),
+            smtp_username: get_with_default("SMTP_USERNAME", ""),
+            smtp_password: get_with_default("SMTP_PASSWORD", ""),
+            smtp_from_address: get_with_default("SMTP_FROM_ADDRESS", "no-reply@example.com"),
+            send_mail: parse_with_default::<bool>("SEND_MAIL", false),
         })
     }
 }

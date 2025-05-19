@@ -16,6 +16,13 @@ use crate::server::state::AppState;
 use crate::server::state::DbPool;
 use crate::services::database::Database;
 
+// Import auth routes
+use crate::auth::routes::{
+    sessions, destroy_session, destroy_sessions, login, logout, 
+    check, refresh, register, activate, forgot_password, 
+    change_password, reset_password
+};
+
 // Import route handlers
 use crate::histtext;
 use crate::services::role_permissions::*;
@@ -30,6 +37,7 @@ use crate::services::users::*;
 use crate::server::ssh::connect_solr_database_ssh;
 
 use crate::config::Config;
+use crate::services::mailer::Mailer;
 
 use actix_web::{dev::ServiceRequest, error::Error as ActixError};
 use actix_web_httpauth::{
@@ -94,8 +102,8 @@ pub fn configure_routes(
     app_data: Data<create_rust_app::AppData>,
     schema: Data<async_graphql::Schema<crate::graphql::QueryRoot, crate::graphql::MutationRoot, crate::graphql::SubscriptionRoot>>,
 ) {
-    // Create application config
-    let app_config = Data::new(AppConfig {
+    // Create app config data
+    let app_config_data = Data::new(AppConfig {
         app_url: app_state.config.app_url.clone(),
     });
 
@@ -109,11 +117,25 @@ pub fn configure_routes(
         )],
     });
 
+    // Initialize API scope - Make auth routes part of api_scope directly
+    let auth_scope = web::scope("/auth")
+        .service(sessions)
+        .service(destroy_session)
+        .service(destroy_sessions)
+        .service(login)
+        .service(logout)
+        .service(check)
+        .service(refresh)
+        .service(register)
+        .service(activate)
+        .service(forgot_password)
+        .service(change_password)
+        .service(reset_password);
+
     // Initialize API scope
-    let mut api_scope = web::scope("/api");
+    let mut api_scope = web::scope("/api").service(auth_scope);
 
     // Configure all API endpoints by category
-    api_scope = configure_auth_routes(api_scope);
     api_scope = configure_solr_routes(api_scope);
     api_scope = configure_hist_text_routes(api_scope);
     api_scope = configure_user_routes(api_scope);
@@ -180,6 +202,9 @@ pub fn configure_routes(
     // Default route for frontend
     config.service(web::resource("/{_:.*}").route(web::get().to(create_rust_app::render_views)));
 
+    let config_global = Config::global();
+    let mailer = Data::new(Mailer::from_config(&config_global));
+
     // Register app data
     config
         .app_data(db)
@@ -187,10 +212,14 @@ pub fn configure_routes(
         .app_data(app_data)
         .app_data(schema)
         .app_data(app_state)
-        .app_data(app_config)
-        .app_data(auth_config);
+        .app_data(app_config_data)
+        .app_data(auth_config)
+        .app_data(mailer);
 }
 
+// Rest of your route configuration functions...
+
+// Rest of your route configuration functions...
 /// Configure authentication routes
 ///
 /// # Arguments
@@ -198,9 +227,9 @@ pub fn configure_routes(
 ///
 /// # Returns
 /// Updated API scope with auth routes
-fn configure_auth_routes(api_scope: Scope) -> Scope {
-    api_scope.service(create_rust_app::auth::endpoints(web::scope("/auth")))
-}
+//fn configure_auth_routes(api_scope: Scope) -> Scope {
+//    api_scope.service(create_rust_app::auth::endpoints(web::scope("/auth")))
+//}
 
 /// Configure Solr query and metadata routes
 ///

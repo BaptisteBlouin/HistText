@@ -15,5 +15,5 @@ pub fn main() {
     dsync::main();
     tsync::main();
 
-    //create_rust_app::dev::run_server(project_dir);
+    create_rust_app::dev::run_server(project_dir);
 }

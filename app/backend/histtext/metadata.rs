@@ -23,7 +23,7 @@ use crate::models::solr_database_permissions::SolrDatabasePermission;
 
 use crate::schema::solr_database_permissions::dsl::*;
 use crate::schema::solr_databases::dsl::*;
-use create_rust_app::auth::AccessTokenClaims;
+use crate::auth::AccessTokenClaims; 
 
 use lazy_static::lazy_static;
 

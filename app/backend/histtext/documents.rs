@@ -14,7 +14,7 @@ use actix_web::{web, Error, HttpRequest, HttpResponse};
 
 use crate::models::solr_database_permissions::SolrDatabasePermission;
 use crate::schema::solr_database_permissions::dsl::*;
-use create_rust_app::auth::AccessTokenClaims;
+use crate::auth::AccessTokenClaims; 
 use jsonwebtoken::{decode, DecodingKey, Validation};
 
 use crate::config::Config;

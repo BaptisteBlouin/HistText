@@ -36,6 +36,10 @@ pub async fn run_server() -> std::io::Result<()> {
     use crate::server::ssh::establish_ssh_tunnels;
     use crate::server::startup::preload_embeddings;
     use crate::services::database::Database;
+    use crate::services::mailer::Mailer;
+    // Import your custom auth components
+    use crate::auth::AuthConfig;
+    use crate::auth::middleware::auth::JwtAuth;
     use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
     use actix_web::web::PayloadConfig;
     use actix_web::{
@@ -81,6 +85,18 @@ pub async fn run_server() -> std::io::Result<()> {
     // Initialize database connection pool
     let db = Database::new();
     let db_pool = db.pool.clone();
+
+    // Create your custom auth config
+    let auth_config = AuthConfig {
+        jwt_secret: config.secret_key.clone(),
+        app_url: config.app_url.clone(),
+    };
+
+    // Initialize mailer for auth system
+    let config_global = Config::global();
+    let mailer = Data::new(Mailer::from_config(&config_global));
+    
+    let mailer_data = Data::new(mailer);
 
     // Start preloading embeddings in the background
     let embedding_task = {
@@ -134,22 +150,18 @@ pub async fn run_server() -> std::io::Result<()> {
             .app_data(Data::new(app_data.storage.clone()))
             .app_data(Data::new(Arc::clone(&config)))
             .app_data(app_state_data.clone())
+            .app_data(mailer_data.clone())
             
-            // Configure app and auth settings
+            // Configure app settings
             .app_data(Data::new(AppConfig {
                 app_url: config.app_url.clone(),
             }))
-            .app_data(Data::new(create_rust_app::auth::AuthConfig {
-                oidc_providers: vec![create_rust_app::auth::oidc::OIDCProvider::GOOGLE(
-                    config.google_oauth2_client_id.clone(),
-                    config.google_oauth2_client_secret.clone(),
-                    format!("{}/oauth/success", config.app_url),
-                    format!("{}/oauth/error", config.app_url),
-                )],
-            }));
+            // Add your custom auth config instead of create_rust_app auth
+            .app_data(Data::new(auth_config.clone()));
 
         // Configure routes
         app.configure(|cfg| {
+            // Configure your routes with your custom auth system
             routes::configure_routes(
                 cfg,
                 app_state_data.clone(),
@@ -157,7 +169,11 @@ pub async fn run_server() -> std::io::Result<()> {
                 Data::new(db_pool.clone()),
                 Data::new(app_data.clone()),
                 Data::new(schema.clone()),
-            )
+            );
+            
+            // Configure your auth routes directly
+            // This replaces the create_rust_app auth configuration
+            crate::auth::routes::configure_routes(cfg, &config);
         })
     })
     .bind("0.0.0.0:3000")?
