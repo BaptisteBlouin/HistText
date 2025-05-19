@@ -2,12 +2,13 @@
 
 use crate::auth::models::{
     permission::Permission, user::User, user::UserChangeset,
-    user_role::UserRole, user_session::UserSession,
+    user_session::UserSession,
     user_session::UserSessionChangeset,
 };
 use crate::auth::ID;
 use crate::services::database::Database;
 use crate::services::mailer::Mailer;
+use crate::auth::models::role::Role;
 
 use actix_web::{
     dev::Payload,
@@ -677,6 +678,7 @@ impl Auth {
     }
 
     #[must_use]
+    #[allow(dead_code)]
     pub fn has_all_permissions(&self, perms: impl AsRef<[String]>) -> bool {
         perms
             .as_ref()
@@ -685,6 +687,7 @@ impl Auth {
     }
 
     #[must_use]
+    #[allow(dead_code)]
     pub fn has_any_permission(&self, perms: impl AsRef<[String]>) -> bool {
         perms
             .as_ref()
@@ -698,10 +701,12 @@ impl Auth {
     }
 
     #[must_use]
+    #[allow(dead_code)]
     pub fn has_all_roles(&self, roles: impl AsRef<[String]>) -> bool {
         roles.as_ref().iter().all(|r| self.has_role(r))
     }
 
+    #[allow(dead_code)]
     pub fn has_any_roles(&self, roles: impl AsRef<[String]>) -> bool {
         roles.as_ref().iter().any(|r| self.has_role(r))
     }
@@ -766,14 +771,5 @@ impl FromRequest for Auth {
 
         // No or invalid Authorization header
         ready(Err(ErrorUnauthorized("Authorization required")))
-    }
-}
-
-pub struct Role;
-
-impl Role {
-    /// Fetch all roles for a user
-    pub fn fetch_all(db: &mut crate::services::database::Connection, user_id: ID) -> Result<Vec<String>, diesel::result::Error> {
-        UserRole::read_all_roles(db, user_id)
     }
 }

@@ -1,4 +1,4 @@
-// New file: auth/controllers/permission_management.rs
+// backend/auth/controllers/permission_management.rs (Updated)
 
 use crate::auth::models::permission::Permission;
 use crate::auth::ID;
@@ -45,6 +45,7 @@ pub struct BatchUserPermissionRequest {
 }
 
 // API handlers
+// Implement the function bodies here directly instead of in a separate file
 
 // Grant a permission to a role
 pub async fn grant_role_permission(
@@ -52,7 +53,6 @@ pub async fn grant_role_permission(
     req: web::Json<GrantRolePermissionRequest>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})
@@ -77,7 +77,6 @@ pub async fn grant_user_permission(
     req: web::Json<GrantUserPermissionRequest>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})
@@ -102,7 +101,6 @@ pub async fn grant_role_permissions(
     req: web::Json<BatchPermissionRequest>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})
@@ -127,7 +125,6 @@ pub async fn grant_user_permissions(
     req: web::Json<BatchUserPermissionRequest>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})
@@ -152,7 +149,6 @@ pub async fn revoke_role_permission(
     req: web::Json<RevokeRolePermissionRequest>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})
@@ -177,7 +173,6 @@ pub async fn revoke_user_permission(
     req: web::Json<RevokeUserPermissionRequest>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})
@@ -202,7 +197,6 @@ pub async fn revoke_role_permissions(
     req: web::Json<BatchPermissionRequest>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})
@@ -227,7 +221,6 @@ pub async fn revoke_user_permissions(
     req: web::Json<BatchUserPermissionRequest>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})
@@ -252,7 +245,6 @@ pub async fn revoke_all_role_permissions(
     role: web::Path<String>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})
@@ -277,7 +269,6 @@ pub async fn revoke_all_user_permissions(
     user_id: web::Path<ID>,
     auth: Auth,
 ) -> Result<HttpResponse> {
-    // Check if user has admin permission
     if !auth.has_permission("admin".to_string()) {
         return Ok(HttpResponse::Forbidden().json(
             serde_json::json!({"error": "Admin permission required"})

@@ -37,8 +37,8 @@ pub async fn run_server() -> std::io::Result<()> {
     use crate::server::startup::preload_embeddings;
     use crate::services::database::Database;
     use crate::services::mailer::Mailer;
-    // Import your custom auth components
     use crate::auth::AuthConfig;
+    #[allow(unused_imports)]
     use crate::auth::middleware::auth::JwtAuth;
     use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
     use actix_web::web::PayloadConfig;
@@ -95,7 +95,7 @@ pub async fn run_server() -> std::io::Result<()> {
     // Initialize mailer for auth system
     let config_global = Config::global();
     let mailer = Data::new(Mailer::from_config(&config_global));
-    
+
     let mailer_data = Data::new(mailer);
 
     // Start preloading embeddings in the background

@@ -1,4 +1,4 @@
-// Updated auth/routes.rs to correctly use middleware
+// backend/auth/routes.rs
 
 use actix_web::{delete, get, post, web, Error as AWError, HttpRequest, HttpResponse, Result};
 use actix_web::cookie::{Cookie, SameSite};
@@ -10,30 +10,20 @@ use crate::auth::controllers::auth::{
     ActivationInput, ChangeInput, ForgotInput, LoginInput, RegisterInput, ResetInput,
     COOKIE_NAME,
 };
-// Import Auth from controllers module directly
 use crate::auth::Auth;
 use crate::config::Config;
-// Use PaginationParams from auth module
 use crate::auth::PaginationParams;
 use crate::services::database::Database;
 use crate::services::mailer::Mailer;
-// Removed unused imports: JwtAuth, RequirePermission
-
-// The rest of your route handlers remain unchanged...
 
 /// Handler for GET requests at the /sessions endpoint
-///
-/// Requires authentication
-///
-/// Queries the database for all sessions owned by the authenticated user
-/// and paginates the results based on the provided parameters
 #[get("/sessions")]
-async fn sessions(
+pub async fn sessions(
     db: Data<Database>,
     auth: Auth,
     Query(info): Query<PaginationParams>,
-) -> Result<HttpResponse> {
-    let result = web::block(move || controller::get_sessions(db.into_inner().as_ref(), &auth, &info))
+) -> Result<HttpResponse, AWError> {
+    let result = web::block(move || controller::get_sessions(&db, &auth, &info))
         .await?;
 
     match result {
@@ -48,16 +38,12 @@ async fn sessions(
 }
 
 /// Handler for DELETE requests at the /sessions/{id} endpoint
-///
-/// Requires authentication
-///
-/// Deletes the specified session if it belongs to the authenticated user
 #[delete("/sessions/{id}")]
-async fn destroy_session(
+pub async fn destroy_session(
     db: Data<Database>,
     item_id: Path<i32>,
     auth: Auth,
-) -> Result<HttpResponse> {
+) -> Result<HttpResponse, AWError> {
     let result = web::block(move || controller::destroy_session(&db, &auth, item_id.into_inner())).await?;
 
     match result {
@@ -74,12 +60,8 @@ async fn destroy_session(
 }
 
 /// Handler for DELETE requests at the /sessions endpoint
-///
-/// Requires authentication
-///
-/// Destroys all sessions belonging to the authenticated user
 #[delete("/sessions")]
-async fn destroy_sessions(db: Data<Database>, auth: Auth) -> Result<HttpResponse, AWError> {
+pub async fn destroy_sessions(db: Data<Database>, auth: Auth) -> Result<HttpResponse, AWError> {
     let result = web::block(move || controller::destroy_sessions(&db, &auth)).await?;
 
     match result {
@@ -96,10 +78,8 @@ async fn destroy_sessions(db: Data<Database>, auth: Auth) -> Result<HttpResponse
 }
 
 /// Handler for POST requests at the /login endpoint
-///
-/// Creates a user session for the user with the provided credentials
 #[post("/login")]
-async fn login(db: Data<Database>, Json(item): Json<LoginInput>) -> Result<HttpResponse, AWError> {
+pub async fn login(db: Data<Database>, Json(item): Json<LoginInput>) -> Result<HttpResponse, AWError> {
     let result = web::block(move || controller::login(&db, &item)).await?;
 
     match result {
@@ -125,10 +105,8 @@ async fn login(db: Data<Database>, Json(item): Json<LoginInput>) -> Result<HttpR
 }
 
 /// Handler for POST requests at the /logout endpoint
-///
-/// Invalidates the current user session identified by the refresh token
 #[post("/logout")]
-async fn logout(db: Data<Database>, req: HttpRequest) -> Result<HttpResponse, AWError> {
+pub async fn logout(db: Data<Database>, req: HttpRequest) -> Result<HttpResponse, AWError> {
     let refresh_token = req
         .cookie(COOKIE_NAME)
         .map(|cookie| String::from(cookie.value()));
@@ -155,10 +133,8 @@ async fn logout(db: Data<Database>, req: HttpRequest) -> Result<HttpResponse, AW
 }
 
 /// Handler for POST requests at the /refresh endpoint
-///
-/// Refreshes an existing session using the refresh token cookie
 #[post("/refresh")]
-async fn refresh(db: Data<Database>, req: HttpRequest) -> Result<HttpResponse, AWError> {
+pub async fn refresh(db: Data<Database>, req: HttpRequest) -> Result<HttpResponse, AWError> {
     let refresh_token = req
         .cookie(COOKIE_NAME)
         .map(|cookie| String::from(cookie.value()));
@@ -191,10 +167,8 @@ async fn refresh(db: Data<Database>, req: HttpRequest) -> Result<HttpResponse, A
 }
 
 /// Handler for POST requests at the /register endpoint
-///
-/// Registers a new user and sends an activation email
 #[post("/register")]
-async fn register(
+pub async fn register(
     db: Data<Database>,
     Json(item): Json<RegisterInput>,
     mailer: Data<Mailer>,
@@ -216,10 +190,8 @@ async fn register(
 }
 
 /// Handler for GET requests at the /activate endpoint
-///
-/// Activates a user account using the token from the activation email
 #[get("/activate")]
-async fn activate(
+pub async fn activate(
     db: Data<Database>,
     Query(item): Query<ActivationInput>,
     mailer: Data<Mailer>,
@@ -240,10 +212,8 @@ async fn activate(
 }
 
 /// Handler for POST requests at the /forgot endpoint
-///
-/// Initiates the password recovery process for a user by sending a recovery email
 #[post("/forgot")]
-async fn forgot_password(
+pub async fn forgot_password(
     db: Data<Database>,
     Json(item): Json<ForgotInput>,
     mailer: Data<Mailer>,
@@ -265,10 +235,8 @@ async fn forgot_password(
 }
 
 /// Handler for POST requests at the /change endpoint
-///
-/// Changes a user's password if they know their current password
 #[post("/change")]
-async fn change_password(
+pub async fn change_password(
     db: Data<Database>,
     Json(item): Json<ChangeInput>,
     auth: Auth,
@@ -291,19 +259,15 @@ async fn change_password(
 }
 
 /// Handler for POST requests at the /check endpoint
-///
-/// Validates that a user's authentication token is valid
 #[post("/check")]
-async fn check(auth: Auth) -> HttpResponse {
+pub async fn check(auth: Auth) -> HttpResponse {
     controller::check(&auth);
     HttpResponse::Ok().finish()
 }
 
 /// Handler for POST requests at the /reset endpoint
-///
-/// Resets a user's password using a token from the recovery email
 #[post("/reset")]
-async fn reset_password(
+pub async fn reset_password(
     db: Data<Database>,
     Json(item): Json<ResetInput>,
     mailer: Data<Mailer>,
@@ -349,6 +313,32 @@ pub fn configure_routes(config: &mut actix_web::web::ServiceConfig, _app_config:
             .service(forgot_password)
             .service(change_password)
             .service(reset_password)
+    );
+    
+    // Configure permission management routes
+    configure_permission_routes(config);
+}
+
+/// Configure routes for permission management
+fn configure_permission_routes(config: &mut actix_web::web::ServiceConfig) {
+    use crate::auth::controllers::permission_management;
+    use crate::auth::middleware::auth::JwtAuth;
+    use crate::auth::middleware::auth::RequirePermission;
+    
+    config.service(
+        web::scope("/permissions")
+            .wrap(JwtAuth)
+            .wrap(RequirePermission::new("admin"))
+            .route("/role", web::post().to(permission_management::grant_role_permission))
+            .route("/user", web::post().to(permission_management::grant_user_permission))
+            .route("/role/batch", web::post().to(permission_management::grant_role_permissions))
+            .route("/user/batch", web::post().to(permission_management::grant_user_permissions))
+            .route("/role/revoke", web::post().to(permission_management::revoke_role_permission))
+            .route("/user/revoke", web::post().to(permission_management::revoke_user_permission))
+            .route("/role/revoke/batch", web::post().to(permission_management::revoke_role_permissions))
+            .route("/user/revoke/batch", web::post().to(permission_management::revoke_user_permissions))
+            .route("/role/{role}/revoke/all", web::delete().to(permission_management::revoke_all_role_permissions))
+            .route("/user/{user_id}/revoke/all", web::delete().to(permission_management::revoke_all_user_permissions))
     );
 }
 

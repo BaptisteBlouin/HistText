@@ -1,4 +1,4 @@
-// Updated middleware/auth.rs without hardcoded permissions
+// backend/auth/middleware/auth.rs (Updated)
 
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
@@ -233,6 +233,7 @@ impl RequireAnyPermission {
     ///
     /// # Arguments
     /// * `permissions` - List of permission strings, any of which grants access
+    #[allow(dead_code)]
     pub fn new(permissions: Vec<&str>) -> Self {
         Self {
             required_permissions: permissions.iter().map(|p| p.to_string()).collect(),

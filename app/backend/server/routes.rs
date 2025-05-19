@@ -16,12 +16,8 @@ use crate::server::state::AppState;
 use crate::server::state::DbPool;
 use crate::services::database::Database;
 
-// Import auth routes
-use crate::auth::routes::{
-    sessions, destroy_session, destroy_sessions, login, logout, 
-    check, refresh, register, activate, forgot_password, 
-    change_password, reset_password
-};
+// Import auth routes module
+use crate::auth::routes;
 
 // Import route handlers
 use crate::histtext;
@@ -117,24 +113,13 @@ pub fn configure_routes(
         )],
     });
 
-    // Initialize API scope - Make auth routes part of api_scope directly
-    let auth_scope = web::scope("/auth")
-        .service(sessions)
-        .service(destroy_session)
-        .service(destroy_sessions)
-        .service(login)
-        .service(logout)
-        .service(check)
-        .service(refresh)
-        .service(register)
-        .service(activate)
-        .service(forgot_password)
-        .service(change_password)
-        .service(reset_password);
-
-    // Initialize API scope
-    let mut api_scope = web::scope("/api").service(auth_scope);
-
+    // Initialize API scope - Configure auth routes
+    let mut api_scope = web::scope("/api");
+    
+    // Configure auth routes
+    api_scope = api_scope.configure(|cfg| {
+        routes::configure_routes(cfg, &Config::global());
+    });
     // Configure all API endpoints by category
     api_scope = configure_solr_routes(api_scope);
     api_scope = configure_hist_text_routes(api_scope);
@@ -218,18 +203,6 @@ pub fn configure_routes(
 }
 
 // Rest of your route configuration functions...
-
-// Rest of your route configuration functions...
-/// Configure authentication routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with auth routes
-//fn configure_auth_routes(api_scope: Scope) -> Scope {
-//    api_scope.service(create_rust_app::auth::endpoints(web::scope("/auth")))
-//}
 
 /// Configure Solr query and metadata routes
 ///

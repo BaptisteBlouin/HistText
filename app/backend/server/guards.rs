@@ -2,8 +2,9 @@
 //!
 //! This module provides guard functions that can be used with Actix-Web
 //! to control access to routes based on JWT tokens and permissions.
+
 use crate::auth::Auth;
-use crate::auth::AccessTokenClaims; // Using your own implementation
+use crate::auth::AccessTokenClaims;
 use crate::auth::models::permission::Permission;
 use crate::config::Config;
 use actix_web::{guard::GuardContext, http::header, web::Data};
@@ -68,6 +69,7 @@ pub fn has_permission(ctx: &GuardContext) -> bool {
 ///
 /// # Returns
 /// `true` if a valid token with the required permission is present, `false` otherwise
+#[allow(dead_code)]
 pub fn has_specific_permission(ctx: &GuardContext, required_permission: &str) -> bool {
     // Get request headers
     let req_head = ctx.head();
@@ -136,6 +138,7 @@ pub fn has_specific_permission(ctx: &GuardContext, required_permission: &str) ->
 ///
 /// # Returns
 /// `true` if a valid token with any of the required permissions is present
+#[allow(dead_code)]
 pub fn has_any_permission(ctx: &GuardContext, required_permissions: &[&str]) -> bool {
     // Get request headers and config (same as above)
     let req_head = ctx.head();
@@ -200,6 +203,7 @@ pub fn has_any_permission(ctx: &GuardContext, required_permissions: &[&str]) -> 
 ///
 /// # Returns
 /// `true` if a valid token with the required role is present
+#[allow(dead_code)]
 pub fn has_role(ctx: &GuardContext, required_role: &str) -> bool {
     // Implementation follows the same pattern as above
     let req_head = ctx.head();

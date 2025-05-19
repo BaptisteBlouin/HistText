@@ -1,3 +1,5 @@
+// backend/auth/mod.rs (Updated)
+
 pub mod controllers;
 pub mod middleware;
 pub mod models;
@@ -7,6 +9,8 @@ pub mod mail;
 
 // Use this public export for the Auth struct
 pub use controllers::auth::Auth;
+pub use controllers::auth::AccessTokenClaims;
+#[allow(unused_imports)]
 pub use models::permission::Permission;
 
 // Common types and structures
@@ -17,16 +21,9 @@ pub type Utc = chrono::DateTime<chrono::Utc>;
 #[cfg(feature = "database_sqlite")]
 pub type Utc = chrono::NaiveDateTime;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AccessTokenClaims {
-    pub exp: usize,
-    pub sub: ID,
-    pub token_type: String,
-    pub roles: Vec<String>,
-    pub permissions: Vec<Permission>,
-}
+// No need to redefine AccessTokenClaims here as it's exported from controllers::auth
 
 #[derive(Deserialize)]
 pub struct PaginationParams {
@@ -42,6 +39,7 @@ impl PaginationParams {
 #[derive(Clone)]
 pub struct AuthConfig {
     pub jwt_secret: String,
+    #[allow(dead_code)]
     pub app_url: String,
 }
 
