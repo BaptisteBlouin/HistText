@@ -15,6 +15,7 @@ mod schema;
 mod server;
 mod services;
 mod auth;
+mod app_data;
 
 /// Core text processing modules
 mod histtext {

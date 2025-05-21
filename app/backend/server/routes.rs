@@ -6,7 +6,7 @@
 
 use actix_web::web::Data;
 use actix_web::{guard, web, web::ServiceConfig, HttpResponse, Scope};
-use create_rust_app::AppConfig;
+use crate::app_data::{AppData, AppConfig};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::{SwaggerUi, Url};
 
@@ -95,7 +95,7 @@ pub fn configure_routes(
     app_state: Data<AppState>,
     db: Data<Database>,
     db_pool: Data<DbPool>,
-    app_data: Data<create_rust_app::AppData>,
+    app_data: Data<crate::app_data::AppData>,
     schema: Data<async_graphql::Schema<crate::graphql::QueryRoot, crate::graphql::MutationRoot, crate::graphql::SubscriptionRoot>>,
 ) {
     // Create app config data
@@ -104,14 +104,14 @@ pub fn configure_routes(
     });
 
     // Create authentication config
-    let auth_config = Data::new(create_rust_app::auth::AuthConfig {
-        oidc_providers: vec![create_rust_app::auth::oidc::OIDCProvider::GOOGLE(
-            app_state.config.google_oauth2_client_id.clone(),
-            app_state.config.google_oauth2_client_secret.clone(),
-            format!("{}/oauth/success", app_state.config.app_url),
-            format!("{}/oauth/error", app_state.config.app_url),
-        )],
-    });
+    //let auth_config = Data::new(crate::auth::AuthConfig {
+    //    oidc_providers: vec![create_rust_app::auth::oidc::OIDCProvider::GOOGLE(
+    //        app_state.config.google_oauth2_client_id.clone(),
+    //        app_state.config.google_oauth2_client_secret.clone(),
+    //        format!("{}/oauth/success", app_state.config.app_url),
+    //        format!("{}/oauth/error", app_state.config.app_url),
+    //    )],
+    //});
 
     // Initialize API scope - Configure auth routes
     let mut api_scope = web::scope("/api");
@@ -198,7 +198,6 @@ pub fn configure_routes(
         .app_data(schema)
         .app_data(app_state)
         .app_data(app_config_data)
-        .app_data(auth_config)
         .app_data(mailer);
 }
 

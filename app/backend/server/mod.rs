@@ -46,7 +46,7 @@ pub async fn run_server() -> std::io::Result<()> {
         web::{self, Data},
         App, HttpServer,
     };
-    use create_rust_app::AppConfig;
+    use crate::app_data::{AppData, AppConfig};
     use std::sync::Arc;
     use tokio::signal;
     use tokio::signal::unix::{signal, SignalKind};
@@ -62,10 +62,10 @@ pub async fn run_server() -> std::io::Result<()> {
 
     // Set up development environment in debug mode
     #[cfg(debug_assertions)]
-    create_rust_app::setup_development().await;
+    dotenv::dotenv().ok();
 
     // Set up application data
-    let app_data = create_rust_app::setup();
+    let app_data = AppData::new(config.clone());
 
     // Set up GraphQL schema
     let schema = async_graphql::Schema::build(
@@ -75,7 +75,7 @@ pub async fn run_server() -> std::io::Result<()> {
     )
     .data(app_data.database.clone())
     .data(app_data.mailer.clone())
-    .data(app_data.storage.clone())
+    //.data(app_data.storage.clone())
     .data(config.clone())
     .finish();
 
@@ -128,6 +128,12 @@ pub async fn run_server() -> std::io::Result<()> {
 
     // Set up Actix web server
     let server = HttpServer::new(move || {
+        // Create the app_data instance once
+        let shared_app_data = web::Data::new(app_data.clone());
+        let shared_db = web::Data::new(db.clone());
+        let shared_db_pool = web::Data::new(db_pool.clone());
+        let shared_schema = web::Data::new(schema.clone());
+        
         let app = App::new()
             // Configure middleware
             .wrap(Compress::default())
@@ -140,24 +146,20 @@ pub async fn run_server() -> std::io::Result<()> {
                 config.max_document_size_mb * 1024 * 1024,
             ))
             
-            // Add application data
-            .app_data(Data::new(db.clone()))
-            .app_data(Data::new(db_pool.clone()))
-            .app_data(Data::new(app_data.clone()))
-            .app_data(Data::new(app_data.database.clone()))
-            .app_data(Data::new(app_data.mailer.clone()))
-            .app_data(Data::new(schema.clone()))
-            .app_data(Data::new(app_data.storage.clone()))
-            .app_data(Data::new(Arc::clone(&config)))
+            // Add application data - use app_data with web::Data for Actix Web 4.x
+            .app_data(shared_app_data.clone())
+            .app_data(web::Data::new(app_data.database.clone()))
+            .app_data(web::Data::new(app_data.mailer.clone()))
+            .app_data(shared_schema.clone())
+            .app_data(web::Data::new(Arc::clone(&config)))
             .app_data(app_state_data.clone())
             .app_data(mailer_data.clone())
             
             // Configure app settings
-            .app_data(Data::new(AppConfig {
+            .app_data(web::Data::new(AppConfig {
                 app_url: config.app_url.clone(),
             }))
-            // Add your custom auth config instead of create_rust_app auth
-            .app_data(Data::new(auth_config.clone()));
+            .app_data(web::Data::new(auth_config.clone()));
 
         // Configure routes
         app.configure(|cfg| {
@@ -165,14 +167,13 @@ pub async fn run_server() -> std::io::Result<()> {
             routes::configure_routes(
                 cfg,
                 app_state_data.clone(),
-                Data::new(db.clone()),
-                Data::new(db_pool.clone()),
-                Data::new(app_data.clone()),
-                Data::new(schema.clone()),
+                shared_db.clone(),
+                shared_db_pool.clone(),
+                shared_app_data.clone(),  // Use the shared_app_data here
+                shared_schema.clone(),
             );
             
             // Configure your auth routes directly
-            // This replaces the create_rust_app auth configuration
             crate::auth::routes::configure_routes(cfg, &config);
         })
     })

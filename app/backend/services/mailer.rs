@@ -5,6 +5,7 @@ use lettre::transport::stub::StubTransport;
 use lettre::{SmtpTransport, Transport};
 use log::{error, info};
 
+#[derive(Clone)]
 pub struct Mailer {
     pub from_email: String,
     pub smtp_server: String,
