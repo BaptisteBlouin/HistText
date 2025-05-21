@@ -44,6 +44,8 @@ use actix_web_httpauth::{
     middleware::HttpAuthentication,
 };
 
+use crate::template::render_views;
+
 /// Validates basic authentication credentials for OpenAPI documentation access
 ///
 /// # Arguments
@@ -185,7 +187,7 @@ pub fn configure_routes(
     config.service(api_scope);
 
     // Default route for frontend
-    config.service(web::resource("/{_:.*}").route(web::get().to(create_rust_app::render_views)));
+    config.service(web::resource("/{_:.*}").route(web::get().to(render_views)));
 
     let config_global = Config::global();
     let mailer = Data::new(Mailer::from_config(&config_global));

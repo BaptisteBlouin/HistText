@@ -16,6 +16,8 @@ mod server;
 mod services;
 mod auth;
 mod app_data;
+mod template;
+mod dev;
 
 /// Core text processing modules
 mod histtext {

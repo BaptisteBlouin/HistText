@@ -100,6 +100,7 @@ validator_derive = "0.20.0"
 actix-web-httpauth = "0.8.2"
 derive_more = "2.0.1"
 lettre = "0.11.16"
+tera = "1.20.0"
 
 [dependencies.chrono]
 features = ["serde"]
