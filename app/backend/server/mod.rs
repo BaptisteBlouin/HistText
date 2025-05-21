@@ -16,6 +16,8 @@ pub mod routes;
 pub mod ssh;
 pub mod startup;
 pub mod state;
+pub mod utils;
+pub mod connection;
 
 /// Runs the HTTP server with all necessary components initialized.
 ///

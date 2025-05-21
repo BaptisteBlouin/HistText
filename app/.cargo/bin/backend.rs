@@ -1,3 +1,4 @@
+// Create a new file .cargo/bin/backend.rs
 use std::{path::PathBuf, process::Command};
 
 pub fn main() {

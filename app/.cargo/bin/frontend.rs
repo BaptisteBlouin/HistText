@@ -1,4 +1,5 @@
-use std::{path::PathBuf, process::Command};
+// Update .cargo/bin/frontend.rs
+use std::{net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6, TcpListener, ToSocketAddrs}, path::PathBuf, process::Command};
 
 #[cfg(windows)]
 pub const NPM: &'static str = "npm.cmd";
@@ -6,8 +7,22 @@ pub const NPM: &'static str = "npm.cmd";
 #[cfg(not(windows))]
 pub const NPM: &str = "npm";
 
+// Copy the port checking functionality directly into this file
+fn test_bind<A: ToSocketAddrs>(addr: A) -> bool {
+    TcpListener::bind(addr)
+        .map(|t| t.local_addr().is_ok())
+        .unwrap_or(false)
+}
+
+pub fn is_port_free(port: u16) -> bool {
+    let ipv4 = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port);
+    let ipv6 = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, port, 0, 0);
+
+    test_bind(ipv6) && test_bind(ipv4)
+}
+
 pub fn main() {
-    if !create_rust_app::net::is_port_free(21012) {
+    if !is_port_free(21012) {
         println!("========================================================");
         println!(" ViteJS (the frontend compiler/bundler) needs to run on");
         println!(" port 21012 but it seems to be in use.");

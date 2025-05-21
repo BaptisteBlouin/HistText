@@ -8,7 +8,6 @@ extern crate diesel;
 
 mod config;
 mod graphql;
-mod mail;
 mod models;
 mod openapi;
 mod schema;

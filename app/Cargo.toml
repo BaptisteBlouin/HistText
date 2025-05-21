@@ -101,15 +101,11 @@ actix-web-httpauth = "0.8.2"
 derive_more = "2.0.1"
 lettre = "0.11.16"
 tera = "1.20.0"
+ctrlc = "3.4.7"
 
 [dependencies.chrono]
 features = ["serde"]
 version = "0.4.19"
-
-[dependencies.create-rust-app]
-default-features = false
-features = ["plugin_auth", "plugin_auth-oidc", "plugin_container", "plugin_storage", "plugin_tasks", "plugin_graphql", "plugin_utoipa", "plugin_dev", "database_postgres", "backend_actix-web"]
-version = "11.0.0"
 
 [dependencies.diesel]
 default-features = false
@@ -142,7 +138,6 @@ proptest = "1.2.0"
 mockall = "0.11.3"
 
 [patch.crates-io]
-create-rust-app = { path = "create-rust-app/create-rust-app" }
 diesel_logger = { path = "diesel_logger-0.3.0" }
 
 [profile.dev]

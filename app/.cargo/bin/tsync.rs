@@ -1,3 +1,4 @@
+// Create a new file .cargo/bin/tsync.rs
 use std::path::PathBuf;
 
 pub fn main() {
