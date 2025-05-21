@@ -56,12 +56,12 @@ impl Mailer {
                     .singlepart(
                         SinglePart::builder()
                             .header(header::ContentType::TEXT_PLAIN)
-                            .body(text_body.to_string())
+                            .body(text_body.to_string()),
                     )
                     .singlepart(
                         SinglePart::builder()
                             .header(header::ContentType::TEXT_HTML)
-                            .body(html_body.to_string())
+                            .body(html_body.to_string()),
                     ),
             ) {
             Ok(email) => email,
@@ -96,7 +96,10 @@ impl Mailer {
         } else {
             let mailer = StubTransport::new_ok();
             let result = mailer.send(&email);
-            info!("Email not actually sent (actually_send=false); stub result: {:?}", result);
+            info!(
+                "Email not actually sent (actually_send=false); stub result: {:?}",
+                result
+            );
         }
     }
 

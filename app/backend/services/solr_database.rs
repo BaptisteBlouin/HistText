@@ -1,5 +1,5 @@
 //! Solr database configuration management.
-//! 
+//!
 //! This module provides functionality to manage Solr instance configurations,
 //! including connection details (URLs, ports), SSH tunneling parameters,
 //! and metadata. It handles creating, reading, updating, and deleting
@@ -25,27 +25,27 @@ pub struct SolrDatabase {
     /// Unique identifier
     #[schema(example = 1)]
     pub id: i32,
-    
+
     /// Human-readable name for this Solr instance
     #[schema(example = "primary-solr")]
     pub name: String,
-    
+
     /// SSH connection URL or hostname
     #[schema(example = "http://localhost:8983/solr")]
     pub url: String,
-    
+
     /// Remote port where Solr is running
     #[schema(example = 8983)]
     pub server_port: i32,
-    
+
     /// Local port to map the SSH tunnel
     #[schema(example = 7574)]
     pub local_port: i32,
-    
+
     /// When this configuration was created
     #[schema(example = "2025-01-15T12:34:56")]
     pub created_at: chrono::NaiveDateTime,
-    
+
     /// When this configuration was last updated
     #[schema(example = "2025-02-20T08:22:10")]
     pub updated_at: chrono::NaiveDateTime,
@@ -58,15 +58,15 @@ pub struct NewSolrDatabase {
     /// Human-readable name for this Solr instance
     #[schema(example = "primary-solr")]
     pub name: String,
-    
+
     /// SSH connection URL or hostname
     #[schema(example = "http://localhost:8983/solr")]
     pub url: String,
-    
+
     /// Remote port where Solr is running
     #[schema(example = 8983)]
     pub server_port: i32,
-    
+
     /// Local port to map the SSH tunnel
     #[schema(example = 7574)]
     pub local_port: i32,
@@ -81,15 +81,15 @@ pub struct UpdateSolrDatabase {
     /// Updated name
     #[schema(example = "primary-solr-renamed")]
     pub name: Option<String>,
-    
+
     /// Updated URL
     #[schema(example = "http://localhost:7574/solr")]
     pub url: Option<String>,
-    
+
     /// Updated server port
     #[schema(example = 7574)]
     pub server_port: Option<i32>,
-    
+
     /// Updated local port
     #[schema(example = 8983)]
     pub local_port: Option<i32>,

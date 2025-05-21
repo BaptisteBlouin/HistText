@@ -1,5 +1,5 @@
 //! This module provides functionality for retrieving and processing Solr collection metadata.
-//! 
+//!
 //! Features:
 //! - Collection aliases retrieval with JWT-based permission checks
 //! - Field metadata with faceting for possible values
@@ -21,9 +21,9 @@ use utoipa::{IntoParams, ToSchema};
 use crate::config::Config;
 use crate::models::solr_database_permissions::SolrDatabasePermission;
 
+use crate::auth::AccessTokenClaims;
 use crate::schema::solr_database_permissions::dsl::*;
 use crate::schema::solr_databases::dsl::*;
-use crate::auth::AccessTokenClaims; 
 
 use lazy_static::lazy_static;
 
@@ -519,7 +519,7 @@ pub async fn fetch_metadata(
                         |(mut relevant, mut text_general), field| {
                             if let Some(request_name) = field["name"].as_str() {
                                 let lower_name = request_name.to_lowercase();
-                                
+
                                 // Check if this is a field we should process
                                 if !request_name.starts_with(exclude_request_name_starts_with)
                                     && !request_name.ends_with(exclude_request_name_ends_with)
@@ -535,7 +535,7 @@ pub async fn fetch_metadata(
                                         }
                                     }
                                 }
-                                
+
                                 // Check if this is an ID field
                                 if lower_name.starts_with(id_starts_with)
                                     || lower_name.ends_with(id_ends_with)

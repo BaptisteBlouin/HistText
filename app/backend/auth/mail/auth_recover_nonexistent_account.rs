@@ -28,4 +28,3 @@ If this was intentional, you can register for a new account using the link below
 
     mailer.send(to_email, subject, &text, &html);
 }
-

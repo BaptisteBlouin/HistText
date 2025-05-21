@@ -1,5 +1,5 @@
 //! Database connection pool management.
-//! 
+//!
 //! This module provides a singleton database connection pool implementation
 //! using Diesel's R2D2 connection pool with PostgreSQL. It includes:
 //! - Thread-safe initialization via OnceCell
@@ -35,7 +35,7 @@ pub type Connection = LoggingConnection<PooledConnection<ConnectionManager<DbCon
 pub struct Database {
     /// Reference to the global connection pool
     pub pool: &'static Pool,
-    
+
     /// Optional reference to application configuration
     #[allow(dead_code)]
     config: Option<Arc<Config>>,

@@ -3,11 +3,11 @@
 use diesel::QueryResult;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::user_permissions;
-use diesel::prelude::*;
-use diesel::insert_into;
 use crate::auth::{Utc, ID};
+use crate::schema::user_permissions;
 use crate::services::database::Connection;
+use diesel::insert_into;
+use diesel::prelude::*;
 
 #[derive(
     Debug, Serialize, Deserialize, Clone, Queryable, Insertable, Associations, AsChangeset,

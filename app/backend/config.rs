@@ -1,5 +1,5 @@
 //! Application configuration management.
-//! 
+//!
 //! This module provides centralized configuration loading and validation,
 //! converting environment variables into a strongly-typed `Config` struct.
 //! It ensures consistent settings across the application and eliminates
@@ -8,7 +8,7 @@
 // Updated config.rs with mail settings
 
 //! Application configuration management.
-//! 
+//!
 //! This module provides centralized configuration loading and validation,
 //! converting environment variables into a strongly-typed `Config` struct.
 //! It ensures consistent settings across the application and eliminates
@@ -36,89 +36,89 @@ pub struct Config {
     /// Database connection string
     #[allow(dead_code)]
     pub database_url: String,
-    
+
     /// Secret key for token signing and password hashing
     pub secret_key: String,
 
     // Solr connection settings
     /// Default path to word embedding files
     pub embed_path: String,
-    
+
     /// Port for the named entity recognition Solr service
     pub solr_ner_port: u16,
 
     // Size limits
     /// Maximum number of documents to return in queries
     pub max_size_query: u32,
-    
+
     /// Maximum document size in bytes
     pub max_size_document: usize,
-    
+
     /// Maximum number of document IDs to process for NER
     pub max_id_ner: usize,
 
     // JSON payload and request size limits (in MB)
     /// Maximum size for query JSON payloads in megabytes
     pub max_query_size_mb: usize,
-    
+
     /// Maximum size for document uploads in megabytes
     pub max_document_size_mb: usize,
 
     // Cache paths
     /// File path for statistics cache
     pub stats_cache_path: String,
-    
+
     /// File path for NER cache
     pub ner_cache_path: String,
-    
+
     /// Directory path for storing temporary files
     pub path_store_files: String,
 
     // Metadata and field configuration
     /// Maximum number of values to display in metadata selection
     pub max_metadata_select: usize,
-    
+
     /// List of field types to exclude from display
     pub exclude_field_types: Vec<String>,
-    
+
     /// List of field names to exclude from display
     pub exclude_field_names: Vec<String>,
-    
+
     /// List of field name patterns to exclude from display
     pub exclude_field_name_patterns: Vec<String>,
-    
+
     /// Prefix to exclude for request names
     pub exclude_request_name_starts_with: String,
-    
+
     /// Suffix to exclude for request names
     pub exclude_request_name_ends_with: String,
-    
+
     /// Prefix for ID fields
     pub id_starts_with: String,
-    
+
     /// Suffix for ID fields
     pub id_ends_with: String,
-    
+
     /// Field name for main date value
     pub main_date_value: String,
 
     // OAuth settings
     /// Base URL for the application
     pub app_url: String,
-    
-    /// Google OAuth client ID
-    pub google_oauth2_client_id: String,
-    
-    /// Google OAuth client secret
-    pub google_oauth2_client_secret: String,
+
+    // /// Google OAuth client ID
+    // pub google_oauth2_client_id: String,
+
+    // /// Google OAuth client secret
+    // pub google_oauth2_client_secret: String,
 
     // OpenAPI settings
     /// Whether to enable OpenAPI documentation
     pub do_openapi: bool,
-    
+
     /// Username for OpenAPI basic auth
     pub openapi_login: String,
-    
+
     /// Password for OpenAPI basic auth
     pub openapi_pwd: String,
 
@@ -129,16 +129,16 @@ pub struct Config {
     // Email settings (SMTP)
     /// SMTP server address
     pub smtp_server: String,
-    
+
     /// SMTP username
     pub smtp_username: String,
-    
+
     /// SMTP password
     pub smtp_password: String,
-    
+
     /// Email address to use as sender
     pub smtp_from_address: String,
-    
+
     /// Whether to actually send emails or just log them
     pub send_mail: bool,
 }
@@ -148,7 +148,7 @@ pub struct Config {
 pub enum ConfigError {
     /// Required environment variable is missing
     MissingKey(&'static str),
-    
+
     /// Failed to parse environment variable value
     ParseError(&'static str, String),
 }
@@ -277,8 +277,8 @@ impl Config {
 
             // OAuth settings
             app_url: get("APP_URL")?,
-            google_oauth2_client_id: get("GOOGLE_OAUTH2_CLIENT_ID")?,
-            google_oauth2_client_secret: get("GOOGLE_OAUTH2_CLIENT_SECRET")?,
+            //google_oauth2_client_id: get("GOOGLE_OAUTH2_CLIENT_ID")?,
+            //google_oauth2_client_secret: get("GOOGLE_OAUTH2_CLIENT_SECRET")?,
 
             // OpenApi settings
             do_openapi: parse::<bool>("DO_OPENAPI")?,
@@ -287,7 +287,7 @@ impl Config {
 
             // Embeddings cache settings - with a default of 3 if not specified
             max_embeddings_files: parse_with_default::<usize>("MAX_EMBEDDINGS_FILES", 3),
-            
+
             // Email settings
             smtp_server: get_with_default("SMTP_SERVER", "localhost"),
             smtp_username: get_with_default("SMTP_USERNAME", ""),

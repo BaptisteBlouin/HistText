@@ -10,10 +10,10 @@ use futures::future::{ready, LocalBoxFuture, Ready};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use std::sync::Arc;
 
-use crate::auth::{Auth, AccessTokenClaims, AuthConfig}; 
 use crate::auth::models::permission::Permission;
-use std::collections::HashSet;
+use crate::auth::{AccessTokenClaims, Auth, AuthConfig};
 use crate::config::Config;
+use std::collections::HashSet;
 
 /// JwtAuth middleware for Actix Web
 ///
@@ -88,18 +88,10 @@ where
                         Ok(token_data) => {
                             // Build Auth struct from token claims
                             let user_id = token_data.claims.sub;
-                            let permissions: HashSet<Permission> = token_data
-                                .claims
-                                .permissions
-                                .iter()
-                                .cloned()
-                                .collect();
-                            let roles: HashSet<String> = token_data
-                                .claims
-                                .roles
-                                .iter()
-                                .cloned()
-                                .collect();
+                            let permissions: HashSet<Permission> =
+                                token_data.claims.permissions.iter().cloned().collect();
+                            let roles: HashSet<String> =
+                                token_data.claims.roles.iter().cloned().collect();
 
                             let auth = Auth {
                                 user_id,
@@ -114,13 +106,19 @@ where
                         Err(_) => Err(actix_web::error::ErrorUnauthorized("Invalid token")),
                     }
                 } else {
-                    Err(actix_web::error::ErrorUnauthorized("Invalid Authorization header format"))
+                    Err(actix_web::error::ErrorUnauthorized(
+                        "Invalid Authorization header format",
+                    ))
                 }
             } else {
-                Err(actix_web::error::ErrorUnauthorized("Invalid Authorization header"))
+                Err(actix_web::error::ErrorUnauthorized(
+                    "Invalid Authorization header",
+                ))
             }
         } else {
-            Err(actix_web::error::ErrorUnauthorized("Authorization required"))
+            Err(actix_web::error::ErrorUnauthorized(
+                "Authorization required",
+            ))
         };
 
         // Continue with service call or return error
@@ -213,7 +211,7 @@ where
                 Ok(res)
             } else {
                 Err(actix_web::error::ErrorForbidden(format!(
-                    "Permission denied: {} required", 
+                    "Permission denied: {} required",
                     required_permission
                 )))
             }
@@ -298,7 +296,7 @@ where
                 Ok(res)
             } else {
                 Err(actix_web::error::ErrorForbidden(format!(
-                    "Permission denied: one of {:?} required", 
+                    "Permission denied: one of {:?} required",
                     required_permissions
                 )))
             }
@@ -382,7 +380,7 @@ where
                 Ok(res)
             } else {
                 Err(actix_web::error::ErrorForbidden(format!(
-                    "Role '{}' required", 
+                    "Role '{}' required",
                     required_role
                 )))
             }

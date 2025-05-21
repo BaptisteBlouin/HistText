@@ -1,5 +1,5 @@
 //! User role assignment management.
-//! 
+//!
 //! This module provides functionality to manage role assignments for users
 //! in the system. Roles serve as collections of permissions that can be
 //! assigned to users, allowing for easier permission management through
@@ -25,11 +25,11 @@ pub struct UserRole {
     /// ID of the user receiving the role
     #[schema(example = 1)]
     pub user_id: i32,
-    
+
     /// Role being assigned
     #[schema(example = "admin")]
     pub role: String,
-    
+
     /// When this role was assigned
     pub created_at: chrono::NaiveDateTime,
 }
@@ -41,7 +41,7 @@ pub struct NewUserRole {
     /// ID of the user to assign the role to
     #[schema(example = 1)]
     pub user_id: i32,
-    
+
     /// Role to assign
     #[schema(example = "admin")]
     pub role: String,

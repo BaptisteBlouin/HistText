@@ -1,5 +1,5 @@
 //! Common CRUD operation helpers and error handling utilities.
-//! 
+//!
 //! This module provides reusable functions and error types to handle
 //! Create, Read, Update, and Delete operations consistently across
 //! the application, reducing code duplication and standardizing error responses.

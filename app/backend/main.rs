@@ -6,6 +6,8 @@
 
 extern crate diesel;
 
+mod app_data;
+mod auth;
 mod config;
 mod graphql;
 mod models;
@@ -13,28 +15,25 @@ mod openapi;
 mod schema;
 mod server;
 mod services;
-mod auth;
-mod app_data;
 mod template;
-mod dev;
 
 /// Core text processing modules
 mod histtext {
     /// Document retrieval and transformation
     pub mod documents;
-    
+
     /// Word embedding and semantic similarity
     pub mod embeddings;
-    
+
     /// Collection metadata and schema information
     pub mod metadata;
-    
+
     /// Named Entity Recognition processing
     pub mod ner;
-    
+
     /// Statistical analysis of document collections
     pub mod stats;
-    
+
     /// Text tokenization and processing
     pub mod tokenizer;
 }

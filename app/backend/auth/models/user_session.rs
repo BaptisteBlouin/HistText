@@ -1,10 +1,10 @@
 // Modified user_session.rs with correct imports
 
-use crate::schema::user_sessions;
 use crate::diesel::{
     insert_into, AsChangeset, Associations, ExpressionMethods, Identifiable, Insertable, QueryDsl,
     Queryable, RunQueryDsl,
 };
+use crate::schema::user_sessions;
 
 use crate::auth::models::user::User;
 use crate::auth::{PaginationParams, Utc, ID};

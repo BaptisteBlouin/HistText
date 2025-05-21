@@ -1,12 +1,12 @@
 //! Administrative user initialization utility.
-//! 
+//!
 //! This module provides functionality to bootstrap the application with
 //! an administrative user account. It ensures that:
-//! 
+//!
 //! - An admin user exists with secure password hashing
 //! - The admin user has the "Admin" role
 //! - The "Admin" role has the "admin" permission
-//! 
+//!
 //! It's typically run once during initial setup or deployment.
 
 use argon2::{self};
@@ -42,14 +42,14 @@ lazy_static! {
 pub fn generate_salt() -> [u8; 16] {
     use rand::Fill;
     let mut salt = [0; 16];
-    salt.try_fill(&mut rand::thread_rng()).unwrap();
+    salt.fill(&mut rand::rng());
     salt
 }
 
 /// Program entry point
 ///
 /// This function performs the admin initialization process:
-/// 
+///
 /// 1. Loads environment variables from .env file
 /// 2. Connects to the PostgreSQL database
 /// 3. Creates admin user if it doesn't exist
@@ -83,7 +83,7 @@ async fn main() -> Result<(), sqlx::Error> {
     } else {
         // Generate salt and hash password
         let mut salt = [0u8; 16];
-        rand::thread_rng().fill(&mut salt);
+        rand::rng().fill(&mut salt);
 
         let password = "admin";
         let hashed_password = argon2::hash_encoded(password.as_bytes(), &salt, &ARGON_CONFIG)

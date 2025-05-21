@@ -1,13 +1,15 @@
 // Modified user.rs with correct imports
 
-use crate::schema::users;
 use crate::auth::{PaginationParams, Utc, ID};
+use crate::schema::users;
 use crate::services::database::Connection;
-use diesel::QueryResult;
 use diesel::prelude::*;
+use diesel::QueryResult;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Queryable, Insertable, Identifiable, AsChangeset)]
+#[derive(
+    Debug, Serialize, Deserialize, Clone, Queryable, Insertable, Identifiable, AsChangeset,
+)]
 #[diesel(table_name=users)]
 pub struct User {
     pub id: ID,
@@ -35,7 +37,9 @@ impl User {
     pub fn create(db: &mut Connection, item: &UserChangeset) -> QueryResult<Self> {
         use crate::schema::users::dsl::users;
 
-        diesel::insert_into(users).values(item).get_result::<Self>(db)
+        diesel::insert_into(users)
+            .values(item)
+            .get_result::<Self>(db)
     }
 
     pub fn read(db: &mut Connection, item_id: ID) -> QueryResult<Self> {

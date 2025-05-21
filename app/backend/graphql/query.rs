@@ -1,5 +1,5 @@
-use async_graphql::{Context, Object};
 use crate::auth::Auth;
+use async_graphql::{Context, Object};
 
 pub struct QueryRoot;
 

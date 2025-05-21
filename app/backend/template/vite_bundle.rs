@@ -1,8 +1,8 @@
 // backend/template/vite_bundle.rs
+use lazy_static::lazy_static;
+use serde_json::Value;
 use std::collections::HashMap;
 use tera::Result as TeraResult;
-use serde_json::Value;
-use lazy_static::lazy_static;
 
 lazy_static! {
     static ref VITE_MANIFEST: ViteManifest = ViteManifest::new();
@@ -13,6 +13,7 @@ struct ViteManifest {
     entries: HashMap<String, ViteManifestEntry>,
 }
 
+#[allow(dead_code)]
 struct ViteManifestEntry {
     file: String,
     dynamic_imports: Vec<String>,
@@ -25,7 +26,7 @@ impl ViteManifest {
             entries: load_manifest_entries(),
         }
     }
-
+    #[allow(dead_code)]
     fn get_entry(&self, name: &str) -> Option<&ViteManifestEntry> {
         self.entries.get(name)
     }
@@ -34,16 +35,16 @@ impl ViteManifest {
 // Process bundle arguments - this is the only public API
 pub fn process_bundle_args(args: &HashMap<String, Value>) -> TeraResult<Value> {
     match args.get("name") {
-        Some(val) => {
-            match tera::from_value::<String>(val.clone()) {
-                Ok(bundle_name) => {
-                    let inject_html = create_inject(&bundle_name);
-                    Ok(tera::to_value(inject_html).unwrap())
-                },
-                Err(_) => Err(tera::Error::msg(format!("Invalid bundle name: {:?}", val)))
+        Some(val) => match tera::from_value::<String>(val.clone()) {
+            Ok(bundle_name) => {
+                let inject_html = create_inject(&bundle_name);
+                Ok(tera::to_value(inject_html).unwrap())
             }
+            Err(_) => Err(tera::Error::msg(format!("Invalid bundle name: {:?}", val))),
         },
-        None => Err(tera::Error::msg("Missing 'name' parameter for bundle function"))
+        None => Err(tera::Error::msg(
+            "Missing 'name' parameter for bundle function",
+        )),
     }
 }
 
@@ -51,27 +52,35 @@ pub fn process_bundle_args(args: &HashMap<String, Value>) -> TeraResult<Value> {
 fn create_inject(bundle_name: &str) -> String {
     let key = format!("bundles/{}", bundle_name);
     println!("Creating bundle injection for: {}", key);
-    
+
     #[cfg(not(debug_assertions))]
     {
         println!("Production mode bundle injection");
         let entry = VITE_MANIFEST.get_entry(&key).unwrap_or_else(|| {
-            println!("Warning: Could not find bundle '{}' in manifest", bundle_name);
+            println!(
+                "Warning: Could not find bundle '{}' in manifest",
+                bundle_name
+            );
             // Return an empty entry reference - this is safe as we handle it below
             VITE_MANIFEST.get_entry("__empty__").unwrap_or_else(|| {
-                println!("Error: Failed to load Vite manifest for bundle: {}", bundle_name);
+                println!(
+                    "Error: Failed to load Vite manifest for bundle: {}",
+                    bundle_name
+                );
                 panic!("Failed to load Vite manifest for bundle: {}", bundle_name)
             })
         });
-        
+
         println!("Using entry file: {}", entry.file);
         let entry_file = format!(
             r#"<script type="module" src="/{file}"></script>"#,
             file = entry.file
         );
-        
+
         println!("CSS files count: {}", entry.css.len());
-        let css_files = entry.css.iter()
+        let css_files = entry
+            .css
+            .iter()
             .map(|css_file| {
                 println!("  - CSS file: {}", css_file);
                 format!(
@@ -81,9 +90,11 @@ fn create_inject(bundle_name: &str) -> String {
             })
             .collect::<Vec<String>>()
             .join("\n");
-        
+
         println!("Dynamic imports count: {}", entry.dynamic_imports.len());
-        let dyn_entry_files = entry.dynamic_imports.iter()
+        let dyn_entry_files = entry
+            .dynamic_imports
+            .iter()
             .map(|dyn_script_file| {
                 println!("  - Dynamic import: {}", dyn_script_file);
                 format!(
@@ -102,7 +113,7 @@ fn create_inject(bundle_name: &str) -> String {
     {dyn_entry_files}
     "#
         );
-        
+
         println!("Production bundle injection created");
         result
     }
@@ -137,27 +148,29 @@ fn create_inject(bundle_name: &str) -> String {
     }
 }
 
-// Updated load_manifest_entries in vite_bundle.rs with better error handling and logging
 fn load_manifest_entries() -> HashMap<String, ViteManifestEntry> {
     println!("Loading Vite manifest entries");
     let mut entries = HashMap::new();
-    
+
     // Insert an empty entry for fallback
-    entries.insert("__empty__".to_string(), ViteManifestEntry {
-        file: "main.js".to_string(),
-        dynamic_imports: Vec::new(),
-        css: Vec::new(),
-    });
+    entries.insert(
+        "__empty__".to_string(),
+        ViteManifestEntry {
+            file: "main.js".to_string(),
+            dynamic_imports: Vec::new(),
+            css: Vec::new(),
+        },
+    );
     println!("Added __empty__ fallback entry");
 
     #[cfg(not(debug_assertions))]
     let manifest_path = "frontend/dist/manifest.json";
-    
+
     #[cfg(debug_assertions)]
     let manifest_path = "frontend/dist/manifest.json";
-    
+
     println!("Looking for manifest at: {}", manifest_path);
-    
+
     // Try to read the manifest file
     match std::fs::read_to_string(manifest_path) {
         Ok(manifest_content) => {
@@ -170,16 +183,18 @@ fn load_manifest_entries() -> HashMap<String, ViteManifestEntry> {
                         for (key, value) in map {
                             if let Value::Object(entry_data) = value {
                                 println!("Processing entry: {}", key);
-                                
+
                                 // Parse file
-                                let file = entry_data.get("file")
+                                let file = entry_data
+                                    .get("file")
                                     .and_then(|v| v.as_str())
                                     .unwrap_or("main.js")
                                     .to_string();
                                 println!("  - File: {}", file);
-                                
+
                                 // Parse dynamic imports
-                                let dynamic_imports = entry_data.get("dynamicImports")
+                                let dynamic_imports = entry_data
+                                    .get("dynamicImports")
                                     .and_then(|v| v.as_array())
                                     .map(|arr| {
                                         println!("  - Dynamic imports count: {}", arr.len());
@@ -197,9 +212,10 @@ fn load_manifest_entries() -> HashMap<String, ViteManifestEntry> {
                                         println!("  - No dynamic imports found");
                                         Vec::new()
                                     });
-                                
+
                                 // Parse CSS
-                                let css = entry_data.get("css")
+                                let css = entry_data
+                                    .get("css")
                                     .and_then(|v| v.as_array())
                                     .map(|arr| {
                                         println!("  - CSS files count: {}", arr.len());
@@ -217,12 +233,15 @@ fn load_manifest_entries() -> HashMap<String, ViteManifestEntry> {
                                         println!("  - No CSS files found");
                                         Vec::new()
                                     });
-                                
-                                entries.insert(key, ViteManifestEntry {
-                                    file,
-                                    dynamic_imports,
-                                    css,
-                                });
+
+                                entries.insert(
+                                    key,
+                                    ViteManifestEntry {
+                                        file,
+                                        dynamic_imports,
+                                        css,
+                                    },
+                                );
                             } else {
                                 println!("Entry '{}' is not an object, skipping", key);
                             }
@@ -230,23 +249,25 @@ fn load_manifest_entries() -> HashMap<String, ViteManifestEntry> {
                     } else {
                         println!("Manifest JSON is not an object: {:?}", json);
                     }
-                },
+                }
                 Err(e) => {
                     println!("Could not parse Vite manifest JSON: {}", e);
                     println!("Manifest content: {}", manifest_content);
                 }
             }
-        },
+        }
         Err(e) => {
-            println!("Could not read Vite manifest file at {}: {}", manifest_path, e);
-            
+            println!(
+                "Could not read Vite manifest file at {}: {}",
+                manifest_path, e
+            );
+
             // Try to list the directory to see if the file exists
             if let Ok(entries) = std::fs::read_dir("frontend/dist") {
                 println!("Contents of frontend/dist:");
-                for entry in entries {
-                    if let Ok(entry) = entry {
-                        println!("  - {}", entry.path().display());
-                    }
+                // Fixed clippy warning by using flatten() instead of manual if let
+                for entry in entries.flatten() {
+                    println!("  - {}", entry.path().display());
                 }
             } else {
                 println!("Could not read directory frontend/dist");

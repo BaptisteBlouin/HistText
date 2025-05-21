@@ -1,5 +1,5 @@
 //! This module provides HTTP handlers and helper functions for querying Solr collections.
-//! 
+//!
 //! It handles:
 //! - Processing and transforming document responses
 //! - Managing cache and CSV exports
@@ -8,13 +8,12 @@
 //! - Statistics and optional NER data
 //! - Download-only CSV responses
 
-
 use actix_web::error::ErrorInternalServerError;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
 
+use crate::auth::AccessTokenClaims;
 use crate::models::solr_database_permissions::SolrDatabasePermission;
 use crate::schema::solr_database_permissions::dsl::*;
-use crate::auth::AccessTokenClaims; 
 use jsonwebtoken::{decode, DecodingKey, Validation};
 
 use crate::config::Config;
@@ -46,35 +45,35 @@ pub struct CollectionQueryParams {
     /// Target Solr collection name
     #[schema(example = "my_collection")]
     pub collection: String,
-    
+
     /// Solr query string (e.g. "title:rust")
     #[schema(example = "title:rust")]
     pub query: Option<String>,
-    
+
     /// Pagination offset
     #[schema(example = 0)]
     pub start: Option<u32>,
-    
+
     /// Number of rows per page
     #[schema(example = 10)]
     pub rows: Option<u32>,
-    
+
     /// Statistics level (e.g. "All")
     #[schema(example = "All")]
     pub stats_level: Option<String>,
-    
+
     /// Whether to include named entity recognition data
     #[schema(example = true)]
     pub get_ner: Option<bool>,
-    
+
     /// ID of the Solr database configuration
     #[schema(example = 1)]
     pub solr_database_id: i32,
-    
+
     /// Return only download link instead of full results
     #[schema(example = false)]
     pub download_only: Option<bool>,
-    
+
     /// Return raw Solr response without highlighting
     #[schema(example = false)]
     pub is_first: Option<bool>,
@@ -214,7 +213,6 @@ pub async fn fetch_documents(
 
     solr_response
 }
-
 
 /// Returns a minimal Solr-style JSON response with no documents.
 ///
@@ -578,7 +576,7 @@ pub async fn query_collection(
         .headers()
         .get("Authorization")
         .and_then(|h| h.to_str().ok());
-    
+
     let token = if let Some(auth_str) = auth_header {
         auth_str
             .strip_prefix("Bearer ")
@@ -690,7 +688,7 @@ pub async fn query_collection(
         is_first,
     )
     .await;
-    
+
     log_elapsed(fetch_documents_start, "Fetched documents");
     download_only = download_only || should_download_only;
 

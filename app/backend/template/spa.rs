@@ -1,12 +1,13 @@
 // backend/template/spa.rs
+use super::TEMPLATES;
 use actix_web::{web, HttpRequest, HttpResponse, Scope};
 use tera::Context;
-use super::TEMPLATES;
 
 pub struct SinglePageApplication {
     pub view_name: String,
 }
 
+#[allow(dead_code)]
 pub fn render_single_page_application(route: &str, view: &str) -> Scope {
     use actix_web::web::Data;
 
@@ -19,7 +20,7 @@ pub fn render_single_page_application(route: &str, view: &str) -> Scope {
         }))
         .route("", web::get().to(render_spa_handler))
 }
-
+#[allow(dead_code)]
 async fn render_spa_handler(
     _req: HttpRequest,
     spa_info: web::Data<SinglePageApplication>,
@@ -30,8 +31,6 @@ async fn render_spa_handler(
             println!("Error rendering SPA template: {}", e);
             "<html><body>Error rendering template</body></html>".to_string()
         });
-    
-    HttpResponse::Ok()
-        .content_type("text/html")
-        .body(content)
+
+    HttpResponse::Ok().content_type("text/html").body(content)
 }

@@ -1,5 +1,5 @@
 //! This module provides Named Entity Recognition (NER) functionality.
-//! 
+//!
 //! Features:
 //! - Reading cached NER input data from disk
 //! - Invoking Solr-based NER annotation service in batches
@@ -272,7 +272,7 @@ async fn get_ner_annotation_batch(
 
 /// Extracts a document ID from a Solr document
 ///
-/// Handles different possible ID field formats (array of strings, 
+/// Handles different possible ID field formats (array of strings,
 /// single string, alternate field names).
 ///
 /// # Arguments

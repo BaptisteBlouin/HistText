@@ -1,6 +1,6 @@
-use diesel::table;
-use diesel::joinable;
 use diesel::allow_tables_to_appear_in_same_query;
+use diesel::joinable;
+use diesel::table;
 
 table! {
     role_permissions (role, permission) {

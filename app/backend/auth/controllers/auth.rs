@@ -1,28 +1,28 @@
 // Complete controllers/auth.rs file with FromRequest implementation
 
+use crate::auth::models::role::Role;
 use crate::auth::models::{
-    permission::Permission, user::User, user::UserChangeset,
-    user_session::UserSession,
+    permission::Permission, user::User, user::UserChangeset, user_session::UserSession,
     user_session::UserSessionChangeset,
 };
 use crate::auth::ID;
 use crate::services::database::Database;
 use crate::services::mailer::Mailer;
-use crate::auth::models::role::Role;
 
+use crate::config::Config;
 use actix_web::{
     dev::Payload,
     error::{Error as ActixError, ErrorUnauthorized},
     http::header,
     // Remove unused import: web::Data
-    FromRequest, HttpRequest,
+    FromRequest,
+    HttpRequest,
 };
 use futures::future::{ready, Ready};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
-use crate::config::Config;
 
 pub const COOKIE_NAME: &str = "refresh_token";
 lazy_static::lazy_static! {
@@ -316,7 +316,10 @@ pub fn create_user_session(
     Ok((access_token, refresh_token))
 }
 
-pub fn logout(db: &Database, refresh_token: Option<&'_ str>) -> Result<(), (StatusCodeU16, Message)> {
+pub fn logout(
+    db: &Database,
+    refresh_token: Option<&'_ str>,
+) -> Result<(), (StatusCodeU16, Message)> {
     let mut db = db.get_connection().unwrap();
 
     let Some(refresh_token) = refresh_token else {
@@ -657,7 +660,7 @@ pub fn generate_salt() -> [u8; 16] {
     use rand::Fill;
     let mut salt = [0; 16];
     // this does not fail
-    salt.try_fill(&mut rand::thread_rng()).unwrap();
+    salt.fill(&mut rand::rng());
     salt
 }
 
@@ -740,19 +743,11 @@ impl FromRequest for Auth {
 
                     // If successful, create and return an Auth instance
                     if let Ok(token_data) = token_result {
-                        let permissions: HashSet<Permission> = token_data
-                            .claims
-                            .permissions
-                            .iter()
-                            .cloned()
-                            .collect();
-                        
-                        let roles: HashSet<String> = token_data
-                            .claims
-                            .roles
-                            .iter()
-                            .cloned()
-                            .collect();
+                        let permissions: HashSet<Permission> =
+                            token_data.claims.permissions.iter().cloned().collect();
+
+                        let roles: HashSet<String> =
+                            token_data.claims.roles.iter().cloned().collect();
 
                         let auth = Auth {
                             user_id: token_data.claims.sub,
@@ -762,7 +757,7 @@ impl FromRequest for Auth {
 
                         return ready(Ok(auth));
                     }
-                    
+
                     // Token validation failed
                     return ready(Err(ErrorUnauthorized("Invalid token")));
                 }

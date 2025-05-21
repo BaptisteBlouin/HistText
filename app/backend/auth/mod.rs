@@ -1,15 +1,15 @@
 // backend/auth/mod.rs (Updated)
 
 pub mod controllers;
+pub mod mail;
 pub mod middleware;
 pub mod models;
 pub mod routes;
 pub mod schema;
-pub mod mail;
 
 // Use this public export for the Auth struct
-pub use controllers::auth::Auth;
 pub use controllers::auth::AccessTokenClaims;
+pub use controllers::auth::Auth;
 #[allow(unused_imports)]
 pub use models::permission::Permission;
 
@@ -21,7 +21,7 @@ pub type Utc = chrono::DateTime<chrono::Utc>;
 #[cfg(feature = "database_sqlite")]
 pub type Utc = chrono::NaiveDateTime;
 
-use serde::{Deserialize};
+use serde::Deserialize;
 
 // No need to redefine AccessTokenClaims here as it's exported from controllers::auth
 
@@ -48,7 +48,8 @@ impl Default for AuthConfig {
         Self {
             jwt_secret: std::env::var("SECRET_KEY")
                 .expect("SECRET_KEY environment variable is required"),
-            app_url: std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost:3000".to_string()),
+            app_url: std::env::var("APP_URL")
+                .unwrap_or_else(|_| "http://localhost:3000".to_string()),
         }
     }
 }

@@ -1,5 +1,5 @@
 //! Direct user permission management.
-//! 
+//!
 //! This module provides functionality to manage direct permission assignments
 //! to individual users, bypassing the role-based permission system. These
 //! direct assignments grant users specific permissions regardless of their roles.
@@ -24,11 +24,11 @@ pub struct UserPermission {
     /// ID of the user receiving the permission
     #[schema(example = 1)]
     pub user_id: i32,
-    
+
     /// Permission being granted
     #[schema(example = "read")]
     pub permission: String,
-    
+
     /// When this permission was granted
     pub created_at: chrono::NaiveDateTime,
 }
@@ -40,7 +40,7 @@ pub struct NewUserPermission {
     /// ID of the user to grant permission to
     #[schema(example = 1)]
     pub user_id: i32,
-    
+
     /// Permission to grant
     #[schema(example = "read")]
     pub permission: String,

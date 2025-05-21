@@ -33,7 +33,7 @@ pub struct AppState {
     /// These processes need to be tracked so they can be properly
     /// terminated when the application shuts down.
     pub ssh_children: Arc<Mutex<Vec<Child>>>,
-    
+
     /// Application configuration
     ///
     /// Shared reference to the global configuration settings.

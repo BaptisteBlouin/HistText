@@ -1,5 +1,5 @@
 //! Solr collection metadata management.
-//! 
+//!
 //! This module provides functionality to manage metadata about Solr collections,
 //! including descriptions, embedding paths, language settings, tokenizers, and display
 //! configurations. It handles CRUD operations on the `solr_database_info` table.
@@ -24,31 +24,31 @@ pub struct SolrDatabaseInfo {
     /// ID of the parent Solr database
     #[schema(example = 1)]
     pub solr_database_id: i32,
-    
+
     /// Name of the Solr collection
     #[schema(example = "users")]
     pub collection_name: String,
-    
+
     /// Human-readable description of the collection
     #[schema(example = "User profiles index")]
     pub description: String,
-    
+
     /// Path to word embedding file or "default"/"none"
     #[schema(example = "/data/embeddings/users.vec")]
     pub embeddings: String,
-    
+
     /// Language code for the collection (e.g. "en", "fr")
     #[schema(example = "en")]
     pub lang: Option<String>,
-    
+
     /// Primary text field for searching and analysis
     #[schema(example = "text_content")]
     pub text_field: Option<String>,
-    
+
     /// Tokenizer to use (e.g. "standard", "whitespace")
     #[schema(example = "standard")]
     pub tokenizer: Option<String>,
-    
+
     /// Fields to exclude from display in UI
     #[schema(example = json!( ["internal_notes", null] ))]
     pub to_not_display: Option<Vec<Option<String>>>,
@@ -61,31 +61,31 @@ pub struct NewSolrDatabaseInfo {
     /// ID of the parent Solr database
     #[schema(example = 1)]
     pub solr_database_id: i32,
-    
+
     /// Name of the Solr collection
     #[schema(example = "users")]
     pub collection_name: String,
-    
+
     /// Human-readable description of the collection
     #[schema(example = "User profiles index")]
     pub description: String,
-    
+
     /// Path to word embedding file or "default"/"none"
     #[schema(example = "/data/embeddings/users.vec")]
     pub embeddings: String,
-    
+
     /// Language code for the collection
     #[schema(example = "en")]
     pub lang: Option<String>,
-    
+
     /// Primary text field for searching and analysis
     #[schema(example = "text_content")]
     pub text_field: Option<String>,
-    
+
     /// Tokenizer to use
     #[schema(example = "standard")]
     pub tokenizer: Option<String>,
-    
+
     /// Fields to exclude from display in UI
     #[schema(example = json!( ["internal_notes", null] ))]
     pub to_not_display: Option<Vec<Option<String>>>,
@@ -100,23 +100,23 @@ pub struct UpdateSolrDatabaseInfo {
     /// Updated description
     #[schema(example = "Updated description")]
     pub description: Option<String>,
-    
+
     /// Updated embedding path
     #[schema(example = "/data/embeddings/updated.vec")]
     pub embeddings: Option<String>,
-    
+
     /// Updated language code
     #[schema(example = "fr")]
     pub lang: Option<String>,
-    
+
     /// Updated text field
     #[schema(example = "content_field")]
     pub text_field: Option<String>,
-    
+
     /// Updated tokenizer setting
     #[schema(example = "whitespace")]
     pub tokenizer: Option<String>,
-    
+
     /// Updated list of fields to exclude from display
     #[schema(example = json!( ["secret", null] ))]
     pub to_not_display: Option<Vec<Option<String>>>,

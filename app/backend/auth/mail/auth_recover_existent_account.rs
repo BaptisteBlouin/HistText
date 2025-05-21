@@ -1,4 +1,3 @@
-
 // app/backend/auth/mail/auth_recover_existent_account.rs
 use crate::services::mailer::Mailer;
 
@@ -31,4 +30,3 @@ Please visit this link to reset your password:</p>
 
     mailer.send(to_email, subject, &text, &html);
 }
-

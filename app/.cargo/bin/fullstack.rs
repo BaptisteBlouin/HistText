@@ -1,8 +1,8 @@
-// Update .cargo/bin/fullstack.rs to just launch separate services
+// Update .cargo/bin/fullstack.rs
 mod dsync;
 mod tsync;
 use std::{net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6, TcpListener, ToSocketAddrs}, 
-          path::PathBuf, process::{Command, Stdio}, sync::mpsc};
+          process::{Command, Stdio}, sync::mpsc};
 use std::thread;
 
 // Port checking functionality
@@ -25,6 +25,7 @@ pub const NPM: &'static str = "npm.cmd";
 #[cfg(not(windows))]
 pub const NPM: &str = "npm";
 
+#[allow(clippy::zombie_processes)]
 pub fn main() {
     if !is_port_free(21012) {
         println!("========================================================");
@@ -53,7 +54,7 @@ pub fn main() {
     let frontend_dir = format!("{}/frontend", project_dir);
     let frontend_handle = thread::spawn(move || {
         println!("Starting frontend server...");
-        let mut frontend = Command::new(NPM)
+        let frontend = Command::new(NPM)
             .args(["run", "start:dev"])
             .current_dir(frontend_dir)
             .stdout(Stdio::inherit())
@@ -79,9 +80,9 @@ pub fn main() {
     let _ = rx.recv();
     
     // Kill both processes
-    let _ = backend.kill();
-    let mut frontend = frontend_handle.join().unwrap();  // Add mut here
-    let _ = frontend.kill();
+    backend.kill().expect("Failed to kill backend process");
+    let mut frontend = frontend_handle.join().unwrap();
+    frontend.kill().expect("Failed to kill frontend process");
     
     println!("Development servers shut down");
 }

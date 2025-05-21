@@ -1,7 +1,7 @@
 // backend/auth/models/role.rs
 
-use crate::auth::ID;
 use crate::auth::models::user_role::UserRole;
+use crate::auth::ID;
 use crate::services::database::Connection;
 use diesel::QueryResult;
 
@@ -20,7 +20,7 @@ impl Role {
     pub fn fetch_all(db: &mut Connection, user_id: ID) -> QueryResult<Vec<String>> {
         UserRole::read_all_roles(db, user_id)
     }
-    
+
     /// Check if a role exists
     ///
     /// # Arguments
@@ -34,15 +34,15 @@ impl Role {
         use crate::schema::user_roles::dsl::*;
         use diesel::dsl::count;
         use diesel::prelude::*;
-        
+
         let count_result: i64 = user_roles
             .filter(role.eq(role_name))
             .select(count(role))
             .first(db)?;
-            
+
         Ok(count_result > 0)
     }
-    
+
     /// Find all users with a specific role
     ///
     /// # Arguments
@@ -55,7 +55,7 @@ impl Role {
     pub fn find_users_with_role(db: &mut Connection, role_name: &str) -> QueryResult<Vec<ID>> {
         use crate::schema::user_roles::dsl::*;
         use diesel::prelude::*;
-        
+
         user_roles
             .filter(role.eq(role_name))
             .select(user_id)

@@ -1,5 +1,5 @@
 //! Solr collection permission management.
-//! 
+//!
 //! This module provides functionality to manage permission requirements for
 //! accessing Solr collections. It defines which permissions users must have
 //! to access specific collections, implementing access control through
@@ -26,11 +26,11 @@ pub struct SolrDatabasePermission {
     /// ID of the parent Solr database
     #[schema(example = 1)]
     pub solr_database_id: i32,
-    
+
     /// Name of the Solr collection
     #[schema(example = "users")]
     pub collection_name: String,
-    
+
     /// Permission required to access this collection
     #[schema(example = "read")]
     pub permission: String,
@@ -43,11 +43,11 @@ pub struct NewSolrDatabasePermission {
     /// ID of the parent Solr database
     #[schema(example = 1)]
     pub solr_database_id: i32,
-    
+
     /// Name of the Solr collection
     #[schema(example = "users")]
     pub collection_name: String,
-    
+
     /// Permission required to access this collection
     #[schema(example = "read")]
     pub permission: String,

@@ -1,5 +1,5 @@
 //! Text tokenization utilities for both Latin-script and CJK languages.
-//! 
+//!
 //! Features:
 //! - Language-aware tokenization with script detection
 //! - Punctuation and non-alphanumeric character removal
@@ -25,7 +25,7 @@ pub struct TokenizeRequest {
     /// Text to tokenize
     #[schema(example = "This is a sample text for tokenization.")]
     pub text: String,
-    
+
     /// Whether to filter tokens for word cloud use
     #[schema(example = false)]
     #[serde(default)]
@@ -42,7 +42,7 @@ pub struct TokenizeResponse {
 lazy_static! {
     /// Jieba segmenter for CJK text
     static ref JIEBA: Jieba = Jieba::new();
-    
+
     /// Regex for removing punctuation and non-alphanumeric characters
     static ref RE_CLEAN: Regex =
         Regex::new(r"[^\p{L}\p{Nd}\s]+").expect("Failed to compile RE_CLEAN");
@@ -65,7 +65,7 @@ fn contains_cjk(text: &str) -> bool {
             || (0x2B740..=0x2B81F).contains(&cp)    // CJK Unified Ideographs Extension D
             || (0x2B820..=0x2CEAF).contains(&cp)    // CJK Unified Ideographs Extension E
             || (0xF900..=0xFAFF).contains(&cp)      // CJK Compatibility Ideographs
-            || (0x2F800..=0x2FA1F).contains(&cp)    // CJK Compatibility Ideographs Supplement
+            || (0x2F800..=0x2FA1F).contains(&cp) // CJK Compatibility Ideographs Supplement
     })
 }
 
@@ -86,17 +86,17 @@ fn is_latin_script(text: &str) -> bool {
     if contains_cjk(text) {
         return false;
     }
-    
+
     // Try whatlang detection
     if let Some(info) = detect(text) {
         return info.script() == Script::Latin;
     }
-    
+
     // Fall back to ASCII ratio heuristic
     let sample: String = text.chars().take(100).collect();
     let ascii_letters = sample.chars().filter(|c| c.is_ascii_alphabetic()).count();
     let total_letters = sample.chars().filter(|c| c.is_alphabetic()).count();
-    
+
     if total_letters == 0 {
         true
     } else {
@@ -160,12 +160,12 @@ pub fn tokenize_text(text: &str, cloud: bool) -> Vec<String> {
             if stops.contains(tok) {
                 return false;
             }
-            
+
             // For CJK text, remove tokens with Latin characters
             if !latin && tok.chars().any(|c| c.is_ascii_alphabetic()) {
                 return false;
             }
-            
+
             true
         });
     }

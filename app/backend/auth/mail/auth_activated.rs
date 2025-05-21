@@ -22,5 +22,3 @@ Your account has been activated!
 
     mailer.send(to_email, subject, &text, &html);
 }
-
-

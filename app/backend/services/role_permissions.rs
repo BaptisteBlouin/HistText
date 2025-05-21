@@ -24,11 +24,11 @@ pub struct RolePermission {
     /// Role identifier (e.g., "admin", "editor")
     #[schema(example = "admin")]
     pub role: String,
-    
+
     /// Permission identifier (e.g., "read", "write")
     #[schema(example = "read")]
     pub permission: String,
-    
+
     /// When this role-permission mapping was created
     pub created_at: chrono::NaiveDateTime,
 }
@@ -42,7 +42,7 @@ pub struct NewRolePermission {
     /// Role identifier to be granted a permission
     #[schema(example = "admin")]
     pub role: String,
-    
+
     /// Permission to be granted to the role
     #[schema(example = "read")]
     pub permission: String,

@@ -1,5 +1,5 @@
 //! Application statistics and metrics.
-//! 
+//!
 //! This module provides endpoints for retrieving system-wide statistics,
 //! including user counts, role and permission metrics, collection counts,
 //! and embedding cache monitoring. It aggregates data from multiple tables
@@ -26,31 +26,31 @@ pub struct DashboardStats {
     /// Number of activated user accounts
     #[schema(example = 42)]
     pub active_users: i64,
-    
+
     /// Total number of user accounts (active and inactive)
     #[schema(example = 100)]
     pub total_users: i64,
-    
+
     /// Number of distinct roles in the system
     #[schema(example = 5)]
     pub total_roles: i64,
-    
+
     /// Number of distinct permissions in the system
     #[schema(example = 10)]
     pub total_permissions: i64,
-    
+
     /// Number of Solr collections configured
     #[schema(example = 3)]
     pub solr_collections: i64,
-    
+
     /// Number of embedding files currently loaded in memory
     #[schema(example = 2)]
     pub embedding_files_loaded: usize,
-    
+
     /// Number of collections with cached embeddings
     #[schema(example = 5)]
     pub embedding_collections_cached: usize,
-    
+
     /// Total number of words loaded in embedding cache
     #[schema(example = 400000)]
     pub embedding_words_loaded: usize,

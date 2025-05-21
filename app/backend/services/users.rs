@@ -1,5 +1,5 @@
 //! User account management with secure password handling.
-//! 
+//!
 //! This module provides functionality to manage user accounts, including
 //! creation, retrieval, updates, and deletion. It implements secure password
 //! handling using Argon2id password hashing with per-request salt generation
@@ -25,30 +25,30 @@ pub struct User {
     /// Unique identifier
     #[schema(example = 1)]
     pub id: i32,
-    
+
     /// Email address (used for login)
     #[schema(example = "user@example.com")]
     pub email: String,
-    
+
     /// Password hash using Argon2id
     #[schema(example = "$argon2id$v=19$m=4096,t=3,p=1$...")]
     pub hash_password: String,
-    
+
     /// User's first name
     #[schema(example = "John")]
     pub firstname: String,
-    
+
     /// User's last name
     #[schema(example = "Doe")]
     pub lastname: String,
-    
+
     /// Whether the account is active
     #[schema(example = true)]
     pub activated: bool,
-    
+
     /// When the account was created
     pub created_at: chrono::NaiveDateTime,
-    
+
     /// When the account was last updated
     pub updated_at: chrono::NaiveDateTime,
 }
@@ -60,19 +60,19 @@ pub struct NewUser {
     /// Email address (used for login)
     #[schema(example = "user@example.com")]
     pub email: String,
-    
+
     /// Plain-text password (will be hashed)
     #[schema(example = "password123")]
     pub hash_password: String,
-    
+
     /// Whether the account should be initially active
     #[schema(example = true)]
     pub activated: bool,
-    
+
     /// User's first name
     #[schema(example = "John")]
     pub firstname: String,
-    
+
     /// User's last name
     #[schema(example = "Doe")]
     pub lastname: String,
@@ -87,19 +87,19 @@ pub struct UpdateUser {
     /// New email address
     #[schema(example = "updated@example.com")]
     pub email: Option<String>,
-    
+
     /// New plain-text password (will be hashed)
     #[schema(example = "newpassword123")]
     pub hash_password: Option<String>,
-    
+
     /// New account activation status
     #[schema(example = false)]
     pub activated: Option<bool>,
-    
+
     /// New first name
     #[schema(example = "Johnny")]
     pub firstname: Option<String>,
-    
+
     /// New last name
     #[schema(example = "Doesmith")]
     pub lastname: Option<String>,
@@ -113,7 +113,7 @@ pub fn generate_salt() -> [u8; 16] {
     use rand::Fill;
     let mut salt = [0; 16];
     // this does not fail
-    salt.try_fill(&mut rand::thread_rng()).unwrap();
+    salt.fill(&mut rand::rng());
     salt
 }
 
@@ -316,13 +316,13 @@ impl UserHandler {
         self.validate_update(&item)?;
         let user_id = path.into_inner();
         let mut update_data = item.into_inner();
-        
+
         // Hash new password if provided
         if let Some(ref password) = update_data.hash_password {
             let hashed_password = self.hash_password(password)?;
             update_data.hash_password = Some(hashed_password);
         }
-        
+
         let result = execute_db_query(db, move |conn| {
             diesel::update(users::table.find(user_id))
                 .set(&update_data)

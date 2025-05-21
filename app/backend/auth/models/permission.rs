@@ -1,16 +1,16 @@
 // Modified permission.rs with correct imports
 
-use crate::auth::ID;
-use crate::auth::models::user_permission::UserPermission;
 use crate::auth::models::role_permission::RolePermission;
+use crate::auth::models::user_permission::UserPermission;
+use crate::auth::ID;
 use crate::services::database::Connection;
 use anyhow::Result;
+use diesel::QueryableByName;
 use diesel::{
     sql_query,
     sql_types::{Integer, Text},
     RunQueryDsl,
 };
-use diesel::QueryableByName;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 
@@ -70,10 +70,12 @@ impl Permission {
             db,
             permissions
                 .into_iter()
-                .map(|permission| crate::auth::models::role_permission::RolePermissionChangeset {
-                    permission,
-                    role: role.clone(),
-                })
+                .map(
+                    |permission| crate::auth::models::role_permission::RolePermissionChangeset {
+                        permission,
+                        role: role.clone(),
+                    },
+                )
                 .collect::<Vec<_>>(),
         )?;
 
@@ -89,10 +91,12 @@ impl Permission {
             db,
             permissions
                 .into_iter()
-                .map(|permission| crate::auth::models::user_permission::UserPermissionChangeset {
-                    user_id,
-                    permission,
-                })
+                .map(
+                    |permission| crate::auth::models::user_permission::UserPermissionChangeset {
+                        user_id,
+                        permission,
+                    },
+                )
                 .collect::<Vec<_>>(),
         )?;
 

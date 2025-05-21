@@ -2,11 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::schema::role_permissions;
 use crate::auth::Utc;
+use crate::schema::role_permissions;
 use crate::services::database::Connection;
-use diesel::prelude::*;
 use diesel::insert_into;
+use diesel::prelude::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Queryable, Insertable, AsChangeset)]
 #[diesel(table_name = role_permissions)]

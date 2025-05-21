@@ -10,14 +10,13 @@
 //! - Graceful startup and shutdown procedures
 
 // Re-export server components
+pub mod connection;
 pub mod error;
 pub mod guards;
 pub mod routes;
 pub mod ssh;
 pub mod startup;
 pub mod state;
-pub mod utils;
-pub mod connection;
 
 /// Runs the HTTP server with all necessary components initialized.
 ///
@@ -33,22 +32,22 @@ pub mod connection;
 /// # Returns
 /// Standard I/O result, with error if server fails to start or encounters issues
 pub async fn run_server() -> std::io::Result<()> {
+    use crate::app_data::{AppConfig, AppData};
+    #[allow(unused_imports)]
+    use crate::auth::middleware::auth::JwtAuth;
+    use crate::auth::AuthConfig;
     use crate::config::Config;
     use crate::graphql;
     use crate::server::ssh::establish_ssh_tunnels;
     use crate::server::startup::preload_embeddings;
     use crate::services::database::Database;
     use crate::services::mailer::Mailer;
-    use crate::auth::AuthConfig;
-    #[allow(unused_imports)]
-    use crate::auth::middleware::auth::JwtAuth;
     use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
     use actix_web::web::PayloadConfig;
     use actix_web::{
         web::{self, Data},
         App, HttpServer,
     };
-    use crate::app_data::{AppData, AppConfig};
     use std::sync::Arc;
     use tokio::signal;
     use tokio::signal::unix::{signal, SignalKind};
@@ -96,7 +95,7 @@ pub async fn run_server() -> std::io::Result<()> {
 
     // Initialize mailer for auth system
     let config_global = Config::global();
-    let mailer = Data::new(Mailer::from_config(&config_global));
+    let mailer = Data::new(Mailer::from_config(config_global));
 
     let mailer_data = Data::new(mailer);
 
@@ -135,19 +134,17 @@ pub async fn run_server() -> std::io::Result<()> {
         let shared_db = web::Data::new(db.clone());
         let shared_db_pool = web::Data::new(db_pool.clone());
         let shared_schema = web::Data::new(schema.clone());
-        
+
         let app = App::new()
             // Configure middleware
             .wrap(Compress::default())
             .wrap(NormalizePath::new(TrailingSlash::MergeOnly))
             .wrap(Logger::default())
-            
             // Set payload limits
             .app_data(web::JsonConfig::default().limit(config.max_query_size_mb * 1024 * 1024))
             .app_data(PayloadConfig::new(
                 config.max_document_size_mb * 1024 * 1024,
             ))
-            
             // Add application data - use app_data with web::Data for Actix Web 4.x
             .app_data(shared_app_data.clone())
             .app_data(web::Data::new(app_data.database.clone()))
@@ -156,7 +153,6 @@ pub async fn run_server() -> std::io::Result<()> {
             .app_data(web::Data::new(Arc::clone(&config)))
             .app_data(app_state_data.clone())
             .app_data(mailer_data.clone())
-            
             // Configure app settings
             .app_data(web::Data::new(AppConfig {
                 app_url: config.app_url.clone(),
@@ -171,10 +167,10 @@ pub async fn run_server() -> std::io::Result<()> {
                 app_state_data.clone(),
                 shared_db.clone(),
                 shared_db_pool.clone(),
-                shared_app_data.clone(),  // Use the shared_app_data here
+                shared_app_data.clone(), // Use the shared_app_data here
                 shared_schema.clone(),
             );
-            
+
             // Configure your auth routes directly
             crate::auth::routes::configure_routes(cfg, &config);
         })

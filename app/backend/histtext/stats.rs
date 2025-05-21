@@ -1,5 +1,5 @@
 //! This module provides document corpus statistics computation functionality.
-//! 
+//!
 //! Features:
 //! - Reading cached query results from Solr
 //! - Language detection for proper stopword selection
@@ -151,12 +151,7 @@ fn detect_language(docs: &[Value], text_fields: &[String]) -> bool {
             // Concatenate the first document's text fields
             let sample: String = text_fields
                 .iter()
-                .filter_map(|f| {
-                    first_doc
-                        .get(f)
-                        .and_then(|v| v.as_str())
-                        .map(String::from)
-                })
+                .filter_map(|f| first_doc.get(f).and_then(|v| v.as_str()).map(String::from))
                 .collect::<Vec<_>>()
                 .join(" ");
             detect(&sample).map(|info| ["zh", "ja", "ko"].contains(&info.lang().code()))

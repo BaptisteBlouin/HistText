@@ -1,5 +1,5 @@
 //! This module provides functionality to load, cache, and query word embeddings.
-//! 
+//!
 //! Features:
 //! - Thread-safe LRU cache for storing embeddings from multiple Solr database instances
 //! - Disk-based storage with on-demand loading wrapped in Arc for shared access
@@ -127,18 +127,16 @@ pub struct Embedding {
 fn normalize_path(path: &str) -> String {
     let path_obj = Path::new(path);
     match path_obj.file_name() {
-        Some(filename) => {
-            match filename.to_str() {
-                Some(name) => {
-                    debug!("Normalized path '{}' to filename '{}'", path, name);
-                    name.to_string()
-                }
-                None => {
-                    warn!("Could not convert filename to string for path: {}", path);
-                    path.to_string()
-                }
+        Some(filename) => match filename.to_str() {
+            Some(name) => {
+                debug!("Normalized path '{}' to filename '{}'", path, name);
+                name.to_string()
             }
-        }
+            None => {
+                warn!("Could not convert filename to string for path: {}", path);
+                path.to_string()
+            }
+        },
         None => {
             warn!("No filename found in path: {}", path);
             path.to_string()
@@ -357,7 +355,7 @@ async fn load_embeddings_from_path(path: &str) -> Option<SharedEmbeddings> {
 
 /// Retrieves the cached embeddings for a given collection
 ///
-/// Embeddings are loaded from disk if not already present. Results are 
+/// Embeddings are loaded from disk if not already present. Results are
 /// stored in a two-level cache system with LRU eviction. Multiple collections
 /// pointing to the same embedding file share the same memory.
 ///

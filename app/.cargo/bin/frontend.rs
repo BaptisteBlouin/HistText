@@ -1,5 +1,9 @@
 // Update .cargo/bin/frontend.rs
-use std::{net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6, TcpListener, ToSocketAddrs}, path::PathBuf, process::Command};
+use std::{
+    net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6, TcpListener, ToSocketAddrs},
+    path::PathBuf,
+    process::Command,
+};
 
 #[cfg(windows)]
 pub const NPM: &'static str = "npm.cmd";

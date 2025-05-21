@@ -1,12 +1,12 @@
 //! Application route configuration and endpoint registration.
 //!
-//! This module defines all API routes and endpoints for the application, 
+//! This module defines all API routes and endpoints for the application,
 //! organizing them by functional area. It also configures authentication,
 //! documentation (OpenAPI/Swagger), and frontend routing.
 
+use crate::app_data::AppConfig;
 use actix_web::web::Data;
 use actix_web::{guard, web, web::ServiceConfig, HttpResponse, Scope};
-use crate::app_data::{AppData, AppConfig};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::{SwaggerUi, Url};
 
@@ -98,7 +98,13 @@ pub fn configure_routes(
     db: Data<Database>,
     db_pool: Data<DbPool>,
     app_data: Data<crate::app_data::AppData>,
-    schema: Data<async_graphql::Schema<crate::graphql::QueryRoot, crate::graphql::MutationRoot, crate::graphql::SubscriptionRoot>>,
+    schema: Data<
+        async_graphql::Schema<
+            crate::graphql::QueryRoot,
+            crate::graphql::MutationRoot,
+            crate::graphql::SubscriptionRoot,
+        >,
+    >,
 ) {
     // Create app config data
     let app_config_data = Data::new(AppConfig {
@@ -117,10 +123,10 @@ pub fn configure_routes(
 
     // Initialize API scope - Configure auth routes
     let mut api_scope = web::scope("/api");
-    
+
     // Configure auth routes
     api_scope = api_scope.configure(|cfg| {
-        routes::configure_routes(cfg, &Config::global());
+        routes::configure_routes(cfg, Config::global());
     });
     // Configure all API endpoints by category
     api_scope = configure_solr_routes(api_scope);
@@ -190,7 +196,7 @@ pub fn configure_routes(
     config.service(web::resource("/{_:.*}").route(web::get().to(render_views)));
 
     let config_global = Config::global();
-    let mailer = Data::new(Mailer::from_config(&config_global));
+    let mailer = Data::new(Mailer::from_config(config_global));
 
     // Register app data
     config

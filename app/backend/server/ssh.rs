@@ -78,7 +78,7 @@ async fn create_ssh_tunnel(db: &SolrDatabase) -> Result<Child, AppError> {
 /// Connects to a specific Solr database via SSH
 ///
 /// This function is called by the API endpoint for on-demand SSH connections.
-/// It retrieves the database configuration, establishes the tunnel, and 
+/// It retrieves the database configuration, establishes the tunnel, and
 /// stores the process handle in the application state.
 ///
 /// # Arguments

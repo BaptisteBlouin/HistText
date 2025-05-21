@@ -1,24 +1,18 @@
-// Create a new file backend/server/connection.rs
+// Update backend/server/connection.rs
 use diesel::r2d2::{self, ConnectionManager, PooledConnection};
 use diesel_logger::LoggingConnection;
 use once_cell::sync::OnceCell;
 
-#[cfg(feature = "database_postgres")]
-type DbCon = diesel::PgConnection;
-
-#[cfg(feature = "database_sqlite")]
-type DbCon = diesel::SqliteConnection;
-
-
-type DbCon = diesel::pg::PgConnection;  
+// Define DbCon type directly here - using PostgreSQL since that seems to be what you're using
+type DbCon = diesel::pg::PgConnection;
 
 pub type Pool = r2d2::Pool<ConnectionManager<DbCon>>;
 pub type Connection = LoggingConnection<PooledConnection<ConnectionManager<DbCon>>>;
 
-
 #[derive(Clone)]
 /// Wrapper for a database pool
 pub struct Database {
+    #[allow(dead_code)]
     pub pool: &'static Pool,
 }
 
@@ -37,6 +31,7 @@ impl Database {
     }
 
     /// Get a connection to the database
+    #[allow(dead_code)]
     pub fn get_connection(&self) -> Result<Connection, anyhow::Error> {
         Ok(LoggingConnection::new(self.pool.get()?))
     }
