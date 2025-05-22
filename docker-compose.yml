@@ -27,7 +27,9 @@ services:
       - CRA_MANIFEST_PATH=/app/frontend/dist/.vite/manifest.json
       - CRA_FRONTEND_DIR=/app/frontend/
       - CRA_VIEWS_GLOB=/app/backend/views/**/*.html
-      # Add any other environment variables needed
+      # Proxy issues
+      - no_proxy=localhost,127.0.0.1,solr,postgres
+      - NO_PROXY=localhost,127.0.0.1,solr,postgres
     env_file:
       - .env
     depends_on:
@@ -69,7 +71,7 @@ services:
       - solr-precreate
       - ner
     healthcheck:
-      test: curl -f http://localhost:${SOLR_NER_PORT:-8982}/solr/ 
+      test: curl -f http://127.0.0.1:${SOLR_NER_PORT:-8982}/solr/ 
       interval: 10s
       timeout: 5s
       retries: 5
