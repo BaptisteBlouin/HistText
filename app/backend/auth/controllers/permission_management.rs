@@ -1,53 +1,100 @@
-// backend/auth/controllers/permission_management.rs (Updated)
+//! Permission management controllers for role-based access control.
+//!
+//! Features:
+//! - Role-based permission management with grant and revoke operations
+//! - User-specific permission overrides
+//! - Batch permission operations for efficiency
+//! - Admin-only access control for all operations
+//! - Comprehensive error handling and validation
+//! - HTTP endpoints for permission CRUD operations
 
 use crate::auth::models::permission::Permission;
-use crate::auth::Auth;
-use crate::auth::ID;
+use crate::auth::{Auth, ID};
 use crate::services::database::Database;
 use actix_web::{web, HttpResponse, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-// Request bodies for our endpoints
-#[derive(Deserialize)]
+/// Request to grant permission to a role
+#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
 pub struct GrantRolePermissionRequest {
+    /// Role name
+    #[cfg_attr(feature = "utoipa", schema(example = "admin"))]
     pub role: String,
+    /// Permission name
+    #[cfg_attr(feature = "utoipa", schema(example = "user:read"))]
     pub permission: String,
 }
 
-#[derive(Deserialize)]
+/// Request to grant permission to a user
+#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
 pub struct GrantUserPermissionRequest {
+    /// User ID
+    #[cfg_attr(feature = "utoipa", schema(example = 1))]
     pub user_id: ID,
+    /// Permission name
+    #[cfg_attr(feature = "utoipa", schema(example = "user:read"))]
     pub permission: String,
 }
 
-#[derive(Deserialize)]
+/// Request to revoke permission from a role
+#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
 pub struct RevokeRolePermissionRequest {
+    /// Role name
+    #[cfg_attr(feature = "utoipa", schema(example = "admin"))]
     pub role: String,
+    /// Permission name
+    #[cfg_attr(feature = "utoipa", schema(example = "user:read"))]
     pub permission: String,
 }
 
-#[derive(Deserialize)]
+/// Request to revoke permission from a user
+#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
 pub struct RevokeUserPermissionRequest {
+    /// User ID
+    #[cfg_attr(feature = "utoipa", schema(example = 1))]
     pub user_id: ID,
+    /// Permission name
+    #[cfg_attr(feature = "utoipa", schema(example = "user:read"))]
     pub permission: String,
 }
 
-#[derive(Deserialize)]
+/// Request to perform batch permission operations on a role
+#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
 pub struct BatchPermissionRequest {
+    /// Role name
+    #[cfg_attr(feature = "utoipa", schema(example = "admin"))]
     pub role: String,
+    /// List of permission names
+    #[cfg_attr(feature = "utoipa", schema(example = vec!["user:read", "user:write"]))]
     pub permissions: Vec<String>,
 }
 
-#[derive(Deserialize)]
+/// Request to perform batch permission operations on a user
+#[derive(Deserialize, Serialize)]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
 pub struct BatchUserPermissionRequest {
+    /// User ID
+    #[cfg_attr(feature = "utoipa", schema(example = 1))]
     pub user_id: ID,
+    /// List of permission names
+    #[cfg_attr(feature = "utoipa", schema(example = vec!["user:read", "user:write"]))]
     pub permissions: Vec<String>,
 }
 
-// API handlers
-// Implement the function bodies here directly instead of in a separate file
-
-// Grant a permission to a role
+/// Grants a permission to a role
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - Grant role permission request
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn grant_role_permission(
     db: web::Data<Database>,
     req: web::Json<GrantRolePermissionRequest>,
@@ -69,7 +116,15 @@ pub async fn grant_role_permission(
         .json(serde_json::json!({"message": "Permission granted to role successfully"})))
 }
 
-// Grant a permission to a user
+/// Grants a permission to a specific user
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - Grant user permission request
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn grant_user_permission(
     db: web::Data<Database>,
     req: web::Json<GrantUserPermissionRequest>,
@@ -91,7 +146,15 @@ pub async fn grant_user_permission(
         .json(serde_json::json!({"message": "Permission granted to user successfully"})))
 }
 
-// Grant multiple permissions to a role
+/// Grants multiple permissions to a role in batch
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - Batch permission request for role
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn grant_role_permissions(
     db: web::Data<Database>,
     req: web::Json<BatchPermissionRequest>,
@@ -113,7 +176,15 @@ pub async fn grant_role_permissions(
         .json(serde_json::json!({"message": "Permissions granted to role successfully"})))
 }
 
-// Grant multiple permissions to a user
+/// Grants multiple permissions to a user in batch
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - Batch permission request for user
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn grant_user_permissions(
     db: web::Data<Database>,
     req: web::Json<BatchUserPermissionRequest>,
@@ -135,7 +206,15 @@ pub async fn grant_user_permissions(
         .json(serde_json::json!({"message": "Permissions granted to user successfully"})))
 }
 
-// Revoke a permission from a role
+/// Revokes a permission from a role
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - Revoke role permission request
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn revoke_role_permission(
     db: web::Data<Database>,
     req: web::Json<RevokeRolePermissionRequest>,
@@ -157,7 +236,15 @@ pub async fn revoke_role_permission(
         .json(serde_json::json!({"message": "Permission revoked from role successfully"})))
 }
 
-// Revoke a permission from a user
+/// Revokes a permission from a specific user
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - Revoke user permission request
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn revoke_user_permission(
     db: web::Data<Database>,
     req: web::Json<RevokeUserPermissionRequest>,
@@ -179,7 +266,15 @@ pub async fn revoke_user_permission(
         .json(serde_json::json!({"message": "Permission revoked from user successfully"})))
 }
 
-// Revoke multiple permissions from a role
+/// Revokes multiple permissions from a role in batch
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - Batch permission request for role
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn revoke_role_permissions(
     db: web::Data<Database>,
     req: web::Json<BatchPermissionRequest>,
@@ -201,7 +296,15 @@ pub async fn revoke_role_permissions(
         .json(serde_json::json!({"message": "Permissions revoked from role successfully"})))
 }
 
-// Revoke multiple permissions from a user
+/// Revokes multiple permissions from a user in batch
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - Batch permission request for user
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn revoke_user_permissions(
     db: web::Data<Database>,
     req: web::Json<BatchUserPermissionRequest>,
@@ -223,7 +326,15 @@ pub async fn revoke_user_permissions(
         .json(serde_json::json!({"message": "Permissions revoked from user successfully"})))
 }
 
-// Revoke all permissions from a role
+/// Revokes all permissions from a role
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `role` - Role name from URL path
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn revoke_all_role_permissions(
     db: web::Data<Database>,
     role: web::Path<String>,
@@ -245,7 +356,15 @@ pub async fn revoke_all_role_permissions(
         .json(serde_json::json!({"message": "All permissions revoked from role successfully"})))
 }
 
-// Revoke all permissions from a user
+/// Revokes all permissions from a user
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `user_id` - User ID from URL path
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
 pub async fn revoke_all_user_permissions(
     db: web::Data<Database>,
     user_id: web::Path<ID>,

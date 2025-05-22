@@ -164,10 +164,10 @@ fn load_manifest_entries() -> HashMap<String, ViteManifestEntry> {
     println!("Added __empty__ fallback entry");
 
     #[cfg(not(debug_assertions))]
-    let manifest_path = "frontend/dist/manifest.json";
+    let manifest_path = "frontend/dist/.vite/manifest.json";
 
     #[cfg(debug_assertions)]
-    let manifest_path = "frontend/dist/manifest.json";
+    let manifest_path = "frontend/dist/.vite/manifest.json";
 
     println!("Looking for manifest at: {}", manifest_path);
 

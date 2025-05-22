@@ -1,57 +1,73 @@
-// Complete controllers/auth.rs file with FromRequest implementation
+//! Authentication and authorization utilities for user management.
+//!
+//! Features:
+//! - JWT-based authentication with access and refresh tokens
+//! - User registration, activation, and password management
+//! - Role-based access control with permissions
+//! - Session management with device tracking
+//! - Password hashing with Argon2
+//! - Email-based account activation and password recovery
 
 use crate::auth::models::role::Role;
 use crate::auth::models::{
     permission::Permission, user::User, user::UserChangeset, user_session::UserSession,
     user_session::UserSessionChangeset,
 };
-use crate::auth::ID;
+use crate::auth::{PaginationParams, ID};
+use crate::config::Config;
 use crate::services::database::Database;
 use crate::services::mailer::Mailer;
-
-use crate::config::Config;
 use actix_web::{
     dev::Payload,
     error::{Error as ActixError, ErrorUnauthorized},
     http::header,
-    // Remove unused import: web::Data
-    FromRequest,
-    HttpRequest,
+    FromRequest, HttpRequest,
 };
 use futures::future::{ready, Ready};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
+use utoipa::{IntoParams, ToSchema};
 
 pub const COOKIE_NAME: &str = "refresh_token";
+
 lazy_static::lazy_static! {
+    /// Argon2 configuration for password hashing
     pub static ref ARGON_CONFIG: argon2::Config<'static> = argon2::Config {
         variant: argon2::Variant::Argon2id,
         version: argon2::Version::Version13,
-        secret: std::env::var("SECRET_KEY").map_or_else(|_| panic!("No SECRET_KEY environment variable set!"), |s| Box::leak(s.into_boxed_str()).as_bytes()),
+        secret: std::env::var("SECRET_KEY")
+            .map_or_else(|_| panic!("No SECRET_KEY environment variable set!"), 
+                        |s| Box::leak(s.into_boxed_str()).as_bytes()),
         ..Default::default()
     };
 }
 
 #[cfg(not(debug_assertions))]
 type Seconds = i64;
-// Use different type alias to avoid conflict
 type StatusCodeU16 = u16;
 type Message = &'static str;
 
-#[derive(Deserialize, Serialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+/// Request parameters for user login
+#[derive(Deserialize, Serialize, ToSchema)]
 pub struct LoginInput {
+    /// User email address
+    #[schema(example = "user@example.com")]
     pub email: String,
+    /// User password
     pub password: String,
+    /// Optional device identifier
+    #[schema(example = "iPhone 12")]
     pub device: Option<String>,
+    /// Token time-to-live in seconds
     #[cfg(not(debug_assertions))]
     pub ttl: Option<Seconds>,
     #[cfg(debug_assertions)]
     pub ttl: Option<i64>,
 }
 
+/// JWT claims for refresh tokens
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RefreshTokenClaims {
     pub exp: usize,
@@ -59,15 +75,23 @@ pub struct RefreshTokenClaims {
     pub token_type: String,
 }
 
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+/// Request parameters for user registration
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct RegisterInput {
+    /// User email address
+    #[schema(example = "user@example.com")]
     pub email: String,
+    /// User first name
+    #[schema(example = "John")]
     pub firstname: String,
+    /// User last name
+    #[schema(example = "Doe")]
     pub lastname: String,
+    /// User password
     pub password: String,
 }
 
+/// JWT claims for registration tokens
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegistrationClaims {
     pub exp: usize,
@@ -75,18 +99,22 @@ pub struct RegistrationClaims {
     pub token_type: String,
 }
 
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::IntoParams))]
+/// Request parameters for account activation
+#[derive(Serialize, Deserialize, IntoParams)]
 pub struct ActivationInput {
+    /// Activation token from email
     pub activation_token: String,
 }
 
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+/// Request parameters for password reset request
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct ForgotInput {
+    /// User email address
+    #[schema(example = "user@example.com")]
     pub email: String,
 }
 
+/// JWT claims for password reset tokens
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ResetTokenClaims {
     pub exp: usize,
@@ -94,20 +122,25 @@ pub struct ResetTokenClaims {
     pub token_type: String,
 }
 
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+/// Request parameters for password change
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct ChangeInput {
+    /// Current password
     pub old_password: String,
+    /// New password
     pub new_password: String,
 }
 
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+/// Request parameters for password reset
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct ResetInput {
+    /// Reset token from email
     pub reset_token: String,
+    /// New password
     pub new_password: String,
 }
 
+/// JWT claims for access tokens
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AccessTokenClaims {
     pub exp: usize,
@@ -117,26 +150,41 @@ pub struct AccessTokenClaims {
     pub permissions: Vec<Permission>,
 }
 
-// Use auth::PaginationParams instead of defining a new one
-use crate::auth::PaginationParams;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+/// User session data for API responses
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct UserSessionJson {
+    /// Session ID
     pub id: ID,
+    /// Device identifier
     pub device: Option<String>,
+    /// Session creation timestamp
     pub created_at: chrono::NaiveDateTime,
+    /// Session last update timestamp
     #[cfg(not(feature = "database_sqlite"))]
     pub updated_at: chrono::NaiveDateTime,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+/// Response containing user sessions with pagination
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct UserSessionResponse {
+    /// List of user sessions
     pub sessions: Vec<UserSessionJson>,
+    /// Total number of pages
     pub num_pages: i64,
 }
 
+type AccessToken = String;
+type RefreshToken = String;
+
+/// Retrieves paginated user sessions
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `auth` - Authenticated user information
+/// * `info` - Pagination parameters
+///
+/// # Returns
+/// Result containing session response or error details
 pub fn get_sessions(
     db: &Database,
     auth: &Auth,
@@ -144,8 +192,7 @@ pub fn get_sessions(
 ) -> Result<UserSessionResponse, (StatusCodeU16, Message)> {
     let mut db = db.get_connection().unwrap();
 
-    // Convert to auth::PaginationParams
-    let pagination = crate::auth::PaginationParams {
+    let pagination = PaginationParams {
         page: info.page,
         page_size: info.page_size,
     };
@@ -159,9 +206,9 @@ pub fn get_sessions(
         .map(|s| UserSessionJson {
             id: s.id,
             device: s.device.clone(),
-            created_at: s.created_at.naive_utc(), // Convert to NaiveDateTime
+            created_at: s.created_at.naive_utc(),
             #[cfg(not(feature = "database_sqlite"))]
-            updated_at: s.updated_at.naive_utc(), // Convert to NaiveDateTime
+            updated_at: s.updated_at.naive_utc(),
         })
         .collect();
 
@@ -179,6 +226,15 @@ pub fn get_sessions(
     Ok(resp)
 }
 
+/// Destroys a specific user session
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `auth` - Authenticated user information
+/// * `item_id` - Session ID to destroy
+///
+/// # Returns
+/// Result indicating success or error details
 pub fn destroy_session(
     db: &Database,
     auth: &Auth,
@@ -198,6 +254,14 @@ pub fn destroy_session(
     Ok(())
 }
 
+/// Destroys all user sessions
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `auth` - Authenticated user information
+///
+/// # Returns
+/// Result indicating success or error details
 pub fn destroy_sessions(db: &Database, auth: &Auth) -> Result<(), (StatusCodeU16, Message)> {
     let mut db = db.get_connection().unwrap();
 
@@ -207,16 +271,20 @@ pub fn destroy_sessions(db: &Database, auth: &Auth) -> Result<(), (StatusCodeU16
     Ok(())
 }
 
-type AccessToken = String;
-type RefreshToken = String;
-
+/// Authenticates user and creates session tokens
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `item` - Login credentials
+///
+/// # Returns
+/// Result containing access and refresh tokens or error details
 pub fn login(
     db: &Database,
     item: &LoginInput,
 ) -> Result<(AccessToken, RefreshToken), (StatusCodeU16, Message)> {
     let mut db = db.get_connection().unwrap();
 
-    // verify device
     let device = match item.device {
         Some(ref device) if device.len() > 256 => {
             return Err((400, "'device' cannot be longer than 256 characters."));
@@ -246,13 +314,22 @@ pub fn login(
     create_user_session(&mut db, device, None, user.id)
 }
 
+/// Creates a new user session with tokens
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `device_type` - Optional device identifier
+/// * `ttl` - Token time-to-live in seconds
+/// * `user_id` - User ID
+///
+/// # Returns
+/// Result containing access and refresh tokens or error details
 pub fn create_user_session(
     db: &mut crate::services::database::Connection,
     device_type: Option<String>,
     ttl: Option<i64>,
     user_id: i32,
 ) -> Result<(AccessToken, RefreshToken), (StatusCodeU16, Message)> {
-    // verify device
     let device = match device_type {
         Some(device) if device.len() > 256 => {
             return Err((400, "'device' cannot be longer than 256 characters."));
@@ -270,7 +347,7 @@ pub fn create_user_session(
     };
 
     let access_token_duration = chrono::Duration::seconds(
-        ttl.map_or_else(|| /* 15 minutes */ 15 * 60, |tt| std::cmp::max(tt, 1)),
+        ttl.map_or_else(|| 15 * 60, |tt| std::cmp::max(tt, 1)),
     );
 
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -316,6 +393,14 @@ pub fn create_user_session(
     Ok((access_token, refresh_token))
 }
 
+/// Logs out user by destroying session
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `refresh_token` - Refresh token to invalidate
+///
+/// # Returns
+/// Result indicating success or error details
 pub fn logout(
     db: &Database,
     refresh_token: Option<&'_ str>,
@@ -335,6 +420,14 @@ pub fn logout(
     Ok(())
 }
 
+/// Refreshes access token using refresh token
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `refresh_token_str` - Current refresh token
+///
+/// # Returns
+/// Result containing new access and refresh tokens or error details
 pub fn refresh(
     db: &Database,
     refresh_token_str: Option<&'_ str>,
@@ -403,7 +496,6 @@ pub fn refresh(
     )
     .unwrap();
 
-    // update session with the new refresh token
     UserSession::update(
         &mut db,
         session.id,
@@ -418,6 +510,15 @@ pub fn refresh(
     Ok((access_token, refresh_token_str))
 }
 
+/// Registers a new user account
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `item` - Registration details
+/// * `mailer` - Email service for activation
+///
+/// # Returns
+/// Result indicating success or error details
 pub fn register(
     db: &Database,
     item: &RegisterInput,
@@ -467,6 +568,15 @@ pub fn register(
     Ok(())
 }
 
+/// Activates user account using activation token
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `item` - Activation token
+/// * `mailer` - Email service for confirmation
+///
+/// # Returns
+/// Result indicating success or error details
 pub fn activate(
     db: &Database,
     item: &ActivationInput,
@@ -514,6 +624,15 @@ pub fn activate(
     Ok(())
 }
 
+/// Initiates password recovery process
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `item` - User email for recovery
+/// * `mailer` - Email service for recovery instructions
+///
+/// # Returns
+/// Result indicating success or error details
 pub fn forgot_password(
     db: &Database,
     item: &ForgotInput,
@@ -548,6 +667,16 @@ pub fn forgot_password(
     Ok(())
 }
 
+/// Changes user password with current password verification
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `item` - Password change request
+/// * `auth` - Authenticated user information
+/// * `mailer` - Email service for confirmation
+///
+/// # Returns
+/// Result indicating success or error details
 pub fn change_password(
     db: &Database,
     item: &ChangeInput,
@@ -604,8 +733,21 @@ pub fn change_password(
     Ok(())
 }
 
+/// Validates authentication (no-op function for route guards)
+///
+/// # Arguments
+/// * `_` - Auth instance (unused)
 pub const fn check(_: &Auth) {}
 
+/// Resets user password using reset token
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `item` - Password reset request
+/// * `mailer` - Email service for confirmation
+///
+/// # Returns
+/// Result indicating success or error details
 pub fn reset_password(
     db: &Database,
     item: &ResetInput,
@@ -654,24 +796,38 @@ pub fn reset_password(
     Ok(())
 }
 
+/// Generates a cryptographically secure salt for password hashing
+///
+/// # Returns
+/// 16-byte array containing random salt
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
 pub fn generate_salt() -> [u8; 16] {
     use rand::Fill;
     let mut salt = [0; 16];
-    // this does not fail
     salt.fill(&mut rand::rng());
     salt
 }
 
+/// Authentication context containing user identity and permissions
 #[derive(Debug, Clone)]
 pub struct Auth {
+    /// User ID
     pub user_id: ID,
+    /// User roles
     pub roles: HashSet<String>,
+    /// User permissions
     pub permissions: HashSet<Permission>,
 }
 
 impl Auth {
+    /// Checks if user has specific permission
+    ///
+    /// # Arguments
+    /// * `permission` - Permission string to check
+    ///
+    /// # Returns
+    /// `true` if user has the permission
     #[must_use]
     pub fn has_permission(&self, permission: String) -> bool {
         self.permissions.contains(&Permission {
@@ -680,6 +836,13 @@ impl Auth {
         })
     }
 
+    /// Checks if user has all specified permissions
+    ///
+    /// # Arguments
+    /// * `perms` - List of permissions to check
+    ///
+    /// # Returns
+    /// `true` if user has all permissions
     #[must_use]
     #[allow(dead_code)]
     pub fn has_all_permissions(&self, perms: impl AsRef<[String]>) -> bool {
@@ -689,6 +852,13 @@ impl Auth {
             .all(|p| self.has_permission(p.to_string()))
     }
 
+    /// Checks if user has any of the specified permissions
+    ///
+    /// # Arguments
+    /// * `perms` - List of permissions to check
+    ///
+    /// # Returns
+    /// `true` if user has at least one permission
     #[must_use]
     #[allow(dead_code)]
     pub fn has_any_permission(&self, perms: impl AsRef<[String]>) -> bool {
@@ -698,31 +868,58 @@ impl Auth {
             .any(|p| self.has_permission(p.to_string()))
     }
 
+    /// Checks if user has specific role
+    ///
+    /// # Arguments
+    /// * `role` - Role name to check
+    ///
+    /// # Returns
+    /// `true` if user has the role
     #[must_use]
     pub fn has_role(&self, role: impl AsRef<str>) -> bool {
         self.roles.contains(role.as_ref())
     }
 
+    /// Checks if user has all specified roles
+    ///
+    /// # Arguments
+    /// * `roles` - List of roles to check
+    ///
+    /// # Returns
+    /// `true` if user has all roles
     #[must_use]
     #[allow(dead_code)]
     pub fn has_all_roles(&self, roles: impl AsRef<[String]>) -> bool {
         roles.as_ref().iter().all(|r| self.has_role(r))
     }
 
+    /// Checks if user has any of the specified roles
+    ///
+    /// # Arguments
+    /// * `roles` - List of roles to check
+    ///
+    /// # Returns
+    /// `true` if user has at least one role
     #[allow(dead_code)]
     pub fn has_any_roles(&self, roles: impl AsRef<[String]>) -> bool {
         roles.as_ref().iter().any(|r| self.has_role(r))
     }
 }
 
-/// Implement FromRequest for Auth to make it usable as a parameter in route handlers
-/// This allows controllers to automatically extract Auth from requests
+/// Implement FromRequest for Auth to enable automatic extraction in route handlers
 impl FromRequest for Auth {
     type Error = ActixError;
     type Future = Ready<Result<Self, Self::Error>>;
 
+    /// Extracts authentication information from HTTP request
+    ///
+    /// # Arguments
+    /// * `req` - HTTP request
+    /// * `_` - Request payload (unused)
+    ///
+    /// # Returns
+    /// Future resolving to Auth instance or authentication error
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
-        // Get app configuration which contains JWT secret
         let config = match req.app_data::<Arc<Config>>() {
             Some(config) => config,
             None => {
@@ -730,18 +927,15 @@ impl FromRequest for Auth {
             }
         };
 
-        // Check for authorization header
         if let Some(auth_header) = req.headers().get(header::AUTHORIZATION) {
             if let Ok(auth_str) = auth_header.to_str() {
                 if let Some(token) = auth_str.strip_prefix("Bearer ") {
-                    // Try to decode the token
                     let token_result = decode::<AccessTokenClaims>(
                         token,
                         &DecodingKey::from_secret(config.secret_key.as_bytes()),
                         &Validation::default(),
                     );
 
-                    // If successful, create and return an Auth instance
                     if let Ok(token_data) = token_result {
                         let permissions: HashSet<Permission> =
                             token_data.claims.permissions.iter().cloned().collect();
@@ -758,13 +952,11 @@ impl FromRequest for Auth {
                         return ready(Ok(auth));
                     }
 
-                    // Token validation failed
                     return ready(Err(ErrorUnauthorized("Invalid token")));
                 }
             }
         }
 
-        // No or invalid Authorization header
         ready(Err(ErrorUnauthorized("Authorization required")))
     }
 }

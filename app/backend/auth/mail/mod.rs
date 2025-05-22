@@ -1,5 +1,3 @@
-// app/backend/auth/mail/mod.rs
-
 pub mod auth_activated;
 pub mod auth_password_changed;
 pub mod auth_password_reset;

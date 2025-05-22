@@ -1,4 +1,14 @@
-// backend/auth/routes.rs
+//! Authentication and authorization route handlers for the web API.
+//!
+//! Features:
+//! - User authentication endpoints (login, logout, refresh)
+//! - User registration and account activation
+//! - Password management (change, reset, forgot)
+//! - Session management with cookie-based refresh tokens
+//! - Permission management endpoints with admin protection
+//! - Comprehensive error handling with proper HTTP status codes
+//! - Cookie security with HttpOnly, Secure, and SameSite attributes
+//! - Middleware integration for route protection
 
 use actix_web::cookie::{Cookie, SameSite};
 use actix_web::web::{Data, Json, Path, Query};
@@ -7,15 +17,40 @@ use serde_json::json;
 
 use crate::auth::controllers::auth as controller;
 use crate::auth::controllers::auth::{
-    ActivationInput, ChangeInput, ForgotInput, LoginInput, RegisterInput, ResetInput, COOKIE_NAME,
+    ActivationInput, ChangeInput, ForgotInput, LoginInput, RegisterInput, ResetInput, 
+    UserSessionResponse, COOKIE_NAME,
 };
-use crate::auth::Auth;
-use crate::auth::PaginationParams;
+use crate::auth::{Auth, PaginationParams};
 use crate::config::Config;
 use crate::services::database::Database;
 use crate::services::mailer::Mailer;
 
-/// Handler for GET requests at the /sessions endpoint
+/// Retrieves paginated user sessions for the authenticated user
+///
+/// Returns a list of active sessions with device information and timestamps,
+/// allowing users to monitor and manage their authentication sessions.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `auth` - Authenticated user context
+/// * `info` - Pagination parameters from query string
+///
+/// # Returns
+/// HTTP response with session list or error
+#[utoipa::path(
+    get,
+    path = "/auth/sessions",
+    tag = "Authentication",
+    params(PaginationParams),
+    responses(
+        (status = 200, description = "Successfully retrieved user sessions", body = UserSessionResponse),
+        (status = 401, description = "User not authenticated"),
+        (status = 500, description = "Failed to retrieve sessions from database")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 #[get("/sessions")]
 pub async fn sessions(
     db: Data<Database>,
@@ -33,7 +68,35 @@ pub async fn sessions(
     }
 }
 
-/// Handler for DELETE requests at the /sessions/{id} endpoint
+/// Destroys a specific user session by ID
+///
+/// Logs out a specific session, invalidating the associated refresh token.
+/// Users can only destroy their own sessions.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `item_id` - Session ID from URL path
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
+#[utoipa::path(
+    delete,
+    path = "/auth/sessions/{id}",
+    tag = "Authentication",
+    params(
+        ("id" = i32, Path, description = "Session ID to destroy")
+    ),
+    responses(
+        (status = 200, description = "Session successfully destroyed"),
+        (status = 401, description = "User not authenticated"),
+        (status = 404, description = "Session not found or does not belong to user"),
+        (status = 500, description = "Failed to destroy session")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 #[delete("/sessions/{id}")]
 pub async fn destroy_session(
     db: Data<Database>,
@@ -53,7 +116,30 @@ pub async fn destroy_session(
     }
 }
 
-/// Handler for DELETE requests at the /sessions endpoint
+/// Destroys all user sessions for the authenticated user
+///
+/// Logs out from all devices by invalidating all refresh tokens associated
+/// with the user account. This is useful for security purposes.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating success or error
+#[utoipa::path(
+    delete,
+    path = "/auth/sessions",
+    tag = "Authentication",
+    responses(
+        (status = 200, description = "All sessions successfully destroyed"),
+        (status = 401, description = "User not authenticated"),
+        (status = 500, description = "Failed to destroy sessions")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 #[delete("/sessions")]
 pub async fn destroy_sessions(db: Data<Database>, auth: Auth) -> Result<HttpResponse, AWError> {
     let result = web::block(move || controller::destroy_sessions(&db, &auth)).await?;
@@ -68,7 +154,29 @@ pub async fn destroy_sessions(db: Data<Database>, auth: Auth) -> Result<HttpResp
     }
 }
 
-/// Handler for POST requests at the /login endpoint
+/// Authenticates user with email and password
+///
+/// Validates user credentials and returns an access token in the response body
+/// while setting a secure HttpOnly refresh token cookie for session management.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `item` - Login credentials including email and password
+///
+/// # Returns
+/// HTTP response with access token or authentication error
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    tag = "Authentication",
+    request_body = LoginInput,
+    responses(
+        (status = 200, description = "Successfully authenticated user", body = inline(Object), example = json!({"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."})),
+        (status = 400, description = "Account not activated or invalid device"),
+        (status = 401, description = "Invalid credentials"),
+        (status = 500, description = "Internal server error during authentication")
+    )
+)]
 #[post("/login")]
 pub async fn login(
     db: Data<Database>,
@@ -96,7 +204,27 @@ pub async fn login(
     }
 }
 
-/// Handler for POST requests at the /logout endpoint
+/// Logs out user by invalidating refresh token
+///
+/// Destroys the current user session by invalidating the refresh token
+/// and clearing the refresh token cookie.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - HTTP request containing refresh token cookie
+///
+/// # Returns
+/// HTTP response indicating successful logout or error
+#[utoipa::path(
+    post,
+    path = "/auth/logout",
+    tag = "Authentication",
+    responses(
+        (status = 200, description = "Successfully logged out user"),
+        (status = 401, description = "Invalid or missing refresh token"),
+        (status = 500, description = "Failed to destroy session")
+    )
+)]
 #[post("/logout")]
 pub async fn logout(db: Data<Database>, req: HttpRequest) -> Result<HttpResponse, AWError> {
     let refresh_token = req
@@ -122,7 +250,27 @@ pub async fn logout(db: Data<Database>, req: HttpRequest) -> Result<HttpResponse
     }
 }
 
-/// Handler for POST requests at the /refresh endpoint
+/// Refreshes access token using refresh token
+///
+/// Generates a new access token and refresh token pair using the current
+/// refresh token from the HTTP-only cookie, extending the user's session.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `req` - HTTP request containing refresh token cookie
+///
+/// # Returns
+/// HTTP response with new access token or authentication error
+#[utoipa::path(
+    post,
+    path = "/auth/refresh",
+    tag = "Authentication",
+    responses(
+        (status = 200, description = "Successfully refreshed tokens", body = inline(Object), example = json!({"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."})),
+        (status = 401, description = "Invalid or expired refresh token"),
+        (status = 500, description = "Failed to refresh tokens")
+    )
+)]
 #[post("/refresh")]
 pub async fn refresh(db: Data<Database>, req: HttpRequest) -> Result<HttpResponse, AWError> {
     let refresh_token = req
@@ -154,7 +302,29 @@ pub async fn refresh(db: Data<Database>, req: HttpRequest) -> Result<HttpRespons
     }
 }
 
-/// Handler for POST requests at the /register endpoint
+/// Registers a new user account
+///
+/// Creates a new user account with the provided information and sends
+/// an activation email. The account must be activated before login.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `item` - Registration data including email, password, and personal info
+/// * `mailer` - Email service for sending activation email
+///
+/// # Returns
+/// HTTP response indicating successful registration or error
+#[utoipa::path(
+    post,
+    path = "/auth/register",
+    tag = "Authentication",
+    request_body = RegisterInput,
+    responses(
+        (status = 200, description = "Successfully registered user", body = inline(Object), example = json!({"message": "Registered! Check your email to activate your account."})),
+        (status = 400, description = "User already registered or invalid input"),
+        (status = 500, description = "Failed to create user account")
+    )
+)]
 #[post("/register")]
 pub async fn register(
     db: Data<Database>,
@@ -173,7 +343,30 @@ pub async fn register(
     }
 }
 
-/// Handler for GET requests at the /activate endpoint
+/// Activates user account using activation token
+///
+/// Validates the activation token from the registration email and
+/// activates the user account, enabling login functionality.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `item` - Activation token from email query parameters
+/// * `mailer` - Email service for sending confirmation email
+///
+/// # Returns
+/// HTTP response indicating successful activation or error
+#[utoipa::path(
+    get,
+    path = "/auth/activate",
+    tag = "Authentication",
+    params(ActivationInput),
+    responses(
+        (status = 200, description = "Successfully activated account", body = inline(Object), example = json!({"message": "Activated!"})),
+        (status = 400, description = "Invalid activation token"),
+        (status = 401, description = "Expired or malformed token"),
+        (status = 500, description = "Failed to activate account")
+    )
+)]
 #[get("/activate")]
 pub async fn activate(
     db: Data<Database>,
@@ -192,7 +385,28 @@ pub async fn activate(
     }
 }
 
-/// Handler for POST requests at the /forgot endpoint
+/// Initiates password recovery process
+///
+/// Sends password reset instructions to the provided email address.
+/// If the account exists, sends a reset link; otherwise, sends registration info.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `item` - Email address for password recovery
+/// * `mailer` - Email service for sending recovery instructions
+///
+/// # Returns
+/// HTTP response with generic success message for security
+#[utoipa::path(
+    post,
+    path = "/auth/forgot",
+    tag = "Authentication",
+    request_body = ForgotInput,
+    responses(
+        (status = 200, description = "Password recovery email sent", body = inline(Object), example = json!({"message": "Please check your email."})),
+        (status = 500, description = "Failed to send recovery email")
+    )
+)]
 #[post("/forgot")]
 pub async fn forgot_password(
     db: Data<Database>,
@@ -211,7 +425,34 @@ pub async fn forgot_password(
     }
 }
 
-/// Handler for POST requests at the /change endpoint
+/// Changes user password with current password verification
+///
+/// Updates the user's password after verifying the current password.
+/// Requires authentication and sends confirmation email.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `item` - Password change request with old and new passwords
+/// * `auth` - Authenticated user context
+/// * `mailer` - Email service for sending confirmation email
+///
+/// # Returns
+/// HTTP response indicating successful password change or error
+#[utoipa::path(
+    post,
+    path = "/auth/change",
+    tag = "Authentication",
+    request_body = ChangeInput,
+    responses(
+        (status = 200, description = "Password successfully changed", body = inline(Object), example = json!({"message": "Password changed."})),
+        (status = 400, description = "Missing password or passwords are the same"),
+        (status = 401, description = "Invalid current password or user not authenticated"),
+        (status = 500, description = "Failed to update password")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 #[post("/change")]
 pub async fn change_password(
     db: Data<Database>,
@@ -231,14 +472,58 @@ pub async fn change_password(
     }
 }
 
-/// Handler for POST requests at the /check endpoint
+/// Validates authentication token
+///
+/// Simple endpoint to verify that the user's authentication token is valid.
+/// Returns 200 OK if authenticated, otherwise returns authentication error.
+///
+/// # Arguments
+/// * `auth` - Authenticated user context
+///
+/// # Returns
+/// HTTP response indicating authentication status
+#[utoipa::path(
+    post,
+    path = "/auth/check",
+    tag = "Authentication",
+    responses(
+        (status = 200, description = "User is authenticated"),
+        (status = 401, description = "User not authenticated or invalid token")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 #[post("/check")]
 pub async fn check(auth: Auth) -> HttpResponse {
     controller::check(&auth);
     HttpResponse::Ok().finish()
 }
 
-/// Handler for POST requests at the /reset endpoint
+/// Resets user password using reset token
+///
+/// Updates the user's password using a valid reset token from the
+/// password recovery email, bypassing current password verification.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `item` - Password reset request with token and new password
+/// * `mailer` - Email service for sending confirmation email
+///
+/// # Returns
+/// HTTP response indicating successful password reset or error
+#[utoipa::path(
+    post,
+    path = "/auth/reset",
+    tag = "Authentication",
+    request_body = ResetInput,
+    responses(
+        (status = 200, description = "Password successfully reset", body = inline(Object), example = json!({"message": "Password reset"})),
+        (status = 400, description = "Missing password or account not activated"),
+        (status = 401, description = "Invalid or expired reset token"),
+        (status = 500, description = "Failed to reset password")
+    )
+)]
 #[post("/reset")]
 pub async fn reset_password(
     db: Data<Database>,
@@ -265,9 +550,8 @@ pub async fn reset_password(
 /// # Arguments
 /// * `config` - Actix web ServiceConfig to configure
 /// * `app_config` - Application configuration
-#[allow(dead_code)] // Suppress warning as this will be used in the main application
+#[allow(dead_code)]
 pub fn configure_routes(config: &mut actix_web::web::ServiceConfig, _app_config: &Config) {
-    // Set up authentication routes
     config.service(
         web::scope("/auth")
             .service(sessions)
@@ -284,7 +568,6 @@ pub fn configure_routes(config: &mut actix_web::web::ServiceConfig, _app_config:
             .service(reset_password),
     );
 
-    // Configure permission management routes
     configure_permission_routes(config);
 }
 
@@ -345,28 +628,23 @@ fn configure_permission_routes(config: &mut actix_web::web::ServiceConfig) {
 ///
 /// This is an example of how you would apply permission middleware
 /// to protect routes in your application.
-#[allow(dead_code)] // Suppress warning as this is intended to be an example
+#[allow(dead_code)]
 pub fn configure_protected_routes(config: &mut web::ServiceConfig) {
     use crate::auth::middleware::auth::{JwtAuth, RequirePermission, RequireRole};
 
-    // Example: Routes that require authentication and specific permissions
     config.service(
         web::scope("/admin")
-            // First verify authentication
             .wrap(JwtAuth)
-            // Then check for admin permission - define this permission in your database
             .wrap(RequirePermission::new("admin"))
-            // Add your admin routes here
             .route(
                 "/dashboard",
                 web::get().to(|| async { HttpResponse::Ok().json(json!({"status": "ok"})) }),
             ),
     );
 
-    // Example: Routes that require a specific role
     config.service(
         web::scope("/manager")
             .wrap(JwtAuth)
-            .wrap(RequireRole::new("manager")), // Add your manager routes here
+            .wrap(RequireRole::new("manager")),
     );
 }
