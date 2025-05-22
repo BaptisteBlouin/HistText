@@ -1,3 +1,5 @@
+pub mod auth;
+pub mod auth_middleware;
 pub mod crud;
 pub mod database;
 pub mod mailer;

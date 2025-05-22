@@ -3,11 +3,11 @@
 //! This is the main entry point for the application, which initializes
 //! all components and starts the server. The codebase is organized into
 //! several modules for different functionality areas.
+#![allow(dead_code)]
 
 extern crate diesel;
 
 mod app_data;
-mod auth;
 mod config;
 mod graphql;
 mod models;
@@ -16,6 +16,7 @@ mod schema;
 mod server;
 mod services;
 mod template;
+mod mail;
 
 /// Core text processing modules
 mod histtext {

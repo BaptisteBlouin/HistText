@@ -11,7 +11,7 @@
 use actix_web::error::ErrorInternalServerError;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
 
-use crate::auth::AccessTokenClaims;
+use crate::services::auth::AccessTokenClaims;
 use crate::models::solr_database_permissions::SolrDatabasePermission;
 use crate::schema::solr_database_permissions::dsl::*;
 use jsonwebtoken::{decode, DecodingKey, Validation};

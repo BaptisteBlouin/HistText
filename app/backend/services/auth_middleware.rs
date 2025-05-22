@@ -5,8 +5,6 @@
 //! - Permission-based access control with granular checks
 //! - Role-based access control for route protection
 //! - Multiple permission requirement strategies (any/all)
-//! - Request extension integration for downstream handlers
-//! - Comprehensive error handling with descriptive messages
 
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
@@ -19,14 +17,10 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use crate::auth::models::permission::Permission;
-use crate::auth::{AccessTokenClaims, Auth, AuthConfig};
 use crate::config::Config;
+use crate::services::auth::{AccessTokenClaims, Auth, Permission};
 
 /// JWT authentication middleware for Actix Web
-///
-/// Extracts and validates JWT tokens from Authorization headers,
-/// adding the Auth struct to request extensions for downstream handlers.
 pub struct JwtAuth;
 
 impl<S, B> Transform<S, ServiceRequest> for JwtAuth
@@ -46,7 +40,6 @@ where
     }
 }
 
-/// JWT authentication middleware implementation
 pub struct JwtAuthMiddleware<S> {
     service: S,
 }
@@ -64,7 +57,7 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let config_opt = req.app_data::<Arc<Config>>().cloned();
+        let config_opt = req.app_data::<actix_web::web::Data<Arc<Config>>>().cloned();
         if config_opt.is_none() {
             return Box::pin(async move {
                 Err(actix_web::error::ErrorInternalServerError(
@@ -74,18 +67,13 @@ where
         }
         let config = config_opt.unwrap();
 
-        let auth_config = AuthConfig {
-            jwt_secret: config.secret_key.clone(),
-            app_url: config.app_url.clone(),
-        };
-
         let auth_header = req.headers().get(header::AUTHORIZATION).cloned();
         let auth_result = if let Some(header_value) = auth_header {
             if let Ok(auth_str) = header_value.to_str() {
                 if let Some(token) = auth_str.strip_prefix("Bearer ") {
                     let token_result = decode::<AccessTokenClaims>(
                         token,
-                        &DecodingKey::from_secret(auth_config.jwt_secret.as_bytes()),
+                        &DecodingKey::from_secret(config.secret_key.as_bytes()),
                         &Validation::default(),
                     );
 
@@ -138,25 +126,11 @@ where
 }
 
 /// Middleware to require a specific permission for route access
-///
-/// Checks that the authenticated user has the specified permission
-/// before allowing access to the protected route.
 pub struct RequirePermission {
     required_permission: String,
 }
 
 impl RequirePermission {
-    /// Creates a new permission requirement middleware
-    ///
-    /// # Arguments
-    /// * `permission` - The permission string to check for
-    ///
-    /// # Example
-    /// ```rust
-    /// use crate::auth::middleware::RequirePermission;
-    /// 
-    /// let middleware = RequirePermission::new("user:read");
-    /// ```
     pub fn new(permission: &str) -> Self {
         Self {
             required_permission: permission.to_string(),
@@ -184,7 +158,6 @@ where
     }
 }
 
-/// Permission requirement middleware implementation
 pub struct RequirePermissionMiddleware<S> {
     service: S,
     required_permission: String,
@@ -227,26 +200,11 @@ where
 }
 
 /// Middleware to require any of multiple permissions for route access
-///
-/// Allows access if the authenticated user has at least one of the
-/// specified permissions.
 pub struct RequireAnyPermission {
     required_permissions: Vec<String>,
 }
 
 impl RequireAnyPermission {
-    /// Creates a new middleware that requires any of the specified permissions
-    ///
-    /// # Arguments
-    /// * `permissions` - List of permission strings, any of which grants access
-    ///
-    /// # Example
-    /// ```rust
-    /// use crate::auth::middleware::RequireAnyPermission;
-    /// 
-    /// let middleware = RequireAnyPermission::new(vec!["user:read", "admin:all"]);
-    /// ```
-    #[allow(dead_code)]
     pub fn new(permissions: Vec<&str>) -> Self {
         Self {
             required_permissions: permissions.iter().map(|p| p.to_string()).collect(),
@@ -274,7 +232,6 @@ where
     }
 }
 
-/// Any permission requirement middleware implementation
 pub struct RequireAnyPermissionMiddleware<S> {
     service: S,
     required_permissions: Vec<String>,
@@ -317,25 +274,11 @@ where
 }
 
 /// Middleware to require a specific role for route access
-///
-/// Checks that the authenticated user has the specified role
-/// before allowing access to the protected route.
 pub struct RequireRole {
     required_role: String,
 }
 
 impl RequireRole {
-    /// Creates a new role requirement middleware
-    ///
-    /// # Arguments
-    /// * `role` - The role string to check for
-    ///
-    /// # Example
-    /// ```rust
-    /// use crate::auth::middleware::RequireRole;
-    /// 
-    /// let middleware = RequireRole::new("admin");
-    /// ```
     pub fn new(role: &str) -> Self {
         Self {
             required_role: role.to_string(),
@@ -363,7 +306,6 @@ where
     }
 }
 
-/// Role requirement middleware implementation
 pub struct RequireRoleMiddleware<S> {
     service: S,
     required_role: String,

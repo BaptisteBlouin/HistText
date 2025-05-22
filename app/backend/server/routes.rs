@@ -16,11 +16,9 @@ use crate::server::state::AppState;
 use crate::server::state::DbPool;
 use crate::services::database::Database;
 
-// Import auth routes module
-use crate::auth::routes;
-
 // Import route handlers
 use crate::histtext;
+use crate::services::auth::handlers as auth_handlers;
 use crate::services::role_permissions::*;
 use crate::services::solr_database::*;
 use crate::services::solr_database_info::*;
@@ -47,13 +45,6 @@ use actix_web_httpauth::{
 use crate::template::render_views;
 
 /// Validates basic authentication credentials for OpenAPI documentation access
-///
-/// # Arguments
-/// * `req` - The incoming service request
-/// * `creds` - Basic authentication credentials extracted from the request
-///
-/// # Returns
-/// The request if authentication succeeds, or an authentication error if it fails
 async fn basic_validator(
     req: ServiceRequest,
     creds: BasicAuth,
@@ -66,32 +57,17 @@ async fn basic_validator(
     if creds.user_id() == expected_user && creds.password().unwrap_or("") == expected_pass {
         Ok(req)
     } else {
-        // Get the BasicAuthConfig to determine the realm
         let config = req
             .app_data::<BasicAuthConfig>()
             .cloned()
             .unwrap_or_default();
-        // Create a Basic authentication challenge
         let challenge = config.into_inner();
-        // Create a 401 response with WWW-Authenticate header
         let auth_error = AuthenticationError::new(challenge);
         Err((auth_error.into(), req))
     }
 }
 
 /// Sets up all API routes for the application
-///
-/// This function configures all routes, middleware, and shared application data
-/// including authentication, OpenAPI documentation, and API endpoints
-/// organized by functional category.
-///
-/// # Arguments
-/// * `config` - Service configuration to modify
-/// * `app_state` - Application state data
-/// * `db` - Database connection
-/// * `db_pool` - Database connection pool
-/// * `app_data` - Create-rust-app application data
-/// * `schema` - GraphQL schema
 pub fn configure_routes(
     config: &mut ServiceConfig,
     app_state: Data<AppState>,
@@ -111,23 +87,50 @@ pub fn configure_routes(
         app_url: app_state.config.app_url.clone(),
     });
 
-    // Create authentication config
-    //let auth_config = Data::new(crate::auth::AuthConfig {
-    //    oidc_providers: vec![create_rust_app::auth::oidc::OIDCProvider::GOOGLE(
-    //        app_state.config.google_oauth2_client_id.clone(),
-    //        app_state.config.google_oauth2_client_secret.clone(),
-    //        format!("{}/oauth/success", app_state.config.app_url),
-    //        format!("{}/oauth/error", app_state.config.app_url),
-    //    )],
-    //});
-
-    // Initialize API scope - Configure auth routes
+    // Initialize API scope
     let mut api_scope = web::scope("/api");
 
     // Configure auth routes
-    api_scope = api_scope.configure(|cfg| {
-        routes::configure_routes(cfg, Config::global());
-    });
+    api_scope = api_scope.service(
+        web::scope("/auth")
+        .service(
+            web::resource("/login")
+                .route(web::post().to(auth_handlers::login))
+        )
+        .service(
+            web::resource("/logout")
+                .route(web::post().to(auth_handlers::logout))
+        )
+        .service(
+            web::resource("/refresh")
+                .route(web::post().to(auth_handlers::refresh))
+        )
+        .service(
+            web::resource("/register")
+                .route(web::post().to(auth_handlers::register))
+        )
+        .service(
+            web::resource("/activate")
+                .route(web::get().to(auth_handlers::activate))
+        )
+        .service(
+            web::resource("/check")
+                .route(web::post().to(auth_handlers::check))
+        )
+        .service(
+            web::resource("/forgot")
+                .route(web::post().to(auth_handlers::forgot_password))
+        )
+        .service(
+            web::resource("/change")
+                .route(web::post().to(auth_handlers::change_password))
+        )
+        .service(
+            web::resource("/reset")
+                .route(web::post().to(auth_handlers::reset_password))
+        )
+    );
+
     // Configure all API endpoints by category
     api_scope = configure_solr_routes(api_scope);
     api_scope = configure_hist_text_routes(api_scope);
@@ -209,15 +212,7 @@ pub fn configure_routes(
         .app_data(mailer);
 }
 
-// Rest of your route configuration functions...
-
 /// Configure Solr query and metadata routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with Solr routes
 fn configure_solr_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(
@@ -247,12 +242,6 @@ fn configure_solr_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure HistText-specific text processing routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with HistText routes
 fn configure_hist_text_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(web::resource("/tokenize").route(web::post().to(histtext::tokenizer::tokenize)))
@@ -272,12 +261,6 @@ fn configure_hist_text_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure user management routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with user routes
 fn configure_user_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(
@@ -296,12 +279,6 @@ fn configure_user_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure role permission management routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with role permission routes
 fn configure_role_permission_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(
@@ -319,12 +296,6 @@ fn configure_role_permission_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure Solr database management routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with Solr database routes
 fn configure_solr_database_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(
@@ -351,12 +322,6 @@ fn configure_solr_database_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure Solr database permission routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with Solr database permission routes
 fn configure_solr_database_permission_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(
@@ -375,12 +340,6 @@ fn configure_solr_database_permission_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure Solr database information routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with Solr database info routes
 fn configure_solr_database_info_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(
@@ -409,12 +368,6 @@ fn configure_solr_database_info_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure user role assignment routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with user role routes
 fn configure_user_role_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(
@@ -432,12 +385,6 @@ fn configure_user_role_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure user permission assignment routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with user permission routes
 fn configure_user_permission_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(
@@ -455,12 +402,6 @@ fn configure_user_permission_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure application statistics routes
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with stats routes
 fn configure_stats_routes(api_scope: Scope) -> Scope {
     api_scope.service(
         web::resource("/stats")
@@ -470,12 +411,6 @@ fn configure_stats_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure health check endpoint
-///
-/// # Arguments
-/// * `api_scope` - The API scope to extend
-///
-/// # Returns
-/// Updated API scope with health check route
 fn configure_health_routes(api_scope: Scope) -> Scope {
     api_scope.service(
         web::resource("/health").route(web::get().to(|| async { HttpResponse::Ok().body("OK") })),

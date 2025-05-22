@@ -1,13 +1,4 @@
 //! Server implementation for the application.
-//!
-//! This module contains all server-related components including:
-//! - HTTP server setup and configuration
-//! - Route handlers and middleware
-//! - Error handling
-//! - Authentication guards
-//! - SSH tunneling for database connections
-//! - Application state management
-//! - Graceful startup and shutdown procedures
 
 // Re-export server components
 pub mod connection;
@@ -19,23 +10,8 @@ pub mod startup;
 pub mod state;
 
 /// Runs the HTTP server with all necessary components initialized.
-///
-/// This function:
-/// - Loads application configuration
-/// - Sets up database pools
-/// - Initializes GraphQL schema
-/// - Establishes SSH tunnels
-/// - Configures logging
-/// - Sets up signal handlers for graceful shutdown
-/// - Starts the HTTP server with all routes and middleware
-///
-/// # Returns
-/// Standard I/O result, with error if server fails to start or encounters issues
 pub async fn run_server() -> std::io::Result<()> {
     use crate::app_data::{AppConfig, AppData};
-    #[allow(unused_imports)]
-    use crate::auth::middleware::auth::JwtAuth;
-    use crate::auth::AuthConfig;
     use crate::config::Config;
     use crate::graphql;
     use crate::server::ssh::establish_ssh_tunnels;
@@ -76,7 +52,6 @@ pub async fn run_server() -> std::io::Result<()> {
     )
     .data(app_data.database.clone())
     .data(app_data.mailer.clone())
-    //.data(app_data.storage.clone())
     .data(config.clone())
     .finish();
 
@@ -86,12 +61,6 @@ pub async fn run_server() -> std::io::Result<()> {
     // Initialize database connection pool
     let db = Database::new();
     let db_pool = db.pool.clone();
-
-    // Create your custom auth config
-    let auth_config = AuthConfig {
-        jwt_secret: config.secret_key.clone(),
-        app_url: config.app_url.clone(),
-    };
 
     // Initialize mailer for auth system
     let config_global = Config::global();
@@ -145,7 +114,7 @@ pub async fn run_server() -> std::io::Result<()> {
             .app_data(PayloadConfig::new(
                 config.max_document_size_mb * 1024 * 1024,
             ))
-            // Add application data - use app_data with web::Data for Actix Web 4.x
+            // Add application data
             .app_data(shared_app_data.clone())
             .app_data(web::Data::new(app_data.database.clone()))
             .app_data(web::Data::new(app_data.mailer.clone()))
@@ -156,23 +125,18 @@ pub async fn run_server() -> std::io::Result<()> {
             // Configure app settings
             .app_data(web::Data::new(AppConfig {
                 app_url: config.app_url.clone(),
-            }))
-            .app_data(web::Data::new(auth_config.clone()));
+            }));
 
         // Configure routes
         app.configure(|cfg| {
-            // Configure your routes with your custom auth system
             routes::configure_routes(
                 cfg,
                 app_state_data.clone(),
                 shared_db.clone(),
                 shared_db_pool.clone(),
-                shared_app_data.clone(), // Use the shared_app_data here
+                shared_app_data.clone(),
                 shared_schema.clone(),
             );
-
-            // Configure your auth routes directly
-            crate::auth::routes::configure_routes(cfg, &config);
         })
     })
     .bind("0.0.0.0:3000")?

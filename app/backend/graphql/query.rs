@@ -1,4 +1,4 @@
-use crate::auth::Auth;
+use crate::services::auth::Auth;
 use async_graphql::{Context, Object};
 
 pub struct QueryRoot;

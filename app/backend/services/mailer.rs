@@ -107,23 +107,23 @@ impl Mailer {
 
     pub fn send_register(&self, to_email: &str, activation_link: &str) {
         let link = format!("{}/{}", self.app_url, activation_link);
-        crate::auth::mail::auth_register::send(self, to_email, &link);
+        crate::mail::auth_register::send(self, to_email, &link);
     }
     pub fn send_activated(&self, to_email: &str) {
-        crate::auth::mail::auth_activated::send(self, to_email);
+        crate::mail::auth_activated::send(self, to_email);
     }
     pub fn send_password_changed(&self, to_email: &str) {
-        crate::auth::mail::auth_password_changed::send(self, to_email);
+        crate::mail::auth_password_changed::send(self, to_email);
     }
     pub fn send_password_reset(&self, to_email: &str) {
-        crate::auth::mail::auth_password_reset::send(self, to_email);
+        crate::mail::auth_password_reset::send(self, to_email);
     }
     pub fn send_recover_existent_account(&self, to_email: &str, reset_link: &str) {
         let link = format!("{}/{}", self.app_url, reset_link);
-        crate::auth::mail::auth_recover_existent_account::send(self, to_email, &link);
+        crate::mail::auth_recover_existent_account::send(self, to_email, &link);
     }
     pub fn send_recover_nonexistent_account(&self, to_email: &str, register_link: &str) {
         let link = format!("{}/{}", self.app_url, register_link);
-        crate::auth::mail::auth_recover_nonexistent_account::send(self, to_email, &link);
+        crate::mail::auth_recover_nonexistent_account::send(self, to_email, &link);
     }
 }

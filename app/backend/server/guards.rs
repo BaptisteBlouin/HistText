@@ -3,25 +3,14 @@
 //! This module provides guard functions that can be used with Actix-Web
 //! to control access to routes based on JWT tokens and permissions.
 
-use crate::auth::models::permission::Permission;
-use crate::auth::AccessTokenClaims;
-use crate::auth::Auth;
 use crate::config::Config;
+use crate::services::auth::{AccessTokenClaims, Auth, Permission};
 use actix_web::{guard::GuardContext, http::header, web::Data};
 use jsonwebtoken;
 use std::collections::HashSet;
 use std::sync::Arc;
 
 /// Guards a route to require admin permission in the JWT token.
-///
-/// This function validates the Authorization Bearer token, decodes the JWT,
-/// and checks if the admin permission is present in the token's claims.
-///
-/// # Arguments
-/// * `ctx` - The guard context providing access to request headers and app data
-///
-/// # Returns
-/// `true` if a valid token with admin permission is present, `false` otherwise
 pub fn has_permission(ctx: &GuardContext) -> bool {
     // Get request headers
     let req_head = ctx.head();
@@ -59,17 +48,6 @@ pub fn has_permission(ctx: &GuardContext) -> bool {
 }
 
 /// Guards a route to require a specific permission in the JWT token.
-///
-/// This is an enhanced version of the has_permission guard that allows
-/// checking for any specific permission, not just "admin".
-///
-/// # Arguments
-/// * `ctx` - The guard context
-/// * `required_permission` - The permission string to check for
-///
-/// # Returns
-/// `true` if a valid token with the required permission is present, `false` otherwise
-#[allow(dead_code)]
 pub fn has_specific_permission(ctx: &GuardContext, required_permission: &str) -> bool {
     // Get request headers
     let req_head = ctx.head();
@@ -120,16 +98,6 @@ pub fn has_specific_permission(ctx: &GuardContext, required_permission: &str) ->
 }
 
 /// Guards a route to require any of the specified permissions.
-///
-/// This function allows checking if the user has any of multiple permissions.
-///
-/// # Arguments
-/// * `ctx` - The guard context
-/// * `required_permissions` - List of permissions to check for
-///
-/// # Returns
-/// `true` if a valid token with any of the required permissions is present
-#[allow(dead_code)]
 pub fn has_any_permission(ctx: &GuardContext, required_permissions: &[&str]) -> bool {
     // Get request headers and config (same as above)
     let req_head = ctx.head();
@@ -176,14 +144,6 @@ pub fn has_any_permission(ctx: &GuardContext, required_permissions: &[&str]) -> 
 }
 
 /// Guards a route to require the user to have a specific role.
-///
-/// # Arguments
-/// * `ctx` - The guard context
-/// * `required_role` - The role to check for
-///
-/// # Returns
-/// `true` if a valid token with the required role is present
-#[allow(dead_code)]
 pub fn has_role(ctx: &GuardContext, required_role: &str) -> bool {
     // Implementation follows the same pattern as above
     let req_head = ctx.head();

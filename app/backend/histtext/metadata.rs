@@ -21,7 +21,7 @@ use utoipa::{IntoParams, ToSchema};
 use crate::config::Config;
 use crate::models::solr_database_permissions::SolrDatabasePermission;
 
-use crate::auth::AccessTokenClaims;
+use crate::services::auth::AccessTokenClaims;
 use crate::schema::solr_database_permissions::dsl::*;
 use crate::schema::solr_databases::dsl::*;
 
