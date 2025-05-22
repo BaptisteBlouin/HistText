@@ -67,7 +67,8 @@ echo "PostgreSQL is ready!"
 
 # Wait for Solr to be ready
 echo "Waiting for Solr to be ready..."
-until curl --silent --fail http://solr:8983/solr/ || curl --silent --fail http://localhost:8982/solr/; do
+sleep 5
+until curl --connect-timeout 5 --max-time 10 --silent --fail http://solr:${SOLR_NER_PORT:-8982}/solr/; do
   echo "Solr not yet ready, retrying..."
   sleep 2
 done

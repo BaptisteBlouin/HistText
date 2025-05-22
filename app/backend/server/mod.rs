@@ -1,7 +1,6 @@
 //! Server implementation for the application.
 
 // Re-export server components
-pub mod connection;
 pub mod error;
 pub mod guards;
 pub mod routes;

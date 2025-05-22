@@ -6,7 +6,7 @@ use diesel::QueryResult;
 use serde::{Deserialize, Serialize};
 
 
-type Connection = crate::server::connection::Connection;
+type Connection = crate::services::database::Connection;
 
 #[tsync::tsync]
 #[derive(Debug, Serialize, Deserialize, Clone, Queryable, Insertable, AsChangeset, Selectable)]

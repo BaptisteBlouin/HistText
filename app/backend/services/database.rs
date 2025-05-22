@@ -7,7 +7,7 @@
 //! - Configurable connection parameters
 //! - Convenient access to pooled connections
 
-use diesel::r2d2::{self, ConnectionManager, PooledConnection};
+use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel_logger::LoggingConnection;
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
@@ -18,11 +18,13 @@ use crate::config::Config;
 type DbCon = diesel::PgConnection;
 
 /// Diesel backend type for PostgreSQL
-#[allow(dead_code)]
 pub type DieselBackend = diesel::pg::Pg;
 
-/// Connection pool type for PostgreSQL
-pub type Pool = r2d2::Pool<ConnectionManager<DbCon>>;
+/// Connection pool type for PostgreSQL - using diesel's r2d2 types
+pub type Pool = diesel::r2d2::Pool<ConnectionManager<DbCon>>;
+
+/// Database pool type alias for compatibility with existing code
+pub type DbPool = Pool;
 
 /// Logged connection type returned to application code
 pub type Connection = LoggingConnection<PooledConnection<ConnectionManager<DbCon>>>;
@@ -37,7 +39,6 @@ pub struct Database {
     pub pool: &'static Pool,
 
     /// Optional reference to application configuration
-    #[allow(dead_code)]
     config: Option<Arc<Config>>,
 }
 
@@ -74,7 +75,6 @@ impl Database {
     /// # Returns
     /// A new Database instance with the provided configuration
     #[must_use]
-    #[allow(dead_code)]
     pub fn with_config(config: Arc<Config>) -> Self {
         Self {
             pool: Self::get_or_init_pool_with_config(config.clone()),
@@ -91,6 +91,14 @@ impl Database {
     /// A logged connection or an error if a connection cannot be obtained
     pub fn get_connection(&self) -> Result<Connection, anyhow::Error> {
         Ok(LoggingConnection::new(self.pool.get()?))
+    }
+
+    /// Gets a raw connection from the pool (for backwards compatibility)
+    ///
+    /// # Returns
+    /// A pooled connection or an error if a connection cannot be obtained  
+    pub fn get(&self) -> Result<diesel::r2d2::PooledConnection<diesel::r2d2::ConnectionManager<DbCon>>, anyhow::Error> {
+        Ok(self.pool.get()?)
     }
 
     /// Initializes or returns the global connection pool
@@ -110,11 +118,11 @@ impl Database {
         }
 
         POOL.get_or_init(|| {
-            Pool::builder()
+            diesel::r2d2::Pool::builder()
                 .connection_timeout(std::time::Duration::from_secs(5))
                 .max_size(10) // Set a reasonable maximum pool size
-                .build(ConnectionManager::<DbCon>::new(Self::connection_url()))
-                .unwrap()
+                .build(diesel::r2d2::ConnectionManager::<DbCon>::new(Self::connection_url()))
+                .expect("Failed to create database connection pool")
         })
     }
 
@@ -128,16 +136,15 @@ impl Database {
     ///
     /// # Returns
     /// Reference to the static connection pool
-    #[allow(dead_code)]
     fn get_or_init_pool_with_config(config: Arc<Config>) -> &'static Pool {
         static POOL: OnceCell<Pool> = OnceCell::new();
 
         POOL.get_or_init(|| {
-            Pool::builder()
+            diesel::r2d2::Pool::builder()
                 .connection_timeout(std::time::Duration::from_secs(5))
                 .max_size(10) // Set a reasonable maximum pool size
-                .build(ConnectionManager::<DbCon>::new(config.database_url.clone()))
-                .unwrap()
+                .build(diesel::r2d2::ConnectionManager::<DbCon>::new(config.database_url.clone()))
+                .expect("Failed to create database connection pool with config")
         })
     }
 

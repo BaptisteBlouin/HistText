@@ -4,18 +4,10 @@
 //! the application, including database connection pools and process
 //! management for SSH tunnels.
 
-use diesel::r2d2::{self, ConnectionManager};
-use diesel::PgConnection;
 use std::sync::Arc;
 use tokio::process::Child;
 use tokio::sync::Mutex;
 
-/// Database connection pool type for PostgreSQL connections
-///
-/// This type alias provides a convenient way to reference the database
-/// connection pool throughout the application without repeating the
-/// full generic type signature.
-pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 /// Application shared state structure
 ///

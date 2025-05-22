@@ -13,7 +13,8 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::schema::solr_database_permissions;
-use crate::services::crud::{execute_db_query, CrudError};
+use crate::services::crud::execute_db_query;
+use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 
 /// Solr database permission record
@@ -84,18 +85,20 @@ impl SolrDatabasePermissionHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_new(&self, item: &NewSolrDatabasePermission) -> Result<(), CrudError> {
+    fn validate_new(&self, item: &NewSolrDatabasePermission) -> AppResult<()> {
         if item.solr_database_id <= 0 {
-            return Err(CrudError::Validation("Invalid solr_database_id".into()));
+            return Err(AppError::validation("Invalid solr_database_id", Some("solr_database_id")));
         }
         if item.collection_name.is_empty() || item.collection_name.len() > 100 {
-            return Err(CrudError::Validation(
-                "Collection name must be between 1 and 100 characters".into(),
+            return Err(AppError::validation(
+                "Collection name must be between 1 and 100 characters",
+                Some("collection_name"),
             ));
         }
         if item.permission.is_empty() || item.permission.len() > 50 {
-            return Err(CrudError::Validation(
-                "Permission must be between 1 and 50 characters".into(),
+            return Err(AppError::validation(
+                "Permission must be between 1 and 50 characters",
+                Some("permission"),
             ));
         }
         Ok(())
@@ -108,7 +111,7 @@ impl SolrDatabasePermissionHandler {
     ///
     /// # Returns
     /// HTTP response with all permission records as JSON
-    pub async fn list(&self, db: web::Data<Database>) -> Result<HttpResponse, CrudError> {
+    pub async fn list(&self, db: web::Data<Database>) -> AppResult<HttpResponse> {
         use crate::schema::solr_database_permissions::dsl::*;
         let results = execute_db_query(db, |conn| {
             solr_database_permissions.load::<SolrDatabasePermission>(conn)
@@ -129,7 +132,7 @@ impl SolrDatabasePermissionHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(i32, String, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::solr_database_permissions::dsl::*;
         let (solr_db_id, coll, perm) = path.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -155,7 +158,7 @@ impl SolrDatabasePermissionHandler {
         &self,
         db: web::Data<Database>,
         item: web::Json<NewSolrDatabasePermission>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         self.validate_new(&item)?;
         let new_perm = item.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -179,7 +182,7 @@ impl SolrDatabasePermissionHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(i32, String, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::solr_database_permissions::dsl::*;
         let (solr_db_id, coll, perm) = path.into_inner();
         let deleted = execute_db_query(db, move |conn| {
@@ -193,9 +196,7 @@ impl SolrDatabasePermissionHandler {
         })
         .await?;
         if deleted == 0 {
-            return Err(CrudError::NotFound(
-                "SolrDatabasePermission not found".into(),
-            ));
+            return Err(AppError::not_found("SolrDatabasePermission", Option::<String>::None));
         }
         Ok(HttpResponse::Ok().body("SolrDatabasePermission deleted"))
     }
@@ -228,12 +229,11 @@ impl SolrDatabasePermissionHandler {
 pub async fn get_solr_database_permissions(
     db: web::Data<Database>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabasePermissionHandler::new(config.get_ref().clone());
     handler
         .list(db)
         .await
-        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
 }
 
 /// Retrieves a specific Solr collection permission requirement
@@ -270,15 +270,11 @@ pub async fn get_solr_database_permission(
     db: web::Data<Database>,
     path: web::Path<(i32, String, String)>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabasePermissionHandler::new(config.get_ref().clone());
     handler
         .get_by_composite_key(db, path)
         .await
-        .map_err(|e| match e {
-            CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
 }
 
 /// Creates a new Solr collection permission requirement
@@ -312,12 +308,9 @@ pub async fn create_solr_database_permission(
     db: web::Data<Database>,
     item: web::Json<NewSolrDatabasePermission>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabasePermissionHandler::new(config.get_ref().clone());
-    handler.create(db, item).await.map_err(|e| match e {
-        CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.create(db, item).await
 }
 
 /// Deletes a Solr collection permission requirement
@@ -355,10 +348,7 @@ pub async fn delete_solr_database_permission(
     db: web::Data<Database>,
     path: web::Path<(i32, String, String)>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabasePermissionHandler::new(config.get_ref().clone());
-    handler.delete(db, path).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.delete(db, path).await
 }

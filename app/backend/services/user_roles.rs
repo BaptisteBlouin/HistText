@@ -13,7 +13,8 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::schema::user_roles;
-use crate::services::crud::{execute_db_query, CrudError};
+use crate::services::crud::execute_db_query;
+use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 
 /// User role assignment record
@@ -78,13 +79,13 @@ impl UserRoleHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_new(&self, item: &NewUserRole) -> Result<(), CrudError> {
+    fn validate_new(&self, item: &NewUserRole) -> AppResult<()> {
         if item.user_id <= 0 {
-            return Err(CrudError::Validation("Invalid user_id".into()));
+            return Err(AppError::validation("Invalid user_id",Some("user_id")));
         }
         if item.role.is_empty() || item.role.len() > 50 {
-            return Err(CrudError::Validation(
-                "Role must be between 1 and 50 characters".into(),
+            return Err(AppError::validation(
+                "Role must be between 1 and 50 characters",Some("role")
             ));
         }
         Ok(())
@@ -97,7 +98,7 @@ impl UserRoleHandler {
     ///
     /// # Returns
     /// HTTP response with all user role assignments as JSON
-    pub async fn list(&self, db: web::Data<Database>) -> Result<HttpResponse, CrudError> {
+    pub async fn list(&self, db: web::Data<Database>) -> AppResult<HttpResponse> {
         use crate::schema::user_roles::dsl::*;
         let results = execute_db_query(db, |conn| user_roles.load::<UserRole>(conn)).await?;
         Ok(HttpResponse::Ok().json(results))
@@ -115,7 +116,7 @@ impl UserRoleHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(i32, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::user_roles::dsl::*;
         let (user_id_param, role_param) = path.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -140,7 +141,7 @@ impl UserRoleHandler {
         &self,
         db: web::Data<Database>,
         item: web::Json<NewUserRole>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         self.validate_new(&item)?;
         let new_role = item.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -164,7 +165,7 @@ impl UserRoleHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(i32, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::user_roles::dsl::*;
         let (user_id_param, role_param) = path.into_inner();
         let deleted_count = execute_db_query(db, move |conn| {
@@ -177,7 +178,7 @@ impl UserRoleHandler {
         })
         .await?;
         if deleted_count == 0 {
-            return Err(CrudError::NotFound("UserRole not found".into()));
+            return Err(AppError::not_found("UserRole", Option::<String>::None));
         }
         Ok(HttpResponse::Ok().body("UserRole deleted"))
     }
@@ -209,12 +210,11 @@ impl UserRoleHandler {
 pub async fn get_user_roles(
     db: web::Data<Database>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserRoleHandler::new(config.get_ref().clone());
     handler
         .list(db)
         .await
-        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
 }
 
 /// Retrieves a specific user role assignment
@@ -249,15 +249,11 @@ pub async fn get_user_role_by_user_id_and_role(
     db: web::Data<Database>,
     path: web::Path<(i32, String)>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserRoleHandler::new(config.get_ref().clone());
     handler
         .get_by_user_id_and_role(db, path)
         .await
-        .map_err(|e| match e {
-            CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
 }
 
 /// Creates a new user role assignment
@@ -291,12 +287,9 @@ pub async fn create_user_role(
     db: web::Data<Database>,
     item: web::Json<NewUserRole>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserRoleHandler::new(config.get_ref().clone());
-    handler.create(db, item).await.map_err(|e| match e {
-        CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.create(db, item).await
 }
 
 /// Deletes a user role assignment
@@ -333,10 +326,7 @@ pub async fn delete_user_role(
     db: web::Data<Database>,
     path: web::Path<(i32, String)>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserRoleHandler::new(config.get_ref().clone());
-    handler.delete(db, path).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.delete(db, path).await
 }

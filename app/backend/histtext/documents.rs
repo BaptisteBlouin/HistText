@@ -19,7 +19,7 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use crate::config::Config;
 use crate::histtext;
 use crate::schema::solr_databases::dsl::*;
-use crate::server::state::DbPool;
+use crate::services::database::DbPool;
 use crate::services::solr_database::*;
 use actix_files::NamedFile;
 use csv::Writer;

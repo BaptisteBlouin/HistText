@@ -13,7 +13,7 @@ use utoipa_swagger_ui::{SwaggerUi, Url};
 use crate::openapi::{HistTextApiDoc, SolrApiDoc, UserApiDoc};
 use crate::server::guards::has_permission;
 use crate::server::state::AppState;
-use crate::server::state::DbPool;
+use crate::services::database::DbPool;
 use crate::services::database::Database;
 
 // Import route handlers

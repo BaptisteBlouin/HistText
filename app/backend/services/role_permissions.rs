@@ -12,7 +12,8 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::schema::role_permissions;
-use crate::services::crud::{execute_db_query, CrudError};
+use crate::services::crud::execute_db_query;
+use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 
 /// Role permission record from the database
@@ -79,15 +80,17 @@ impl RolePermissionHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details if invalid
-    fn validate_new(&self, item: &NewRolePermission) -> Result<(), CrudError> {
+    fn validate_new(&self, item: &NewRolePermission) -> AppResult<()> {
         if item.role.is_empty() || item.role.len() > 50 {
-            return Err(CrudError::Validation(
-                "Role must be between 1 and 50 characters".into(),
+            return Err(AppError::validation(
+                "Role must be between 1 and 50 characters",
+                Some("role"),
             ));
         }
         if item.permission.is_empty() || item.permission.len() > 50 {
-            return Err(CrudError::Validation(
-                "Permission must be between 1 and 50 characters".into(),
+            return Err(AppError::validation(
+                "Permission must be between 1 and 50 characters",
+                Some("permission"),
             ));
         }
         Ok(())
@@ -100,7 +103,7 @@ impl RolePermissionHandler {
     ///
     /// # Returns
     /// HTTP response with JSON array of all role-permission mappings
-    pub async fn list(&self, db: web::Data<Database>) -> Result<HttpResponse, CrudError> {
+    pub async fn list(&self, db: web::Data<Database>) -> AppResult<HttpResponse> {
         use crate::schema::role_permissions::dsl::*;
         let results =
             execute_db_query(db, |conn| role_permissions.load::<RolePermission>(conn)).await?;
@@ -119,7 +122,7 @@ impl RolePermissionHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(String, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+        ) -> AppResult<HttpResponse> {
         use crate::schema::role_permissions::dsl::*;
         let (role_param, permission_param) = path.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -144,7 +147,7 @@ impl RolePermissionHandler {
         &self,
         db: web::Data<Database>,
         item: web::Json<NewRolePermission>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         self.validate_new(&item)?;
         let new_role_permission = item.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -168,9 +171,10 @@ impl RolePermissionHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(String, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+        ) -> AppResult<HttpResponse> {
         use crate::schema::role_permissions::dsl::*;
         let (role_param, permission_param) = path.into_inner();
+        let identifier = format!("{}/{}", role_param, permission_param);
         let deleted_count = execute_db_query(db, move |conn| {
             diesel::delete(
                 role_permissions
@@ -181,7 +185,7 @@ impl RolePermissionHandler {
         })
         .await?;
         if deleted_count == 0 {
-            return Err(CrudError::NotFound("RolePermission not found".into()));
+            return Err(AppError::not_found("RolePermission", Some(identifier)));
         }
         Ok(HttpResponse::Ok().body("RolePermission deleted"))
     }
@@ -212,14 +216,11 @@ impl RolePermissionHandler {
     )
 )]
 pub async fn get_role_permissions(
-    db: web::Data<Database>,
-    config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let handler = RolePermissionHandler::new(config.get_ref().clone());
-    handler
-        .list(db)
-        .await
-        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
+   db: web::Data<Database>,
+   config: web::Data<Arc<Config>>,
+) -> Result<HttpResponse, AppError> {
+   let handler = RolePermissionHandler::new(config.get_ref().clone());
+   handler.list(db).await
 }
 
 /// Retrieves a specific role-permission mapping
@@ -252,18 +253,12 @@ pub async fn get_role_permissions(
     )
 )]
 pub async fn get_role_permission_by_role_and_permission(
-    db: web::Data<Database>,
-    path: web::Path<(String, String)>,
-    config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let handler = RolePermissionHandler::new(config.get_ref().clone());
-    handler
-        .get_by_role_and_permission(db, path)
-        .await
-        .map_err(|e| match e {
-            CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
+   db: web::Data<Database>,
+   path: web::Path<(String, String)>,
+   config: web::Data<Arc<Config>>,
+) -> Result<HttpResponse, AppError> {
+   let handler = RolePermissionHandler::new(config.get_ref().clone());
+   handler.get_by_role_and_permission(db, path).await
 }
 
 /// Creates a new role-permission mapping
@@ -293,15 +288,12 @@ pub async fn get_role_permission_by_role_and_permission(
     )
 )]
 pub async fn create_role_permission(
-    db: web::Data<Database>,
-    item: web::Json<NewRolePermission>,
-    config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let handler = RolePermissionHandler::new(config.get_ref().clone());
-    handler.create(db, item).await.map_err(|e| match e {
-        CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+   db: web::Data<Database>,
+   item: web::Json<NewRolePermission>,
+   config: web::Data<Arc<Config>>,
+) -> Result<HttpResponse, AppError> {
+   let handler = RolePermissionHandler::new(config.get_ref().clone());
+   handler.create(db, item).await
 }
 
 /// Deletes a role-permission mapping
@@ -335,13 +327,10 @@ pub async fn create_role_permission(
     )
 )]
 pub async fn delete_role_permission(
-    db: web::Data<Database>,
-    path: web::Path<(String, String)>,
-    config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let handler = RolePermissionHandler::new(config.get_ref().clone());
-    handler.delete(db, path).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+   db: web::Data<Database>,
+   path: web::Path<(String, String)>,
+   config: web::Data<Arc<Config>>,
+) -> Result<HttpResponse, AppError> {
+   let handler = RolePermissionHandler::new(config.get_ref().clone());
+   handler.delete(db, path).await
 }

@@ -12,7 +12,8 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::schema::solr_database_info;
-use crate::services::crud::{execute_db_query, CrudError};
+use crate::services::crud::execute_db_query;
+use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 
 /// Solr collection metadata record
@@ -153,23 +154,26 @@ impl SolrDatabaseInfoHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_new(&self, item: &NewSolrDatabaseInfo) -> Result<(), CrudError> {
+    fn validate_new(&self, item: &NewSolrDatabaseInfo) -> AppResult<()> {
         if item.solr_database_id <= 0 {
-            return Err(CrudError::Validation("Invalid solr_database_id".into()));
+            return Err(AppError::validation("Invalid solr_database_id", Some("solr_database_id")));
         }
         if item.collection_name.is_empty() || item.collection_name.len() > 100 {
-            return Err(CrudError::Validation(
-                "Collection name must be between 1 and 100 characters".into(),
+            return Err(AppError::validation(
+                "Collection name must be between 1 and 100 characters",
+                Some("collection_name"),
             ));
         }
         if item.description.is_empty() || item.description.len() > 500 {
-            return Err(CrudError::Validation(
-                "Description must be between 1 and 500 characters".into(),
+            return Err(AppError::validation(
+                "Description must be between 1 and 500 characters",
+                Some("description"),
             ));
         }
         if item.embeddings.is_empty() {
-            return Err(CrudError::Validation(
-                "Embeddings path cannot be empty".into(),
+            return Err(AppError::validation(
+                "Embeddings path cannot be empty",
+                Some("embeddings"),
             ));
         }
         Ok(())
@@ -184,18 +188,20 @@ impl SolrDatabaseInfoHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_update(&self, item: &UpdateSolrDatabaseInfo) -> Result<(), CrudError> {
+    fn validate_update(&self, item: &UpdateSolrDatabaseInfo) -> AppResult<()> {
         if let Some(ref description) = item.description {
             if description.is_empty() || description.len() > 500 {
-                return Err(CrudError::Validation(
-                    "Description must be between 1 and 500 characters".into(),
+                return Err(AppError::validation(
+                    "Description must be between 1 and 500 characters",
+                    Some("description"),
                 ));
             }
         }
         if let Some(ref embeddings) = item.embeddings {
             if embeddings.is_empty() {
-                return Err(CrudError::Validation(
-                    "Embeddings path cannot be empty".into(),
+                return Err(AppError::validation(
+                    "Embeddings path cannot be empty",
+                    Some("embeddings"),
                 ));
             }
         }
@@ -209,7 +215,7 @@ impl SolrDatabaseInfoHandler {
     ///
     /// # Returns
     /// HTTP response with all records as JSON
-    pub async fn list(&self, db: web::Data<Database>) -> Result<HttpResponse, CrudError> {
+    pub async fn list(&self, db: web::Data<Database>) -> AppResult<HttpResponse> {
         use crate::schema::solr_database_info::dsl::*;
         let results =
             execute_db_query(db, |conn| solr_database_info.load::<SolrDatabaseInfo>(conn)).await?;
@@ -228,7 +234,7 @@ impl SolrDatabaseInfoHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(i32, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+        ) -> AppResult<HttpResponse> {
         use crate::schema::solr_database_info::dsl::*;
         let (solr_db_id, coll) = path.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -253,7 +259,7 @@ impl SolrDatabaseInfoHandler {
         &self,
         db: web::Data<Database>,
         item: web::Json<NewSolrDatabaseInfo>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         self.validate_new(&item)?;
         let new_info = item.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -279,7 +285,7 @@ impl SolrDatabaseInfoHandler {
         db: web::Data<Database>,
         path: web::Path<(i32, String)>,
         item: web::Json<UpdateSolrDatabaseInfo>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::solr_database_info::dsl::*;
         self.validate_update(&item)?;
         let (solr_db_id, coll) = path.into_inner();
@@ -309,7 +315,7 @@ impl SolrDatabaseInfoHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(i32, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::solr_database_info::dsl::*;
         let (solr_db_id, coll) = path.into_inner();
         let deleted = execute_db_query(db, move |conn| {
@@ -322,7 +328,7 @@ impl SolrDatabaseInfoHandler {
         })
         .await?;
         if deleted == 0 {
-            return Err(CrudError::NotFound("SolrDatabaseInfo not found".into()));
+            return Err(AppError::not_found("SolrDatabaseInfo", Option::<String>::None));
         }
         Ok(HttpResponse::Ok().body("SolrDatabaseInfo deleted"))
     }
@@ -352,14 +358,11 @@ impl SolrDatabaseInfoHandler {
     )
 )]
 pub async fn get_solr_database_infos(
-    db: web::Data<Database>,
-    config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
-    handler
-        .list(db)
-        .await
-        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
+   db: web::Data<Database>,
+   config: web::Data<Arc<Config>>,
+) -> Result<HttpResponse, AppError> {
+   let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
+   handler.list(db).await
 }
 
 /// Retrieves a specific Solr collection metadata record
@@ -395,15 +398,10 @@ pub async fn get_solr_database_info(
     db: web::Data<Database>,
     path: web::Path<(i32, String)>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
     handler
-        .get_by_id_and_collection(db, path)
-        .await
-        .map_err(|e| match e {
-            CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
+        .get_by_id_and_collection(db, path).await
 }
 
 /// Creates a new Solr collection metadata record
@@ -436,12 +434,9 @@ pub async fn create_solr_database_info(
     db: web::Data<Database>,
     item: web::Json<NewSolrDatabaseInfo>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
-    handler.create(db, item).await.map_err(|e| match e {
-        CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.create(db, item).await
 }
 
 /// Updates an existing Solr collection metadata record
@@ -481,13 +476,9 @@ pub async fn update_solr_database_info(
     path: web::Path<(i32, String)>,
     item: web::Json<UpdateSolrDatabaseInfo>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
-    handler.update(db, path, item).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.update(db, path, item).await
 }
 
 /// Deletes a Solr collection metadata record
@@ -522,10 +513,7 @@ pub async fn delete_solr_database_info(
     db: web::Data<Database>,
     path: web::Path<(i32, String)>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
-    handler.delete(db, path).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.delete(db, path).await
 }

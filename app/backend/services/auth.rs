@@ -9,7 +9,8 @@
 //! - Email-based account activation and password recovery
 
 use crate::config::Config;
-use crate::services::crud::{execute_db_query, CrudError};
+use crate::services::error::{AppError, AppResult, AuthErrorReason};
+use crate::services::crud::execute_db_query;
 use crate::services::database::Database;
 use crate::services::mailer::Mailer;
 use actix_web::{
@@ -278,16 +279,22 @@ impl AuthHandler {
     }
 
     /// Hashes a password using Argon2id
-    pub fn hash_password(&self, password: &str) -> Result<String, CrudError> {
+    pub fn hash_password(&self, password: &str) -> AppResult<String> {
         let salt = Self::generate_salt();
         argon2::hash_encoded(password.as_bytes(), &salt, &ARGON_CONFIG)
-            .map_err(|e| CrudError::Validation(format!("Password hashing error: {}", e)))
+            .map_err(|e| AppError::validation(
+                format!("Password hashing error: {}", e),
+                Some("password")
+            ))
     }
 
     /// Verifies a password against its hash
-    pub fn verify_password(&self, password: &str, hash: &str) -> Result<bool, CrudError> {
+    pub fn verify_password(&self, password: &str, hash: &str) -> AppResult<bool> {
         argon2::verify_encoded_ext(hash, password.as_bytes(), ARGON_CONFIG.secret, ARGON_CONFIG.ad)
-            .map_err(|e| CrudError::Validation(format!("Password verification error: {}", e)))
+            .map_err(|e| AppError::auth(
+                AuthErrorReason::InvalidCredentials,
+                format!("Password verification failed: {}", e)
+            ))
     }
 
     /// Creates JWT tokens for a user
@@ -296,7 +303,7 @@ impl AuthHandler {
         db: web::Data<Database>,
         user_id: ID,
         ttl: Option<i64>,
-    ) -> Result<(String, String), CrudError> {
+    ) -> AppResult<(String, String)> {
         use crate::schema::role_permissions::dsl as role_perms_dsl;
         use crate::schema::user_permissions::dsl as user_perms_dsl;
         use crate::schema::user_roles::dsl as user_roles_dsl;
@@ -363,14 +370,20 @@ impl AuthHandler {
             &access_token_claims,
             &EncodingKey::from_secret(self.config.secret_key.as_ref()),
         )
-        .map_err(|e| CrudError::Validation(format!("Token creation error: {}", e)))?;
+        .map_err(|e| AppError::auth(
+            AuthErrorReason::InvalidToken,
+            format!("Token creation error: {}", e)
+        ))?;
 
         let refresh_token = encode(
             &Header::default(),
             &refresh_token_claims,
             &EncodingKey::from_secret(self.config.secret_key.as_ref()),
         )
-        .map_err(|e| CrudError::Validation(format!("Token creation error: {}", e)))?;
+        .map_err(|e| AppError::auth(
+            AuthErrorReason::InvalidToken,
+            format!("Token creation error: {}", e)
+        ))?;
 
         Ok((access_token, refresh_token))
     }
@@ -380,7 +393,7 @@ impl AuthHandler {
         &self,
         db: web::Data<Database>,
         item: web::Json<LoginInput>,
-    ) -> Result<(String, String), CrudError> {  // Return tuple instead of HttpResponse
+    ) -> AppResult<(String, String)> {  
         use crate::schema::users::dsl as users_dsl;
         use crate::schema::user_sessions::dsl as sessions_dsl;
 
@@ -391,18 +404,27 @@ impl AuthHandler {
                 .filter(users_dsl::email.eq(&login_data.email))
                 .filter(users_dsl::activated.eq(true))
                 .first::<crate::services::users::User>(conn)
-        }).await?;
+        })
+        .await
+        .map_err(|e| match e {
+            AppError::NotFound { .. } => AppError::auth(
+                AuthErrorReason::InvalidCredentials,
+                "Invalid email or password"
+            ),
+            _ => e,
+        })?;
 
         if !self.verify_password(&login_data.password, &user.hash_password)? {
-            return Err(CrudError::Validation("Invalid credentials".into()));
+            return Err(AppError::auth(
+                AuthErrorReason::InvalidCredentials,
+                "Invalid email or password"
+            ));
         }
 
         let (access_token, refresh_token) = self.create_tokens(db.clone(), user.id, login_data.ttl).await?;
 
-        // Clone the refresh_token before moving it into the closure
         let refresh_token_clone = refresh_token.clone();
         
-        // Create user session
         execute_db_query(db, move |conn| {
             diesel::insert_into(sessions_dsl::user_sessions)
                 .values((
@@ -422,7 +444,7 @@ impl AuthHandler {
         db: web::Data<Database>,
         item: web::Json<RegisterInput>,
         mailer: web::Data<Mailer>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> Result<HttpResponse, AppError> {
         use crate::schema::users::dsl as users_dsl;
 
         let register_data = item.into_inner();
@@ -438,7 +460,7 @@ impl AuthHandler {
 
         if let Some(user) = existing_user {
             if user.activated {
-                return Err(CrudError::Validation("User already registered".into()));
+                return Err(AppError::validation("User already registered", Some("email")));
             }
             // Delete unactivated account
             execute_db_query(db.clone(), move |conn| {
@@ -473,7 +495,10 @@ impl AuthHandler {
             &activation_claims,
             &EncodingKey::from_secret(self.config.secret_key.as_ref()),
         )
-        .map_err(|e| CrudError::Validation(format!("Token creation error: {}", e)))?;
+        .map_err(|e| AppError::auth(
+            AuthErrorReason::InvalidToken,
+            format!("Token creation error: {}", e)
+        ))?;
 
         // Send activation email
         let activation_link = format!("{}/activate?token={}", self.config.app_url, activation_token);
@@ -490,7 +515,7 @@ impl AuthHandler {
         db: web::Data<Database>,
         item: web::Json<ForgotInput>,
         mailer: web::Data<Mailer>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> Result<HttpResponse, AppError> {
         use crate::schema::users::dsl as users_dsl;
 
         let forgot_data = item.into_inner();
@@ -515,7 +540,10 @@ impl AuthHandler {
                 &reset_claims,
                 &EncodingKey::from_secret(self.config.secret_key.as_ref()),
             )
-            .map_err(|e| CrudError::Validation(format!("Token creation error: {}", e)))?;
+            .map_err(|e| AppError::auth(
+            AuthErrorReason::InvalidToken,
+            format!("Token creation error: {}", e)
+        ))?;
 
             let reset_link = format!("reset?token={}", reset_token);
             mailer.send_recover_existent_account(&user.email, &reset_link);
@@ -536,15 +564,15 @@ impl AuthHandler {
         item: web::Json<ChangeInput>,
         auth: Auth,
         mailer: web::Data<Mailer>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> Result<HttpResponse, AppError> {
         use crate::schema::users::dsl as users_dsl;
 
         if item.old_password.is_empty() || item.new_password.is_empty() {
-            return Err(CrudError::Validation("Missing password".into()));
+            return Err(AppError::validation("Missing password", Some("password")));
         }
 
         if item.old_password == item.new_password {
-            return Err(CrudError::Validation("The new password must be different".into()));
+            return Err(AppError::validation("The new password must be different", Some("new_password")));
         }
 
         let user = execute_db_query(db.clone(), move |conn| {
@@ -555,7 +583,7 @@ impl AuthHandler {
         }).await?;
 
         if !self.verify_password(&item.old_password, &user.hash_password)? {
-            return Err(CrudError::Validation("Invalid credentials".into()));
+            return Err(AppError::auth(AuthErrorReason::InvalidCredentials, "Invalid credentials"));
         }
 
         let new_hash = self.hash_password(&item.new_password)?;
@@ -579,11 +607,11 @@ impl AuthHandler {
         db: web::Data<Database>,
         item: web::Json<ResetInput>,
         mailer: web::Data<Mailer>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> Result<HttpResponse, AppError> {
         use crate::schema::users::dsl as users_dsl;
 
         if item.new_password.is_empty() {
-            return Err(CrudError::Validation("Missing password".into()));
+            return Err(AppError::validation("Missing password", Some("password")));
         }
 
         let token_data = decode::<RefreshTokenClaims>(
@@ -591,10 +619,10 @@ impl AuthHandler {
             &DecodingKey::from_secret(self.config.secret_key.as_ref()),
             &Validation::default(),
         )
-        .map_err(|_| CrudError::Validation("Invalid reset token".into()))?;
+        .map_err(|_| AppError::auth(AuthErrorReason::InvalidToken, "Invalid reset token"))?;
 
         if token_data.claims.token_type != "reset_token" {
-            return Err(CrudError::Validation("Invalid token type".into()));
+            return Err(AppError::auth(AuthErrorReason::InvalidToken, "Invalid token type"));
         }
 
         let user = execute_db_query(db.clone(), move |conn| {
@@ -625,7 +653,7 @@ impl AuthHandler {
         db: web::Data<Database>,
         query: Query<ActivationInput>,
         mailer: web::Data<Mailer>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> Result<HttpResponse, AppError> {
         use crate::schema::users::dsl as users_dsl;
 
         // Extract the query data
@@ -636,10 +664,10 @@ impl AuthHandler {
             &DecodingKey::from_secret(self.config.secret_key.as_ref()),
             &Validation::default(),
         )
-        .map_err(|_| CrudError::Validation("Invalid activation token".into()))?;
+        .map_err(|_| AppError::auth(AuthErrorReason::InvalidToken, "Invalid activation token"))?;
 
         if token_data.claims.token_type != "activation_token" {
-            return Err(CrudError::Validation("Invalid token type".into()));
+            return Err(AppError::auth(AuthErrorReason::InvalidToken, "Invalid token type"));
         }
 
         let user = execute_db_query(db.clone(), move |conn| {
@@ -666,11 +694,11 @@ impl AuthHandler {
         &self,
         db: web::Data<Database>,
         refresh_token: Option<&str>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> Result<HttpResponse, AppError> {
         use crate::schema::user_sessions::dsl as sessions_dsl;
 
         let Some(refresh_token) = refresh_token else {
-            return Err(CrudError::Validation("Invalid session".into()));
+            return Err(AppError::auth(AuthErrorReason::InvalidToken, "Invalid session"));
         };
 
         // Clone the refresh_token to move it into the closure
@@ -697,11 +725,11 @@ impl AuthHandler {
         &self,
         db: web::Data<Database>,
         refresh_token_str: Option<&str>,
-    ) -> Result<(String, String), CrudError> {
+    ) -> Result<(String, String), AppError> {
         use crate::schema::user_sessions::dsl as sessions_dsl;
 
         let Some(refresh_token_str) = refresh_token_str else {
-            return Err(CrudError::Validation("Invalid session".into()));
+            return Err(AppError::auth(AuthErrorReason::InvalidToken, "Invalid session"));
         };
 
         let _refresh_token = decode::<RefreshTokenClaims>(
@@ -709,7 +737,7 @@ impl AuthHandler {
             &DecodingKey::from_secret(self.config.secret_key.as_ref()),
             &Validation::default(),
         )
-        .map_err(|_| CrudError::Validation("Invalid token".into()))?;
+        .map_err(|_| AppError::auth(AuthErrorReason::InvalidToken, "Invalid token"))?;
 
         // Clone the refresh_token_str to move it into the closure
         let refresh_token_owned = refresh_token_str.to_string();
@@ -757,13 +785,9 @@ pub mod handlers {
         db: web::Data<Database>,
         item: web::Json<LoginInput>,
         config: web::Data<Arc<Config>>,
-    ) -> Result<HttpResponse, actix_web::Error> {
+        ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
-        let (access_token, refresh_token) = handler.login(db, item).await.map_err(|e| match e {
-            CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-            CrudError::NotFound(_) => actix_web::error::ErrorUnauthorized("Invalid credentials"),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })?;
+        let (access_token, refresh_token) = handler.login(db, item).await?;
 
         Ok(HttpResponse::Ok()
             .cookie(
@@ -796,14 +820,11 @@ pub mod handlers {
         item: web::Json<RegisterInput>,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-    ) -> Result<HttpResponse, actix_web::Error> {
+        ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
-        handler.register(db, item, mailer).await.map_err(|e| match e {
-            CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
+        handler.register(db, item, mailer).await
     }
-
+    
     /// Account activation endpoint
     #[utoipa::path(
         get,
@@ -821,13 +842,9 @@ pub mod handlers {
         query: web::Query<ActivationInput>,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-    ) -> Result<HttpResponse, actix_web::Error> {
+        ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
-        handler.activate(db, query, mailer).await.map_err(|e| match e {
-            CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-            CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
+        handler.activate(db, query, mailer).await
     }
 
     /// Authentication check endpoint
@@ -861,22 +878,23 @@ pub mod handlers {
         db: web::Data<Database>,
         req: HttpRequest,
         config: web::Data<Arc<Config>>,
-    ) -> Result<HttpResponse, actix_web::Error> {
+        ) -> Result<HttpResponse, AppError> {
         let refresh_token = req
             .cookie(COOKIE_NAME)
             .map(|cookie| cookie.value().to_string());
 
         let handler = AuthHandler::new(config.get_ref().clone());
-        let mut response = handler.logout(db, refresh_token.as_deref()).await.map_err(|e| {
-            actix_web::error::ErrorUnauthorized(e.to_string())
-        })?;
+        let mut response = handler.logout(db, refresh_token.as_deref()).await?;
 
         // Clear the refresh token cookie
         let mut cookie = Cookie::named(COOKIE_NAME);
         cookie.make_removal();
 
         response.add_cookie(&cookie).map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("Cookie error: {}", e))
+            AppError::Internal {
+                message: format!("Cookie error: {}", e),
+                source: None,
+            }
         })?;
 
         Ok(response)
@@ -896,15 +914,13 @@ pub mod handlers {
         db: web::Data<Database>,
         req: HttpRequest,
         config: web::Data<Arc<Config>>,
-    ) -> Result<HttpResponse, actix_web::Error> {
+        ) -> Result<HttpResponse, AppError> {
         let refresh_token = req
             .cookie(COOKIE_NAME)
             .map(|cookie| cookie.value().to_string());
 
         let handler = AuthHandler::new(config.get_ref().clone());
-        let (access_token, new_refresh_token) = handler.refresh(db, refresh_token.as_deref()).await.map_err(|e| {
-            actix_web::error::ErrorUnauthorized(e.to_string())
-        })?;
+        let (access_token, new_refresh_token) = handler.refresh(db, refresh_token.as_deref()).await?;
 
         Ok(HttpResponse::Ok()
             .cookie(
@@ -935,11 +951,9 @@ pub mod handlers {
         item: web::Json<ForgotInput>,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-    ) -> Result<HttpResponse, actix_web::Error> {
+        ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
-        handler.forgot_password(db, item, mailer).await.map_err(|e| {
-            actix_web::error::ErrorInternalServerError(e.to_string())
-        })
+        handler.forgot_password(db, item, mailer).await
     }
 
     /// Password change endpoint
@@ -961,12 +975,9 @@ pub mod handlers {
         auth: Auth,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-    ) -> Result<HttpResponse, actix_web::Error> {
+        ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
-        handler.change_password(db, item, auth, mailer).await.map_err(|e| match e {
-            CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
+        handler.change_password(db, item, auth, mailer).await
     }
 
     /// Password reset endpoint
@@ -985,12 +996,9 @@ pub mod handlers {
         item: web::Json<ResetInput>,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-    ) -> Result<HttpResponse, actix_web::Error> {
+        ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
-        handler.reset_password(db, item, mailer).await.map_err(|e| match e {
-            CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
+        handler.reset_password(db, item, mailer).await
     }
 
 }

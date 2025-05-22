@@ -14,7 +14,8 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::histtext::embeddings;
-use crate::services::crud::{execute_db_query, CrudError};
+use crate::services::crud::execute_db_query;
+use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 
 /// Dashboard statistics model
@@ -91,7 +92,7 @@ impl StatsHandler {
     pub async fn get_dashboard_stats(
         &self,
         db: web::Data<Database>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::role_permissions::dsl as role_permissions_dsl;
         use crate::schema::solr_databases::dsl as solr_dbs_dsl;
         use crate::schema::user_roles::dsl as user_roles_dsl;
@@ -176,12 +177,11 @@ impl StatsHandler {
 pub async fn get_dashboard_stats(
     db: web::Data<Database>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = StatsHandler::new(config.get_ref().clone());
     handler
         .get_dashboard_stats(db)
         .await
-        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
 }
 
 /// Retrieves detailed embedding cache statistics

@@ -13,7 +13,8 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::schema::solr_databases;
-use crate::services::crud::{execute_db_query, CrudError};
+use crate::services::crud::execute_db_query;
+use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 
 /// Solr database configuration record
@@ -126,24 +127,30 @@ impl SolrDatabaseHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_new(&self, item: &NewSolrDatabase) -> Result<(), CrudError> {
+    fn validate_new(&self, item: &NewSolrDatabase) -> AppResult<()> {
         if item.name.is_empty() || item.name.len() > 100 {
-            return Err(CrudError::Validation(
-                "Name must be between 1 and 100 characters".into(),
-            ));
+            return Err(AppError::validation(
+                    "Name must be between 1 and 100 characters",
+                    Some("name"),
+                ));
         }
         if item.url.is_empty() {
-            return Err(CrudError::Validation("URL cannot be empty".into()));
+            return Err(AppError::validation(
+                    "URL cannot be empty",
+                    Some("url"),
+                ));  
         }
         if item.server_port < 1 || item.server_port > 65535 {
-            return Err(CrudError::Validation(
-                "Server port must be between 1 and 65535".into(),
-            ));
+            return Err(AppError::validation(
+                    "Server port must be between 1 and 65535",
+                    Some("server_port"),
+                ));  
         }
         if item.local_port < 1 || item.local_port > 65535 {
-            return Err(CrudError::Validation(
-                "Local port must be between 1 and 65535".into(),
-            ));
+            return Err(AppError::validation(
+                    "Local port must be between 1 and 65535",
+                    Some("local_port"),
+                ));
         }
         Ok(())
     }
@@ -157,30 +164,35 @@ impl SolrDatabaseHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_update(&self, item: &UpdateSolrDatabase) -> Result<(), CrudError> {
+    fn validate_update(&self, item: &UpdateSolrDatabase) ->AppResult<()> {
         if let Some(ref name) = item.name {
             if name.is_empty() || name.len() > 100 {
-                return Err(CrudError::Validation(
-                    "Name must be between 1 and 100 characters".into(),
+                return Err(AppError::validation(
+                    "Name must be between 1 and 100 characters",
+                    Some("name"),
                 ));
             }
         }
         if let Some(ref url) = item.url {
             if url.is_empty() {
-                return Err(CrudError::Validation("URL cannot be empty".into()));
-            }
+                return Err(AppError::validation(
+                    "URL cannot be empty",
+                    Some("url"),
+                ));            }
         }
         if let Some(port) = item.server_port {
             if !(1..=65535).contains(&port) {
-                return Err(CrudError::Validation(
-                    "Server port must be between 1 and 65535".into(),
-                ));
+                return Err(AppError::validation(
+                    "Server port must be between 1 and 65535",
+                    Some("server_port"),
+                ));  
             }
         }
         if let Some(port) = item.local_port {
             if !(1..=65535).contains(&port) {
-                return Err(CrudError::Validation(
-                    "Local port must be between 1 and 65535".into(),
+                return Err(AppError::validation(
+                    "Local port must be between 1 and 65535",
+                    Some("local_port"),
                 ));
             }
         }
@@ -194,7 +206,7 @@ impl SolrDatabaseHandler {
     ///
     /// # Returns
     /// HTTP response with all configurations as JSON
-    pub async fn list(&self, db: web::Data<Database>) -> Result<HttpResponse, CrudError> {
+    pub async fn list(&self, db: web::Data<Database>) -> AppResult<HttpResponse> {
         use crate::schema::solr_databases::dsl::*;
         let results =
             execute_db_query(db, |conn| solr_databases.load::<SolrDatabase>(conn)).await?;
@@ -213,7 +225,7 @@ impl SolrDatabaseHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<i32>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::solr_databases::dsl::*;
         let solr_db_id = path.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -235,7 +247,7 @@ impl SolrDatabaseHandler {
         &self,
         db: web::Data<Database>,
         item: web::Json<NewSolrDatabase>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::solr_databases::dsl::*;
         self.validate_new(&item)?;
         let new_solr_db = item.into_inner();
@@ -262,7 +274,7 @@ impl SolrDatabaseHandler {
         db: web::Data<Database>,
         path: web::Path<i32>,
         item: web::Json<UpdateSolrDatabase>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::solr_databases::dsl::*;
         self.validate_update(&item)?;
         let solr_db_id = path.into_inner();
@@ -288,7 +300,7 @@ impl SolrDatabaseHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<i32>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::solr_databases::dsl::*;
         let solr_db_id = path.into_inner();
         let deleted_count = execute_db_query(db, move |conn| {
@@ -296,7 +308,7 @@ impl SolrDatabaseHandler {
         })
         .await?;
         if deleted_count == 0 {
-            return Err(CrudError::NotFound("SolrDatabase not found".into()));
+            return Err(AppError::not_found("SolrDatabase", Option::<String>::None));
         }
         Ok(HttpResponse::Ok().body("SolrDatabase deleted"))
     }
@@ -328,12 +340,11 @@ impl SolrDatabaseHandler {
 pub async fn get_solr_databases(
     db: web::Data<Database>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseHandler::new(config.get_ref().clone());
     handler
         .list(db)
         .await
-        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
 }
 
 /// Retrieves a specific Solr database configuration
@@ -368,12 +379,9 @@ pub async fn get_solr_database_by_id(
     db: web::Data<Database>,
     path: web::Path<i32>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseHandler::new(config.get_ref().clone());
-    handler.get_by_id(db, path).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.get_by_id(db, path).await
 }
 
 /// Creates a new Solr database configuration
@@ -406,12 +414,9 @@ pub async fn create_solr_database(
     db: web::Data<Database>,
     item: web::Json<NewSolrDatabase>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseHandler::new(config.get_ref().clone());
-    handler.create(db, item).await.map_err(|e| match e {
-        CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.create(db, item).await
 }
 
 /// Updates an existing Solr database configuration
@@ -450,13 +455,9 @@ pub async fn update_solr_database(
     path: web::Path<i32>,
     item: web::Json<UpdateSolrDatabase>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseHandler::new(config.get_ref().clone());
-    handler.update(db, path, item).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.update(db, path, item).await
 }
 
 /// Deletes a Solr database configuration
@@ -490,10 +491,7 @@ pub async fn delete_solr_database(
     db: web::Data<Database>,
     path: web::Path<i32>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseHandler::new(config.get_ref().clone());
-    handler.delete(db, path).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.delete(db, path).await
 }

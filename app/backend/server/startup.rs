@@ -8,7 +8,7 @@ use crate::config::Config;
 use crate::schema::solr_database_info::dsl as info_dsl;
 use crate::schema::solr_databases::dsl::*;
 use crate::server::error::AppError;
-use crate::server::state::DbPool;
+use crate::services::database::DbPool;
 use crate::services::solr_database::SolrDatabase;
 use crate::services::solr_database_info::SolrDatabaseInfo;
 use anyhow::Context;

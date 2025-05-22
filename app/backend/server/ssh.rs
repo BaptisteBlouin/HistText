@@ -6,7 +6,8 @@
 
 use crate::schema::solr_databases::dsl::*;
 use crate::server::error::AppError;
-use crate::server::state::{AppState, DbPool};
+use crate::server::state::AppState;
+use crate::services::database::DbPool;
 use crate::services::solr_database::SolrDatabase;
 use actix_web::{web, HttpResponse};
 use anyhow::Context;

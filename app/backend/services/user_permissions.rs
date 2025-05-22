@@ -12,7 +12,8 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::schema::user_permissions;
-use crate::services::crud::{execute_db_query, CrudError};
+use crate::services::crud::execute_db_query;
+use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 
 /// User permission assignment record
@@ -77,14 +78,12 @@ impl UserPermissionHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_new(&self, item: &NewUserPermission) -> Result<(), CrudError> {
+    fn validate_new(&self, item: &NewUserPermission) -> AppResult<()> {
         if item.user_id <= 0 {
-            return Err(CrudError::Validation("Invalid user_id".into()));
+            return Err(AppError::validation("Invalid user_id",Some("user_id")));
         }
         if item.permission.is_empty() || item.permission.len() > 50 {
-            return Err(CrudError::Validation(
-                "Permission must be between 1 and 50 characters".into(),
-            ));
+            return Err(AppError::validation("Permission must be between 1 and 50 characters",Some("permission")));
         }
         Ok(())
     }
@@ -96,7 +95,7 @@ impl UserPermissionHandler {
     ///
     /// # Returns
     /// HTTP response with all user permission assignments as JSON
-    pub async fn list(&self, db: web::Data<Database>) -> Result<HttpResponse, CrudError> {
+    pub async fn list(&self, db: web::Data<Database>) -> AppResult<HttpResponse> {
         use crate::schema::user_permissions::dsl::*;
         let results =
             execute_db_query(db, |conn| user_permissions.load::<UserPermission>(conn)).await?;
@@ -115,7 +114,7 @@ impl UserPermissionHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(i32, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::user_permissions::dsl::*;
         let (user_id_param, permission_param) = path.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -140,7 +139,7 @@ impl UserPermissionHandler {
         &self,
         db: web::Data<Database>,
         item: web::Json<NewUserPermission>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         self.validate_new(&item)?;
         let new_perm = item.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -164,7 +163,7 @@ impl UserPermissionHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(i32, String)>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::user_permissions::dsl::*;
         let (user_id_param, permission_param) = path.into_inner();
         let deleted_count = execute_db_query(db, move |conn| {
@@ -177,7 +176,7 @@ impl UserPermissionHandler {
         })
         .await?;
         if deleted_count == 0 {
-            return Err(CrudError::NotFound("UserPermission not found".into()));
+            return Err(AppError::not_found("UserPermission", Option::<String>::None));
         }
         Ok(HttpResponse::Ok().body("UserPermission deleted"))
     }
@@ -210,12 +209,11 @@ impl UserPermissionHandler {
 pub async fn get_user_permissions(
     db: web::Data<Database>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserPermissionHandler::new(config.get_ref().clone());
     handler
         .list(db)
         .await
-        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
 }
 
 /// Retrieves a specific user permission assignment
@@ -251,15 +249,11 @@ pub async fn get_user_permission_by_user_id_and_permission(
     db: web::Data<Database>,
     path: web::Path<(i32, String)>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserPermissionHandler::new(config.get_ref().clone());
     handler
         .get_by_user_id_and_permission(db, path)
         .await
-        .map_err(|e| match e {
-            CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
 }
 
 /// Creates a new direct user permission assignment
@@ -293,12 +287,9 @@ pub async fn create_user_permission(
     db: web::Data<Database>,
     item: web::Json<NewUserPermission>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserPermissionHandler::new(config.get_ref().clone());
-    handler.create(db, item).await.map_err(|e| match e {
-        CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.create(db, item).await
 }
 
 /// Deletes a direct user permission assignment
@@ -334,10 +325,7 @@ pub async fn delete_user_permission(
     db: web::Data<Database>,
     path: web::Path<(i32, String)>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserPermissionHandler::new(config.get_ref().clone());
-    handler.delete(db, path).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.delete(db, path).await
 }

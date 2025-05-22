@@ -6,7 +6,7 @@ use diesel::QueryResult;
 use serde::{Deserialize, Serialize};
 use crate::models::solr_databases::basis;
 
-type Connection = crate::server::connection::Connection;
+type Connection = crate::services::database::Connection;
 
 #[tsync::tsync]
 #[derive(Debug, Serialize, Deserialize, Clone, Queryable, Insertable, Identifiable, Associations, Selectable)]

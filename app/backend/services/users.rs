@@ -14,7 +14,8 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::schema::users;
-use crate::services::crud::{execute_db_query, CrudError};
+use crate::services::crud::execute_db_query;
+use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 
 /// User account record
@@ -147,23 +148,23 @@ impl UserHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_new(&self, item: &NewUser) -> Result<(), CrudError> {
+    fn validate_new(&self, item: &NewUser) -> AppResult<()> {
         if item.email.is_empty() || !item.email.contains('@') {
-            return Err(CrudError::Validation("Invalid email format".into()));
+            return Err(AppError::validation("Invalid email format", Some("email")));
         }
         if item.hash_password.len() < 8 {
-            return Err(CrudError::Validation(
-                "Password must be at least 8 characters long".into(),
+            return Err(AppError::validation(
+                "Password must be at least 8 characters long", Some("password")
             ));
         }
         if item.firstname.is_empty() || item.firstname.len() > 100 {
-            return Err(CrudError::Validation(
-                "First name must be between 1 and 100 characters".into(),
+            return Err(AppError::validation(
+                "First name must be between 1 and 100 characters", Some("firstname"),
             ));
         }
         if item.lastname.is_empty() || item.lastname.len() > 100 {
-            return Err(CrudError::Validation(
-                "Last name must be between 1 and 100 characters".into(),
+            return Err(AppError::validation(
+                "Last name must be between 1 and 100 characters", Some("lastname")
             ));
         }
         Ok(())
@@ -178,30 +179,30 @@ impl UserHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_update(&self, item: &UpdateUser) -> Result<(), CrudError> {
+    fn validate_update(&self, item: &UpdateUser) -> AppResult<()> {
         if let Some(ref email) = item.email {
             if email.is_empty() || !email.contains('@') {
-                return Err(CrudError::Validation("Invalid email format".into()));
+                    return Err(AppError::validation("Invalid email format", Some("email")));
             }
         }
         if let Some(ref password) = item.hash_password {
             if password.len() < 8 {
-                return Err(CrudError::Validation(
-                    "Password must be at least 8 characters long".into(),
+                return Err(AppError::validation(
+                    "Password must be at least 8 characters long", Some("password")
                 ));
             }
         }
         if let Some(ref firstname) = item.firstname {
             if firstname.is_empty() || firstname.len() > 100 {
-                return Err(CrudError::Validation(
-                    "First name must be between 1 and 100 characters".into(),
+                return Err(AppError::validation(
+                    "First name must be between 1 and 100 characters", Some("firstname"),
                 ));
             }
         }
         if let Some(ref lastname) = item.lastname {
             if lastname.is_empty() || lastname.len() > 100 {
-                return Err(CrudError::Validation(
-                    "Last name must be between 1 and 100 characters".into(),
+                return Err(AppError::validation(
+                    "Last name must be between 1 and 100 characters", Some("lastname")
                 ));
             }
         }
@@ -228,10 +229,10 @@ impl UserHandler {
     ///
     /// # Returns
     /// Encoded password hash or an error
-    fn hash_password(&self, password: &str) -> Result<String, CrudError> {
+    fn hash_password(&self, password: &str) -> AppResult<String> {
         let salt = generate_salt();
         argon2::hash_encoded(password.as_bytes(), &salt, &self.get_argon_config())
-            .map_err(|e| CrudError::Validation(format!("Password hashing error: {}", e)))
+            .map_err(|e| AppError::validation(format!("Password hashing error: {}", e), Some("password")))
     }
 
     /// Lists all user accounts
@@ -241,7 +242,7 @@ impl UserHandler {
     ///
     /// # Returns
     /// HTTP response with all user accounts as JSON
-    pub async fn list(&self, db: web::Data<Database>) -> Result<HttpResponse, CrudError> {
+    pub async fn list(&self, db: web::Data<Database>) -> AppResult<HttpResponse> {
         use crate::schema::users::dsl::*;
         let results = execute_db_query(db, |conn| users.load::<User>(conn)).await?;
         Ok(HttpResponse::Ok().json(results))
@@ -259,7 +260,7 @@ impl UserHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<i32>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::users::dsl::*;
         let user_id = path.into_inner();
         let result =
@@ -279,7 +280,7 @@ impl UserHandler {
         &self,
         db: web::Data<Database>,
         item: web::Json<NewUser>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         self.validate_new(&item)?;
         let hashed_password = self.hash_password(&item.hash_password)?;
         let new_user = NewUser {
@@ -312,7 +313,7 @@ impl UserHandler {
         db: web::Data<Database>,
         path: web::Path<i32>,
         item: web::Json<UpdateUser>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         self.validate_update(&item)?;
         let user_id = path.into_inner();
         let mut update_data = item.into_inner();
@@ -344,7 +345,7 @@ impl UserHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<i32>,
-    ) -> Result<HttpResponse, CrudError> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::users::dsl::*;
         let user_id = path.into_inner();
         let deleted_count = execute_db_query(db, move |conn| {
@@ -352,7 +353,7 @@ impl UserHandler {
         })
         .await?;
         if deleted_count == 0 {
-            return Err(CrudError::NotFound("User not found".into()));
+            return Err(AppError::not_found("User", Option::<String>::None));
         }
         Ok(HttpResponse::Ok().body("User deleted"))
     }
@@ -385,12 +386,11 @@ impl UserHandler {
 pub async fn get_users(
     db: web::Data<Database>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserHandler::new(config.get_ref().clone());
     handler
         .list(db)
         .await
-        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
 }
 
 /// Retrieves a specific user account
@@ -425,13 +425,11 @@ pub async fn get_user_by_id(
     db: web::Data<Database>,
     user_id: web::Path<i32>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let handler = UserHandler::new(config.get_ref().clone());
-    handler.get_by_id(db, user_id).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+) -> Result<HttpResponse, AppError> {
+        let handler = UserHandler::new(config.get_ref().clone());
+        handler.get_by_id(db, user_id).await
 }
+
 
 /// Creates a new user account
 ///
@@ -463,12 +461,9 @@ pub async fn create_user(
     db: web::Data<Database>,
     item: web::Json<NewUser>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserHandler::new(config.get_ref().clone());
-    handler.create(db, item).await.map_err(|e| match e {
-        CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.create(db, item).await
 }
 
 /// Updates an existing user account
@@ -508,16 +503,11 @@ pub async fn update_user(
     user_id: web::Path<i32>,
     item: web::Json<UpdateUser>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserHandler::new(config.get_ref().clone());
     handler
         .update(db, user_id, item)
         .await
-        .map_err(|e| match e {
-            CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-            CrudError::Validation(_) => actix_web::error::ErrorBadRequest(e.to_string()),
-            _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-        })
 }
 
 /// Deletes a user account
@@ -553,10 +543,7 @@ pub async fn delete_user(
     db: web::Data<Database>,
     user_id: web::Path<i32>,
     config: web::Data<Arc<Config>>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let handler = UserHandler::new(config.get_ref().clone());
-    handler.delete(db, user_id).await.map_err(|e| match e {
-        CrudError::NotFound(_) => actix_web::error::ErrorNotFound(e.to_string()),
-        _ => actix_web::error::ErrorInternalServerError(e.to_string()),
-    })
+    handler.delete(db, user_id).await
 }

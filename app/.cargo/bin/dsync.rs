@@ -28,7 +28,7 @@ pub fn main() {
     
     // Based on the latest errors
     let config = dsync::GenerationConfig {
-        connection_type: "crate::server::connection::Connection".to_string(),
+        connection_type: "crate::services::database::Connection".to_string(),
         options: dsync::GenerationConfigOpts {
             // Use boolean for once_connection_type as expected
             once_connection_type: true,

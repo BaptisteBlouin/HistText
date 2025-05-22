@@ -34,7 +34,7 @@ lazy_static! {
     static ref ANNOTATION_CACHE: DashMap<String, Vec<u8>> = DashMap::new();
 }
 
-use crate::server::state::DbPool;
+use crate::services::database::DbPool;
 use crate::services::solr_database::*;
 
 /// Query parameters for collection-specific metadata requests
