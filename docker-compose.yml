@@ -49,7 +49,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
       - POSTGRES_DB=${DB_NAME:-databasename}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user} -d ${DB_NAME:-databasename} || pg_isready -U ${DB_USER:-user} -d postgres"]
+      test: pg_isready -U ${DB_USER:-user} -d ${DB_NAME:-databasename} || pg_isready -U ${DB_USER:-user} -d postgres 
       interval: 5s
       timeout: 5s
       retries: 5
@@ -69,7 +69,7 @@ services:
       - solr-precreate
       - ner
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${SOLR_NER_PORT:-8982}/solr/"]
+      test: curl -f http://localhost:${SOLR_NER_PORT:-8982}/solr/ 
       interval: 10s
       timeout: 5s
       retries: 5
