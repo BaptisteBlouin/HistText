@@ -1,9 +1,9 @@
 //! HTTP handlers for embedding-related API endpoints.
 
-use crate::histtext::embedding::{
+use crate::histtext::embeddings::{
     cache::get_cached_embeddings,
     similarity::{SimilaritySearcher, SimilarityMetric},
-    types::{NeighborsRequest, NeighborsResponse},
+    types::{NeighborsRequest, NeighborsResponse, NeighborResult},
 };
 use crate::services::database::Database;
 use actix_web::{web, HttpResponse, Responder};
@@ -180,8 +180,6 @@ pub struct AnalogyResponse {
     /// Whether all input words were found
     pub all_words_found: bool,
 }
-
-use crate::histtext::embedding::types::NeighborResult;
 
 /// Standard neighbors endpoint (backward compatibility)
 #[utoipa::path(
@@ -524,7 +522,7 @@ pub async fn word_analogy(
             }
             
             // Create a temporary embedding for the analogy vector
-            let analogy_embedding = crate::histtext::embedding::types::Embedding::new(analogy_vector);
+            let analogy_embedding = crate::histtext::embeddings::types::Embedding::new(analogy_vector);
             
             // Find nearest neighbors to the analogy vector
             let searcher = SimilaritySearcher::with_metric(SimilarityMetric::Cosine);
@@ -571,7 +569,7 @@ pub async fn compute_neighbors(
         query.word, query.collection_name, query.solr_database_id
     );
 
-    let lowercase_word = query.word.to_lowercase();
+    //let _lowercase_word = query.word.to_lowercase();
 
     let embeddings_opt = get_cached_embeddings(&db, query.solr_database_id, &query.collection_name).await;
 

@@ -119,7 +119,7 @@ pub struct NeighborsRequest {
 impl NeighborsRequest {
     /// Get the number of neighbors to return, with bounds checking
     pub fn get_k(&self) -> usize {
-        self.k.unwrap_or(10).min(100).max(1)
+        self.k.unwrap_or(10).clamp(1, 100)
     }
 
     /// Get the similarity threshold
@@ -274,31 +274,39 @@ impl Default for EmbeddingConfig {
 }
 
 /// Error types for embedding operations
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum EmbeddingError {
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-    
-    #[error("Format error: {0}")]
+    Io(std::io::Error),
     Format(String),
-    
-    #[error("Dimension mismatch: expected {expected}, got {actual}")]
     DimensionMismatch { expected: usize, actual: usize },
-    
-    #[error("Invalid word: {0}")]
     InvalidWord(String),
-    
-    #[error("File not found: {0}")]
     FileNotFound(String),
-    
-    #[error("Unsupported format: {0}")]
     UnsupportedFormat(String),
-    
-    #[error("Parse error: {0}")]
     Parse(String),
-    
-    #[error("Cache error: {0}")]
     Cache(String),
+}
+impl std::fmt::Display for EmbeddingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Io(e) => write!(f, "IO error: {}", e),
+            Self::Format(s) => write!(f, "Format error: {}", s),
+            Self::DimensionMismatch { expected, actual } => 
+                write!(f, "Dimension mismatch: expected {}, got {}", expected, actual),
+            Self::InvalidWord(s) => write!(f, "Invalid word: {}", s),
+            Self::FileNotFound(s) => write!(f, "File not found: {}", s),
+            Self::UnsupportedFormat(s) => write!(f, "Unsupported format: {}", s),
+            Self::Parse(s) => write!(f, "Parse error: {}", s),
+            Self::Cache(s) => write!(f, "Cache error: {}", s),
+        }
+    }
+}
+
+impl std::error::Error for EmbeddingError {}
+
+impl From<std::io::Error> for EmbeddingError {
+    fn from(err: std::io::Error) -> Self {
+        Self::Io(err)
+    }
 }
 
 /// Result type for embedding operations

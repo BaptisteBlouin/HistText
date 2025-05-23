@@ -242,13 +242,36 @@ fn configure_solr_routes(api_scope: Scope) -> Scope {
 }
 
 /// Configure HistText-specific text processing routes
+/// Configure HistText-specific text processing routes
 fn configure_hist_text_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(web::resource("/tokenize").route(web::post().to(histtext::tokenizer::tokenize)))
+        
+        // Legacy embedding endpoint for backward compatibility
         .service(
             web::resource("/compute-neighbors")
                 .route(web::post().to(histtext::embeddings::compute_neighbors)),
         )
+        
+        // New enhanced embedding endpoints
+        .service(
+            web::resource("/embeddings/neighbors")
+                .route(web::post().to(crate::histtext::embeddings::handlers::enhanced_neighbors)),
+        )
+        .service(
+            web::resource("/embeddings/batch-neighbors")
+                .route(web::post().to(crate::histtext::embeddings::handlers::batch_neighbors)),
+        )
+        .service(
+            web::resource("/embeddings/similarity")
+                .route(web::post().to(crate::histtext::embeddings::handlers::word_similarity)),
+        )
+        .service(
+            web::resource("/embeddings/analogy")
+                .route(web::post().to(crate::histtext::embeddings::handlers::word_analogy)),
+        )
+        
+        // Embedding cache and statistics endpoints
         .service(
             web::resource("/embeddings/stats")
                 .route(web::get().to(crate::services::stats::get_embeddings_stats)),
@@ -260,7 +283,7 @@ fn configure_hist_text_routes(api_scope: Scope) -> Scope {
         )
         .service(
             web::resource("/embeddings/advanced-stats")
-                .route(web::get().to(crate::services::cache_monitor::get_cache_stats)),
+                .route(web::get().to(crate::services::cache_monitor::get_cache_stats_advanced)),
         )
         .service(
             web::resource("/embeddings/reset-metrics")

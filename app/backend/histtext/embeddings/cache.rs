@@ -1,10 +1,15 @@
 //! Advanced caching system for embeddings with LRU eviction and memory management.
 
 use crate::config::Config;
-use crate::histtext::embedding::formats;
-use crate::histtext::embedding::types::{
+use crate::histtext::embeddings::formats;
+use crate::histtext::embeddings::types::{
     CacheKey, EmbeddingConfig, EmbeddingMap, EmbeddingResult, SharedEmbeddings,
 };
+
+use crate::services::solr_database_info::SolrDatabaseInfo;
+use diesel::prelude::*;
+use crate::diesel::ExpressionMethods;
+
 use crate::services::database::Database;
 use actix_web::web;
 use dashmap::DashMap;
@@ -60,11 +65,11 @@ impl CacheEntry {
 
 /// Path-based cache for sharing embeddings across collections
 static PATH_CACHE: std::sync::LazyLock<DashMap<String, Arc<CacheEntry>>> = 
-    std::sync::LazyLock::new(|| DashMap::new());
+    std::sync::LazyLock::new(DashMap::new);
 
 /// Collection-based cache for fast lookup
 static COLLECTION_CACHE: std::sync::LazyLock<DashMap<String, Arc<CacheEntry>>> = 
-    std::sync::LazyLock::new(|| DashMap::new());
+    std::sync::LazyLock::new(DashMap::new);
 
 /// Global cache statistics
 static CACHE_STATS: std::sync::LazyLock<Arc<Mutex<CacheStatistics>>> = 
@@ -204,7 +209,7 @@ pub async fn get_cached_embeddings(
     let embedding_path = match get_embedding_path(db, solr_database_id, collection_name).await {
         Some(path) => path,
         None => {
-            warn!("No embedding path configured for {}", cache_key_str);
+            warn!("No embedding path configured for {}:{}", solr_database_id, collection_name);
             return None;
         }
     };
@@ -362,14 +367,15 @@ async fn cleanup_expired_entries() -> EmbeddingResult<()> {
         }
     }
     
-    for path in expired_paths {
+    let paths_to_remove = expired_paths.clone();
+    for path in paths_to_remove {
         evict_path(&path).await;
     }
     
     if !expired_paths.is_empty() {
         info!("Cleaned up {} expired cache entries", expired_paths.len());
     }
-    
+        
     Ok(())
 }
 
@@ -416,13 +422,13 @@ pub async fn get_cache_statistics() -> CacheStatistics {
 /// Get embedding path from database
 async fn get_embedding_path(
     db: &web::Data<Database>,
-    solr_database_id: i32,
-    collection_name: &str,
+    _solr_database_id: i32,
+    collection_name_param: &str,
 ) -> Option<String> {
     use crate::schema::solr_database_info::dsl::*;
     
     let db_clone = db.clone();
-    let collection_name_str = collection_name.to_string();
+    let collection_name_str = collection_name_param.to_string();
     
     let result = task::spawn_blocking(move || -> Result<Option<String>, diesel::result::Error> {
         let mut conn = db_clone.pool.get().map_err(|_| diesel::result::Error::DatabaseError(
@@ -433,7 +439,7 @@ async fn get_embedding_path(
         let info = solr_database_info
             .filter(solr_database_id.eq(solr_database_id))
             .filter(collection_name.eq(&collection_name_str))
-            .first::<crate::services::solr_database_info::SolrDatabaseInfo>(&mut conn)?;
+            .first::<SolrDatabaseInfo>(&mut conn)?;
         
         match info.embeddings.as_str() {
             "none" => Ok(None),

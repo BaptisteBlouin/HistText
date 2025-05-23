@@ -10,9 +10,12 @@ use crate::histtext::embeddings;
 use actix_web::HttpResponse;
 use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
+use utoipa::ToSchema;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 use lazy_static::lazy_static;
+use crate::histtext::embeddings::stats::reset_performance_metrics;
+
 
 /// Records cache hit/miss statistics over time
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,6 +35,127 @@ pub struct CachePerformanceMetrics {
     pub hit_ratio: Option<f64>,
     /// Number of evictions since start
     pub evictions: u64,
+}
+
+/// Advanced cache monitoring response
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CacheMonitorResponse {
+    /// Basic cache statistics
+    pub basic_stats: crate::histtext::embeddings::stats::CacheStats,
+    /// Performance metrics
+    pub performance: PerformanceMetrics,
+    /// System information
+    pub system_info: SystemInfo,
+    /// Timestamp when data was collected
+    pub collected_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Performance metrics for the cache system
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PerformanceMetrics {
+    /// Average time per similarity computation in microseconds
+    pub avg_similarity_time_us: f64,
+    /// Average time per neighbor search in milliseconds
+    pub avg_search_time_ms: f64,
+    /// Total similarity computations performed
+    pub total_similarity_computations: u64,
+    /// Total neighbor searches performed
+    pub total_searches: u64,
+    /// Peak memory usage in bytes
+    pub peak_memory_bytes: usize,
+    /// Estimated memory per word in bytes
+    pub estimated_memory_per_word: Option<f64>,
+    /// Estimated memory usage
+    pub estimated_memory_bytes: usize,
+}
+
+/// System information
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SystemInfo {
+    /// Number of CPU cores
+    pub cpu_cores: usize,
+    /// Total system memory in bytes
+    pub total_memory_bytes: usize,
+    /// System architecture
+    pub architecture: String,
+    /// Operating system
+    pub operating_system: String,
+}
+
+/// Retrieves comprehensive cache statistics and performance metrics
+///
+/// Returns detailed information about cache performance, memory usage,
+/// and system resource utilization.
+///
+/// # Returns
+/// HTTP response with detailed cache monitoring data
+#[utoipa::path(
+    get,
+    path = "/api/embeddings/advanced-stats",
+    tag = "Embeddings",
+    responses(
+        (status = 200, description = "Comprehensive cache statistics and performance metrics", body = CacheMonitorResponse)
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn get_cache_stats_advanced() -> HttpResponse {
+    let basic_stats = crate::histtext::embeddings::get_cache_stats().await;
+    
+    // Calculate estimated memory usage
+    let estimated_memory_bytes = basic_stats.memory_usage_bytes;
+    
+    let performance = PerformanceMetrics {
+        avg_similarity_time_us: 0.0, // Would need to implement actual tracking
+        avg_search_time_ms: 0.0,    // Would need to implement actual tracking
+        total_similarity_computations: 0, // Would need to implement actual tracking
+        total_searches: 0,               // Would need to implement actual tracking
+        peak_memory_bytes: estimated_memory_bytes,
+        estimated_memory_bytes,
+        estimated_memory_per_word: if basic_stats.total_embeddings_loaded > 0 {
+            Some(estimated_memory_bytes as f64 / basic_stats.total_embeddings_loaded as f64)
+        } else {
+            None
+        },
+    };
+    
+    let system_info = SystemInfo {
+        cpu_cores: num_cpus::get(),
+        total_memory_bytes: 0, // Would need system-specific implementation
+        architecture: std::env::consts::ARCH.to_string(),
+        operating_system: std::env::consts::OS.to_string(),
+    };
+    
+    let response = CacheMonitorResponse {
+        basic_stats,
+        performance,
+        system_info,
+        collected_at: chrono::Utc::now(),
+    };
+    
+    HttpResponse::Ok().json(response)
+}
+
+/// Resets performance metrics and counters
+///
+/// Clears all accumulated performance statistics, useful for
+/// benchmarking or after system changes.
+///
+/// # Returns
+/// HTTP response confirming metrics reset
+#[utoipa::path(
+    post,
+    path = "/api/embeddings/reset-metrics",
+    tag = "Embeddings",
+    responses(
+        (status = 200, description = "Performance metrics reset successfully")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn reset_cache_metrics() -> HttpResponse {
+    reset_performance_metrics();
+    HttpResponse::Ok().json(serde_json::json!({
+        "message": "Performance metrics reset successfully"
+    }))
 }
 
 impl CachePerformanceMetrics {
@@ -226,7 +350,7 @@ pub fn record_eviction(count: usize) {
 /// # Returns
 /// Extended cache statistics including performance metrics
 pub async fn get_extended_stats() -> ExtendedCacheStats {
-    let basic_stats = embeddings::get_cache_stats();
+    let basic_stats = crate::histtext::embeddings::get_cache_stats().await;
     let performance = CACHE_METRICS.get_metrics().await;
     
     let now = Utc::now();
@@ -251,25 +375,4 @@ pub async fn get_extended_stats() -> ExtendedCacheStats {
 /// This only resets the counters for hits and misses, not the actual cache content.
 pub async fn reset_metrics() {
     CACHE_METRICS.reset().await;
-}
-
-/// HTTP handler that returns extended cache statistics
-///
-/// # Returns
-/// HTTP response with JSON cache statistics
-pub async fn get_cache_stats() -> HttpResponse {
-    let stats = get_extended_stats().await;
-    HttpResponse::Ok().json(stats)
-}
-
-/// HTTP handler that resets cache metrics
-///
-/// # Returns
-/// HTTP response confirming reset
-pub async fn reset_cache_metrics() -> HttpResponse {
-    reset_metrics().await;
-    HttpResponse::Ok().json(serde_json::json!({
-        "message": "Cache metrics reset successfully",
-        "timestamp": Utc::now()
-    }))
 }

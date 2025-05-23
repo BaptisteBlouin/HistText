@@ -8,7 +8,7 @@
 use actix_web::{web, HttpResponse};
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use std::sync::Arc;
 use utoipa::ToSchema;
 
@@ -55,6 +55,16 @@ pub struct DashboardStats {
     /// Total number of words loaded in embedding cache
     #[schema(example = 400000)]
     pub embedding_words_loaded: usize,
+}
+
+/// Embedding cache statistics for API responses
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct EmbeddingStats {
+    pub embedding_files_loaded: usize,
+    pub embedding_collections_cached: usize,
+    pub embedding_words_loaded: usize,
+    pub cache_hit_ratio: f64,
+    pub memory_usage_mb: f64,
 }
 
 /// Handler for statistics operations
@@ -134,7 +144,7 @@ impl StatsHandler {
         .await?;
 
         // Get embedding cache statistics
-        let cache_stats = embeddings::get_cache_stats();
+        let cache_stats = crate::histtext::embeddings::get_cache_stats().await;
 
         // Assemble all stats into one response
         let stats = DashboardStats {
@@ -196,13 +206,22 @@ pub async fn get_dashboard_stats(
     path = "/api/embeddings/stats",
     tag = "Embeddings",
     responses(
-        (status = 200, description = "Detailed embedding cache statistics", body = Object)
+        (status = 200, description = "Detailed embedding cache statistics", body = EmbeddingStats)
     ),
     security(("bearer_auth" = []))
 )]
-pub async fn get_embeddings_stats() -> HttpResponse {
-    let stats = embeddings::get_cache_stats();
-    HttpResponse::Ok().json(stats)
+pub async fn get_embeddings_stats() -> Result<HttpResponse, actix_web::Error> {
+    let cache_stats = crate::histtext::embeddings::get_cache_stats().await;
+    
+    let stats = EmbeddingStats {
+        embedding_files_loaded: cache_stats.path_cache_entries,
+        embedding_collections_cached: cache_stats.collection_cache_entries,
+        embedding_words_loaded: cache_stats.total_embeddings_loaded,
+        cache_hit_ratio: cache_stats.hit_ratio,
+        memory_usage_mb: cache_stats.memory_usage_bytes as f64 / 1024.0 / 1024.0,
+    };
+    
+    Ok(HttpResponse::Ok().json(stats))
 }
 
 /// Clears all embedding caches

@@ -1,6 +1,6 @@
 //! Statistics and monitoring for the embedding system.
 
-use crate::histtext::embedding::cache::{get_cache_statistics, CacheStatistics};
+use crate::histtext::embeddings::cache::get_cache_statistics;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -257,7 +257,7 @@ pub async fn get_cache_stats() -> CacheStats {
         total_hits: cache_stats.hits,
         total_misses: cache_stats.misses,
         total_evictions: cache_stats.evictions,
-        last_eviction: cache_stats.last_eviction.map(|t| DateTime::from(t)),
+        last_eviction: cache_stats.last_eviction.map(DateTime::from),
         uptime_seconds: now.timestamp() - now.timestamp(), // Placeholder - would need actual start time
     }
 }
@@ -313,7 +313,7 @@ fn get_system_info() -> SystemInfo {
         architecture: std::env::consts::ARCH.to_string(),
         operating_system: std::env::consts::OS.to_string(),
         rust_version: env!("CARGO_PKG_RUST_VERSION").to_string(),
-        build_timestamp: env!("VERGEN_BUILD_TIMESTAMP").unwrap_or("unknown").to_string(),
+        build_timestamp: std::env::var("VERGEN_BUILD_TIMESTAMP").unwrap_or("unknown".to_string()),
     }
 }
 

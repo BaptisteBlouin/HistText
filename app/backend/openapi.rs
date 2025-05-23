@@ -7,6 +7,7 @@
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
+
 /// Security scheme modifier for OpenAPI documentation
 ///
 /// Injects the JWT bearer token authentication scheme into the
@@ -185,7 +186,7 @@ pub struct SolrApiDoc;
         crate::histtext::ner::fetch_ner_data,
         crate::histtext::stats::calculate_statistics,
         crate::histtext::tokenizer::tokenize,
-        crate::histtext::embeddings::compute_neighbors,
+        crate::histtext::embeddings::handlers::compute_neighbors_handler,
     ),
     components(schemas(
         crate::histtext::documents::CollectionQueryParams,

@@ -3,7 +3,7 @@
 //! This module provides high-performance similarity calculations using various
 //! metrics and optimization techniques including SIMD operations and parallel processing.
 
-use crate::histtext::embedding::types::{
+use crate::histtext::embeddings::types::{
     Embedding, EmbeddingMap, NeighborResult, NeighborsRequest, NeighborsResponse,
 };
 use log::{debug, warn};
@@ -228,7 +228,7 @@ impl SimilaritySearcher {
     }
 
     /// Compute similarity between two embeddings based on the configured metric
-    fn compute_similarity(&self, embedding1: &Embedding, embedding2: &Embedding) -> f32 {
+    pub fn compute_similarity(&self, embedding1: &Embedding, embedding2: &Embedding) -> f32 {
         match self.metric {
             SimilarityMetric::Cosine => cosine_similarity(&embedding1.vector, embedding1.norm, &embedding2.vector, embedding2.norm),
             SimilarityMetric::Euclidean => euclidean_similarity(&embedding1.vector, &embedding2.vector),
@@ -256,7 +256,7 @@ impl Eq for ScoredNeighbor {}
 impl PartialOrd for ScoredNeighbor {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         // Reverse ordering for min-heap behavior
-        other.similarity.partial_cmp(&self.similarity)
+        Some(self.cmp(other))
     }
 }
 
@@ -282,26 +282,29 @@ pub fn cosine_similarity(vec1: &[f32], norm1: f32, vec2: &[f32], norm2: f32) -> 
 pub fn dot_product(vec1: &[f32], vec2: &[f32]) -> f32 {
     debug_assert_eq!(vec1.len(), vec2.len());
     
+    // For now, use the safe scalar implementation to avoid segfaults
+    // TODO: Fix SIMD implementations with proper memory alignment checks
+    dot_product_scalar(vec1, vec2)
+    
+    /* DISABLED SIMD CODE - causing segfaults
     // Use SIMD if available and vectors are large enough
     #[cfg(target_arch = "x86_64")]
     {
         if vec1.len() >= 8 && is_x86_feature_detected!("avx") {
-            return dot_product_avx(vec1, vec2);
+            return unsafe { dot_product_avx(vec1, vec2) };
         } else if vec1.len() >= 4 && is_x86_feature_detected!("sse") {
-            return dot_product_sse(vec1, vec2);
+            return unsafe { dot_product_sse(vec1, vec2) };
         }
     }
     
     #[cfg(target_arch = "aarch64")]
     {
         if vec1.len() >= 4 && std::arch::is_aarch64_feature_detected!("neon") {
-            return dot_product_neon(vec1, vec2);
+            return unsafe { dot_product_neon(vec1, vec2) };
         }
     }
-    
-    // Fallback to standard implementation
-    dot_product_scalar(vec1, vec2)
-}
+    */
+}   
 
 /// Scalar dot product implementation
 #[inline]
@@ -561,11 +564,11 @@ impl LshIndex {
         let dimension = embeddings.values().next().map(|e| e.dimension()).unwrap_or(0);
         
         // Generate random projection vectors
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let projections: Vec<Vec<f32>> = (0..num_projections)
             .map(|_| {
                 (0..dimension)
-                    .map(|_| rng.gen_range(-1.0..1.0))
+                    .map(|_| rng.random_range(-1.0..1.0))
                     .collect()
             })
             .collect();
@@ -598,9 +601,8 @@ impl LshIndex {
         let hash_code = Self::compute_hash(&query.vector, &self.projections);
         
         // Get exact matches first
-        let mut candidates = self.buckets
-            .get(&hash_code)
-            .map(|words| words.clone())
+        let mut candidates =self.buckets
+            .get(&hash_code).cloned()
             .unwrap_or_default();
         
         // If we don't have enough candidates, look in nearby buckets

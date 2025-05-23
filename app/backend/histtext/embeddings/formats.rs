@@ -7,10 +7,11 @@
 //! - FastText binary format
 //! - GloVe format
 
-use crate::histtext::embedding::types::{
+use crate::histtext::embeddings::types::{
     Embedding, EmbeddingConfig, EmbeddingError, EmbeddingFormat, EmbeddingMap, EmbeddingResult,
     EmbeddingStats,
 };
+
 use log::{debug, info, warn};
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -117,7 +118,7 @@ async fn load_text_format(
 
         embeddings.extend(chunk_embeddings);
         error_count += chunk_errors;
-        line_count += chunk.len();
+        line_count += lines.len();
 
         if config.max_words > 0 && embeddings.len() >= config.max_words {
             break;
@@ -265,6 +266,7 @@ async fn load_binary_format(
     Ok((embeddings, dimension))
 }
 
+
 /// Load Word2Vec binary format
 async fn load_word2vec_binary(
     path: &str,
@@ -278,15 +280,15 @@ async fn load_word2vec_binary(
     let mut reader = BufReader::new(&mut file);
     reader.read_line(&mut header_line).map_err(EmbeddingError::Io)?;
     
-    let header_parts: Vec<&str> = header_line.trim().split_whitespace().collect();
+    let header_parts: Vec<&str> = header_line.split_whitespace().collect();
     if header_parts.len() != 2 {
         return Err(EmbeddingError::Format("Invalid Word2Vec header".to_string()));
     }
     
     let word_count: usize = header_parts[0].parse()
-        .map_err(|e| EmbeddingError::Parse(e.to_string()))?;
+        .map_err(|e: std::num::ParseIntError| EmbeddingError::Parse(e.to_string()))?;
     let dimension: usize = header_parts[1].parse()
-        .map_err(|e| EmbeddingError::Parse(e.to_string()))?;
+        .map_err(|e: std::num::ParseIntError| EmbeddingError::Parse(e.to_string()))?;
     
     info!("Word2Vec file contains {} words with dimension {}", word_count, dimension);
     
@@ -297,7 +299,7 @@ async fn load_word2vec_binary(
     };
 
     // Read binary data
-    let mut file = reader.into_inner();
+    let file = reader.into_inner();
     
     for _ in 0..max_words {
         // Read word (null-terminated)
@@ -439,8 +441,23 @@ pub async fn convert_to_binary(
 ) -> EmbeddingResult<EmbeddingStats> {
     info!("Converting {} to binary format: {}", input_path, output_path);
     
-    let (embeddings, stats) = load_text_format(input_path, config).await?;
-    save_binary_format(&embeddings, output_path, stats.dimension).await?;
+    let (embeddings, dimension) = load_text_format(input_path, config).await?;
+    save_binary_format(&embeddings, output_path, dimension).await?;
+    
+    // Create EmbeddingStats manually since load_text_format only returns dimension
+    let file_size = std::fs::metadata(input_path)
+        .map_err(EmbeddingError::Io)?
+        .len();
+    
+    let stats = EmbeddingStats {
+        word_count: embeddings.len(),
+        dimension,
+        format: "Text".to_string(),
+        file_size,
+        load_time_ms: 0, // We don't track this in the conversion
+        memory_usage: estimate_memory_usage(&embeddings),
+        normalized: config.normalize_on_load,
+    };
     
     info!("Conversion completed: {} words", embeddings.len());
     Ok(stats)

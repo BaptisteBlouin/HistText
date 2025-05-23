@@ -15,8 +15,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Chip,
+  Typography,
 } from '@mui/material';
-import { Remove, Star } from '@mui/icons-material';
+import { Remove, Star, AutoAwesome } from '@mui/icons-material';
 import axios from 'axios';
 import config from '../../../config.json';
 import { buildQueryString } from './buildQueryString';
@@ -67,6 +69,34 @@ interface CollectionInfo {
   to_not_display: string[];
 }
 
+interface NeighborsResponse {
+  neighbors: Array<{
+    word: string;
+    similarity?: number;
+  }>;
+  has_embeddings: boolean;
+  query_word: string;
+  k: number;
+  threshold: number;
+}
+
+interface SimilarityResponse {
+  word1: string;
+  word2: string;
+  similarity: number;
+  metric: string;
+  both_found: boolean;
+}
+
+interface AnalogyResponse {
+  analogy: string;
+  candidates: Array<{
+    word: string;
+    similarity?: number;
+  }>;
+  all_words_found: boolean;
+}
+
 const MetadataForm: React.FC<MetadataFormProps> = ({
   metadata,
   formData,
@@ -94,6 +124,15 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   const [codeModalContent, setCodeModalContent] = useState('');
   const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(null);
   const [hasEmbeddings, setHasEmbeddings] = useState<boolean>(false);
+  const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false);
+  const [similarityWord1, setSimilarityWord1] = useState('');
+  const [similarityWord2, setSimilarityWord2] = useState('');
+  const [analogyWordA, setAnalogyWordA] = useState('');
+  const [analogyWordB, setAnalogyWordB] = useState('');
+  const [analogyWordC, setAnalogyWordC] = useState('');
+  const [similarityResult, setSimilarityResult] = useState<SimilarityResponse | null>(null);
+  const [analogyResult, setAnalogyResult] = useState<AnalogyResponse | null>(null);
+  const [embeddingLoading, setEmbeddingLoading] = useState(false);
   const { accessToken } = useAuth();
 
   // Fetch collection info when solrDatabaseId and selectedAlias are available
@@ -130,19 +169,25 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     if (!inputValue || !solrDatabaseId || !hasEmbeddings) return;
     setLoadingNeighbors(prev => ({ ...prev, [fieldName]: true }));
     try {
-      const response = await axios.post('/api/compute-neighbors', {
+      const response = await axios.post<NeighborsResponse>('/api/embeddings/neighbors', {
         word: inputValue,
         solr_database_id: solrDatabaseId,
         collection_name: selectedAlias,
+        k: 10,
+        threshold: 0.3,
+        include_scores: true,
+        metric: 'cosine',
+      }, {
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (response.data.has_embeddings) {
+      if (response.data.has_embeddings && response.data.neighbors.length > 0) {
         setNeighbors(prev => ({
           ...prev,
-          [fieldName]: response.data.top_neighbors,
+          [fieldName]: response.data.neighbors.map(n => n.word),
         }));
       } else {
-        console.warn('No embeddings available for this collection');
+        console.warn('No embeddings available or no neighbors found');
         setNeighbors(prev => {
           const newNeighbors = { ...prev };
           delete newNeighbors[fieldName];
@@ -153,6 +198,49 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       console.error('Error fetching neighbors:', error);
     } finally {
       setLoadingNeighbors(prev => ({ ...prev, [fieldName]: false }));
+    }
+  };
+
+  const computeSimilarity = async () => {
+    if (!similarityWord1 || !similarityWord2 || !solrDatabaseId || !hasEmbeddings) return;
+    setEmbeddingLoading(true);
+    try {
+      const response = await axios.post<SimilarityResponse>('/api/embeddings/similarity', {
+        word1: similarityWord1,
+        word2: similarityWord2,
+        solr_database_id: solrDatabaseId,
+        collection_name: selectedAlias,
+        metric: 'cosine',
+      }, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setSimilarityResult(response.data);
+    } catch (error) {
+      console.error('Error computing similarity:', error);
+    } finally {
+      setEmbeddingLoading(false);
+    }
+  };
+
+  const computeAnalogy = async () => {
+    if (!analogyWordA || !analogyWordB || !analogyWordC || !solrDatabaseId || !hasEmbeddings) return;
+    setEmbeddingLoading(true);
+    try {
+      const response = await axios.post<AnalogyResponse>('/api/embeddings/analogy', {
+        word_a: analogyWordA,
+        word_b: analogyWordB,
+        word_c: analogyWordC,
+        solr_database_id: solrDatabaseId,
+        collection_name: selectedAlias,
+        k: 5,
+      }, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setAnalogyResult(response.data);
+    } catch (error) {
+      console.error('Error computing analogy:', error);
+    } finally {
+      setEmbeddingLoading(false);
     }
   };
 
@@ -318,6 +406,33 @@ print(df)
           gap: 2,
         }}
       >
+        {/* Embedding Tools Banner */}
+        {hasEmbeddings && (
+          <Box sx={{ 
+            p: 2, 
+            backgroundColor: 'primary.main', 
+            color: 'white', 
+            borderRadius: 1, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between' 
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AutoAwesome />
+              <Typography variant="subtitle1">
+                Embeddings Available - Use the ⭐ button for semantic search
+              </Typography>
+            </Box>
+            <Button 
+              variant="outlined" 
+              sx={{ color: 'white', borderColor: 'white' }}
+              onClick={() => setEmbeddingModalOpen(true)}
+            >
+              Embedding Tools
+            </Button>
+          </Box>
+        )}
+
         <Grid container spacing={2}>
           {metadata
             .filter(field => !shouldExcludeField(field.name))
@@ -472,6 +587,7 @@ print(df)
                                   <IconButton
                                     onClick={() => fetchNeighbors(entry.value, field.name)}
                                     disabled={loadingNeighbors[field.name] || !entry.value}
+                                    title="Find similar words using embeddings"
                                   >
                                     {loadingNeighbors[field.name] ? (
                                       <CircularProgress size={20} />
@@ -510,19 +626,26 @@ print(df)
                       ))}
                       {neighbors[field.name] && (
                         <Box sx={{ mt: 1 }}>
-                          <Autocomplete
-                            options={neighbors[field.name]}
-                            onChange={(_, newValue) => handleSelectChange(field.name, newValue)}
-                            renderInput={params => (
-                              <TextField
-                                {...params}
-                                label="Select a neighbor"
-                                InputLabelProps={{ shrink: true }}
+                          <Typography variant="subtitle2" gutterBottom>
+                            Similar words:
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                            {neighbors[field.name].map((neighbor, index) => (
+                              <Chip
+                                key={index}
+                                label={neighbor}
+                                size="small"
+                                clickable
+                                onClick={() => handleSelectChange(field.name, neighbor)}
+                                sx={{ cursor: 'pointer' }}
                               />
-                            )}
-                          />
-                          <Button onClick={() => removeNeighborDropdown(field.name)} sx={{ mt: 1 }}>
-                            Remove Neighbors
+                            ))}
+                          </Box>
+                          <Button 
+                            size="small" 
+                            onClick={() => removeNeighborDropdown(field.name)}
+                          >
+                            Hide Similar Words
                           </Button>
                         </Box>
                       )}
@@ -620,6 +743,7 @@ print(df)
         </Grid>
       </Box>
 
+      {/* Code Generation Modal */}
       <Dialog open={codeModalOpen} onClose={() => setCodeModalOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>{codeModalTitle}</DialogTitle>
         <DialogContent dividers>
@@ -637,6 +761,128 @@ print(df)
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCodeModalOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Embedding Tools Modal */}
+      <Dialog 
+        open={embeddingModalOpen} 
+        onClose={() => setEmbeddingModalOpen(false)} 
+        fullWidth 
+        maxWidth="md"
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoAwesome />
+            Embedding Tools
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={3}>
+            {/* Word Similarity */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                Word Similarity
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+                <TextField
+                  label="Word 1"
+                  value={similarityWord1}
+                  onChange={(e) => setSimilarityWord1(e.target.value)}
+                  size="small"
+                />
+                <TextField
+                  label="Word 2"
+                  value={similarityWord2}
+                  onChange={(e) => setSimilarityWord2(e.target.value)}
+                  size="small"
+                />
+                <Button
+                  variant="contained"
+                  onClick={computeSimilarity}
+                  disabled={!similarityWord1 || !similarityWord2 || embeddingLoading}
+                >
+                  {embeddingLoading ? <CircularProgress size={20} /> : 'Compare'}
+                </Button>
+              </Box>
+              {similarityResult && (
+                <Box sx={{ p: 2, backgroundColor: 'grey.100', borderRadius: 1 }}>
+                  <Typography>
+                    Similarity between "{similarityResult.word1}" and "{similarityResult.word2}": 
+                    <strong> {(similarityResult.similarity * 100).toFixed(1)}%</strong>
+                  </Typography>
+                  {!similarityResult.both_found && (
+                    <Typography color="warning.main">
+                      Note: One or both words were not found in the embeddings
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </Grid>
+
+            {/* Word Analogy */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                Word Analogy (A is to B as C is to ?)
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
+                <TextField
+                  label="Word A"
+                  value={analogyWordA}
+                  onChange={(e) => setAnalogyWordA(e.target.value)}
+                  size="small"
+                />
+                <Typography>is to</Typography>
+                <TextField
+                  label="Word B"
+                  value={analogyWordB}
+                  onChange={(e) => setAnalogyWordB(e.target.value)}
+                  size="small"
+                />
+                <Typography>as</Typography>
+                <TextField
+                  label="Word C"
+                  value={analogyWordC}
+                  onChange={(e) => setAnalogyWordC(e.target.value)}
+                  size="small"
+                />
+                <Typography>is to ?</Typography>
+                <Button
+                  variant="contained"
+                  onClick={computeAnalogy}
+                  disabled={!analogyWordA || !analogyWordB || !analogyWordC || embeddingLoading}
+                >
+                  {embeddingLoading ? <CircularProgress size={20} /> : 'Solve'}
+                </Button>
+              </Box>
+              {analogyResult && (
+                <Box sx={{ p: 2, backgroundColor: 'grey.100', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    {analogyResult.analogy}
+                  </Typography>
+                  {analogyResult.candidates.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                      {analogyResult.candidates.map((candidate, index) => (
+                        <Chip
+                          key={index}
+                          label={`${candidate.word}${candidate.similarity ? ` (${(candidate.similarity * 100).toFixed(1)}%)` : ''}`}
+                          variant={index === 0 ? 'filled' : 'outlined'}
+                          color={index === 0 ? 'primary' : 'default'}
+                        />
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography color="warning.main">
+                      No analogies found or words not in embeddings
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEmbeddingModalOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </>
