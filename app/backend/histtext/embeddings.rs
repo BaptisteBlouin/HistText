@@ -6,8 +6,10 @@
 //! - Concurrent similarity computations using Rayon's data parallelism
 //! - Configurable embeddings per collection with "none", "default", or custom paths
 //! - Computing top-N semantically nearest neighbors for words
+//! - Enhanced cache monitoring and performance metrics
 
 use crate::config::Config;
+use crate::services::cache_monitor;
 use crate::services::database::Database;
 use actix_web::{web, HttpResponse, Responder};
 use dashmap::DashMap;
@@ -84,7 +86,7 @@ pub struct NeighborsResponse {
 }
 
 /// Cache statistics for monitoring and debugging
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CacheStats {
     /// Number of collection-specific embedding caches
     pub collection_cache_entries: usize,
@@ -99,7 +101,7 @@ pub struct CacheStats {
 }
 
 /// Details about a single path cache entry
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PathCacheEntry {
     /// Path to embedding file
     pub path: String,
@@ -264,6 +266,9 @@ async fn evict_lru_if_needed() {
             EMBEDDINGS_CACHE.remove(&key);
         }
 
+        // Record the eviction in our cache monitoring
+        cache_monitor::record_eviction(size);
+
         info!(
             "Evicted embeddings for path {} from cache (size: {} words)",
             path, size
@@ -293,8 +298,14 @@ async fn load_embeddings_from_path(path: &str) -> Option<SharedEmbeddings> {
             );
         }
 
+        // Record cache hit in monitoring
+        cache_monitor::update_cache_metrics(true, embeddings_clone.len());
+        
         return Some(embeddings_clone);
     }
+
+    // Record cache miss in monitoring
+    cache_monitor::update_cache_metrics(false, 0);
 
     debug!(
         "Path not in cache: '{}' (normalized to basename: '{}')",
@@ -342,6 +353,10 @@ async fn load_embeddings_from_path(path: &str) -> Option<SharedEmbeddings> {
     };
 
     PATH_CACHE.insert(normalized_path.clone(), entry);
+    
+    // Update memory usage metrics after loading
+    cache_monitor::update_cache_metrics(false, size);
+    
     info!(
         "Successfully loaded embeddings from {} (normalized to {}, {} words) in {:?}",
         path,
@@ -352,7 +367,6 @@ async fn load_embeddings_from_path(path: &str) -> Option<SharedEmbeddings> {
 
     Some(embeddings_arc)
 }
-
 /// Retrieves the cached embeddings for a given collection
 ///
 /// Embeddings are loaded from disk if not already present. Results are
@@ -375,8 +389,15 @@ pub async fn get_cached_embeddings(
 
     if let Some(embeddings) = EMBEDDINGS_CACHE.get(&cache_key) {
         debug!("Using collection-cached embeddings for {}", cache_key);
+        
+        // Record cache hit
+        cache_monitor::update_cache_metrics(true, embeddings.len());
+        
         return Some(embeddings.clone());
     }
+
+    // Record cache miss
+    cache_monitor::update_cache_metrics(false, 0);
 
     debug!("Embeddings not in collection cache, fetching path from database");
     let embeddings_path = match get_embedding_path(db, solr_database_id, collection_name).await {
@@ -701,10 +722,27 @@ pub fn get_cache_stats() -> CacheStats {
 
 /// Clears all embedding caches
 ///
-/// This is primarily used for testing and administrative purposes
+/// This function is called during server shutdown or on-demand via API
+/// to release memory used by embeddings. It acquires a lock to ensure
+/// thread safety during cache clearing operations.
+///
+/// # Returns
+/// A future that completes when cache clearing is done
 pub async fn clear_caches() {
     let _lock = CACHE_MUTEX.lock().await;
+    
+    // Get counts before clearing for metrics
+    let path_entries = PATH_CACHE.len();
+    let collection_entries = EMBEDDINGS_CACHE.len();
+    let total_words: usize = PATH_CACHE.iter().map(|entry| entry.size).sum();
+    
+    // Clear the caches
     EMBEDDINGS_CACHE.clear();
     PATH_CACHE.clear();
-    info!("All embedding caches cleared");
+    
+    // Record the large eviction in our metrics
+    cache_monitor::record_eviction(total_words);
+    
+    info!("All embedding caches cleared: {} paths, {} collections, {} words", 
+          path_entries, collection_entries, total_words);
 }

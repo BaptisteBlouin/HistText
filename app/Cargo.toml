@@ -82,6 +82,7 @@ lettre = "0.11.16"
 tera = "1.20.0"
 ctrlc = "3.4.7"
 actix-rt = "2.10.0"
+memmap2 = "0.9.5"
 
 [dependencies.chrono]
 features = ["serde"]

@@ -258,6 +258,15 @@ fn configure_hist_text_routes(api_scope: Scope) -> Scope {
                 .guard(guard::fn_guard(has_permission)) // Admin-only route
                 .route(web::post().to(crate::services::stats::clear_embeddings_cache)),
         )
+        .service(
+            web::resource("/embeddings/advanced-stats")
+                .route(web::get().to(crate::services::cache_monitor::get_cache_stats)),
+        )
+        .service(
+            web::resource("/embeddings/reset-metrics")
+                .guard(guard::fn_guard(has_permission)) // Admin-only route
+                .route(web::post().to(crate::services::cache_monitor::reset_cache_metrics)),
+        )
 }
 
 /// Configure user management routes
