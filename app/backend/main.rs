@@ -56,6 +56,27 @@ mod histtext {
 /// IO Result indicating successful execution or an error
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // Initialize the embedding system early
+    if let Err(e) = histtext::embeddings::initialize_embedding_system().await {
+        eprintln!("Failed to initialize embedding system: {}", e);
+        std::process::exit(1);
+    }
+
+    // Set up graceful shutdown handler for embeddings
+    let embedding_shutdown_handle = tokio::spawn(async {
+        // Wait for shutdown signal
+        tokio::signal::ctrl_c().await.ok();
+        
+        // Shutdown embedding system
+        histtext::embeddings::shutdown_embedding_system().await;
+    });
+
     // Run the server using the server module's implementation
-    server::run_server().await
+    let server_result = server::run_server().await;
+
+    // Ensure embedding system is properly shut down
+    embedding_shutdown_handle.abort();
+    histtext::embeddings::shutdown_embedding_system().await;
+
+    server_result
 }
