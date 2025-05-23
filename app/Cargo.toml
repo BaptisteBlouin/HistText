@@ -81,6 +81,7 @@ derive_more = "2.0.1"
 lettre = "0.11.16"
 tera = "1.20.0"
 ctrlc = "3.4.7"
+actix-rt = "2.10.0"
 
 [dependencies.chrono]
 features = ["serde"]

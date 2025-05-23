@@ -7,6 +7,7 @@ pub mod routes;
 pub mod ssh;
 pub mod startup;
 pub mod state;
+pub mod security;
 
 /// Runs the HTTP server with all necessary components initialized.
 pub async fn run_server() -> std::io::Result<()> {
@@ -26,6 +27,8 @@ pub async fn run_server() -> std::io::Result<()> {
     use std::sync::Arc;
     use tokio::signal;
     use tokio::signal::unix::{signal, SignalKind};
+
+    use crate::server::security::SecurityHeaders;
 
     // Load configuration from environment variables
     let config = match Config::load() {
@@ -107,7 +110,50 @@ pub async fn run_server() -> std::io::Result<()> {
             // Configure middleware
             .wrap(Compress::default())
             .wrap(NormalizePath::new(TrailingSlash::MergeOnly))
-            .wrap(Logger::default())
+            .wrap(Logger::default());
+        
+        // Add environment-specific security headers
+        #[cfg(debug_assertions)]
+        let app = app.wrap(
+            SecurityHeaders::new()
+                .include_hsts(false)
+                .with_custom_csp(
+                    "default-src 'self'; \
+                     script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:21012 https://cdnjs.cloudflare.com; \
+                     style-src 'self' 'unsafe-inline' http://localhost:21012 https://cdnjs.cloudflare.com; \
+                     img-src 'self' data: https:; \
+                     font-src 'self' data: https://cdnjs.cloudflare.com; \
+                     connect-src 'self' http://localhost:21012 ws://localhost:21012; \
+                     worker-src 'self'; \
+                     frame-src 'self' https:; \
+                     frame-ancestors 'self'; \
+                     form-action 'self'; \
+                     base-uri 'self'; \
+                     object-src 'none'"
+                )
+        );
+        
+        #[cfg(not(debug_assertions))]
+        let app = app.wrap(
+            SecurityHeaders::new()
+                .with_custom_csp(
+                    "default-src 'self'; \
+                     script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; \
+                     style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; \
+                     img-src 'self' data: https:; \
+                     font-src 'self' data: https://cdnjs.cloudflare.com; \
+                     connect-src 'self'; \
+                     worker-src 'self'; \
+                     frame-src 'self' https:; \
+                     frame-ancestors 'self'; \
+                     form-action 'self'; \
+                     base-uri 'self'; \
+                     object-src 'none'"
+                )
+        );
+        
+        // Continue with the rest of the configuration
+        let app = app
             // Set payload limits
             .app_data(web::JsonConfig::default().limit(config.max_query_size_mb * 1024 * 1024))
             .app_data(PayloadConfig::new(

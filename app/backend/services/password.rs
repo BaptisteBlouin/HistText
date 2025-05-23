@@ -2,6 +2,8 @@
 //!
 //! This module provides secure password handling using Argon2id with
 //! configurable parameters and consistent salt generation across the application.
+//! It includes robust password validation, generation of secure passwords,
+//! and utilities for password management.
 
 use crate::config::Config;
 use crate::services::error::{AppError, AppResult};
@@ -9,6 +11,7 @@ use argon2;
 use lazy_static::lazy_static;
 use log::{debug, warn};
 use std::sync::Arc;
+use regex::Regex;
 
 lazy_static! {
     /// Global Argon2id configuration with application secret
@@ -32,6 +35,11 @@ lazy_static! {
             ..Default::default()
         }
     };
+
+    /// Regex pattern for detecting common password patterns
+    static ref COMMON_PATTERNS: Regex = Regex::new(
+        r"(?i)(password|admin|welcome|123456|qwerty|letmein|abc123)"
+    ).expect("Failed to compile password pattern regex");
 }
 
 /// Password service for secure password operations
@@ -39,6 +47,10 @@ lazy_static! {
 pub struct PasswordService {
     /// Application configuration
     config: Arc<Config>,
+    /// Minimum password length
+    min_length: usize,
+    /// Maximum password length
+    max_length: usize,
 }
 
 impl PasswordService {
@@ -48,10 +60,32 @@ impl PasswordService {
     /// * `config` - Application configuration
     ///
     /// # Returns
-    /// A new PasswordService instance
+    /// A new PasswordService instance with default settings
     pub fn new(config: Arc<Config>) -> Self {
         debug!("Initializing password service with Argon2id");
-        Self { config }
+        Self { 
+            config,
+            min_length: 8,
+            max_length: 128 
+        }
+    }
+
+    /// Creates a new password service with custom validation parameters
+    ///
+    /// # Arguments
+    /// * `config` - Application configuration
+    /// * `min_length` - Minimum password length to require
+    /// * `max_length` - Maximum password length to allow
+    ///
+    /// # Returns
+    /// A new PasswordService instance with custom settings
+    pub fn with_params(config: Arc<Config>, min_length: usize, max_length: usize) -> Self {
+        debug!("Initializing password service with custom parameters");
+        Self { 
+            config,
+            min_length, 
+            max_length 
+        }
     }
 
     /// Creates a password service from global configuration
@@ -90,26 +124,8 @@ impl PasswordService {
     /// let hash = service.hash_password("my_secure_password").unwrap();
     /// ```
     pub fn hash_password(&self, password: &str) -> AppResult<String> {
-        if password.is_empty() {
-            return Err(AppError::validation(
-                "Password cannot be empty",
-                Some("password")
-            ));
-        }
-
-        if password.len() < 8 {
-            return Err(AppError::validation(
-                "Password must be at least 8 characters long",
-                Some("password")
-            ));
-        }
-
-        if password.len() > 128 {
-            return Err(AppError::validation(
-                "Password must be no more than 128 characters long",
-                Some("password")
-            ));
-        }
+        // Validate password before hashing
+        self.validate_password_strength(password)?;
 
         let salt = Self::generate_salt();
         
@@ -162,22 +178,29 @@ impl PasswordService {
 
     /// Validates password strength requirements
     ///
+    /// Checks for:
+    /// - Minimum and maximum length
+    /// - Presence of letters and numbers
+    /// - Absence of common password patterns
+    /// - Complexity assessment
+    ///
     /// # Arguments
     /// * `password` - Password to validate
     ///
     /// # Returns
     /// Ok(()) if password meets requirements, error otherwise
     pub fn validate_password_strength(&self, password: &str) -> AppResult<()> {
-        if password.len() < 8 {
+        // Check length
+        if password.len() < self.min_length {
             return Err(AppError::validation(
-                "Password must be at least 8 characters long",
+                format!("Password must be at least {} characters long", self.min_length),
                 Some("password")
             ));
         }
 
-        if password.len() > 128 {
+        if password.len() > self.max_length {
             return Err(AppError::validation(
-                "Password must be no more than 128 characters long",
+                format!("Password must be no more than {} characters long", self.max_length),
                 Some("password")
             ));
         }
@@ -185,6 +208,7 @@ impl PasswordService {
         // Check for at least one letter and one number
         let has_letter = password.chars().any(|c| c.is_alphabetic());
         let has_number = password.chars().any(|c| c.is_numeric());
+        let has_symbol = password.chars().any(|c| !c.is_alphanumeric());
 
         if !has_letter {
             return Err(AppError::validation(
@@ -200,16 +224,40 @@ impl PasswordService {
             ));
         }
 
-        // Check for common weak passwords
-        let weak_passwords = [
-            "password", "password123", "123456789", "qwerty123",
-            "admin123", "letmein", "welcome123", "password1"
-        ];
+        // Calculate password strength score
+        let mut strength_score = 0;
+        
+        // Base score from length
+        strength_score += password.len() as i32 / 2;
+        
+        // Bonus for character diversity
+        if has_letter { strength_score += 1; }
+        if has_number { strength_score += 1; }
+        if has_symbol { strength_score += 2; }
+        
+        // Bonus for mixed case
+        if password.chars().any(|c| c.is_uppercase()) && 
+           password.chars().any(|c| c.is_lowercase()) {
+            strength_score += 2;
+        }
 
-        let password_lower = password.to_lowercase();
-        if weak_passwords.iter().any(|&weak| password_lower.contains(weak)) {
+        // Check for common patterns (negative factor)
+        if COMMON_PATTERNS.is_match(password) {
+            strength_score -= 3;
+            
+            // If after this penalty the password is still weak, reject it
+            if strength_score < 5 {
+                return Err(AppError::validation(
+                    "Password contains common patterns, please choose a stronger password",
+                    Some("password")
+                ));
+            }
+        }
+
+        // Reject very weak passwords (after all calculations)
+        if strength_score < 4 {
             return Err(AppError::validation(
-                "Password is too common, please choose a stronger password",
+                "Password is too weak, please use a stronger combination of characters",
                 Some("password")
             ));
         }
@@ -218,6 +266,12 @@ impl PasswordService {
     }
 
     /// Generates a secure random password
+    ///
+    /// Creates a password with a good mix of character types:
+    /// - Uppercase letters
+    /// - Lowercase letters
+    /// - Numbers
+    /// - Special characters
     ///
     /// # Arguments
     /// * `length` - Desired password length (minimum 12, maximum 64)
@@ -240,23 +294,43 @@ impl PasswordService {
         }
 
         use rand::Rng;
-        const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                                 abcdefghijklmnopqrstuvwxyz\
-                                 0123456789\
-                                 !@#$%^&*()_+-=[]{}|;:,.<>?";
-
-        let mut rng = rand::rng();
-        let password: String = (0..length)
-            .map(|_| {
-                let idx = rng.random_range(0..CHARSET.len());
-                CHARSET[idx] as char
-            })
-            .collect();
-
-        // Ensure the generated password meets our strength requirements
-        self.validate_password_strength(&password)?;
         
-        Ok(password)
+        // Define character sets for a strong password
+        const LOWERCASE: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
+        const UPPERCASE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const NUMBERS: &[u8] = b"0123456789";
+        const SYMBOLS: &[u8] = b"!@#$%^&*()-_=+[]{}|;:,.<>?";
+        
+        let mut rng = rand::rng();
+        
+        // Ensure at least one character from each category
+        let mut password = Vec::with_capacity(length);
+        
+        // Add one character from each required set
+        password.push(LOWERCASE[rng.random_range(0..LOWERCASE.len())] as char);
+        password.push(UPPERCASE[rng.random_range(0..UPPERCASE.len())] as char);
+        password.push(NUMBERS[rng.random_range(0..NUMBERS.len())] as char);
+        password.push(SYMBOLS[rng.random_range(0..SYMBOLS.len())] as char);
+        
+        // Fill the rest with a mix of all character types
+        const ALL_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+[]{}|;:,.<>?";
+        
+        for _ in password.len()..length {
+            password.push(ALL_CHARS[rng.random_range(0..ALL_CHARS.len())] as char);
+        }
+        
+        // Shuffle the characters to avoid predictable patterns
+        for i in 0..password.len() {
+            let j = rng.random_range(0..password.len());
+            password.swap(i, j);
+        }
+        
+        let password_string: String = password.into_iter().collect();
+        
+        // Double-check the generated password meets our requirements
+        self.validate_password_strength(&password_string)?;
+        
+        Ok(password_string)
     }
 
     /// Checks if a password hash needs to be updated
@@ -271,10 +345,65 @@ impl PasswordService {
     /// True if the hash should be updated
     pub fn needs_rehash(&self, hash: &str) -> bool {
         // Check if hash uses current Argon2id parameters
-        // This is a simplified check - in production you might want more sophisticated logic
-        hash.starts_with("$argon2i$") || // Old Argon2i variant
-        hash.starts_with("$argon2d$") || // Old Argon2d variant
-        !hash.contains("m=65536")        // Old memory cost
+        if !hash.starts_with("$argon2id$") {
+            // Not using Argon2id variant
+            return true;
+        }
+        
+        // Check memory cost parameter
+        if !hash.contains("m=65536") {
+            // Using different memory cost
+            return true;
+        }
+        
+        // Check time cost parameter
+        if !hash.contains("t=3") {
+            // Using different time cost
+            return true;
+        }
+        
+        // Check parallelism parameter
+        if !hash.contains("p=4") {
+            // Using different parallelism
+            return true;
+        }
+        
+        false
+    }
+    
+    /// Estimates the password hash strength on a scale of 1-10
+    ///
+    /// Useful for giving users feedback on how strong their passwords are.
+    ///
+    /// # Arguments
+    /// * `password` - Password to evaluate
+    ///
+    /// # Returns
+    /// Strength score from 1 (very weak) to 10 (very strong)
+    pub fn estimate_password_strength(&self, password: &str) -> u8 {
+        let mut score = 0;
+        
+        // Length contributes significantly to strength
+        score += (password.len() as u8).min(20) / 2;
+        
+        // Character diversity
+        let has_lowercase = password.chars().any(|c| c.is_lowercase());
+        let has_uppercase = password.chars().any(|c| c.is_uppercase());
+        let has_digit = password.chars().any(|c| c.is_numeric());
+        let has_symbol = password.chars().any(|c| !c.is_alphanumeric());
+        
+        if has_lowercase { score += 1; }
+        if has_uppercase { score += 1; }
+        if has_digit { score += 1; }
+        if has_symbol { score += 2; }
+        
+        // Deduct points for common patterns
+        if COMMON_PATTERNS.is_match(password) {
+            score = score.saturating_sub(3);
+        }
+        
+        // Ensure the score is within bounds
+        score.clamp(1, 10)
     }
 }
 
@@ -292,7 +421,7 @@ mod tests {
     #[test]
     fn test_password_hashing_and_verification() {
         let service = PasswordService::from_global_config();
-        let password = "test_password_123";
+        let password = "TestPassword123!";
         
         let hash = service.hash_password(password).unwrap();
         assert!(service.verify_password(password, &hash).unwrap());
@@ -304,10 +433,10 @@ mod tests {
         let service = PasswordService::from_global_config();
         
         // Valid password
-        assert!(service.validate_password_strength("MySecure123").is_ok());
+        assert!(service.validate_password_strength("MySecure123!").is_ok());
         
         // Too short
-        assert!(service.validate_password_strength("short").is_err());
+        assert!(service.validate_password_strength("Short1").is_err());
         
         // No number
         assert!(service.validate_password_strength("MySecurePassword").is_err());
@@ -315,7 +444,7 @@ mod tests {
         // No letter
         assert!(service.validate_password_strength("12345678").is_err());
         
-        // Common weak password
+        // Common pattern
         assert!(service.validate_password_strength("password123").is_err());
     }
 
@@ -332,5 +461,44 @@ mod tests {
         
         // Too long
         assert!(service.generate_secure_password(100).is_err());
+    }
+    
+    #[test]
+    fn test_needs_rehash() {
+        let service = PasswordService::from_global_config();
+        
+        // Current format hash
+        let current_hash = "$argon2id$v=19$m=65536,t=3,p=4$salt$hash";
+        assert!(!service.needs_rehash(current_hash));
+        
+        // Old variant
+        let old_variant = "$argon2i$v=19$m=65536,t=3,p=4$salt$hash";
+        assert!(service.needs_rehash(old_variant));
+        
+        // Old memory cost
+        let old_mem = "$argon2id$v=19$m=4096,t=3,p=4$salt$hash";
+        assert!(service.needs_rehash(old_mem));
+        
+        // Old time cost
+        let old_time = "$argon2id$v=19$m=65536,t=2,p=4$salt$hash";
+        assert!(service.needs_rehash(old_time));
+        
+        // Old parallelism
+        let old_parallel = "$argon2id$v=19$m=65536,t=3,p=2$salt$hash";
+        assert!(service.needs_rehash(old_parallel));
+    }
+    
+    #[test]
+    fn test_password_strength_estimation() {
+        let service = PasswordService::from_global_config();
+        
+        // Very weak password
+        assert!(service.estimate_password_strength("123456") <= 3);
+        
+        // Medium strength password
+        assert!(service.estimate_password_strength("MyPassword123") >= 5);
+        
+        // Strong password
+        assert!(service.estimate_password_strength("C0mpl3x!P@ssw0rd#2023") >= 8);
     }
 }
