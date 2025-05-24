@@ -1,6 +1,3 @@
-//! Server implementation for the application.
-
-// Re-export server components
 pub mod error;
 pub mod guards;
 pub mod routes;
@@ -9,7 +6,6 @@ pub mod startup;
 pub mod state;
 pub mod security;
 
-/// Runs the HTTP server with all necessary components initialized.
 pub async fn run_server() -> std::io::Result<()> {
     use crate::app_data::{AppConfig, AppData};
     use crate::config::Config;
@@ -30,7 +26,6 @@ pub async fn run_server() -> std::io::Result<()> {
 
     use crate::server::security::SecurityHeaders;
 
-    // Load configuration from environment variables
     let config = match Config::load() {
         Ok(config) => Arc::new(config),
         Err(e) => {
@@ -39,14 +34,11 @@ pub async fn run_server() -> std::io::Result<()> {
         }
     };
 
-    // Set up development environment in debug mode
     #[cfg(debug_assertions)]
     dotenv::dotenv().ok();
 
-    // Set up application data
     let app_data = AppData::new(config.clone());
 
-    // Set up GraphQL schema
     let schema = async_graphql::Schema::build(
         graphql::QueryRoot,
         graphql::MutationRoot,
@@ -57,20 +49,15 @@ pub async fn run_server() -> std::io::Result<()> {
     .data(config.clone())
     .finish();
 
-    // Initialize structured logging
     simple_logger::init_with_env().unwrap();
 
-    // Initialize database connection pool
     let db = Database::new();
     let db_pool = db.pool.clone();
 
-    // Initialize mailer for auth system
     let config_global = Config::global();
     let mailer = Data::new(Mailer::from_config(config_global));
-
     let mailer_data = Data::new(mailer);
 
-    // Start preloading embeddings in the background
     let embedding_task = {
         let pool = db_pool.clone();
         tokio::spawn(async move {
@@ -80,7 +67,6 @@ pub async fn run_server() -> std::io::Result<()> {
         })
     };
 
-    // Establish SSH tunnels
     let ssh_children = match establish_ssh_tunnels(&db_pool).await {
         Ok(children) => children,
         Err(e) => {
@@ -89,30 +75,24 @@ pub async fn run_server() -> std::io::Result<()> {
         }
     };
 
-    // Create app state
     let app_state = state::AppState {
-        ssh_children,
+        ssh_children: ssh_children.clone(),
         config: config.clone(),
     };
 
-    // Create app state data
     let app_state_data = Data::new(app_state.clone());
 
-    // Set up Actix web server
     let server = HttpServer::new(move || {
-        // Create the app_data instance once
         let shared_app_data = web::Data::new(app_data.clone());
         let shared_db = web::Data::new(db.clone());
         let shared_db_pool = web::Data::new(db_pool.clone());
         let shared_schema = web::Data::new(schema.clone());
 
         let app = App::new()
-            // Configure middleware
             .wrap(Compress::default())
             .wrap(NormalizePath::new(TrailingSlash::MergeOnly))
             .wrap(Logger::default());
         
-        // Add environment-specific security headers
         #[cfg(debug_assertions)]
         let app = app.wrap(
             SecurityHeaders::new()
@@ -152,14 +132,11 @@ pub async fn run_server() -> std::io::Result<()> {
                 )
         );
         
-        // Continue with the rest of the configuration
         let app = app
-            // Set payload limits
             .app_data(web::JsonConfig::default().limit(config.max_query_size_mb * 1024 * 1024))
             .app_data(PayloadConfig::new(
                 config.max_document_size_mb * 1024 * 1024,
             ))
-            // Add application data
             .app_data(shared_app_data.clone())
             .app_data(web::Data::new(app_data.database.clone()))
             .app_data(web::Data::new(app_data.mailer.clone()))
@@ -167,12 +144,10 @@ pub async fn run_server() -> std::io::Result<()> {
             .app_data(web::Data::new(Arc::clone(&config)))
             .app_data(app_state_data.clone())
             .app_data(mailer_data.clone())
-            // Configure app settings
             .app_data(web::Data::new(AppConfig {
                 app_url: config.app_url.clone(),
             }));
 
-        // Configure routes
         app.configure(|cfg| {
             routes::configure_routes(
                 cfg,
@@ -185,9 +160,8 @@ pub async fn run_server() -> std::io::Result<()> {
         })
     })
     .bind("0.0.0.0:3000")?
-    .run();
+    .shutdown_timeout(5);
 
-    // Set up signal handling for graceful shutdown
     let mut terminate_signal = match signal(SignalKind::terminate()) {
         Ok(signal) => signal,
         Err(e) => {
@@ -198,9 +172,8 @@ pub async fn run_server() -> std::io::Result<()> {
 
     let sigint = signal::ctrl_c();
 
-    // Wait for server completion or shutdown signal
     tokio::select! {
-        res = server => {
+        res = server.run() => {
             if let Err(e) = res {
                 eprintln!("Server error: {}", e);
             }
@@ -218,14 +191,10 @@ pub async fn run_server() -> std::io::Result<()> {
         }
     }
 
-    // Cleanup resources during shutdown
-
-    // Cancel embedding preload task if it's still running
     embedding_task.abort();
 
-    // Kill SSH tunnels
     {
-        let mut children = app_state.ssh_children.lock().await;
+        let mut children = ssh_children.lock().await;
         for child in children.iter_mut() {
             if let Err(e) = child.kill().await {
                 eprintln!("Failed to kill SSH child process: {:?}", e);

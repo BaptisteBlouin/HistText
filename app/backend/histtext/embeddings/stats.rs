@@ -149,7 +149,6 @@ impl PerformanceTracker {
         self.search_times.clear();
         self.total_similarities = 0;
         self.total_searches = 0;
-        self.peak_memory = 0;
         self.start_time = Utc::now();
     }
 }

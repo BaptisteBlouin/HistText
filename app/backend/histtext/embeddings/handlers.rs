@@ -9,6 +9,7 @@ use actix_web::{web, HttpResponse, Responder};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use std::time::Instant;
 
 #[derive(Deserialize, ToSchema)]
 pub struct EnhancedNeighborsRequest {
@@ -162,6 +163,7 @@ pub async fn enhanced_neighbors(
     db: web::Data<Database>,
     request: web::Json<EnhancedNeighborsRequest>,
 ) -> impl Responder {
+    let start_time = Instant::now();
     let enhanced_request = request.into_inner();
     
     let metric = match enhanced_request.metric.as_deref() {
@@ -196,6 +198,7 @@ pub async fn enhanced_neighbors(
                 "No embeddings available for collection {}",
                 standard_request.collection_name
             );
+            stats::record_search_time(start_time.elapsed());
             return HttpResponse::Ok().json(NeighborsResponse {
                 neighbors: vec![],
                 has_embeddings: false,
@@ -210,7 +213,8 @@ pub async fn enhanced_neighbors(
         .with_parallel(true);
     
     let response = searcher.find_neighbors(&standard_request, &embeddings);
-    
+    stats::record_search_time(start_time.elapsed());
+
     HttpResponse::Ok().json(response)
 }
 
@@ -240,7 +244,7 @@ pub async fn batch_neighbors(
         }));
     }
     
-    let start_time = std::time::Instant::now();
+    let start_time = Instant::now();
     
     let metric = match batch_request.metric.as_deref() {
         Some("cosine") | None => SimilarityMetric::Cosine,
@@ -263,6 +267,7 @@ pub async fn batch_neighbors(
     ).await {
         Some(embeddings) => embeddings,
         None => {
+            stats::record_search_time(start_time.elapsed());
             return HttpResponse::Ok().json(BatchNeighborsResponse {
                 results: vec![],
                 stats: BatchStats {
@@ -282,7 +287,7 @@ pub async fn batch_neighbors(
     let mut words_with_embeddings = 0;
     
     for word in batch_request.words {
-        let word_start_time = std::time::Instant::now();
+        let word_start_time = Instant::now();
         
         let standard_request = NeighborsRequest {
             word: word.clone(),
@@ -319,7 +324,9 @@ pub async fn batch_neighbors(
             0.0
         },
     };
-    
+
+    stats::record_search_time(start_time.elapsed());
+
     HttpResponse::Ok().json(BatchNeighborsResponse { results, stats })
 }
 
@@ -339,6 +346,7 @@ pub async fn word_similarity(
     db: web::Data<Database>,
     request: web::Json<SimilarityRequest>,
 ) -> impl Responder {
+    let start_time = Instant::now();
     let similarity_request = request.into_inner();
     
     let metric = match similarity_request.metric.as_deref() {
@@ -362,6 +370,7 @@ pub async fn word_similarity(
     ).await {
         Some(embeddings) => embeddings,
         None => {
+            stats::record_search_time(start_time.elapsed());
             return HttpResponse::Ok().json(SimilarityResponse {
                 word1: similarity_request.word1,
                 word2: similarity_request.word2,
@@ -380,12 +389,16 @@ pub async fn word_similarity(
     
     let (similarity, both_found) = match (embedding1, embedding2) {
         (Some(emb1), Some(emb2)) => {
+            let sim_start = Instant::now();
             let searcher = SimilaritySearcher::with_metric(metric);
             let sim = searcher.compute_similarity(emb1, emb2);
+            stats::record_similarity_time(sim_start.elapsed());
             (sim, true)
         }
         _ => (0.0, false),
     };
+
+    stats::record_search_time(start_time.elapsed());
     
     HttpResponse::Ok().json(SimilarityResponse {
         word1: similarity_request.word1,
@@ -412,6 +425,7 @@ pub async fn word_analogy(
     db: web::Data<Database>,
     request: web::Json<AnalogyRequest>,
 ) -> impl Responder {
+    let start_time = Instant::now();
     let analogy_request = request.into_inner();
     let k = analogy_request.k.unwrap_or(5).min(20);
     
@@ -422,6 +436,7 @@ pub async fn word_analogy(
     ).await {
         Some(embeddings) => embeddings,
         None => {
+            stats::record_search_time(start_time.elapsed());
             return HttpResponse::Ok().json(AnalogyResponse {
                 analogy: format!("{} is to {} as {} is to ?", 
                     analogy_request.word_a, analogy_request.word_b, analogy_request.word_c),
@@ -458,7 +473,9 @@ pub async fn word_analogy(
                     continue;
                 }
                 
+                let sim_start = Instant::now();
                 let similarity = searcher.compute_similarity(&analogy_embedding, embedding);
+                stats::record_similarity_time(sim_start.elapsed());
                 scored_candidates.push((word.clone(), similarity));
             }
             
@@ -474,6 +491,8 @@ pub async fn word_analogy(
     
     let all_words_found = embedding_a.is_some() && embedding_b.is_some() && embedding_c.is_some();
     
+    stats::record_search_time(start_time.elapsed());
+    
     HttpResponse::Ok().json(AnalogyResponse {
         analogy: format!("{} is to {} as {} is to ?", 
             analogy_request.word_a, analogy_request.word_b, analogy_request.word_c),
@@ -486,15 +505,15 @@ pub async fn compute_neighbors(
     db: web::Data<Database>,
     query: web::Json<NeighborsRequest>,
 ) -> impl Responder {
-    let start_time = std::time::Instant::now();
+    let start_time = Instant::now();
     
     info!(
         "Received request to compute neighbors for word: {} in collection: {} (database ID: {})",
         query.word, query.collection_name, query.solr_database_id
     );
-
+ 
     let embeddings_opt = get_cached_embeddings(&db, query.solr_database_id, &query.collection_name).await;
-
+ 
     let embeddings = match embeddings_opt {
         Some(emb) => emb,
         None => {
@@ -502,6 +521,7 @@ pub async fn compute_neighbors(
                 "No embeddings available for collection {}",
                 query.collection_name
             );
+            stats::record_search_time(start_time.elapsed());
             return HttpResponse::Ok().json(NeighborsResponse {
                 neighbors: vec![],
                 has_embeddings: false,
@@ -511,12 +531,12 @@ pub async fn compute_neighbors(
             });
         }
     };
-
+ 
     let searcher = SimilaritySearcher::new();
     let response = searcher.find_neighbors(&query, &embeddings);
-
+ 
     stats::record_search_time(start_time.elapsed());
-
+ 
     if response.neighbors.is_empty() {
         warn!("No neighbors found for word: {}", query.word);
     } else {
@@ -526,6 +546,6 @@ pub async fn compute_neighbors(
             query.word
         );
     }
-
+ 
     HttpResponse::Ok().json(response)
-}
+ }

@@ -1,10 +1,12 @@
 use crate::histtext::embeddings::types::{
     Embedding, EmbeddingMap, NeighborResult, NeighborsRequest, NeighborsResponse,
 };
+use crate::histtext::embeddings::stats::{record_similarity_time, record_search_time};
 use log::{debug, warn};
 use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+use std::time::Instant;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SimilarityMetric {
@@ -63,6 +65,8 @@ impl SimilaritySearcher {
         request: &NeighborsRequest,
         embeddings: &EmbeddingMap,
     ) -> NeighborsResponse {
+        let search_start = Instant::now();
+        
         let query_word = request.word.to_lowercase();
         let k = request.get_k();
         let threshold = request.get_threshold();
@@ -77,6 +81,7 @@ impl SimilaritySearcher {
             Some(embedding) => embedding,
             None => {
                 warn!("Word '{}' not found in embeddings", query_word);
+                record_search_time(search_start.elapsed());
                 return NeighborsResponse {
                     neighbors: vec![],
                     has_embeddings: true,
@@ -92,6 +97,8 @@ impl SimilaritySearcher {
         } else {
             self.sequential_search(query_embedding, embeddings, &query_word, k, threshold, include_scores)
         };
+
+        record_search_time(search_start.elapsed());
 
         NeighborsResponse {
             neighbors,
@@ -115,7 +122,9 @@ impl SimilaritySearcher {
             .par_iter()
             .filter(|(word, _)| *word != query_word)
             .map(|(word, embedding)| {
+                let sim_start = Instant::now();
                 let similarity = self.compute_similarity(query_embedding, embedding);
+                record_similarity_time(sim_start.elapsed());
                 (word.clone(), similarity)
             })
             .filter(|(_, similarity)| *similarity >= threshold)
@@ -140,7 +149,9 @@ impl SimilaritySearcher {
                 continue;
             }
 
+            let sim_start = Instant::now();
             let similarity = self.compute_similarity(query_embedding, embedding);
+            record_similarity_time(sim_start.elapsed());
             
             if similarity < threshold {
                 continue;

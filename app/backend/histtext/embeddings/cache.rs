@@ -3,6 +3,7 @@ use crate::histtext::embeddings::formats;
 use crate::histtext::embeddings::types::{
     CacheKey, EmbeddingConfig, EmbeddingMap, EmbeddingResult, SharedEmbeddings,
 };
+use crate::histtext::embeddings::stats::update_peak_memory;
 use crate::services::solr_database_info::SolrDatabaseInfo;
 use diesel::prelude::*;
 use crate::diesel::ExpressionMethods;
@@ -102,12 +103,14 @@ impl CacheStatistics {
         self.entries_count = self.entries_count.saturating_sub(1);
         self.total_embeddings_loaded = self.total_embeddings_loaded.saturating_sub(embeddings_removed);
         self.last_eviction = Some(Utc::now());
+        update_peak_memory(self.memory_usage);
     }
 
     fn record_addition(&mut self, memory_added: usize, embeddings_added: usize) {
         self.memory_usage += memory_added;
         self.entries_count += 1;
         self.total_embeddings_loaded += embeddings_added;
+        update_peak_memory(self.memory_usage);
     }
 
     fn update_from_cache(&mut self) {
@@ -123,6 +126,7 @@ impl CacheStatistics {
         self.memory_usage = total_memory;
         self.entries_count = entries_count;
         self.total_embeddings_loaded = total_embeddings;
+        update_peak_memory(self.memory_usage);
     }
 
     pub fn hit_ratio(&self) -> f64 {
@@ -184,6 +188,7 @@ pub async fn get_cached_embeddings(
         {
             let mut stats = CACHE_STATS.lock().await;
             stats.record_hit();
+            stats.update_from_cache();
         }
         
         debug!("Cache hit for {}", cache_key_str);
@@ -255,7 +260,8 @@ async fn evict_if_needed() -> EmbeddingResult<()> {
     let _lock = EVICTION_MUTEX.lock().await;
     
     let (current_memory, max_memory) = {
-        let stats = CACHE_STATS.lock().await;
+        let mut stats = CACHE_STATS.lock().await;
+        stats.update_from_cache();
         (stats.memory_usage, stats.max_memory)
     };
 
@@ -366,6 +372,7 @@ pub async fn get_cache_info() -> (usize, usize, usize) {
         total_embeddings += entry.word_count;
     }
 
+    update_peak_memory(total_memory);
     (entries_count, total_memory, total_embeddings)
 }
 
