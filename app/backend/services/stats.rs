@@ -5,7 +5,7 @@
 //! and embedding cache monitoring. It aggregates data from multiple tables
 //! to provide dashboard metrics and cache management functionality.
 
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpResponse, Responder};
 use diesel::dsl::count_distinct;
 use diesel::prelude::*;
 use serde::{Serialize, Deserialize};
@@ -17,6 +17,7 @@ use crate::histtext::embeddings;
 use crate::services::crud::execute_db_query;
 use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
+
 
 /// Dashboard statistics model
 ///
@@ -210,19 +211,12 @@ pub async fn get_dashboard_stats(
     ),
     security(("bearer_auth" = []))
 )]
-pub async fn get_embeddings_stats() -> Result<HttpResponse, actix_web::Error> {
-    let cache_stats = crate::histtext::embeddings::get_cache_stats().await;
-    
-    let stats = EmbeddingStats {
-        embedding_files_loaded: cache_stats.path_cache_entries,
-        embedding_collections_cached: cache_stats.collection_cache_entries,
-        embedding_words_loaded: cache_stats.total_embeddings_loaded,
-        cache_hit_ratio: cache_stats.hit_ratio,
-        memory_usage_mb: cache_stats.memory_usage_bytes as f64 / 1024.0 / 1024.0,
-    };
-    
-    Ok(HttpResponse::Ok().json(stats))
+pub async fn get_embeddings_stats() -> impl Responder {
+    let cache_stats = crate::histtext::embeddings::cache::get_cache_statistics().await;
+    HttpResponse::Ok().json(cache_stats)
 }
+
+
 
 /// Clears all embedding caches
 ///
@@ -242,8 +236,9 @@ pub async fn get_embeddings_stats() -> Result<HttpResponse, actix_web::Error> {
     ),
     security(("bearer_auth" = []))
 )]
-pub async fn clear_embeddings_cache() -> HttpResponse {
-    embeddings::clear_caches().await;
-    HttpResponse::Ok()
-        .json(serde_json::json!({ "message": "Embeddings cache cleared successfully" }))
+pub async fn clear_embeddings_cache() -> impl Responder {
+    crate::histtext::embeddings::cache::clear_caches().await;
+    HttpResponse::Ok().json(serde_json::json!({
+        "message": "Embeddings cache cleared successfully"
+    }))
 }

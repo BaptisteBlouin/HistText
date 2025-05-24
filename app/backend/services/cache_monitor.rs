@@ -7,7 +7,7 @@
 //! configurable cache management policies.
 
 use crate::histtext::embeddings;
-use actix_web::HttpResponse;
+use actix_web::{web, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 use utoipa::ToSchema;
@@ -15,7 +15,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 use lazy_static::lazy_static;
 use crate::histtext::embeddings::stats::reset_performance_metrics;
-
+use crate::histtext::embeddings::{cache, stats};
+use serde_json::json;
+use log::info;
 
 /// Records cache hit/miss statistics over time
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,43 +100,16 @@ pub struct SystemInfo {
     ),
     security(("bearer_auth" = []))
 )]
-pub async fn get_cache_stats_advanced() -> HttpResponse {
-    let basic_stats = crate::histtext::embeddings::get_cache_stats().await;
+pub async fn get_cache_stats_advanced() -> impl Responder {
+    let cache_stats = cache::get_cache_statistics().await;
+    let system_stats = stats::get_system_stats().await;
     
-    // Calculate estimated memory usage
-    let estimated_memory_bytes = basic_stats.memory_usage_bytes;
-    
-    let performance = PerformanceMetrics {
-        avg_similarity_time_us: 0.0, // Would need to implement actual tracking
-        avg_search_time_ms: 0.0,    // Would need to implement actual tracking
-        total_similarity_computations: 0, // Would need to implement actual tracking
-        total_searches: 0,               // Would need to implement actual tracking
-        peak_memory_bytes: estimated_memory_bytes,
-        estimated_memory_bytes,
-        estimated_memory_per_word: if basic_stats.total_embeddings_loaded > 0 {
-            Some(estimated_memory_bytes as f64 / basic_stats.total_embeddings_loaded as f64)
-        } else {
-            None
-        },
-    };
-    
-    let system_info = SystemInfo {
-        cpu_cores: num_cpus::get(),
-        total_memory_bytes: 0, // Would need system-specific implementation
-        architecture: std::env::consts::ARCH.to_string(),
-        operating_system: std::env::consts::OS.to_string(),
-    };
-    
-    let response = CacheMonitorResponse {
-        basic_stats,
-        performance,
-        system_info,
-        collected_at: chrono::Utc::now(),
-    };
-    
-    HttpResponse::Ok().json(response)
+    HttpResponse::Ok().json(json!({
+        "cache": cache_stats,
+        "system": system_stats,
+        "timestamp": chrono::Utc::now()
+    }))
 }
-
 /// Resets performance metrics and counters
 ///
 /// Clears all accumulated performance statistics, useful for
@@ -151,10 +126,13 @@ pub async fn get_cache_stats_advanced() -> HttpResponse {
     ),
     security(("bearer_auth" = []))
 )]
-pub async fn reset_cache_metrics() -> HttpResponse {
-    reset_performance_metrics();
-    HttpResponse::Ok().json(serde_json::json!({
-        "message": "Performance metrics reset successfully"
+pub async fn reset_cache_metrics() -> impl Responder {
+    stats::reset_performance_metrics();
+    info!("Cache performance metrics reset");
+    
+    HttpResponse::Ok().json(json!({
+        "message": "Cache metrics reset successfully",
+        "timestamp": chrono::Utc::now()
     }))
 }
 

@@ -80,7 +80,7 @@ static EVICTION_MUTEX: std::sync::LazyLock<Mutex<()>> =
     std::sync::LazyLock::new(|| Mutex::new(()));
 
 /// Detailed cache statistics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct CacheStatistics {
     pub hits: u64,
     pub misses: u64,
@@ -98,7 +98,7 @@ impl CacheStatistics {
             misses: 0,
             evictions: 0,
             memory_usage: 0,
-            max_memory: Config::global().max_embeddings_files * 1024 * 1024 * 1024, // GB to bytes
+            max_memory: Config::global().max_embeddings_files * 512 * 1024 * 1024, // 512MB per file max
             entries_count: 0,
             last_eviction: None,
         }
@@ -253,7 +253,10 @@ async fn load_embeddings_from_disk(
 
     let config = EmbeddingConfig {
         normalize_on_load: true,
-        parallel_workers: num_cpus::get(),
+        parallel_workers: num_cpus::get().min(4),
+        max_words: 200_000, // Reasonable limit to prevent memory issues
+        text_encoding: Some("utf-8".to_string()),
+        auto_decompress: true,
         ..EmbeddingConfig::default()
     };
 
@@ -367,8 +370,7 @@ async fn cleanup_expired_entries() -> EmbeddingResult<()> {
         }
     }
     
-    let paths_to_remove = expired_paths.clone();
-    for path in paths_to_remove {
+    for path in expired_paths.clone() {
         evict_path(&path).await;
     }
     
@@ -422,7 +424,7 @@ pub async fn get_cache_statistics() -> CacheStatistics {
 /// Get embedding path from database
 async fn get_embedding_path(
     db: &web::Data<Database>,
-    _solr_database_id: i32,
+    solr_database_id_param: i32,
     collection_name_param: &str,
 ) -> Option<String> {
     use crate::schema::solr_database_info::dsl::*;
@@ -437,7 +439,7 @@ async fn get_embedding_path(
         ))?;
         
         let info = solr_database_info
-            .filter(solr_database_id.eq(solr_database_id))
+            .filter(solr_database_id.eq(solr_database_id_param))
             .filter(collection_name.eq(&collection_name_str))
             .first::<SolrDatabaseInfo>(&mut conn)?;
         

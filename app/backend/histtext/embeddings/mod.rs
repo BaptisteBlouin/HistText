@@ -49,8 +49,11 @@ pub async fn shutdown() {
 /// Legacy function for loading embeddings (kept for compatibility)
 /// 
 /// This function is deprecated. Use `crate::histtext::embedding::formats::load_embeddings` instead.
+/// Legacy function for loading embeddings (kept for compatibility)
+/// 
+/// This function is deprecated. Use `crate::histtext::embedding::formats::load_embeddings` instead.
 #[deprecated(
-    since = "0.2.0",
+    since = "1.0.0",
     note = "Use crate::histtext::embedding::formats::load_embeddings instead"
 )]
 pub fn load_embeddings_t(filename: &str) -> std::collections::HashMap<String, Embedding> {
