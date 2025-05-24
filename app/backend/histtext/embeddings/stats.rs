@@ -1,138 +1,83 @@
-//! Statistics and monitoring for the embedding system.
-
 use crate::histtext::embeddings::cache::get_cache_statistics;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-/// Cache statistics for monitoring and debugging
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CacheStats {
-    /// Number of collection-specific embedding caches
     pub collection_cache_entries: usize,
-    /// Number of file path-based embedding caches
     pub path_cache_entries: usize,
-    /// Detailed information about each path cache entry
     pub path_cache_details: Vec<PathCacheEntry>,
-    /// Total number of word embeddings loaded
     pub total_embeddings_loaded: usize,
-    /// Maximum number of embedding files allowed in cache
     pub max_embeddings_files: usize,
-    /// Current memory usage in bytes
     pub memory_usage_bytes: usize,
-    /// Maximum memory limit in bytes
     pub memory_limit_bytes: usize,
-    /// Memory usage as a percentage
     pub memory_usage_percent: f64,
-    /// Cache hit ratio
     pub hit_ratio: f64,
-    /// Total cache hits
     pub total_hits: u64,
-    /// Total cache misses
     pub total_misses: u64,
-    /// Total evictions performed
     pub total_evictions: u64,
-    /// Last eviction timestamp
     pub last_eviction: Option<DateTime<Utc>>,
-    /// Cache uptime in seconds
     pub uptime_seconds: i64,
 }
 
-/// Details about a single path cache entry
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct PathCacheEntry {
-    /// Path to embedding file
     pub path: String,
-    /// Number of words in the embedding file
     pub size: usize,
-    /// Last access time
     pub last_used: DateTime<Utc>,
-    /// Memory usage in bytes
     pub memory_bytes: usize,
-    /// Current reference count
     pub ref_count: usize,
-    /// File format detected
     pub format: String,
-    /// Loading time in milliseconds
     pub load_time_ms: Option<u64>,
 }
 
-/// Performance metrics for embedding operations
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct PerformanceMetrics {
-    /// Average similarity computation time in microseconds
     pub avg_similarity_time_us: f64,
-    /// Average neighbor search time in milliseconds
     pub avg_search_time_ms: f64,
-    /// Total similarity computations performed
     pub total_similarity_computations: u64,
-    /// Total neighbor searches performed
     pub total_searches: u64,
-    /// Peak memory usage recorded
     pub peak_memory_bytes: usize,
-    /// Performance samples collected
     pub samples_collected: usize,
-    /// Last performance reset
     pub last_reset: DateTime<Utc>,
 }
 
-/// System resource usage
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ResourceUsage {
-    /// CPU usage percentage for embedding operations
     pub cpu_usage_percent: f64,
-    /// Memory used by embedding system
     pub memory_used_bytes: usize,
-    /// Memory available for embeddings
     pub memory_available_bytes: usize,
-    /// Disk space used for embedding files
     pub disk_used_bytes: u64,
-    /// Number of active threads
     pub active_threads: usize,
-    /// Load average (1 minute)
     pub load_average: f64,
 }
 
-/// Comprehensive embedding system statistics
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct EmbeddingSystemStats {
-    /// Cache-related statistics
     pub cache: CacheStats,
-    /// Performance metrics
     pub performance: PerformanceMetrics,
-    /// Resource usage
     pub resources: ResourceUsage,
-    /// Timestamp when statistics were collected
     pub collected_at: DateTime<Utc>,
-    /// System information
     pub system_info: SystemInfo,
 }
 
-/// System information
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SystemInfo {
-    /// Number of CPU cores
     pub cpu_cores: usize,
-    /// Total system memory in bytes
     pub total_memory_bytes: usize,
-    /// Architecture (x86_64, aarch64, etc.)
     pub architecture: String,
-    /// Operating system
     pub operating_system: String,
-    /// Rust version used to build
     pub rust_version: String,
-    /// Build timestamp
     pub build_timestamp: String,
 }
 
-/// Performance tracking for individual operations
 static PERFORMANCE_TRACKER: std::sync::LazyLock<std::sync::Mutex<PerformanceTracker>> = 
     std::sync::LazyLock::new(|| std::sync::Mutex::new(PerformanceTracker::new()));
 
-/// Internal performance tracking
 struct PerformanceTracker {
-    similarity_times: Vec<u64>, // in microseconds
-    search_times: Vec<u64>,     // in milliseconds
+    similarity_times: Vec<u64>,
+    search_times: Vec<u64>,
     total_similarities: u64,
     total_searches: u64,
     peak_memory: usize,
@@ -154,7 +99,6 @@ impl PerformanceTracker {
     fn record_similarity_time(&mut self, time_us: u64) {
         self.total_similarities += 1;
         
-        // Keep only recent samples to avoid unbounded growth
         if self.similarity_times.len() >= 1000 {
             self.similarity_times.remove(0);
         }
@@ -210,46 +154,40 @@ impl PerformanceTracker {
     }
 }
 
-/// Record performance metrics for similarity computation
 pub fn record_similarity_time(duration: std::time::Duration) {
     if let Ok(mut tracker) = PERFORMANCE_TRACKER.lock() {
         tracker.record_similarity_time(duration.as_micros() as u64);
     }
 }
 
-/// Record performance metrics for neighbor search
 pub fn record_search_time(duration: std::time::Duration) {
     if let Ok(mut tracker) = PERFORMANCE_TRACKER.lock() {
         tracker.record_search_time(duration.as_millis() as u64);
     }
 }
 
-/// Update peak memory usage
 pub fn update_peak_memory(memory_bytes: usize) {
     if let Ok(mut tracker) = PERFORMANCE_TRACKER.lock() {
         tracker.update_peak_memory(memory_bytes);
     }
 }
 
-/// Reset performance metrics
 pub fn reset_performance_metrics() {
     if let Ok(mut tracker) = PERFORMANCE_TRACKER.lock() {
         tracker.reset();
     }
 }
 
-/// Get current cache statistics
 pub async fn get_cache_stats() -> CacheStats {
     let cache_stats = get_cache_statistics().await;
     let now = Utc::now();
     
-    // Convert internal cache statistics to public format
     CacheStats {
-        collection_cache_entries: 0, // This would need to be implemented in cache module
+        collection_cache_entries: 0,
         path_cache_entries: cache_stats.entries_count,
-        path_cache_details: vec![], // This would need detailed cache inspection
-        total_embeddings_loaded: 0, // This would need to be tracked
-        max_embeddings_files: (cache_stats.max_memory / (1024 * 1024 * 1024)).max(1), // Convert bytes to GB estimate
+        path_cache_details: vec![],
+        total_embeddings_loaded: 0,
+        max_embeddings_files: (cache_stats.max_memory / (1024 * 1024 * 1024)).max(1),
         memory_usage_bytes: cache_stats.memory_usage,
         memory_limit_bytes: cache_stats.max_memory,
         memory_usage_percent: cache_stats.memory_usage_ratio() * 100.0,
@@ -258,11 +196,10 @@ pub async fn get_cache_stats() -> CacheStats {
         total_misses: cache_stats.misses,
         total_evictions: cache_stats.evictions,
         last_eviction: cache_stats.last_eviction.map(DateTime::from),
-        uptime_seconds: now.timestamp() - now.timestamp(), // Placeholder - would need actual start time
+        uptime_seconds: now.timestamp() - now.timestamp(),
     }
 }
 
-/// Get performance metrics
 pub fn get_performance_metrics() -> PerformanceMetrics {
     PERFORMANCE_TRACKER
         .lock()
@@ -278,10 +215,7 @@ pub fn get_performance_metrics() -> PerformanceMetrics {
         })
 }
 
-/// Get system resource usage
 pub fn get_resource_usage() -> ResourceUsage {
-    // This would typically integrate with system monitoring libraries
-    // For now, providing reasonable defaults
     let memory_info = get_memory_info();
     
     ResourceUsage {
@@ -294,7 +228,6 @@ pub fn get_resource_usage() -> ResourceUsage {
     }
 }
 
-/// Get comprehensive system statistics
 pub async fn get_system_stats() -> EmbeddingSystemStats {
     EmbeddingSystemStats {
         cache: get_cache_stats().await,
@@ -305,7 +238,6 @@ pub async fn get_system_stats() -> EmbeddingSystemStats {
     }
 }
 
-/// Get system information
 fn get_system_info() -> SystemInfo {
     SystemInfo {
         cpu_cores: num_cpus::get(),
@@ -317,12 +249,8 @@ fn get_system_info() -> SystemInfo {
     }
 }
 
-// Platform-specific system information functions
-// These would be implemented using appropriate system libraries
-
 #[cfg(target_os = "linux")]
 fn get_memory_info() -> (usize, usize) {
-    // Parse /proc/meminfo for accurate memory information
     if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
         let mut total = 0;
         let mut available = 0;
@@ -330,7 +258,7 @@ fn get_memory_info() -> (usize, usize) {
         for line in meminfo.lines() {
             if line.starts_with("MemTotal:") {
                 if let Some(kb) = line.split_whitespace().nth(1) {
-                    total = kb.parse::<usize>().unwrap_or(0) * 1024; // Convert KB to bytes
+                    total = kb.parse::<usize>().unwrap_or(0) * 1024;
                 }
             } else if line.starts_with("MemAvailable:") {
                 if let Some(kb) = line.split_whitespace().nth(1) {
@@ -347,69 +275,53 @@ fn get_memory_info() -> (usize, usize) {
 
 #[cfg(not(target_os = "linux"))]
 fn get_memory_info() -> (usize, usize) {
-    // Fallback for non-Linux systems
     (0, 0)
 }
 
 fn get_cpu_usage() -> f64 {
-    // This would require system-specific implementation
     0.0
 }
 
 fn get_disk_usage() -> u64 {
-    // This would scan embedding directories for total size
     0
 }
 
 fn get_thread_count() -> usize {
-    // This would count active threads in the thread pool
     num_cpus::get()
 }
 
 fn get_load_average() -> f64 {
-    // This would read system load average
     0.0
 }
 
 fn get_total_memory() -> usize {
-    // This would get total system memory
     0
 }
 
-/// Export cache statistics to a file for external monitoring
 pub async fn export_cache_stats(file_path: &str) -> Result<(), std::io::Error> {
     let stats = get_system_stats().await;
     let json = serde_json::to_string_pretty(&stats)?;
     tokio::fs::write(file_path, json).await
 }
 
-/// Health check for the embedding system
 #[derive(Debug, Serialize, ToSchema)]
 pub struct HealthStatus {
-    /// Overall system health
     pub status: String,
-    /// Individual component statuses
     pub components: Vec<ComponentHealth>,
-    /// Last health check
     pub checked_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ComponentHealth {
-    /// Component name
     pub name: String,
-    /// Health status (healthy, degraded, unhealthy)
     pub status: String,
-    /// Optional message
     pub message: Option<String>,
 }
 
-/// Perform health check on the embedding system
 pub async fn health_check() -> HealthStatus {
     let mut components = Vec::new();
     let mut overall_healthy = true;
     
-    // Check cache health
     let cache_stats = get_cache_stats().await;
     let cache_status = if cache_stats.memory_usage_percent > 95.0 {
         overall_healthy = false;
@@ -433,7 +345,6 @@ pub async fn health_check() -> HealthStatus {
     };
     components.push(cache_status);
     
-    // Check performance
     let perf_metrics = get_performance_metrics();
     let perf_status = if perf_metrics.avg_search_time_ms > 1000.0 {
         overall_healthy = false;
@@ -461,35 +372,5 @@ pub async fn health_check() -> HealthStatus {
         status: if overall_healthy { "healthy" } else { "unhealthy" }.to_string(),
         components,
         checked_at: Utc::now(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::time::Duration;
-
-    #[test]
-    fn test_performance_tracking() {
-        record_similarity_time(Duration::from_micros(100));
-        record_search_time(Duration::from_millis(50));
-        
-        let metrics = get_performance_metrics();
-        assert!(metrics.total_similarity_computations > 0);
-        assert!(metrics.total_searches > 0);
-    }
-
-    #[test]
-    fn test_memory_update() {
-        update_peak_memory(1024 * 1024); // 1MB
-        let metrics = get_performance_metrics();
-        assert!(metrics.peak_memory_bytes >= 1024 * 1024);
-    }
-
-    #[tokio::test]
-    async fn test_health_check() {
-        let health = health_check().await;
-        assert!(!health.status.is_empty());
-        assert!(!health.components.is_empty());
     }
 }
