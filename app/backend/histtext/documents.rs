@@ -1,21 +1,9 @@
-//! This module provides HTTP handlers and helper functions for querying Solr collections.
-//!
-//! It handles:
-//! - Processing and transforming document responses
-//! - Managing cache and CSV exports
-//! - Enforcing per-collection permissions via JWT claims
-//! - Delivering paginated, highlighted snippets
-//! - Statistics and optional NER data
-//! - Download-only CSV responses
-
 use actix_web::error::ErrorInternalServerError;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
-
 use crate::services::auth::AccessTokenClaims;
 use crate::models::solr_database_permissions::SolrDatabasePermission;
 use crate::schema::solr_database_permissions::dsl::*;
 use jsonwebtoken::{decode, DecodingKey, Validation};
-
 use crate::config::Config;
 use crate::histtext;
 use crate::schema::solr_databases::dsl::*;
@@ -39,59 +27,28 @@ use uuid::Uuid;
 
 const CONTEXT_LENGTH: usize = 150;
 
-/// Query parameters for Solr collection requests.
 #[derive(Deserialize, ToSchema, IntoParams)]
 pub struct CollectionQueryParams {
-    /// Target Solr collection name
     #[schema(example = "my_collection")]
     pub collection: String,
-
-    /// Solr query string (e.g. "title:rust")
     #[schema(example = "title:rust")]
     pub query: Option<String>,
-
-    /// Pagination offset
     #[schema(example = 0)]
     pub start: Option<u32>,
-
-    /// Number of rows per page
     #[schema(example = 10)]
     pub rows: Option<u32>,
-
-    /// Statistics level (e.g. "All")
     #[schema(example = "All")]
     pub stats_level: Option<String>,
-
-    /// Whether to include named entity recognition data
     #[schema(example = true)]
     pub get_ner: Option<bool>,
-
-    /// ID of the Solr database configuration
     #[schema(example = 1)]
     pub solr_database_id: i32,
-
-    /// Return only download link instead of full results
     #[schema(example = false)]
     pub download_only: Option<bool>,
-
-    /// Return raw Solr response without highlighting
     #[schema(example = false)]
     pub is_first: Option<bool>,
 }
 
-/// Fetches documents from a Solr instance with optional term highlighting.
-///
-/// # Arguments
-/// * `client` - HTTP client for Solr requests
-/// * `port` - Solr HTTP port
-/// * `collection` - Target Solr collection name
-/// * `query` - URL-encoded Solr query string
-/// * `start` - Pagination offset
-/// * `rows` - Number of rows to return
-/// * `is_first` - If true, returns raw Solr JSON without snippet transformation
-///
-/// # Returns
-/// A `serde_json::Value` containing the Solr response, with document snippets if highlighting applied
 pub async fn fetch_documents(
     client: &Client,
     port: i32,
@@ -102,9 +59,7 @@ pub async fn fetch_documents(
     is_first: bool,
 ) -> Value {
     let occurrence_mode = "first";
-
     let decoded_query = percent_decode_str(query).decode_utf8_lossy();
-
     let re_field_term = Regex::new(r#"(\w+):"([^"]+)""#).unwrap();
     let caps_opt = re_field_term.captures(&decoded_query);
 
@@ -145,7 +100,7 @@ pub async fn fetch_documents(
     if let (Some(field), Some(term)) = (field_to_highlight, term_to_highlight) {
         if let Some(docs_arr) = solr_response["response"]["docs"].as_array() {
             let field_lower = field.to_lowercase();
-            let mut transformed_docs = Vec::new();
+            let mut transformed_docs = Vec::with_capacity(docs_arr.len());
 
             for doc in docs_arr.iter() {
                 if let Some(obj) = doc.as_object() {
@@ -153,8 +108,7 @@ pub async fn fetch_documents(
 
                     if let Some(matching_key) = matching_key_opt {
                         if let Some(full_text_value) = obj[matching_key].as_str() {
-                            let matches =
-                                find_all_occurrences_case_insensitive(full_text_value, &term);
+                            let matches = find_all_occurrences_case_insensitive(full_text_value, &term);
 
                             if !matches.is_empty() {
                                 if occurrence_mode == "first" {
@@ -214,10 +168,6 @@ pub async fn fetch_documents(
     solr_response
 }
 
-/// Returns a minimal Solr-style JSON response with no documents.
-///
-/// # Returns
-/// A `serde_json::Value` representing an empty Solr response.
 fn empty_solr_response() -> Value {
     json!({
         "response": {
@@ -227,25 +177,15 @@ fn empty_solr_response() -> Value {
     })
 }
 
-/// Scans a haystack string for all occurrences of a needle, case-insensitive.
-///
-/// # Arguments
-/// * `haystack` - The text to search within
-/// * `needle` - The substring to find
-///
-/// # Returns
-/// A vector of `(start_byte, end_byte)` indices for each match
 fn find_all_occurrences_case_insensitive(haystack: &str, needle: &str) -> Vec<(usize, usize)> {
     let haystack_lower = haystack.to_lowercase();
     let needle_lower = needle.to_lowercase();
-
     let mut results = Vec::new();
     let mut start_pos = 0;
 
     while let Some(pos) = haystack_lower[start_pos..].find(&needle_lower) {
         let absolute_start = start_pos + pos;
         let absolute_end = absolute_start + needle.len();
-
         results.push((absolute_start, absolute_end));
         start_pos = absolute_end;
     }
@@ -253,16 +193,6 @@ fn find_all_occurrences_case_insensitive(haystack: &str, needle: &str) -> Vec<(u
     results
 }
 
-/// Extracts a substring of length `context_len` around a match, clamped to valid UTF-8 boundaries.
-///
-/// # Arguments
-/// * `full_text` - Original text
-/// * `start_idx` - Starting byte index of the match
-/// * `end_idx` - Ending byte index of the match
-/// * `context_len` - Number of bytes to include before and after
-///
-/// # Returns
-/// A `String` snippet safely bounded by character boundaries
 fn extract_context(
     full_text: &str,
     start_idx: usize,
@@ -270,27 +200,13 @@ fn extract_context(
     context_len: usize,
 ) -> String {
     let text_len = full_text.len();
-
-    // Preliminary bounds in bytes
     let raw_start = start_idx.saturating_sub(context_len);
     let raw_end = (end_idx + context_len).min(text_len);
-
-    // Clamp them to actual char boundaries
     let cstart = clamp_to_char_boundary(full_text, raw_start);
     let cend = clamp_to_char_boundary(full_text, raw_end);
-
-    // Slice safely
     full_text[cstart..cend].to_string()
 }
 
-/// Adjusts a byte index downwards to the nearest valid UTF-8 character boundary.
-///
-/// # Arguments
-/// * `s` - The full UTF-8 string
-/// * `byte_index` - Proposed byte offset
-///
-/// # Returns
-/// A valid byte index ≤ `byte_index` aligned on a character boundary
 fn clamp_to_char_boundary(s: &str, byte_index: usize) -> usize {
     if byte_index >= s.len() {
         return s.len();
@@ -306,14 +222,6 @@ fn clamp_to_char_boundary(s: &str, byte_index: usize) -> usize {
     prev_boundary
 }
 
-/// Retrieves a `SolrDatabase` record by its ID from the Diesel connection pool.
-///
-/// # Arguments
-/// * `pool` - Actix-Web database pool
-/// * `other_solr_database_id` - Primary key of the Solr database config
-///
-/// # Returns
-/// `Result<SolrDatabase, String>` indicating success or a not-found/connection error
 async fn get_solr_database(
     pool: &web::Data<DbPool>,
     other_solr_database_id: i32,
@@ -327,61 +235,17 @@ async fn get_solr_database(
         .map_err(|_| "Solr database not found".to_string())
 }
 
-/// Delegates to the `histtext::metadata` service to obtain field lists and document IDs for a collection.
-///
-/// # Arguments
-/// * `client` - HTTP client
-/// * `pool` - Database pool
-/// * `other_solr_database_id` - Solr DB config ID
-/// * `collection` - Collection name
-/// * `ids` - Mutable vector to populate with ID fields
-///
-/// # Returns
-/// A tuple `(relevant_fields, general_text_fields)`
-async fn fetch_metadata(
-    client: &Client,
-    pool: &web::Data<DbPool>,
-    other_solr_database_id: i32,
-    collection: &str,
-    ids: &mut Vec<String>,
-) -> (Vec<String>, Vec<String>) {
-    histtext::metadata::fetch_metadata(client, pool, other_solr_database_id, collection, ids).await
-}
-
-/// Logs the elapsed time since a given `Instant` with a custom message.
-///
-/// # Arguments
-/// * `start` - The start time
-/// * `message` - Descriptive label for the timing
 fn log_elapsed(start: Instant, message: &str) {
     info!("{} in: {:?}", message, start.elapsed());
 }
 
-/// Asynchronously writes JSON data to a file path for caching statistics or NER results.
-///
-/// # Arguments
-/// * `path` - Filesystem path
-/// * `data` - JSON data to serialize
-///
-/// # Returns
-/// `Result<(), Error>` indicating I/O success or failure
 async fn write_cache_file(path: &str, data: &Value) -> Result<(), Error> {
-    fs::write(path, serde_json::to_string(data).unwrap()).await?;
+    tokio::fs::write(path, serde_json::to_string(data).unwrap()).await?;
     Ok(())
 }
 
-/// Initializes a CSV writer, determines headers from a batch of JSON documents, and constructs a unique file path.
-///
-/// # Arguments
-/// * `all_docs` - Slice of JSON document values
-///
-/// # Returns
-/// `Result<(Writer<File>, Vec<String>, String), Error>` containing the writer, sorted headers, and file path
-fn prepare_csv_data(
-    all_docs: &[Value],
-) -> Result<(Writer<std::fs::File>, Vec<String>, String), Error> {
+fn prepare_csv_writer(all_docs: &[Value]) -> Result<(Writer<std::fs::File>, Vec<String>, String), Error> {
     let config = Config::global();
-
     let csv_filename = format!("data_{}.csv", Uuid::new_v4());
     let csv_filepath = format!("{}/{}", config.path_store_files, csv_filename);
 
@@ -402,7 +266,7 @@ fn prepare_csv_data(
     }
 
     let mut headers: Vec<String> = field_names.into_iter().collect();
-    headers.sort();
+    headers.sort_unstable();
 
     wtr.write_record(&headers)
         .map_err(|e| ErrorInternalServerError(format!("CSV write error: {}", e)))?;
@@ -410,22 +274,13 @@ fn prepare_csv_data(
     Ok((wtr, headers, csv_filepath))
 }
 
-/// Streams document values into the CSV writer under the given headers, handling different JSON value types.
-///
-/// # Arguments
-/// * `wtr` - Mutable CSV writer
-/// * `all_docs` - Slice of JSON documents
-/// * `headers` - Ordered list of CSV column names
-///
-/// # Returns
-/// `Result<(), Error>` indicating write/flush success or failure
 fn write_csv_records(
     wtr: &mut Writer<std::fs::File>,
     all_docs: &[Value],
     headers: &[String],
 ) -> Result<(), Error> {
     for doc in all_docs {
-        let mut record = Vec::new();
+        let mut record = Vec::with_capacity(headers.len());
         for field in headers {
             let value = match doc.get(field) {
                 Some(val) => {
@@ -434,21 +289,17 @@ fn write_csv_records(
                     } else if val.is_number() {
                         val.to_string()
                     } else if val.is_array() {
-                        let arr = if let Some(array) = val.as_array() {
-                            array
-                        } else {
-                            &Vec::new()
-                        };
+                        let empty_vec = Vec::new();
+                        let arr = val.as_array().unwrap_or(&empty_vec);
                         arr.iter()
                             .map(|v| v.as_str().unwrap_or("").to_string())
                             .collect::<Vec<String>>()
                             .join(", ")
                     } else {
-                        eprintln!("Unexpected value for field {}: {:?}", field, val);
                         val.to_string()
                     }
                 }
-                None => "".to_string(),
+                None => String::new(),
             };
             record.push(value);
         }
@@ -460,95 +311,6 @@ fn write_csv_records(
     Ok(())
 }
 
-/// Orchestrates `fetch_documents`, measures response size, and determines if CSV download is required.
-///
-/// # Arguments
-/// * `client` - HTTP client
-/// * `port` - Solr server port
-/// * `collection` - Collection name
-/// * `query` - Search query
-/// * `start` - Pagination offset
-/// * `rows` - Number of rows to return
-/// * `max_bytes` - Maximum allowed response size in MB
-/// * `is_first` - Whether to bypass transformation
-///
-/// # Returns
-/// `(serde_json::Value, total_results_count, download_only_flag)`
-#[allow(clippy::too_many_arguments)]
-async fn handle_solr_response(
-    client: &Client,
-    port: i32,
-    collection: &str,
-    query: &str,
-    start: u32,
-    rows: u32,
-    max_bytes: usize,
-    is_first: bool,
-) -> (Value, u64, bool) {
-    let solr_response =
-        fetch_documents(client, port, collection, query, start, rows, is_first).await;
-    let total_results = solr_response["response"]["numFound"].as_u64().unwrap_or(0);
-    let response_json = &solr_response["response"];
-    let response_size_bytes = serde_json::to_string(response_json)
-        .map(|s| s.len())
-        .unwrap_or(0);
-    let download_only = response_size_bytes > max_bytes * 1024 * 1024;
-    (solr_response, total_results, download_only)
-}
-
-/// Gathers document IDs for NER processing if requested, respecting a maximum ID count.
-///
-/// # Arguments
-/// * `all_docs` - Documents array
-/// * `ids` - Candidate ID field names
-/// * `get_ner` - Flag to enable NER
-/// * `max_id_ner` - Truncate limit
-/// * `collection` - Collection name
-///
-/// # Returns
-/// `Option<Value>` with NER payload or `None`
-async fn handle_ner_data(
-    all_docs: &[Value],
-    ids: &[String],
-    get_ner: bool,
-    max_id_ner: usize,
-    collection: &str,
-) -> Option<Value> {
-    if get_ner {
-        let mut collected_ids: Vec<String> = all_docs
-            .iter()
-            .filter_map(|doc| {
-                ids.iter().find_map(|id_field| {
-                    doc.get(id_field)
-                        .and_then(|id_value| id_value.as_str().map(String::from))
-                })
-            })
-            .collect();
-
-        if collected_ids.len() > max_id_ner {
-            collected_ids.truncate(max_id_ner);
-        }
-
-        Some(json!({
-            "collection": collection,
-            "collected_ids": collected_ids,
-        }))
-    } else {
-        None
-    }
-}
-
-/// Actix-Web handler that enforces JWT-based permission checks, orchestrates Solr querying,
-/// stats & NER caching, and returns either JSON response or a CSV download stub based on size limits.
-///
-/// # Arguments
-/// * `req` - HTTP request for authorization header extraction and token validation
-/// * `pool` - Database connection pool for permission and Solr database lookups
-/// * `query` - Parsed query parameters containing collection, solr_database_id, and search criteria
-///
-/// # Returns
-/// `Result<HttpResponse, Error>` with either document JSON, CSV stub with paths for statistics,
-/// or appropriate error status
 #[utoipa::path(
     get,
     path = "/api/solr/query",
@@ -571,7 +333,6 @@ pub async fn query_collection(
 ) -> Result<HttpResponse, Error> {
     let config = Config::global();
 
-    // Extract and validate token
     let auth_header = req
         .headers()
         .get("Authorization")
@@ -594,7 +355,6 @@ pub async fn query_collection(
         Err(_) => return Ok(HttpResponse::Unauthorized().body("Invalid token")),
     };
 
-    // Check permissions
     let user_permissions: HashSet<String> = token_data
         .claims
         .permissions
@@ -622,15 +382,10 @@ pub async fn query_collection(
         return Ok(HttpResponse::Forbidden().body("No permission for this collection"));
     }
 
-    // Setup query parameters and start timing
     let start_time = Instant::now();
-
     let start = query.start.unwrap_or(0);
     let rows = query.rows.unwrap_or(config.max_size_query);
-    let stats_level = query
-        .stats_level
-        .clone()
-        .unwrap_or_else(|| "All".to_string());
+    let stats_level = query.stats_level.clone().unwrap_or_else(|| "All".to_string());
 
     info!("Starting query_collection processing");
 
@@ -644,15 +399,13 @@ pub async fn query_collection(
     info!("get_ner is: {}", get_ner);
     info!("download_only is: {}", download_only);
 
-    // Get Solr database configuration
     let other_solr_database_id = query.solr_database_id;
     let solr_db = get_solr_database(&pool, other_solr_database_id)
         .await
         .map_err(ErrorInternalServerError)?;
     let port = solr_db.local_port;
 
-    // Fetch metadata
-    let (relevant_fields, text_general_fields) = fetch_metadata(
+    let (relevant_fields, text_general_fields) = histtext::metadata::fetch_metadata(
         &client,
         &pool,
         other_solr_database_id,
@@ -670,65 +423,81 @@ pub async fn query_collection(
     let fetch_metadata_start = Instant::now();
     log_elapsed(fetch_metadata_start, "Fetched metadata");
 
-    // Fetch documents
     let fetch_documents_start = Instant::now();
 
     if download_only {
         is_first = true;
     }
 
-    let (solr_response, total_results, should_download_only) = handle_solr_response(
+    let solr_response = fetch_documents(
         &client,
         port,
         &query.collection,
         query.query.as_deref().unwrap_or("*:*"),
         start,
         rows,
-        config.max_size_document,
         is_first,
     )
     .await;
 
+    let total_results = solr_response["response"]["numFound"].as_u64().unwrap_or(0);
+    
+    let empty_docs = vec![];
+    let all_docs = solr_response["response"]["docs"]
+        .as_array()
+        .unwrap_or(&empty_docs);
+
+    let response_size_bytes = serde_json::to_string(all_docs)
+        .map(|s| s.len())
+        .unwrap_or(0);
+    
+    download_only = download_only || response_size_bytes > config.max_size_document * 1024 * 1024;
+
     log_elapsed(fetch_documents_start, "Fetched documents");
-    download_only = download_only || should_download_only;
 
     let response_data_start = Instant::now();
 
-    // Process response data
-    let all_docs = solr_response["response"]["docs"]
-        .as_array()
-        .unwrap_or(&vec![])
-        .clone();
-
     let stats_data = json!({
-        "concatenated_docs": all_docs.clone(),
+        "concatenated_docs": all_docs,
         "stats_level": stats_level,
         "total_results": total_results,
         "relevant_fields": relevant_fields,
         "text_general_fields": text_general_fields
     });
 
-    let ner_data = handle_ner_data(
-        &all_docs,
-        &ids,
-        get_ner,
-        config.max_id_ner,
-        &query.collection,
-    )
-    .await;
+    let ner_data = if get_ner {
+        let mut collected_ids: Vec<String> = all_docs
+            .iter()
+            .filter_map(|doc| {
+                ids.iter().find_map(|id_field| {
+                    doc.get(id_field)
+                        .and_then(|id_value| id_value.as_str().map(String::from))
+                })
+            })
+            .collect();
+
+        if collected_ids.len() > config.max_id_ner {
+            collected_ids.truncate(config.max_id_ner);
+        }
+
+        Some(json!({
+            "collection": query.collection,
+            "collected_ids": collected_ids,
+        }))
+    } else {
+        None
+    };
 
     info!("ner_data: {:?}", ner_data);
 
-    // Write cache files
     write_cache_file(&config.stats_cache_path, &stats_data).await?;
     if let Some(ref ner_data) = ner_data {
         write_cache_file(&config.ner_cache_path, ner_data).await?;
     }
 
-    // Prepare CSV download if needed
     if download_only {
-        let (mut wtr, headers, csv_filepath) = prepare_csv_data(&all_docs)?;
-        write_csv_records(&mut wtr, &all_docs, &headers)?;
+        let (mut wtr, headers, csv_filepath) = prepare_csv_writer(all_docs)?;
+        write_csv_records(&mut wtr, all_docs, &headers)?;
 
         let response_data = json!({
             "solr_response": {
@@ -749,10 +518,9 @@ pub async fn query_collection(
         return Ok(HttpResponse::Ok().json(response_data));
     }
 
-    // Return standard response
     let response_data = json!({
         "solr_response": {
-            "response": solr_response["response"].clone(),
+            "response": solr_response["response"],
             "stats_path": config.stats_cache_path,
             "ner_path": config.ner_cache_path,
             "total_results": total_results
@@ -765,13 +533,6 @@ pub async fn query_collection(
     Ok(HttpResponse::Ok().json(response_data))
 }
 
-/// Actix-Web handler serving a generated CSV file from disk and scheduling its asynchronous deletion after download.
-///
-/// # Arguments
-/// * `file_path` - Path parameter containing the CSV filename (UUID-based) to retrieve
-///
-/// # Returns
-/// `Result<NamedFile, Error>` streaming the CSV file back to the client with appropriate MIME type
 #[utoipa::path(
     get,
     path = "/api/solr/download_csv/{filename}",
@@ -796,9 +557,8 @@ pub async fn download_csv(file_path: web::Path<String>) -> Result<NamedFile, Err
 
     let file_to_delete = path.clone();
     tokio::spawn(async move {
-        match fs::remove_file(file_to_delete).await {
-            Ok(_) => println!("File deleted successfully"),
-            Err(e) => eprintln!("Failed to delete file: {:?}", e),
+        if let Err(e) = fs::remove_file(file_to_delete).await {
+            eprintln!("Failed to delete file: {:?}", e);
         }
     });
 

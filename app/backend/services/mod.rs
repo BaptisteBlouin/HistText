@@ -14,3 +14,6 @@ pub mod user_roles;
 pub mod users;
 pub mod password;
 pub mod cache_monitor;
+pub mod cache_manager;
+pub mod query_optimizer;
+pub mod response_pool;

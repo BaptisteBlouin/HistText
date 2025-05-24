@@ -1,11 +1,3 @@
-//! This module provides functionality for retrieving and processing Solr collection metadata.
-//!
-//! Features:
-//! - Collection aliases retrieval with JWT-based permission checks
-//! - Field metadata with faceting for possible values
-//! - Date range faceting for temporal collections
-//! - In-memory caching of index and annotation data
-
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use dashmap::DashMap;
 use diesel::prelude::*;
@@ -20,7 +12,6 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::config::Config;
 use crate::models::solr_database_permissions::SolrDatabasePermission;
-
 use crate::services::auth::AccessTokenClaims;
 use crate::schema::solr_database_permissions::dsl::*;
 use crate::schema::solr_databases::dsl::*;
@@ -28,47 +19,26 @@ use crate::schema::solr_databases::dsl::*;
 use lazy_static::lazy_static;
 
 lazy_static! {
-    /// Cache for storing index data keyed by collection identifier
-    static ref INDEX_CACHE: DashMap<String, HashMap<String, Vec<SerdeValue>>> = DashMap::new();
-    /// Cache for storing binary annotation data
-    static ref ANNOTATION_CACHE: DashMap<String, Vec<u8>> = DashMap::new();
+    static ref FIELD_CACHE: DashMap<String, (Vec<String>, Vec<String>, Vec<String>)> = DashMap::new();
 }
 
 use crate::services::database::DbPool;
 use crate::services::solr_database::*;
 
-/// Query parameters for collection-specific metadata requests
 #[derive(Deserialize, ToSchema, IntoParams)]
 pub struct MetadataQueryParams {
-    /// Target Solr collection name
     #[schema(example = "my_collection")]
     pub collection: String,
-    /// ID of the Solr database configuration
     #[schema(example = 1)]
     pub solr_database_id: i32,
 }
 
-/// Query parameters for database-level metadata requests
 #[derive(Deserialize, ToSchema, IntoParams)]
 pub struct DatabaseIdQueryParams {
-    /// ID of the Solr database configuration
     #[schema(example = 1)]
     pub solr_database_id: i32,
 }
 
-/// Retrieves collection aliases accessible to the authenticated user
-///
-/// Extracts a bearer token from the Authorization header, validates JWT claims
-/// to build a permission set, and fetches Solr collection aliases via the Solr Admin API.
-/// Returns either all aliases (for admin users) or only those the user is permitted to access.
-///
-/// # Arguments
-/// * `req` - HTTP request for authorization header extraction and JWT validation
-/// * `pool` - Database connection pool for permission and Solr database lookups
-/// * `query` - Query parameter containing the target solr_database_id
-///
-/// # Returns
-/// HTTP response with a JSON array of permitted collection alias names or an error status
 #[utoipa::path(
     get,
     path = "/api/solr/aliases",
@@ -117,7 +87,6 @@ pub async fn get_aliases(
         .collect();
 
     let is_admin = user_permissions.contains("admin");
-
     let solr_database_id_value = query.solr_database_id;
 
     let mut conn = match pool.get() {
@@ -135,14 +104,13 @@ pub async fn get_aliases(
         Err(_) => return HttpResponse::NotFound().body("Solr database not found"),
     };
 
-    let perms_result = solr_database_permissions
-        .filter(solr_database_id.eq(solr_database_id_value))
-        .load::<SolrDatabasePermission>(&mut conn);
-
     let allowed_collections: HashSet<String> = if is_admin {
-        HashSet::new() // Empty set means no filtering for admins
+        HashSet::new()
     } else {
-        match perms_result {
+        match solr_database_permissions
+            .filter(solr_database_id.eq(solr_database_id_value))
+            .load::<SolrDatabasePermission>(&mut conn)
+        {
             Ok(records) => records
                 .into_iter()
                 .filter(|record| user_permissions.contains(&record.permission))
@@ -192,18 +160,6 @@ pub async fn get_aliases(
     }
 }
 
-/// Retrieves field metadata for a specific Solr collection
-///
-/// Fetches Solr schema field definitions, filters out system fields,
-/// excludes fields by type/name/pattern based on configuration,
-/// and optionally facets each remaining field to collect possible values.
-///
-/// # Arguments
-/// * `pool` - Database connection pool for Solr database configuration lookup
-/// * `query` - Query parameters containing collection name and solr_database_id
-///
-/// # Returns
-/// HTTP response with a JSON array of field metadata objects or an error status
 #[utoipa::path(
     get,
     path = "/api/solr/collection_metadata",
@@ -223,10 +179,8 @@ pub async fn get_collection_metadata(
     query: web::Query<MetadataQueryParams>,
 ) -> impl Responder {
     let config = Config::global();
-
     let solr_database_ids = query.solr_database_id;
     let collection = &query.collection;
-
     let max_metadata_select = config.max_metadata_select;
 
     let mut conn = match pool.get() {
@@ -245,7 +199,6 @@ pub async fn get_collection_metadata(
     };
 
     let port = solr_db.local_port;
-
     let request_url = format!(
         "http://localhost:{}/solr/{}/schema/fields?wt=json",
         port, collection
@@ -262,10 +215,8 @@ pub async fn get_collection_metadata(
                 match response.json::<Value>().await {
                     Ok(metadata) => {
                         let empty_vec = vec![];
-                        let fields_array = metadata["fields"].as_array();
-                        let fields = fields_array.unwrap_or(&empty_vec);
-
-                        let mut metadata_with_values = Vec::new();
+                        let fields = metadata["fields"].as_array().unwrap_or(&empty_vec);
+                        let mut metadata_with_values = Vec::with_capacity(fields.len());
 
                         for field in fields {
                             let field_name = field["name"].as_str().unwrap_or("");
@@ -276,7 +227,6 @@ pub async fn get_collection_metadata(
                                 .and_then(|v| v.as_bool())
                                 .unwrap_or(false);
 
-                            // Filter out system fields
                             if is_required
                                 || (field_name.starts_with('_') && field_name.ends_with('_'))
                                 || field_name == "highlights"
@@ -286,7 +236,6 @@ pub async fn get_collection_metadata(
 
                             let mut field_obj = field.clone();
 
-                            // Skip faceting for excluded field types/names
                             if exclude_field_types.contains(&field_type.to_string())
                                 || exclude_field_names.contains(&field_name.to_string())
                                 || exclude_field_name_patterns
@@ -297,7 +246,6 @@ pub async fn get_collection_metadata(
                                 continue;
                             }
 
-                            // Facet the field to get possible values
                             let values_url = format!(
                                 "http://localhost:{}/solr/{}/select?q=*:*&facet=true&facet.field={}&facet.limit=-1&rows=0&wt=json",
                                 port, collection, field_name
@@ -321,10 +269,10 @@ pub async fn get_collection_metadata(
                                     }
                                 }
                             }
-
+ 
                             metadata_with_values.push(field_obj);
                         }
-
+ 
                         HttpResponse::Ok().json(metadata_with_values)
                     }
                     Err(_) => HttpResponse::InternalServerError().body("Failed to parse JSON"),
@@ -335,20 +283,9 @@ pub async fn get_collection_metadata(
         }
         Err(_) => HttpResponse::InternalServerError().body("HTTP request failed"),
     }
-}
-
-/// Retrieves minimum and maximum dates containing documents in the collection
-///
-/// Facets a Solr date field (MAIN_DATE_VALUE) across a wide range (1500–2030)
-/// in 1-year gaps, parses the facet counts to determine the date boundaries.
-///
-/// # Arguments
-/// * `pool` - Database connection pool for Solr database configuration lookup
-/// * `query` - Query parameters containing collection name and solr_database_id
-///
-/// # Returns
-/// HTTP response with a JSON object containing min and max date strings or an error status
-#[utoipa::path(
+ }
+ 
+ #[utoipa::path(
     get,
     path = "/api/solr/date_range",
     tag = "Metadata",
@@ -361,16 +298,15 @@ pub async fn get_collection_metadata(
     security(
         ("bearer_auth" = [])
     )
-)]
-pub async fn get_date_range(
+ )]
+ pub async fn get_date_range(
     pool: web::Data<DbPool>,
     query: web::Query<MetadataQueryParams>,
-) -> impl Responder {
+ ) -> impl Responder {
     let config = Config::global();
-
     let solr_database_ids = query.solr_database_id;
     let collection = &query.collection;
-
+ 
     let mut conn = match pool.get() {
         Ok(conn) => conn,
         Err(e) => {
@@ -388,15 +324,15 @@ pub async fn get_date_range(
             return HttpResponse::NotFound().body("Solr database not found");
         }
     };
-
+ 
     let port = solr_db.local_port;
     let date_field = &config.main_date_value;
-
+ 
     let request_url = format!(
         "http://localhost:{}/solr/{}/select?q=*:*&rows=0&facet=true&facet.range={}&facet.range.start=1500-01-01T00:00:00Z&facet.range.end=2030-01-01T00:00:00Z&facet.range.gap=%2B1YEAR&wt=json",
         port, collection, date_field
     );
-
+ 
     let client = Client::new();
     match client.get(&request_url).send().await {
         Ok(response) => {
@@ -407,7 +343,7 @@ pub async fn get_date_range(
                         if let Some(counts_array) = counts.as_array() {
                             let mut min_date: Option<String> = None;
                             let mut max_date: Option<String> = None;
-
+ 
                             for i in (0..counts_array.len()).step_by(2) {
                                 let date_str = counts_array.get(i).and_then(|v| v.as_str());
                                 let count = counts_array
@@ -421,7 +357,7 @@ pub async fn get_date_range(
                                     max_date = date_str.map(String::from);
                                 }
                             }
-
+ 
                             match (min_date, max_date) {
                                 (Some(min), Some(max)) => {
                                     let date_range = json!({
@@ -459,32 +395,25 @@ pub async fn get_date_range(
             HttpResponse::InternalServerError().body("HTTP request failed")
         }
     }
-}
-
-/// Retrieves and filters Solr schema fields for a collection
-///
-/// Fetches Solr schema fields, filters based on configuration-driven inclusion/exclusion rules
-/// (field types, name patterns, ID patterns), and populates two vectors: relevant fields
-/// and general text fields. Also collects ID field names.
-///
-/// # Arguments
-/// * `client` - HTTP client for Solr requests
-/// * `pool` - Database pool for SolrDatabase lookup
-/// * `solr_database_ids` - ID of the SolrDatabase record
-/// * `collection` - Target Solr collection name
-/// * `ids` - Mutable vector to append discovered ID field names
-///
-/// # Returns
-/// A tuple (relevant_fields, text_general_fields) containing filtered field lists
-pub async fn fetch_metadata(
+ }
+ 
+ pub async fn fetch_metadata(
     client: &Client,
     pool: &DbPool,
     solr_database_ids: i32,
     collection: &str,
     ids: &mut Vec<String>,
-) -> (Vec<String>, Vec<String>) {
+ ) -> (Vec<String>, Vec<String>) {
+    let cache_key = format!("{}:{}", solr_database_ids, collection);
+    
+    if let Some(cached) = FIELD_CACHE.get(&cache_key) {
+        let (relevant, text_general, id_fields) = cached.clone();
+        ids.extend(id_fields);
+        return (relevant, text_general);
+    }
+ 
     let config = Config::global();
-
+ 
     let mut conn = match pool.get() {
         Ok(conn) => conn,
         Err(_) => return (Vec::new(), Vec::new()),
@@ -496,59 +425,59 @@ pub async fn fetch_metadata(
         Ok(db) => db,
         Err(_) => return (Vec::new(), Vec::new()),
     };
-
+ 
     let port = solr_db.local_port;
-
     let metadata_url = format!(
         "http://localhost:{}/solr/{}/schema/fields?wt=json",
         port, collection
     );
-
+ 
     let exclude_field_types = &config.exclude_field_types;
     let exclude_request_name_starts_with = &config.exclude_request_name_starts_with;
     let exclude_request_name_ends_with = &config.exclude_request_name_ends_with;
     let id_starts_with = &config.id_starts_with;
     let id_ends_with = &config.id_ends_with;
-
+ 
     if let Ok(response) = client.get(&metadata_url).send().await {
         if response.status().is_success() {
             if let Ok(metadata) = response.json::<Value>().await {
                 if let Some(fields) = metadata["fields"].as_array() {
-                    return fields.iter().fold(
-                        (Vec::new(), Vec::new()),
-                        |(mut relevant, mut text_general), field| {
-                            if let Some(request_name) = field["name"].as_str() {
-                                let lower_name = request_name.to_lowercase();
-
-                                // Check if this is a field we should process
-                                if !request_name.starts_with(exclude_request_name_starts_with)
-                                    && !request_name.ends_with(exclude_request_name_ends_with)
-                                    && !lower_name.starts_with(id_starts_with)
-                                    && !lower_name.ends_with(id_ends_with)
-                                {
-                                    // Categorize as relevant or text_general based on field type
-                                    if let Some(field_type) = field["type"].as_str() {
-                                        if !exclude_field_types.contains(&field_type.to_string()) {
-                                            relevant.push(request_name.to_string());
-                                        } else {
-                                            text_general.push(request_name.to_string());
-                                        }
+                    let mut relevant = Vec::new();
+                    let mut text_general = Vec::new();
+                    let mut id_fields = Vec::new();
+ 
+                    for field in fields {
+                        if let Some(request_name) = field["name"].as_str() {
+                            let lower_name = request_name.to_lowercase();
+ 
+                            if !request_name.starts_with(exclude_request_name_starts_with)
+                                && !request_name.ends_with(exclude_request_name_ends_with)
+                                && !lower_name.starts_with(id_starts_with)
+                                && !lower_name.ends_with(id_ends_with)
+                            {
+                                if let Some(field_type) = field["type"].as_str() {
+                                    if !exclude_field_types.contains(&field_type.to_string()) {
+                                        relevant.push(request_name.to_string());
+                                    } else {
+                                        text_general.push(request_name.to_string());
                                     }
                                 }
-
-                                // Check if this is an ID field
-                                if lower_name.starts_with(id_starts_with)
-                                    || lower_name.ends_with(id_ends_with)
-                                {
-                                    ids.push(request_name.to_string());
-                                }
                             }
-                            (relevant, text_general)
-                        },
-                    );
+ 
+                            if lower_name.starts_with(id_starts_with)
+                                || lower_name.ends_with(id_ends_with)
+                            {
+                                id_fields.push(request_name.to_string());
+                            }
+                        }
+                    }
+ 
+                    ids.extend(id_fields.clone());
+                    FIELD_CACHE.insert(cache_key, (relevant.clone(), text_general.clone(), id_fields));
+                    return (relevant, text_general);
                 }
             }
         }
     }
     (Vec::new(), Vec::new())
-}
+ }

@@ -246,7 +246,7 @@ fn configure_solr_routes(api_scope: Scope) -> Scope {
 fn configure_hist_text_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(web::resource("/tokenize").route(web::post().to(histtext::tokenizer::tokenize)))
-        
+        .service(web::resource("/tokenize/batch").route(web::post().to(histtext::tokenizer::batch_tokenize)))
         // Legacy embedding endpoint for backward compatibility
         .service(
             web::resource("/compute-neighbors")

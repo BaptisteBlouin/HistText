@@ -26,7 +26,6 @@ const useAuthAxios = () => {
     instance.interceptors.request.use(
       config => {
         if (accessToken) {
-          // Ensure headers is an instance of AxiosHeaders; if not, wrap it
           if (config.headers instanceof AxiosHeaders) {
             config.headers.set('Authorization', `Bearer ${accessToken}`);
           } else {
@@ -124,6 +123,7 @@ const HistText: React.FC = () => {
 
   // Word cloud states
   const [wordFrequency, setWordFrequency] = useState<{ text: string; value: number }[]>([]);
+  const [cloudProgress, setCloudProgress] = useState<number>(0);
   const stopWords = React.useMemo(
     () => new Set(STOP_WORDS_ARRAY.map(word => word.toLowerCase().trim())),
     [],
@@ -175,7 +175,7 @@ const HistText: React.FC = () => {
   }, [selectedSolrDatabase, authAxios]);
 
   // ----------------------------------------------------------------------
-  //  2) WORD CLOUD COMPUTATION WHEN allResults IS SET
+  //  OPTIMIZED WORD CLOUD COMPUTATION WITH BATCH TOKENIZATION
   // ----------------------------------------------------------------------
   useEffect(() => {
     if (!allResults || allResults.length === 0) {
@@ -183,54 +183,108 @@ const HistText: React.FC = () => {
       return;
     }
 
-    const computeCloud = async () => {
-      console.log('Starting cloud computation via /api/tokenize…');
+    const computeCloudOptimized = async () => {
+      console.log('Starting optimized cloud computation via batch tokenization…');
       setIsCloudLoading(true);
+      setCloudProgress(0);
 
-      // 1) Figure out which field holds the main text
-      const columnContentLengths = Object.keys(allResults[0]).map(key => ({
-        key,
-        length: allResults.reduce((acc, curr) => acc + (curr[key]?.toString().length || 0), 0),
-      }));
-      const contentColumn = columnContentLengths.reduce((prev, current) =>
-        current.length > prev.length ? current : prev,
-      ).key;
+      try {
+        // 1) Find the column with the most text content
+        const sampleSize = Math.min(allResults.length, 10);
+        const columnContentLengths = Object.keys(allResults[0]).map(key => ({
+          key,
+          length: allResults.slice(0, sampleSize).reduce(
+            (acc, curr) => acc + (curr[key]?.toString().length || 0), 0
+          ),
+        }));
+        
+        const contentColumn = columnContentLengths.reduce((prev, current) =>
+          current.length > prev.length ? current : prev,
+        ).key;
 
-      // 2) Tokenize (and stop-word filter) on the backend
-      const wordMap: Record<string, number> = {};
-      await Promise.all(
-        allResults.map(async result => {
-          const text = result[contentColumn]?.toString();
-          if (!text) return;
+        console.log(`Using column '${contentColumn}' for word cloud analysis`);
 
+        // 2) Extract all texts, filter out empty ones, and limit length
+        const maxTextLength = 5000; // Limit text length to prevent memory issues
+        const maxTexts = Math.min(allResults.length, 2000); // Limit number of documents
+        
+        const texts = allResults
+          .slice(0, maxTexts)
+          .map(result => {
+            const text = result[contentColumn]?.toString();
+            if (!text) return '';
+            return text.length > maxTextLength ? text.substring(0, maxTextLength) : text;
+          })
+          .filter(text => text.length > 10); // Only non-empty texts
+
+        if (texts.length === 0) {
+          console.log('No valid texts found for word cloud');
+          setWordFrequency([]);
+          setIsCloudLoading(false);
+          return;
+        }
+
+        console.log(`Processing ${texts.length} texts for word cloud`);
+        setCloudProgress(25);
+
+        // 3) Process texts in batches to avoid memory issues and API limits
+        const batchSize = 100; // Process 100 texts at a time
+        const wordMap: Record<string, number> = {};
+        
+        for (let i = 0; i < texts.length; i += batchSize) {
+          const batch = texts.slice(i, i + batchSize);
+          console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(texts.length / batchSize)}`);
+          
           try {
-            const { data } = await authAxios.post('/api/tokenize', {
-              text,
-              cloud: true, // tells the API "also strip stop-words"
+            const { data } = await authAxios.post('/api/tokenize/batch', {
+              texts: batch,
+              cloud: true, // Backend handles stop-word filtering
+              max_tokens_per_text: 200, // Limit tokens per text
             });
-            const words: string[] = data.words;
-            words.forEach(raw => {
-              const w = raw.toLowerCase();
-              //if (w.length > 3) {
-              wordMap[w] = (wordMap[w] || 0) + 1;
-              //}
+
+            // Process the batch results
+            data.results.forEach((result: any) => {
+              result.words.forEach((word: string) => {
+                const normalizedWord = word.toLowerCase().trim();
+                if (normalizedWord.length > 2 && normalizedWord.length < 25) {
+                  wordMap[normalizedWord] = (wordMap[normalizedWord] || 0) + 1;
+                }
+              });
             });
+
+            // Update progress
+            const progressPercent = 25 + ((i + batch.length) / texts.length) * 65;
+            setCloudProgress(Math.min(progressPercent, 90));
+
           } catch (err) {
-            console.error('Tokenization error for document:', err);
+            console.error(`Error processing batch ${Math.floor(i / batchSize) + 1}:`, err);
+            // Continue with next batch even if this one fails
           }
-        }),
-      );
+        }
 
-      // 3) Build and sort your frequency array
-      const wordFrequencyData = Object.entries(wordMap)
-        .map(([text, value]) => ({ text, value }))
-        .sort((a, b) => b.value - a.value);
+        setCloudProgress(95);
 
-      setWordFrequency(wordFrequencyData.slice(0, 100));
-      setIsCloudLoading(false);
+        // 4) Build and sort frequency array
+        const wordFrequencyData = Object.entries(wordMap)
+          .map(([text, value]) => ({ text, value }))
+          .filter(item => item.value > 1) // Only include words that appear more than once
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 150); // Top 150 words
+
+        console.log(`Generated word cloud with ${wordFrequencyData.length} unique words`);
+        setWordFrequency(wordFrequencyData);
+        setCloudProgress(100);
+
+      } catch (error) {
+        console.error('Error in word cloud computation:', error);
+        setWordFrequency([]);
+      } finally {
+        setIsCloudLoading(false);
+        setTimeout(() => setCloudProgress(0), 1000); // Reset progress after a delay
+      }
     };
 
-    computeCloud();
+    computeCloudOptimized();
   }, [allResults, authAxios]);
 
   const handleAliasChange = async (alias: string) => {
@@ -571,7 +625,17 @@ const HistText: React.FC = () => {
         {activeTab === TABS.CLOUD && (
           <div>
             {isCloudLoading ? (
-              <p>Loading word cloud...</p>
+              <div>
+                <p>Loading word cloud...</p>
+                {cloudProgress > 0 && (
+                  <div className="progress-bar-container">
+                    <div className="progress-bar">
+                      <div className="progress" style={{ width: `${cloudProgress}%` }} />
+                    </div>
+                    <div className="progress-text">{Math.round(cloudProgress)}% complete</div>
+                  </div>
+                )}
+              </div>
             ) : wordFrequency && wordFrequency.length > 0 ? (
               <Cloud wordFrequency={wordFrequency} />
             ) : (

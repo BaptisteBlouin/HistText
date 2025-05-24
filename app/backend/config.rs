@@ -141,6 +141,11 @@ pub struct Config {
 
     /// Whether to actually send emails or just log them
     pub send_mail: bool,
+
+    pub cache_ttl_seconds: u64,
+    pub max_cache_size: usize,
+    pub enable_query_cache: bool,
+    pub enable_response_streaming: bool,
 }
 
 /// Errors that can occur during configuration loading
@@ -294,6 +299,11 @@ impl Config {
             smtp_password: get_with_default("SMTP_PASSWORD", ""),
             smtp_from_address: get_with_default("SMTP_FROM_ADDRESS", "no-reply@example.com"),
             send_mail: parse_with_default::<bool>("SEND_MAIL", false),
+
+            cache_ttl_seconds: parse_with_default::<u64>("CACHE_TTL_SECONDS", 3600),
+            max_cache_size: parse_with_default::<usize>("MAX_CACHE_SIZE", 1000),
+            enable_query_cache: parse_with_default::<bool>("ENABLE_QUERY_CACHE", true),
+            enable_response_streaming: parse_with_default::<bool>("ENABLE_RESPONSE_STREAMING", false),
         })
     }
 }

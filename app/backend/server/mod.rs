@@ -14,6 +14,8 @@ pub async fn run_server() -> std::io::Result<()> {
     use crate::server::startup::preload_embeddings;
     use crate::services::database::Database;
     use crate::services::mailer::Mailer;
+    use crate::services::cache_manager::CacheManager;
+    use crate::services::response_pool::ResponsePool;
     use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
     use actix_web::web::PayloadConfig;
     use actix_web::{
@@ -57,6 +59,13 @@ pub async fn run_server() -> std::io::Result<()> {
     let config_global = Config::global();
     let mailer = Data::new(Mailer::from_config(config_global));
     let mailer_data = Data::new(mailer);
+
+    let cache_manager = Arc::new(CacheManager::new(
+        config.max_cache_size,
+        config.cache_ttl_seconds,
+    ));
+
+    let response_pool = Arc::new(ResponsePool::new());
 
     let embedding_task = {
         let pool = db_pool.clone();
@@ -146,7 +155,9 @@ pub async fn run_server() -> std::io::Result<()> {
             .app_data(mailer_data.clone())
             .app_data(web::Data::new(AppConfig {
                 app_url: config.app_url.clone(),
-            }));
+            }))
+            .app_data(web::Data::new(cache_manager.clone()))
+            .app_data(web::Data::new(response_pool.clone()));
 
         app.configure(|cfg| {
             routes::configure_routes(

@@ -1,11 +1,3 @@
-//! This module provides Named Entity Recognition (NER) functionality.
-//!
-//! Features:
-//! - Reading cached NER input data from disk
-//! - Invoking Solr-based NER annotation service in batches
-//! - Processing and returning structured JSON annotations
-//! - Caching results for improved performance
-
 use crate::config::Config;
 use actix_web::{web, HttpResponse};
 use dashmap::DashMap;
@@ -25,31 +17,15 @@ use tokio::fs;
 use lazy_static::lazy_static;
 
 lazy_static! {
-    /// Cache for storing index data by collection
-    static ref INDEX_CACHE: DashMap<String, HashMap<String, Vec<SerdeValue>>> = DashMap::new();
-    /// Cache for storing binary annotation data
-    static ref ANNOTATION_CACHE: DashMap<String, Vec<u8>> = DashMap::new();
+    static ref NER_CACHE: DashMap<String, HashMap<String, SerdeValue>> = DashMap::new();
 }
 
-/// Query parameters for NER data requests
 #[derive(Deserialize, ToSchema, IntoParams)]
 pub struct PathQueryParams {
-    /// Path to cached NER payload file
     #[schema(example = "/tmp/ner_cache.json")]
     pub path: Option<String>,
 }
 
-/// Retrieves named entity annotations for documents
-///
-/// Reads a cached NER payload (collection and document IDs) from a JSON file,
-/// queries a specialized Solr collection with `-ner` suffix in batches,
-/// and returns a mapping of document IDs to their entity annotations.
-///
-/// # Arguments
-/// * `query` - Optional path parameter pointing to the cached payload file
-///
-/// # Returns
-/// HTTP response with a JSON mapping of document IDs to NER annotations, or an error
 #[utoipa::path(
     get,
     path = "/api/solr/ner",
@@ -112,6 +88,13 @@ pub async fn fetch_ner_data(query: web::Query<PathQueryParams>) -> Result<HttpRe
         return Ok(HttpResponse::Ok().json(serde_json::Value::Null));
     }
 
+    let cache_key = format!("{}:{}", collection, collected_ids.join(","));
+    
+    if let Some(cached_results) = NER_CACHE.get(&cache_key) {
+        let ner_data_map: Map<String, Value> = cached_results.clone().into_iter().collect();
+        return Ok(HttpResponse::Ok().json(Some(ner_data_map)));
+    }
+
     let ner_results = match get_ner_annotation_batch(collection, &collected_ids).await {
         Ok(results) => results,
         Err(e) => {
@@ -122,12 +105,12 @@ pub async fn fetch_ner_data(query: web::Query<PathQueryParams>) -> Result<HttpRe
 
     debug!("Retrieved NER results for {} documents", ner_results.len());
 
+    NER_CACHE.insert(cache_key, ner_results.clone());
+
     let ner_data_map: Map<String, Value> = ner_results.into_iter().collect();
 
-    // Only delete the cache file if processing was successful
     if let Err(e) = fs::remove_file(ner_path).await {
         error!("Failed to remove NER cache file: {}", e);
-        // Continue anyway - this is not critical
     }
 
     info!(
@@ -137,17 +120,6 @@ pub async fn fetch_ner_data(query: web::Query<PathQueryParams>) -> Result<HttpRe
     Ok(HttpResponse::Ok().json(Some(ner_data_map)))
 }
 
-/// Processes document IDs in batches to retrieve entity annotations
-///
-/// Splits document IDs into chunks, queries a Solr "-ner" collection for each chunk,
-/// and assembles a mapping of document IDs to their annotation data.
-///
-/// # Arguments
-/// * `collection` - Base collection name
-/// * `ids` - Slice of document ID strings
-///
-/// # Returns
-/// HashMap mapping each document ID to its annotation JSON, or an error
 async fn get_ner_annotation_batch(
     collection: &str,
     ids: &[String],
@@ -170,8 +142,8 @@ async fn get_ner_annotation_batch(
     debug!("Processing {} IDs for NER", ids.len());
     let client = Client::new();
 
-    let mut results = HashMap::new();
-    // Process IDs in chunks to avoid excessively long URLs
+    let mut results = HashMap::with_capacity(ids.len());
+    
     for (chunk_index, ids_chunk) in ids.chunks(50).enumerate() {
         debug!(
             "Processing NER chunk {} with {} IDs",
@@ -179,7 +151,6 @@ async fn get_ner_annotation_batch(
             ids_chunk.len()
         );
 
-        // Construct a Solr query for all IDs in this chunk
         let ids_query = ids_chunk
             .iter()
             .map(|id| format!("doc_id:\"{}\"", id))
@@ -255,48 +226,34 @@ async fn get_ner_annotation_batch(
 
         debug!("Retrieved {} NER documents from Solr", docs.len());
 
-        // Extract document IDs and store the results
         for doc in docs {
             if let Some(doc_id) = extract_doc_id(doc) {
                 debug!("Found NER data for document ID: {}", doc_id);
-                results.insert(doc_id, doc.clone());
-            } else {
-                debug!("Skipping NER document without proper ID: {:?}", doc);
-            }
-        }
-    }
+               results.insert(doc_id, doc.clone());
+           } else {
+               debug!("Skipping NER document without proper ID: {:?}", doc);
+           }
+       }
+   }
 
-    info!("Successfully processed NER for {} documents", results.len());
-    Ok(results)
+   info!("Successfully processed NER for {} documents", results.len());
+   Ok(results)
 }
 
-/// Extracts a document ID from a Solr document
-///
-/// Handles different possible ID field formats (array of strings,
-/// single string, alternate field names).
-///
-/// # Arguments
-/// * `doc` - The Solr document JSON
-///
-/// # Returns
-/// Document ID if found, or None if no ID field could be extracted
 fn extract_doc_id(doc: &SerdeValue) -> Option<String> {
-    // Try as array of strings first (most common case)
-    if let Some(doc_ids) = doc.get("doc_id").and_then(|ids| ids.as_array()) {
-        if let Some(first_id) = doc_ids.first().and_then(|id| id.as_str()) {
-            return Some(String::from(first_id));
-        }
-    }
+   if let Some(doc_ids) = doc.get("doc_id").and_then(|ids| ids.as_array()) {
+       if let Some(first_id) = doc_ids.first().and_then(|id| id.as_str()) {
+           return Some(String::from(first_id));
+       }
+   }
 
-    // Try as a single string
-    if let Some(id_str) = doc.get("doc_id").and_then(|id| id.as_str()) {
-        return Some(String::from(id_str));
-    }
+   if let Some(id_str) = doc.get("doc_id").and_then(|id| id.as_str()) {
+       return Some(String::from(id_str));
+   }
 
-    // Try alternate field name "id"
-    if let Some(id_str) = doc.get("id").and_then(|id| id.as_str()) {
-        return Some(String::from(id_str));
-    }
+   if let Some(id_str) = doc.get("id").and_then(|id| id.as_str()) {
+       return Some(String::from(id_str));
+   }
 
-    None
+   None
 }
