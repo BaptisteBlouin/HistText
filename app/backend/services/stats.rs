@@ -6,6 +6,7 @@ use log::info;
 
 use crate::schema::users::dsl::*;
 use crate::schema::solr_databases::dsl as solr_dsl;
+use crate::schema::solr_database_info::dsl as info_dsl;
 use crate::services::database::Database;
 use crate::services::error::{AppError, AppResult};
 use crate::services::crud::execute_db_query;
@@ -22,6 +23,8 @@ pub struct DashboardStats {
     #[schema(example = "5")]
     active_collections: i64,
 }
+
+
 
 #[utoipa::path(
     get,
@@ -42,11 +45,21 @@ pub async fn get_dashboard_stats(db: web::Data<Database>) -> Result<HttpResponse
         solr_dsl::solr_databases.count().get_result::<i64>(conn)
     }).await?;
 
+    let active_collections = execute_db_query(db.clone(), |conn| {
+        info_dsl::solr_database_info
+            .filter(info_dsl::embeddings.ne("none"))
+            .count()
+            .get_result::<i64>(conn)
+    }).await.unwrap_or(0);
+
+    let cache_info = cache::get_cache_info().await;
+    let total_docs = cache_info.2 as i64;
+
     let stats = DashboardStats {
-        total_docs: 0,
+        total_docs,
         total_collections: collection_count,
         total_users: user_count,
-        active_collections: collection_count,
+        active_collections,
     };
 
     Ok(HttpResponse::Ok().json(stats))

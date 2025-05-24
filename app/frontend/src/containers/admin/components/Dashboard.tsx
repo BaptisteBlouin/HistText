@@ -27,37 +27,28 @@ interface DetailedEmbeddingStats {
 
 interface AdvancedCacheStats {
   cache: {
-    path_cache_entries: number;
-    collection_cache_entries: number;
-    total_embeddings_loaded: number;
-    memory_usage_bytes: number;
-    memory_limit_bytes: number;
+    entries_count: number;
+    memory_usage: number;
+    max_memory: number;
     hit_ratio: number;
     total_hits: number;
     total_misses: number;
     total_evictions: number;
-    last_eviction?: string;
+    total_embeddings_loaded: number;
   };
-  system: {
-    cache: {
-      entries_count: number;
-      memory_usage: number;
-      max_memory: number;
-      hit_ratio: number;
-    };
-    performance: {
-      avg_similarity_time_us: number;
-      avg_search_time_ms: number;
-      total_similarity_computations: number;
-      total_searches: number;
-      peak_memory_bytes: number;
-    };
-    system_info: {
-      cpu_cores: number;
-      total_memory_bytes: number;
-      architecture: string;
-      operating_system: string;
-    };
+  performance: {
+    avg_similarity_time_us: number;
+    avg_search_time_ms: number;
+    total_similarity_computations: number;
+    total_searches: number;
+    peak_memory_bytes: number;
+    samples_collected: number;
+  };
+  system_info: {
+    cpu_cores: number;
+    total_memory_bytes: number;
+    architecture: string;
+    operating_system: string;
   };
   timestamp: string;
 }
@@ -344,25 +335,25 @@ const Dashboard: React.FC = () => {
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Hit Ratio</Typography>
-                    <Typography variant="h6">{formatPercentage(advancedStats.system?.cache?.hit_ratio)}</Typography>
+                    <Typography variant="h6">{formatPercentage(advancedStats.cache?.hit_ratio)}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Cache Entries</Typography>
-                    <Typography variant="h6">{formatNumber(advancedStats.system?.cache?.entries_count)}</Typography>
+                    <Typography variant="h6">{formatNumber(advancedStats.cache?.entries_count)}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Memory Usage</Typography>
-                    <Typography variant="h6">{formatBytes(advancedStats.system?.cache?.memory_usage)}</Typography>
+                    <Typography variant="h6">{formatBytes(advancedStats.cache?.memory_usage)}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Memory Limit</Typography>
-                    <Typography variant="h6">{formatBytes(advancedStats.system?.cache?.max_memory)}</Typography>
+                    <Typography variant="h6">{formatBytes(advancedStats.cache?.max_memory)}</Typography>
                   </Paper>
                 </Grid>
               </Grid>
@@ -374,25 +365,25 @@ const Dashboard: React.FC = () => {
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Avg Search Time</Typography>
-                    <Typography variant="h6">{safeNumber(advancedStats.system?.performance?.avg_search_time_ms).toFixed(1)} ms</Typography>
+                    <Typography variant="h6">{safeNumber(advancedStats.performance?.avg_search_time_ms).toFixed(1)} ms</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Avg Similarity Time</Typography>
-                    <Typography variant="h6">{safeNumber(advancedStats.system?.performance?.avg_similarity_time_us).toFixed(1)} μs</Typography>
+                    <Typography variant="h6">{safeNumber(advancedStats.performance?.avg_similarity_time_us).toFixed(1)} μs</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Total Searches</Typography>
-                    <Typography variant="h6">{formatNumber(advancedStats.system?.performance?.total_searches)}</Typography>
+                    <Typography variant="h6">{formatNumber(advancedStats.performance?.total_searches)}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Peak Memory</Typography>
-                    <Typography variant="h6">{formatBytes(advancedStats.system?.performance?.peak_memory_bytes)}</Typography>
+                    <Typography variant="h6">{formatBytes(advancedStats.performance?.peak_memory_bytes)}</Typography>
                   </Paper>
                 </Grid>
               </Grid>
@@ -404,25 +395,25 @@ const Dashboard: React.FC = () => {
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">CPU Cores</Typography>
-                    <Typography variant="h6">{formatNumber(advancedStats.system?.system_info?.cpu_cores)}</Typography>
+                    <Typography variant="h6">{formatNumber(advancedStats.system_info?.cpu_cores)}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Total Memory</Typography>
-                    <Typography variant="h6">{formatBytes(advancedStats.system?.system_info?.total_memory_bytes)}</Typography>
+                    <Typography variant="h6">{formatBytes(advancedStats.system_info?.total_memory_bytes)}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">Architecture</Typography>
-                    <Typography variant="h6">{advancedStats.system?.system_info?.architecture || 'Unknown'}</Typography>
+                    <Typography variant="h6">{advancedStats.system_info?.architecture || 'Unknown'}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
                     <Typography variant="subtitle2">OS</Typography>
-                    <Typography variant="h6">{advancedStats.system?.system_info?.operating_system || 'Unknown'}</Typography>
+                    <Typography variant="h6">{advancedStats.system_info?.operating_system || 'Unknown'}</Typography>
                   </Paper>
                 </Grid>
               </Grid>

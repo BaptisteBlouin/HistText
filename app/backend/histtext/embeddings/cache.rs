@@ -14,20 +14,31 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
 use tokio::task;
+use utoipa::ToSchema;
+use chrono::{DateTime, Utc};
 
 #[derive(Debug)]
 struct CacheEntry {
     embeddings: SharedEmbeddings,
     last_accessed: RwLock<SystemTime>,
     memory_size: usize,
+    word_count: usize,
+    dimension: usize,
+    created_at: SystemTime,
 }
 
 impl CacheEntry {
     fn new(embeddings: SharedEmbeddings, memory_size: usize) -> Self {
+        let word_count = embeddings.len();
+        let dimension = embeddings.values().next().map(|e| e.dimension()).unwrap_or(0);
+        
         Self {
             embeddings,
             last_accessed: RwLock::new(SystemTime::now()),
             memory_size,
+            word_count,
+            dimension,
+            created_at: SystemTime::now(),
         }
     }
 
@@ -49,7 +60,7 @@ static CACHE_STATS: std::sync::LazyLock<Arc<tokio::sync::Mutex<CacheStatistics>>
 static EVICTION_MUTEX: std::sync::LazyLock<tokio::sync::Mutex<()>> = 
     std::sync::LazyLock::new(|| tokio::sync::Mutex::new(()));
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, ToSchema)]
 pub struct CacheStatistics {
     pub hits: u64,
     pub misses: u64,
@@ -57,7 +68,9 @@ pub struct CacheStatistics {
     pub memory_usage: usize,
     pub max_memory: usize,
     pub entries_count: usize,
-    pub last_eviction: Option<SystemTime>,
+    pub total_embeddings_loaded: usize,
+    pub last_eviction: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
 }
 
 impl CacheStatistics {
@@ -69,7 +82,9 @@ impl CacheStatistics {
             memory_usage: 0,
             max_memory: Config::global().max_embeddings_files * 512 * 1024 * 1024,
             entries_count: 0,
+            total_embeddings_loaded: 0,
             last_eviction: None,
+            created_at: Utc::now(),
         }
     }
 
@@ -81,16 +96,33 @@ impl CacheStatistics {
         self.misses += 1;
     }
 
-    fn record_eviction(&mut self, memory_freed: usize) {
+    fn record_eviction(&mut self, memory_freed: usize, embeddings_removed: usize) {
         self.evictions += 1;
         self.memory_usage = self.memory_usage.saturating_sub(memory_freed);
         self.entries_count = self.entries_count.saturating_sub(1);
-        self.last_eviction = Some(SystemTime::now());
+        self.total_embeddings_loaded = self.total_embeddings_loaded.saturating_sub(embeddings_removed);
+        self.last_eviction = Some(Utc::now());
     }
 
-    fn record_addition(&mut self, memory_added: usize) {
+    fn record_addition(&mut self, memory_added: usize, embeddings_added: usize) {
         self.memory_usage += memory_added;
         self.entries_count += 1;
+        self.total_embeddings_loaded += embeddings_added;
+    }
+
+    fn update_from_cache(&mut self) {
+        let mut total_memory = 0;
+        let mut total_embeddings = 0;
+        let entries_count = CACHE.len();
+
+        for entry in CACHE.iter() {
+            total_memory += entry.memory_size;
+            total_embeddings += entry.word_count;
+        }
+
+        self.memory_usage = total_memory;
+        self.entries_count = entries_count;
+        self.total_embeddings_loaded = total_embeddings;
     }
 
     pub fn hit_ratio(&self) -> f64 {
@@ -199,18 +231,19 @@ async fn load_embeddings_from_disk(
     let (embeddings, stats) = formats::load_embeddings(path, &config).await?;
     let embeddings = Arc::new(embeddings);
     let memory_size = stats.memory_usage;
+    let word_count = embeddings.len();
 
     let entry = Arc::new(CacheEntry::new(embeddings.clone(), memory_size));
     CACHE.insert(cache_key.to_string(), entry);
 
     {
         let mut cache_stats = CACHE_STATS.lock().await;
-        cache_stats.record_addition(memory_size);
+        cache_stats.record_addition(memory_size, word_count);
     }
 
     info!(
         "Loaded and cached embeddings: {} words, {} bytes, key: {}",
-        embeddings.len(),
+        word_count,
         memory_size,
         cache_key
     );
@@ -234,24 +267,26 @@ async fn evict_if_needed() -> EmbeddingResult<()> {
         for entry in CACHE.iter() {
             let (key, cache_entry) = entry.pair();
             let last_accessed = cache_entry.last_accessed().await;
-            candidates.push((key.clone(), last_accessed, cache_entry.memory_size));
+            candidates.push((key.clone(), last_accessed, cache_entry.memory_size, cache_entry.word_count));
         }
         
-        candidates.sort_by_key(|(_, last_accessed, _)| *last_accessed);
+        candidates.sort_by_key(|(_, last_accessed, _, _)| *last_accessed);
         
         let target_memory = max_memory * 60 / 100;
         let mut memory_freed = 0;
+        let mut embeddings_removed = 0;
         
-        for (key, _, size) in candidates {
+        for (key, _, size, word_count) in candidates {
             if current_memory - memory_freed <= target_memory {
                 break;
             }
             
             evict_entry(&key).await;
             memory_freed += size;
+            embeddings_removed += word_count;
         }
         
-        info!("Eviction complete: freed {} bytes", memory_freed);
+        info!("Eviction complete: freed {} bytes, removed {} embeddings", memory_freed, embeddings_removed);
     }
     
     Ok(())
@@ -260,7 +295,7 @@ async fn evict_if_needed() -> EmbeddingResult<()> {
 async fn evict_entry(key: &str) {
     if let Some((_, entry)) = CACHE.remove(key) {
         let mut stats = CACHE_STATS.lock().await;
-        stats.record_eviction(entry.memory_size);
+        stats.record_eviction(entry.memory_size, entry.word_count);
         debug!("Evicted embeddings from cache: {}", key);
     }
 }
@@ -288,7 +323,8 @@ async fn cleanup_expired_entries() -> EmbeddingResult<()> {
 }
 
 async fn check_memory_pressure() -> EmbeddingResult<()> {
-    let stats = CACHE_STATS.lock().await;
+    let mut stats = CACHE_STATS.lock().await;
+    stats.update_from_cache();
     let usage_ratio = stats.memory_usage_ratio();
     
     if usage_ratio > 0.9 {
@@ -316,8 +352,21 @@ pub async fn clear_caches() {
 
 pub async fn get_cache_statistics() -> CacheStatistics {
     let mut stats = CACHE_STATS.lock().await;
-    stats.entries_count = CACHE.len();
+    stats.update_from_cache();
     stats.clone()
+}
+
+pub async fn get_cache_info() -> (usize, usize, usize) {
+    let mut total_memory = 0;
+    let mut total_embeddings = 0;
+    let entries_count = CACHE.len();
+
+    for entry in CACHE.iter() {
+        total_memory += entry.memory_size;
+        total_embeddings += entry.word_count;
+    }
+
+    (entries_count, total_memory, total_embeddings)
 }
 
 async fn get_embedding_path(

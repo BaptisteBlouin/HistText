@@ -182,12 +182,14 @@ pub async fn get_cache_stats() -> CacheStats {
     let cache_stats = get_cache_statistics().await;
     let now = Utc::now();
     
+    let uptime_seconds = (now - cache_stats.created_at).num_seconds();
+    
     CacheStats {
         collection_cache_entries: 0,
         path_cache_entries: cache_stats.entries_count,
         path_cache_details: vec![],
-        total_embeddings_loaded: 0,
-        max_embeddings_files: (cache_stats.max_memory / (1024 * 1024 * 1024)).max(1),
+        total_embeddings_loaded: cache_stats.total_embeddings_loaded,
+        max_embeddings_files: (cache_stats.max_memory / (512 * 1024 * 1024)).max(1),
         memory_usage_bytes: cache_stats.memory_usage,
         memory_limit_bytes: cache_stats.max_memory,
         memory_usage_percent: cache_stats.memory_usage_ratio() * 100.0,
@@ -195,8 +197,8 @@ pub async fn get_cache_stats() -> CacheStats {
         total_hits: cache_stats.hits,
         total_misses: cache_stats.misses,
         total_evictions: cache_stats.evictions,
-        last_eviction: cache_stats.last_eviction.map(DateTime::from),
-        uptime_seconds: now.timestamp() - now.timestamp(),
+        last_eviction: cache_stats.last_eviction,
+        uptime_seconds,
     }
 }
 
@@ -229,6 +231,9 @@ pub fn get_resource_usage() -> ResourceUsage {
 }
 
 pub async fn get_system_stats() -> EmbeddingSystemStats {
+    let cache_stats = get_cache_statistics().await;
+    update_peak_memory(cache_stats.memory_usage);
+    
     EmbeddingSystemStats {
         cache: get_cache_stats().await,
         performance: get_performance_metrics(),
@@ -238,16 +243,6 @@ pub async fn get_system_stats() -> EmbeddingSystemStats {
     }
 }
 
-fn get_system_info() -> SystemInfo {
-    SystemInfo {
-        cpu_cores: num_cpus::get(),
-        total_memory_bytes: get_total_memory(),
-        architecture: std::env::consts::ARCH.to_string(),
-        operating_system: std::env::consts::OS.to_string(),
-        rust_version: env!("CARGO_PKG_RUST_VERSION").to_string(),
-        build_timestamp: std::env::var("VERGEN_BUILD_TIMESTAMP").unwrap_or("unknown".to_string()),
-    }
-}
 
 #[cfg(target_os = "linux")]
 fn get_memory_info() -> (usize, usize) {
@@ -295,7 +290,7 @@ fn get_load_average() -> f64 {
 }
 
 fn get_total_memory() -> usize {
-    0
+    get_memory_info().0 + get_memory_info().1
 }
 
 pub async fn export_cache_stats(file_path: &str) -> Result<(), std::io::Error> {
@@ -372,5 +367,16 @@ pub async fn health_check() -> HealthStatus {
         status: if overall_healthy { "healthy" } else { "unhealthy" }.to_string(),
         components,
         checked_at: Utc::now(),
+    }
+}
+
+pub fn get_system_info() -> SystemInfo {
+    SystemInfo {
+        cpu_cores: num_cpus::get(),
+        total_memory_bytes: get_total_memory(),
+        architecture: std::env::consts::ARCH.to_string(),
+        operating_system: std::env::consts::OS.to_string(),
+        rust_version: env!("CARGO_PKG_RUST_VERSION").to_string(),
+        build_timestamp: std::env::var("VERGEN_BUILD_TIMESTAMP").unwrap_or("unknown".to_string()),
     }
 }
