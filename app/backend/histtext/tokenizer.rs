@@ -116,7 +116,7 @@ fn tokenize_latin_ultra_fast(text: &str, cloud: bool, max_tokens: usize) -> Vec<
                 .collect::<String>()
                 .to_lowercase();
                 
-            if cleaned.len() > 2 && 
+            if cleaned.len() > 0 && 
                cleaned.len() < 20 && 
                !ENGLISH_STOPWORDS.contains(&cleaned) {
                 tokens.push(cleaned);

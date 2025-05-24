@@ -51,6 +51,16 @@ struct Accumulator {
     ngram_counts_3: FxHashMap<String, u64>,
     total_text_length: usize,
     sentence_count: u64,
+    document_lengths: Vec<usize>,
+    word_lengths: FxHashMap<usize, u64>,
+    capitalized_words: u64,
+    numeric_values: Vec<String>,
+    languages_detected: FxHashMap<String, u64>,
+    punctuation_counts: FxHashMap<char, u64>,
+    paragraph_count: u64,
+    empty_documents: u64,
+    date_decades: FxHashMap<String, u64>,
+    field_completeness: FxHashMap<String, u64>,
 }
 
 impl Accumulator {
@@ -82,6 +92,27 @@ impl Accumulator {
 
         self.total_text_length += other.total_text_length;
         self.sentence_count += other.sentence_count;
+
+        self.document_lengths.extend(other.document_lengths);
+        for (len, count) in other.word_lengths {
+            *self.word_lengths.entry(len).or_insert(0) += count;
+        }
+        self.capitalized_words += other.capitalized_words;
+        self.numeric_values.extend(other.numeric_values);
+        for (lang, count) in other.languages_detected {
+            *self.languages_detected.entry(lang).or_insert(0) += count;
+        }
+        for (punct, count) in other.punctuation_counts {
+            *self.punctuation_counts.entry(punct).or_insert(0) += count;
+        }
+        self.paragraph_count += other.paragraph_count;
+        self.empty_documents += other.empty_documents;
+        for (decade, count) in other.date_decades {
+            *self.date_decades.entry(decade).or_insert(0) += count;
+        }
+        for (field, count) in other.field_completeness {
+            *self.field_completeness.entry(field).or_insert(0) += count;
+        }
     }
 }
 
@@ -131,44 +162,96 @@ fn process_documents_ultra_optimized(
             let mut acc = Accumulator::default();
             
             for doc in chunk {
-                // Extract date information
+                let mut doc_has_content = false;
+                
                 if let Some(Value::String(date_str)) = doc.get(main_date_field) {
                     if date_str.len() >= 4 {
                         if let Some(year) = date_str.get(0..4) {
                             *acc.date_counts.entry(year.to_string()).or_insert(0) += 1;
-                        }
-                    }
-                }
-
-                // Extract and process text content
-                let mut doc_text = String::new();
-                if let Some(obj) = doc.as_object() {
-                    for key in text_general_fields.iter().take(5) { // Increased from 3 to 5
-                        if let Some(Value::String(txt)) = obj.get(key) {
-                            if !txt.is_empty() && txt.len() < 50000 {
-                                doc_text.push_str(txt);
-                                doc_text.push(' ');
+                            
+                            if let Ok(year_num) = year.parse::<u32>() {
+                                let decade = (year_num / 10) * 10;
+                                *acc.date_decades.entry(format!("{}s", decade)).or_insert(0) += 1;
                             }
                         }
                     }
                 }
 
-                if !doc_text.is_empty() {
-                    acc.total_text_length += doc_text.len();
-                    acc.sentence_count += doc_text.matches('.').count() as u64;
-                    acc.aggregated_text.push_str(&doc_text);
+                if let Some(obj) = doc.as_object() {
+                    for field in relevant_fields {
+                        if let Some(value) = obj.get(field) {
+                            match value {
+                                Value::String(s) if !s.is_empty() => {
+                                    *acc.field_completeness.entry(field.clone()).or_insert(0) += 1;
+                                }
+                                Value::Array(arr) if !arr.is_empty() => {
+                                    *acc.field_completeness.entry(field.clone()).or_insert(0) += 1;
+                                }
+                                Value::Number(_) | Value::Bool(_) => {
+                                    *acc.field_completeness.entry(field.clone()).or_insert(0) += 1;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+
+                let mut doc_text = String::new();
+                if let Some(obj) = doc.as_object() {
+                    for key in text_general_fields.iter().take(5) {
+                        if let Some(Value::String(txt)) = obj.get(key) {
+                            if !txt.is_empty() && txt.len() < 50000 {
+                                doc_text.push_str(txt);
+                                doc_text.push(' ');
+                                doc_has_content = true;
+                            }
+                        }
+                    }
+                }
+
+                if doc_has_content {
+                    let doc_length = doc_text.len();
+                    acc.document_lengths.push(doc_length);
+                    acc.total_text_length += doc_length;
                     
-                    // Tokenize the text
-                    let tokens = tokenize_text_fast(&doc_text, true);
+                    let sentence_count = doc_text.matches('.').count() as u64;
+                    acc.sentence_count += sentence_count;
+                    acc.paragraph_count += doc_text.matches('\n').count() as u64 + 1;
                     
-                    // Count individual words
-                    for token in &tokens {
-                        if !stopwords.contains(token) && token.len() > 1 && token.len() < 20 {
-                            *acc.word_counts.entry(token.clone()).or_insert(0) += 1;
+                    for ch in doc_text.chars() {
+                        if ch.is_ascii_punctuation() {
+                            *acc.punctuation_counts.entry(ch).or_insert(0) += 1;
                         }
                     }
                     
-                    // Generate bigrams and trigrams for "All" level
+                    if doc_text.len() > 100 {
+                        let sample: String = doc_text.chars().take(200).collect();
+                        if let Some(info) = detect(&sample) {
+                            let lang_code = info.lang().code().to_string();
+                            *acc.languages_detected.entry(lang_code).or_insert(0) += 1;
+                        }
+                    }
+                    
+                    acc.aggregated_text.push_str(&doc_text);
+                    
+                    let tokens = tokenize_text_fast(&doc_text, true);
+                    
+                    for token in &tokens {
+                        if !stopwords.contains(token) && token.len() > 1 && token.len() < 20 {
+                            *acc.word_counts.entry(token.clone()).or_insert(0) += 1;
+                            
+                            *acc.word_lengths.entry(token.len()).or_insert(0) += 1;
+                            
+                            if token.chars().next().map_or(false, |c| c.is_uppercase()) {
+                                acc.capitalized_words += 1;
+                            }
+                            
+                            if token.chars().any(|c| c.is_numeric()) {
+                                acc.numeric_values.push(token.clone());
+                            }
+                        }
+                    }
+                    
                     if stats_level == "All" && tokens.len() > 1 {
                         for i in 0..tokens.len().saturating_sub(1) {
                             let bigram = format!("{} {}", tokens[i], tokens[i + 1]);
@@ -180,12 +263,13 @@ fn process_documents_ultra_optimized(
                             *acc.ngram_counts_3.entry(trigram).or_insert(0) += 1;
                         }
                     }
+                } else {
+                    acc.empty_documents += 1;
                 }
 
-                // Process metadata distributions
                 if stats_level != "None" {
                     if let Some(obj) = doc.as_object() {
-                        for (key, value) in obj.iter().take(15) { // Increased from 5 to 15
+                        for (key, value) in obj.iter().take(15) {
                             if !relevant_fields.contains(key) {
                                 continue;
                             }
@@ -198,11 +282,11 @@ fn process_documents_ultra_optimized(
                             let dist = acc.metadata_distributions.entry(key.clone()).or_default();
 
                             match value {
-                                Value::String(s) if !s.is_empty() && s.len() < 500 => { // Increased from 200
+                                Value::String(s) if !s.is_empty() && s.len() < 500 => {
                                     *dist.entry(s.clone()).or_insert(0) += 1;
                                 }
                                 Value::Array(arr) if !arr.is_empty() => {
-                                    for v in arr.iter().take(10) { // Increased from 3 to 10
+                                    for v in arr.iter().take(10) {
                                         if let Value::String(s) = v {
                                             if !s.is_empty() && s.len() < 200 {
                                                 *dist.entry(s.clone()).or_insert(0) += 1;
@@ -246,21 +330,92 @@ fn calculate_final_statistics_optimized(
         ngram_counts_3,
         total_text_length,
         sentence_count,
+        document_lengths,
+        word_lengths,
+        capitalized_words,
+        numeric_values,
+        languages_detected,
+        punctuation_counts,
+        paragraph_count,
+        empty_documents,
+        date_decades,
+        field_completeness,
     } = accumulator;
 
-    // Always add metadata distributions (not just for "All" level)
     for (field, dist) in metadata_distributions {
         if !dist.is_empty() {
             stats.insert(format!("distribution_over_{}", field), json!(dist));
         }
     }
 
-    // Always add date distribution if available
     if !date_counts.is_empty() {
         stats.insert("distribution_over_time".into(), json!(date_counts));
     }
 
-    // Add word-based statistics for both "Partial" and "All" levels
+    if !document_lengths.is_empty() {
+        let min_doc_length = *document_lengths.iter().min().unwrap_or(&0);
+        let max_doc_length = *document_lengths.iter().max().unwrap_or(&0);
+        let avg_doc_length = document_lengths.iter().sum::<usize>() as f64 / document_lengths.len() as f64;
+        
+        let mut sorted_lengths = document_lengths.clone();
+        sorted_lengths.sort_unstable();
+        let median_doc_length = if sorted_lengths.len() % 2 == 0 {
+            (sorted_lengths[sorted_lengths.len() / 2 - 1] + sorted_lengths[sorted_lengths.len() / 2]) as f64 / 2.0
+        } else {
+            sorted_lengths[sorted_lengths.len() / 2] as f64
+        };
+
+        stats.insert("document_length_stats".into(), json!({
+            "min": min_doc_length,
+            "max": max_doc_length,
+            "average": avg_doc_length,
+            "median": median_doc_length
+        }));
+    }
+
+    if !word_lengths.is_empty() {
+        let mut wl_vec: Vec<_> = word_lengths.into_iter().collect();
+        wl_vec.sort_by_key(|&(len, _)| len);
+        stats.insert("word_length_distribution".into(), json!(wl_vec));
+    }
+
+    if !languages_detected.is_empty() {
+        stats.insert("languages_detected".into(), json!(languages_detected));
+    }
+
+    if !date_decades.is_empty() {
+        stats.insert("distribution_over_decades".into(), json!(date_decades));
+    }
+
+    if !field_completeness.is_empty() {
+        let total_docs = total_results as f64;
+        let completeness_percentages: FxHashMap<String, f64> = field_completeness
+            .iter()
+            .map(|(field, count)| (field.clone(), (*count as f64 / total_docs) * 100.0))
+            .collect();
+        stats.insert("field_completeness_percentage".into(), json!(completeness_percentages));
+    }
+
+    if !punctuation_counts.is_empty() {
+        let mut punct_vec: Vec<_> = punctuation_counts.into_iter().collect();
+        punct_vec.sort_by(|a, b| b.1.cmp(&a.1));
+        stats.insert("most_common_punctuation".into(), json!(punct_vec.into_iter().take(10).collect::<Vec<_>>()));
+    }
+
+    stats.insert("corpus_overview".into(), json!({
+        "total_documents": total_results,
+        "documents_with_content": total_results - empty_documents,
+        "empty_documents": empty_documents,
+        "total_paragraphs": paragraph_count,
+        "total_sentences": sentence_count,
+        "total_words": word_counts.values().sum::<u64>(),
+        "unique_words": word_counts.len(),
+        "capitalized_words": capitalized_words,
+        "numeric_tokens": numeric_values.len(),
+        "average_paragraphs_per_doc": if total_results > 0 { paragraph_count as f64 / total_results as f64 } else { 0.0 },
+        "average_sentences_per_doc": if total_results > 0 { sentence_count as f64 / total_results as f64 } else { 0.0 }
+    }));
+
     if (stats_level == "All" || stats_level == "Partial") && !word_counts.is_empty() {
         let total_words: u64 = word_counts.values().sum();
         let unique_words = word_counts.len();
@@ -285,7 +440,6 @@ fn calculate_final_statistics_optimized(
         stats.insert("vocabulary_size".into(), json!(unique_words));
         stats.insert("average_sentence_length".into(), json!(avg_sentence_length));
 
-        // Most frequent words (for both Partial and All)
         let mut wvec: Vec<_> = word_counts.into_iter().collect();
         wvec.par_sort_unstable_by(|a, b| b.1.cmp(&a.1));
         let word_limit = if stats_level == "All" { 50 } else { 25 };
@@ -295,7 +449,6 @@ fn calculate_final_statistics_optimized(
         );
     }
 
-    // Add n-grams only for "All" level
     if stats_level == "All" {
         if !ngram_counts_2.is_empty() {
             let mut b2: Vec<_> = ngram_counts_2.into_iter().collect();
