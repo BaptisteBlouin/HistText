@@ -1,5 +1,3 @@
-// HistText.tsx
-
 import React, { useEffect, useState, useRef } from 'react';
 import axios, { AxiosHeaders } from 'axios';
 import './css/HistText.css';
@@ -7,17 +5,44 @@ import MetadataForm from './components/MetadataForm';
 import StatisticsDisplay from './components/StatisticsDisplay';
 import DataGrid from './components/DataGrid';
 import NERDisplay from './components/NERDisplay';
-import enp from '../images/logo.png';
-import useScrollPosition from './components/useScrollPosition';
 import { buildQueryString } from './components/buildQueryString';
-import SidebarMenu from './components/SidebarMenu';
 import { useAuth } from '../hooks/useAuth';
 import Cloud from './components/Cloud';
-
 import config from '../../config.json';
 import { STOP_WORDS_ARRAY } from './components/StopWords';
+import { 
+  Box, 
+  Container, 
+  Paper, 
+  Tabs, 
+  Tab, 
+  Typography, 
+  LinearProgress, 
+  Fade, 
+  Chip,
+  Card,
+  CardContent,
+  Grid,
+  IconButton,
+  Tooltip,
+  Alert,
+  Snackbar,
+  useTheme,
+  useMediaQuery
+} from '@mui/material';
+import { 
+  Search, 
+  Analytics, 
+  Cloud as CloudIcon, 
+  TableChart, 
+  AccountTree,
+  Storage,
+  Refresh,
+  Download,
+  Visibility,
+  VisibilityOff
+} from '@mui/icons-material';
 
-// Define the custom hook inside HistText.tsx
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
 
@@ -48,21 +73,30 @@ const useAuthAxios = () => {
 type StatsLevel = (typeof config.statsLevelOptions)[number];
 type DocLevel = (typeof config.docLevelOptions)[number];
 
-// Keep your tab constants
 const TABS = {
-  QUERY: 'QUERY',
-  PARTIAL_RESULTS: 'PARTIAL_RESULTS',
-  ALL_RESULTS: 'ALL_RESULTS',
-  STATS: 'STATS',
-  CLOUD: 'CLOUD',
-  NER: 'NER',
+  QUERY: 0,
+  PARTIAL_RESULTS: 1,
+  ALL_RESULTS: 2,
+  STATS: 3,
+  CLOUD: 4,
+  NER: 5,
 };
 
-const HistText: React.FC = () => {
-  // Use the custom axios instance with auth
-  const authAxios = useAuthAxios();
+const TabPanel = ({ children, value, index, ...other }) => (
+  <div role="tabpanel" hidden={value !== index} {...other}>
+    {value === index && (
+      <Fade in={true} timeout={300}>
+        <Box sx={{ p: 3 }}>{children}</Box>
+      </Fade>
+    )}
+  </div>
+);
 
-  // State variables
+const HistText: React.FC = () => {
+  const authAxios = useAuthAxios();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
   const [aliases, setAliases] = useState<string[]>([]);
   const [selectedAlias, setSelectedAlias] = useState<string>('');
   const [partialResults, setPartialResults] = useState<any[]>([]);
@@ -78,58 +112,43 @@ const HistText: React.FC = () => {
     max: string;
   } | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-
-  const [isFormVisible, setIsFormVisible] = useState<boolean>(false);
   const [getNER, setGetNER] = useState<boolean>(false);
   const [downloadOnly, setdownloadOnly] = useState<boolean>(false);
   const [nerData, setNERData] = useState<any>(null);
-
-  // Loading flags
   const [isStatsLoading, setIsStatsLoading] = useState<boolean>(false);
   const [isNERLoading, setIsNERLoading] = useState<boolean>(false);
   const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
   const [isCloudLoading, setIsCloudLoading] = useState<boolean>(false);
-
-  const [statsLevel, setStatsLevel] = useState<(typeof config.statsLevelOptions)[number]>(
-    config.statsLevelOptions[0],
-  );
-  const [docLevel, setDocLevel] = useState<(typeof config.docLevelOptions)[number]>(
-    config.docLevelOptions[0],
-  );
-
+  const [statsLevel, setStatsLevel] = useState<StatsLevel>(config.statsLevelOptions[0]);
+  const [docLevel, setDocLevel] = useState<DocLevel>(config.docLevelOptions[0]);
   const [statsReady, setStatsReady] = useState<boolean>(false);
   const [nerReady, setNerReady] = useState<boolean>(false);
   const [statsPath, setStatsPath] = useState<string | null>(null);
   const [nerPath, setNerPath] = useState<string | null>(null);
-
   const [progress, setProgress] = useState<number>(0);
-
-  // NEW: Tab states
-  const [activeTab, setActiveTab] = useState<string>(TABS.QUERY);
-
-  // Sidebar
-  const sidebarTop = 0;
-  const sidebarRef = useRef<HTMLDivElement>(null);
-
-  const { isAuthenticated } = useAuth();
-
-  // Solr databases states
+  const [activeTab, setActiveTab] = useState<number>(TABS.QUERY);
   const [solrDatabases, setSolrDatabases] = useState<any[]>([]);
   const [selectedSolrDatabase, setSelectedSolrDatabase] = useState<any>(null);
-
-  // NER visibility & toggle
   const [isNERVisible, setIsNERVisible] = useState<boolean>(false);
   const [viewNER, setViewNER] = useState<boolean>(false);
-
-  // Word cloud states
   const [wordFrequency, setWordFrequency] = useState<{ text: string; value: number }[]>([]);
   const [cloudProgress, setCloudProgress] = useState<number>(0);
+  const [notification, setNotification] = useState<{open: boolean, message: string, severity: 'success' | 'error' | 'warning' | 'info'}>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
+  const { isAuthenticated } = useAuth();
   const stopWords = React.useMemo(
     () => new Set(STOP_WORDS_ARRAY.map(word => word.toLowerCase().trim())),
     [],
   );
 
-  // Fetch Solr databases on component mount using authAxios
+  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    setNotification({ open: true, message, severity });
+  };
+
   useEffect(() => {
     authAxios
       .get('/api/solr_databases')
@@ -140,7 +159,10 @@ const HistText: React.FC = () => {
           console.error('Response data is not an array:', response.data);
         }
       })
-      .catch(error => console.error('Error fetching Solr databases:', error));
+      .catch(error => {
+        console.error('Error fetching Solr databases:', error);
+        showNotification('Failed to fetch Solr databases', 'error');
+      });
   }, [authAxios]);
 
   const handleSolrDatabaseChange = (database: any) => {
@@ -152,11 +174,12 @@ const HistText: React.FC = () => {
     setStats(null);
     setSelectedStat('');
     setNERData(null);
-    setIsFormVisible(false);
     setActiveTab(TABS.QUERY);
+    setPartialResults([]);
+    setAllResults([]);
+    setWordFrequency([]);
   };
 
-  // Fetch aliases when selectedSolrDatabase changes using authAxios
   useEffect(() => {
     if (selectedSolrDatabase) {
       authAxios
@@ -168,15 +191,15 @@ const HistText: React.FC = () => {
             console.error('Response data is not an array:', response.data);
           }
         })
-        .catch(error => console.error('Error fetching aliases:', error));
+        .catch(error => {
+          console.error('Error fetching aliases:', error);
+          showNotification('Failed to fetch collections', 'error');
+        });
     } else {
       setAliases([]);
     }
   }, [selectedSolrDatabase, authAxios]);
 
-  // ----------------------------------------------------------------------
-  //  OPTIMIZED WORD CLOUD COMPUTATION WITH BATCH TOKENIZATION
-  // ----------------------------------------------------------------------
   useEffect(() => {
     if (!allResults || allResults.length === 0) {
       setWordFrequency([]);
@@ -189,7 +212,6 @@ const HistText: React.FC = () => {
       setCloudProgress(0);
 
       try {
-        // 1) Find the column with the most text content
         const sampleSize = Math.min(allResults.length, 10);
         const columnContentLengths = Object.keys(allResults[0]).map(key => ({
           key,
@@ -204,9 +226,8 @@ const HistText: React.FC = () => {
 
         console.log(`Using column '${contentColumn}' for word cloud analysis`);
 
-        // 2) Extract all texts, filter out empty ones, and limit length
-        const maxTextLength = 5000; // Limit text length to prevent memory issues
-        const maxTexts = Math.min(allResults.length, 2000); // Limit number of documents
+        const maxTextLength = 5000;
+        const maxTexts = Math.min(allResults.length, 2000);
         
         const texts = allResults
           .slice(0, maxTexts)
@@ -215,7 +236,7 @@ const HistText: React.FC = () => {
             if (!text) return '';
             return text.length > maxTextLength ? text.substring(0, maxTextLength) : text;
           })
-          .filter(text => text.length > 10); // Only non-empty texts
+          .filter(text => text.length > 10);
 
         if (texts.length === 0) {
           console.log('No valid texts found for word cloud');
@@ -227,8 +248,7 @@ const HistText: React.FC = () => {
         console.log(`Processing ${texts.length} texts for word cloud`);
         setCloudProgress(25);
 
-        // 3) Process texts in batches to avoid memory issues and API limits
-        const batchSize = 100; // Process 100 texts at a time
+        const batchSize = 100;
         const wordMap: Record<string, number> = {};
         
         for (let i = 0; i < texts.length; i += batchSize) {
@@ -238,11 +258,10 @@ const HistText: React.FC = () => {
           try {
             const { data } = await authAxios.post('/api/tokenize/batch', {
               texts: batch,
-              cloud: true, // Backend handles stop-word filtering
-              max_tokens_per_text: 200, // Limit tokens per text
+              cloud: true,
+              max_tokens_per_text: 200,
             });
 
-            // Process the batch results
             data.results.forEach((result: any) => {
               result.words.forEach((word: string) => {
                 const normalizedWord = word.toLowerCase().trim();
@@ -252,24 +271,21 @@ const HistText: React.FC = () => {
               });
             });
 
-            // Update progress
             const progressPercent = 25 + ((i + batch.length) / texts.length) * 65;
             setCloudProgress(Math.min(progressPercent, 90));
 
           } catch (err) {
             console.error(`Error processing batch ${Math.floor(i / batchSize) + 1}:`, err);
-            // Continue with next batch even if this one fails
           }
         }
 
         setCloudProgress(95);
 
-        // 4) Build and sort frequency array
         const wordFrequencyData = Object.entries(wordMap)
           .map(([text, value]) => ({ text, value }))
-          .filter(item => item.value > 1) // Only include words that appear more than once
+          .filter(item => item.value > 1)
           .sort((a, b) => b.value - a.value)
-          .slice(0, 150); // Top 150 words
+          .slice(0, 150);
 
         console.log(`Generated word cloud with ${wordFrequencyData.length} unique words`);
         setWordFrequency(wordFrequencyData);
@@ -278,9 +294,10 @@ const HistText: React.FC = () => {
       } catch (error) {
         console.error('Error in word cloud computation:', error);
         setWordFrequency([]);
+        showNotification('Failed to generate word cloud', 'error');
       } finally {
         setIsCloudLoading(false);
-        setTimeout(() => setCloudProgress(0), 1000); // Reset progress after a delay
+        setTimeout(() => setCloudProgress(0), 1000);
       }
     };
 
@@ -295,12 +312,9 @@ const HistText: React.FC = () => {
     setStats(null);
     setSelectedStat('');
     setNERData(null);
-    setIsFormVisible(true);
     setActiveTab(TABS.QUERY);
-
     setIsNERVisible(false);
     setViewNER(false);
-
     setPartialResults([]);
     setAllResults([]);
     setWordFrequency([]);
@@ -309,7 +323,6 @@ const HistText: React.FC = () => {
       try {
         const solrDatabaseId = selectedSolrDatabase.id;
 
-        // Fetch metadata using authAxios
         const metadataResponse = await authAxios.get(
           `/api/solr/collection_metadata?collection=${encodeURIComponent(alias)}&solr_database_id=${solrDatabaseId}`,
         );
@@ -347,8 +360,10 @@ const HistText: React.FC = () => {
           console.error('Unexpected response structure:', metadataResponse.data);
           setMetadata([]);
         }
+        showNotification(`Collection "${alias}" loaded successfully`, 'success');
       } catch (error) {
         console.error('Error fetching collection metadata or date range:', error);
+        showNotification('Failed to load collection metadata', 'error');
       } finally {
         setLoading(false);
       }
@@ -357,7 +372,6 @@ const HistText: React.FC = () => {
     }
   };
 
-  // Main fetch method using authAxios for all API calls
   const fetchAllDocuments = async (
     onlyComputeStats: boolean,
     wantNER: boolean,
@@ -384,6 +398,7 @@ const HistText: React.FC = () => {
       if (!queryString) {
         console.error('Query string is empty.');
         setLoading(false);
+        showNotification('Query string is empty', 'warning');
         return;
       }
 
@@ -394,7 +409,6 @@ const HistText: React.FC = () => {
       setProgress(0);
       const solrDatabaseId = selectedSolrDatabase.id;
 
-      // (1) Fetch First Batch
       const is_first = true;
       const firstResponse = await authAxios.get(
         `/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(
@@ -419,7 +433,6 @@ const HistText: React.FC = () => {
       setStatsPath(firstSolrResponse.stats_path);
       setNerPath(firstSolrResponse.ner_path);
 
-      // (2) If more docs remain, fetch them all
       if (totalResults > batchSize) {
         const allResponse = await authAxios.get(
           `/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(
@@ -443,6 +456,7 @@ const HistText: React.FC = () => {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            showNotification('Download started', 'success');
           }
         }
       } else {
@@ -461,11 +475,11 @@ const HistText: React.FC = () => {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            showNotification('Download started', 'success');
           }
         }
       }
 
-      // (3) Fetch Stats (parallel)
       authAxios
         .get(
           `/api/solr/stats?path=${encodeURIComponent(firstSolrResponse.stats_path)}&solr_database_id=${solrDatabaseId}`,
@@ -478,9 +492,9 @@ const HistText: React.FC = () => {
         .catch(error => {
           console.error('Error fetching stats:', error);
           setIsStatsLoading(false);
+          showNotification('Failed to load statistics', 'error');
         });
 
-      // (4) Fetch NER data (parallel if requested)
       if (wantNER) {
         authAxios
           .get(
@@ -495,15 +509,19 @@ const HistText: React.FC = () => {
           .catch(error => {
             console.error('Error fetching NER:', error);
             setIsNERLoading(false);
+            showNotification('Failed to load NER data', 'error');
           });
       }
+
+      showNotification(`Found ${totalResults} documents`, 'success');
+
     } catch (error) {
       console.error('Error querying alias:', error);
       setLoading(false);
+      showNotification('Query failed', 'error');
     }
   };
 
-  // Handle form submission
   const handleQuery = (
     e: React.FormEvent,
     onlyComputeStats: boolean,
@@ -522,130 +540,277 @@ const HistText: React.FC = () => {
     );
   };
 
-  return (
-    <div className="container">
-      {/* Sidebar */}
-      <div className="sidebar">
-        <SidebarMenu
-          aliases={aliases}
-          selectedAlias={selectedAlias}
-          onAliasChange={handleAliasChange}
-          isStatsLoading={isStatsLoading}
-          isNERLoading={isNERLoading}
-          isDataLoading={isDataLoading}
-          isCloudLoading={isCloudLoading}
-          solrDatabases={solrDatabases}
-          selectedSolrDatabase={selectedSolrDatabase}
-          onSolrDatabaseChange={handleSolrDatabaseChange}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
-      </div>
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
 
-      {/* Main Content */}
-      <div className="main-content">
-        {loading && (
-          <div className="progress-bar-container">
-            <div className="progress-bar">
-              <div className="progress" style={{ width: `${progress}%` }} />
-            </div>
-            <div className="loading-spinner">
-              <img src={enp} className="App-logo" alt="react-logo" />
-            </div>
-          </div>
-        )}
+  const getTabIcon = (tabIndex: number) => {
+    const icons = [
+      <Search />,
+      <TableChart />,
+      <TableChart />,
+      <Analytics />,
+      <CloudIcon />,
+      <AccountTree />
+    ];
+    return icons[tabIndex];
+  };
 
-        {activeTab === TABS.QUERY && isFormVisible && (
-          <div className="metadata-form-container" style={{ paddingTop: '3vh' }}>
-            <MetadataForm
-              metadata={metadata}
-              formData={formData}
-              setFormData={setFormData}
-              dateRange={dateRange}
-              handleQuery={handleQuery}
-              getNER={getNER}
-              setGetNER={setGetNER}
-              downloadOnly={downloadOnly}
-              setdownloadOnly={setdownloadOnly}
-              statsLevel={statsLevel}
-              setStatsLevel={setStatsLevel}
-              docLevel={docLevel}
-              setDocLevel={setDocLevel}
-              solrDatabaseId={selectedSolrDatabase?.id || null}
-              selectedAlias={selectedAlias}
-            />
-          </div>
-        )}
+  const getTabLabel = (tabIndex: number) => {
+    const labels = ['Query', 'Partial Results', 'All Results', 'Statistics', 'Word Cloud', 'NER'];
+    return labels[tabIndex];
+  };
 
-        {activeTab === TABS.PARTIAL_RESULTS && (
-          <div id="data-grid" style={{ position: 'relative' }}>
-            <DataGrid
-              results={partialResults}
-              formData={formData}
-              nerData={nerData}
-              viewNER={viewNER}
-              selectedAlias={selectedAlias}
-              selectedSolrDatabase={selectedSolrDatabase}
-              authAxios={authAxios}
-            />
-            {isNERVisible && (
-              <button
-                onClick={() => setViewNER(!viewNER)}
-                className="btn btn-primary base-button"
+  const renderDatabaseSelector = () => (
+    <Card sx={{ mb: 2, overflow: 'visible' }}>
+      <CardContent>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle2" gutterBottom>
+              <Storage sx={{ mr: 1, verticalAlign: 'middle' }} />
+              Solr Database
+            </Typography>
+            <Box sx={{ minWidth: 200 }}>
+              <select
+                value={selectedSolrDatabase?.id || ''}
+                onChange={(e) => {
+                  const db = solrDatabases.find(db => db.id === Number(e.target.value));
+                  handleSolrDatabaseChange(db || null);
+                }}
                 style={{
-                  position: 'absolute',
-                  bottom: '10px',
-                  right: '20px',
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: 'white'
                 }}
               >
-                {viewNER ? 'Hide NER' : 'View NER'}
-              </button>
-            )}
-          </div>
+                <option value="">Select a database...</option>
+                {solrDatabases.map(db => (
+                  <option key={db.id} value={db.id}>
+                    {db.name}
+                  </option>
+                ))}
+              </select>
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle2" gutterBottom>
+              Collection
+            </Typography>
+            <Box sx={{ minWidth: 200 }}>
+              <select
+                value={selectedAlias}
+                onChange={(e) => handleAliasChange(e.target.value)}
+                disabled={!selectedSolrDatabase}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: selectedSolrDatabase ? 'white' : '#f5f5f5'
+                }}
+              >
+                <option value="">Select a collection...</option>
+                {aliases.map(alias => (
+                  <option key={alias} value={alias}>
+                    {alias}
+                  </option>
+                ))}
+              </select>
+            </Box>
+          </Grid>
+        </Grid>
+        
+        {selectedAlias && (
+          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip 
+              label={`Database: ${selectedSolrDatabase?.name}`} 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+            />
+            <Chip 
+              label={`Collection: ${selectedAlias}`} 
+              size="small" 
+              color="secondary" 
+              variant="outlined"
+            />
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  if (!isAuthenticated) {
+    return (
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+        <Paper sx={{ p: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Authentication Required
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Please log in to access HistText features.
+          </Typography>
+        </Paper>
+      </Container>
+    );
+  }
+
+  return (
+    <Box sx={{ width: '100%', bgcolor: 'background.default', minHeight: '100vh' }}>
+      <Container maxWidth="xl" sx={{ py: 3 }}>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+            HistText Analysis
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            Advanced text analysis and document search platform
+          </Typography>
+        </Box>
+
+        {renderDatabaseSelector()}
+
+        {loading && (
+          <Card sx={{ mb: 2 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="body2" sx={{ mr: 2 }}>
+                  Processing query...
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {progress.toFixed(0)}%
+                </Typography>
+              </Box>
+              <LinearProgress 
+                variant="determinate" 
+                value={progress} 
+                sx={{ height: 8, borderRadius: 4 }}
+              />
+            </CardContent>
+          </Card>
         )}
 
-        {activeTab === TABS.ALL_RESULTS && (
-          <div style={{ position: 'relative' }}>
-            {allResults && allResults.length > 0 ? (
+        <Paper sx={{ width: '100%', bgcolor: 'background.paper' }}>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs 
+              value={activeTab} 
+              onChange={handleTabChange}
+              variant={isMobile ? "scrollable" : "fullWidth"}
+              scrollButtons={isMobile ? "auto" : false}
+              sx={{
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  minHeight: 64,
+                },
+              }}
+            >
+              {Array.from({ length: 6 }, (_, index) => (
+                <Tab
+                  key={index}
+                  icon={getTabIcon(index)}
+                  label={getTabLabel(index)}
+                  iconPosition="start"
+                  sx={{
+                    opacity: index === TABS.PARTIAL_RESULTS && partialResults.length === 0 ? 0.5 :
+                           index === TABS.ALL_RESULTS && allResults.length === 0 ? 0.5 :
+                           index === TABS.STATS && !statsReady ? 0.5 :
+                           index === TABS.CLOUD && wordFrequency.length === 0 ? 0.5 :
+                           index === TABS.NER && !nerReady ? 0.5 : 1,
+                  }}
+                  disabled={
+                    (index === TABS.PARTIAL_RESULTS && partialResults.length === 0) ||
+                    (index === TABS.ALL_RESULTS && allResults.length === 0) ||
+                    (index === TABS.STATS && !statsReady) ||
+                    (index === TABS.CLOUD && wordFrequency.length === 0) ||
+                    (index === TABS.NER && !nerReady)
+                  }
+                />
+              ))}
+            </Tabs>
+          </Box>
+
+          <TabPanel value={activeTab} index={TABS.QUERY}>
+            {selectedAlias && metadata.length > 0 && (
+              <MetadataForm
+                metadata={metadata}
+                formData={formData}
+                setFormData={setFormData}
+                dateRange={dateRange}
+                handleQuery={handleQuery}
+                getNER={getNER}
+                setGetNER={setGetNER}
+                downloadOnly={downloadOnly}
+                setdownloadOnly={setdownloadOnly}
+                statsLevel={statsLevel}
+                setStatsLevel={setStatsLevel}
+                docLevel={docLevel}
+                setDocLevel={setDocLevel}
+                solrDatabaseId={selectedSolrDatabase?.id || null}
+                selectedAlias={selectedAlias}
+              />
+            )}
+            {!selectedAlias && (
+              <Box sx={{ textAlign: 'center', py: 8 }}>
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  Select a database and collection to get started
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Choose from the available Solr databases and collections above
+                </Typography>
+              </Box>
+            )}
+          </TabPanel>
+
+          <TabPanel value={activeTab} index={TABS.PARTIAL_RESULTS}>
+            <Box sx={{ position: 'relative' }}>
               <DataGrid
-                results={allResults}
+                results={partialResults}
                 formData={formData}
                 nerData={nerData}
-                viewNER={false}
+                viewNER={viewNER}
                 selectedAlias={selectedAlias}
                 selectedSolrDatabase={selectedSolrDatabase}
                 authAxios={authAxios}
               />
-            ) : (
-              <p>No full results found.</p>
-            )}
-          </div>
-        )}
+              {isNERVisible && (
+                <Tooltip title={viewNER ? 'Hide NER highlighting' : 'Show NER highlighting'}>
+                  <IconButton
+                    onClick={() => setViewNER(!viewNER)}
+                    sx={{
+                      position: 'absolute',
+                      bottom: 16,
+                      right: 16,
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      '&:hover': { bgcolor: 'primary.dark' },
+                    }}
+                  >
+                    {viewNER ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          </TabPanel>
 
-        {activeTab === TABS.CLOUD && (
-          <div>
-            {isCloudLoading ? (
-              <div>
-                <p>Loading word cloud...</p>
-                {cloudProgress > 0 && (
-                  <div className="progress-bar-container">
-                    <div className="progress-bar">
-                      <div className="progress" style={{ width: `${cloudProgress}%` }} />
-                    </div>
-                    <div className="progress-text">{Math.round(cloudProgress)}% complete</div>
-                  </div>
-                )}
-              </div>
-            ) : wordFrequency && wordFrequency.length > 0 ? (
-              <Cloud wordFrequency={wordFrequency} />
-            ) : (
-              <p>No data available to generate the word cloud.</p>
-            )}
-          </div>
-        )}
+          <TabPanel value={activeTab} index={TABS.ALL_RESULTS}>
+            <DataGrid
+              results={allResults}
+              formData={formData}
+              nerData={nerData}
+              viewNER={false}
+              selectedAlias={selectedAlias}
+              selectedSolrDatabase={selectedSolrDatabase}
+              authAxios={authAxios}
+            />
+          </TabPanel>
 
-        {activeTab === TABS.STATS && (
-          <div>
+          <TabPanel value={activeTab} index={TABS.STATS}>
             {stats ? (
               <StatisticsDisplay
                 stats={stats}
@@ -653,29 +818,83 @@ const HistText: React.FC = () => {
                 onStatChange={setSelectedStat}
               />
             ) : (
-              <p>No statistics computed yet or still loading...</p>
+              <Box sx={{ textAlign: 'center', py: 8 }}>
+                <Typography variant="h6" color="text.secondary">
+                  {isStatsLoading ? 'Loading statistics...' : 'No statistics available'}
+                </Typography>
+              </Box>
             )}
-          </div>
-        )}
+          </TabPanel>
 
-        {activeTab === TABS.NER && (
-          <div>
-            {nerData && Object.keys(nerData).length > 0 ? (
-              <NERDisplay
-                nerData={nerData}
-                authAxios={authAxios}
-                selectedAlias={selectedAlias}
-                selectedSolrDatabase={selectedSolrDatabase}
-                viewNER={viewNER}
-              />
-            ) : (
-              <p>No NER data available or still loading...</p>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+          <TabPanel value={activeTab} index={TABS.CLOUD}>
+            {isCloudLoading ? ( 
+              <Box sx={{ textAlign: 'center', py: 8 }}>
+               <Typography variant="h6" gutterBottom>
+                 Generating Word Cloud...
+               </Typography>
+               {cloudProgress > 0 && (
+                 <Box sx={{ mt: 2, mx: 'auto', maxWidth: 400 }}>
+                   <LinearProgress 
+                     variant="determinate" 
+                     value={cloudProgress} 
+                     sx={{ height: 8, borderRadius: 4 }}
+                   />
+                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                     {Math.round(cloudProgress)}% complete
+                   </Typography>
+                 </Box>
+               )}
+             </Box>
+           ) : wordFrequency && wordFrequency.length > 0 ? (
+             <Cloud wordFrequency={wordFrequency} />
+           ) : (
+             <Box sx={{ textAlign: 'center', py: 8 }}>
+               <CloudIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+               <Typography variant="h6" color="text.secondary">
+                 No data available for word cloud
+               </Typography>
+             </Box>
+           )}
+         </TabPanel>
+
+         <TabPanel value={activeTab} index={TABS.NER}>
+           {nerData && Object.keys(nerData).length > 0 ? (
+             <NERDisplay
+               nerData={nerData}
+               authAxios={authAxios}
+               selectedAlias={selectedAlias}
+               selectedSolrDatabase={selectedSolrDatabase}
+               viewNER={viewNER}
+             />
+           ) : (
+             <Box sx={{ textAlign: 'center', py: 8 }}>
+               <AccountTree sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+               <Typography variant="h6" color="text.secondary">
+                 {isNERLoading ? 'Processing NER data...' : 'No NER data available'}
+               </Typography>
+             </Box>
+           )}
+         </TabPanel>
+       </Paper>
+     </Container>
+
+     <Snackbar
+       open={notification.open}
+       autoHideDuration={6000}
+       onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+     >
+       <Alert 
+         onClose={() => setNotification(prev => ({ ...prev, open: false }))} 
+         severity={notification.severity}
+         variant="filled"
+         sx={{ width: '100%' }}
+       >
+         {notification.message}
+       </Alert>
+     </Snackbar>
+   </Box>
+ );
 };
 
 export default HistText;
