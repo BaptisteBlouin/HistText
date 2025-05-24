@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import axios, { AxiosHeaders } from 'axios';
 import './css/HistText.css';
 import MetadataForm from './components/MetadataForm';
@@ -28,19 +28,50 @@ import {
   Alert,
   Snackbar,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Backdrop,
+  CircularProgress,
+  Fab,
+  SpeedDial,
+  SpeedDialIcon,
+  SpeedDialAction,
+  Badge,
+  Avatar,
+  Stack,
+  Divider,
+  Button
 } from '@mui/material';
 import { 
   Search, 
   Analytics, 
   Cloud as CloudIcon, 
-  TableChart, 
+  TableChart,
   AccountTree,
   Storage,
   Refresh,
   Download,
   Visibility,
-  VisibilityOff
+  VisibilityOff,
+  TrendingUp,
+  InsertChart,
+  DataUsage,
+  Speed,
+  Timeline,
+  Assessment,
+  FilterList,
+  TableRows,
+  ShowChart,
+  BarChart,
+  PieChart,
+  Close,
+  CheckCircle,
+  Error,
+  Warning,
+  Info,
+  Fullscreen,
+  FullscreenExit,
+  Settings,
+  Share
 } from '@mui/icons-material';
 
 const useAuthAxios = () => {
@@ -83,10 +114,10 @@ const TABS = {
 };
 
 const TabPanel = ({ children, value, index, ...other }) => (
-  <div role="tabpanel" hidden={value !== index} {...other}>
+  <div role="tabpanel" hidden={value !== index} {...other} style={{ height: value === index ? 'auto' : 0 }}>
     {value === index && (
       <Fade in={true} timeout={300}>
-        <Box sx={{ p: 3 }}>{children}</Box>
+        <Box sx={{ height: '100%' }}>{children}</Box>
       </Fade>
     )}
   </div>
@@ -96,6 +127,7 @@ const HistText: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
   
   const [aliases, setAliases] = useState<string[]>([]);
   const [selectedAlias, setSelectedAlias] = useState<string>('');
@@ -138,15 +170,93 @@ const HistText: React.FC = () => {
     message: '',
     severity: 'info'
   });
+  const [fullscreen, setFullscreen] = useState<boolean>(false);
+  const [quickActions, setQuickActions] = useState<boolean>(false);
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
 
   const { isAuthenticated } = useAuth();
   const stopWords = React.useMemo(
     () => new Set(STOP_WORDS_ARRAY.map(word => word.toLowerCase().trim())),
     [],
   );
-
+  const totalEntities = useMemo(() => 
+    nerData
+      ? Object.values(nerData).flatMap(d => d.t || []).length
+      : 0
+  , [nerData])
   const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'info') => {
     setNotification({ open: true, message, severity });
+  };
+
+  const getTabInfo = (tabIndex: number) => {
+    const tabsInfo = {
+      [TABS.QUERY]: { 
+        icon: <Search />, 
+        label: 'Query Builder', 
+        color: 'primary',
+        description: 'Build and execute search queries'
+      },
+      [TABS.PARTIAL_RESULTS]: { 
+        icon: <TableRows />, 
+        label: isMobile ? 'Partial' : 'Partial Results', 
+        color: 'secondary',
+        count: partialResults.length,
+        description: 'Quick preview of results'
+      },
+      [TABS.ALL_RESULTS]: { 
+        icon: <TableChart />, 
+        label: isMobile ? 'All' : 'All Results', 
+        color: 'success',
+        count: allResults.length,
+        description: 'Complete dataset'
+      },
+      [TABS.STATS]: { 
+        icon: <Analytics />, 
+        label: 'Analytics', 
+        color: 'info',
+        description: 'Statistical analysis'
+      },
+      [TABS.CLOUD]: { 
+        icon: <CloudIcon />, 
+        label: isMobile ? 'Cloud' : 'Word Cloud', 
+        color: 'warning',
+        description: 'Visual word frequency'
+      },
+      [TABS.NER]: { 
+        icon: <AccountTree />, 
+        label: 'Entities', 
+        color: 'error',
+        description: 'Named entity recognition'
+      }
+    };
+    return tabsInfo[tabIndex];
+  };
+
+  const quickActionItems = [
+    { icon: <Download />, name: 'Export Data', action: () => exportAllData() },
+    { icon: <Refresh />, name: 'Refresh', action: () => refreshData() },
+    { icon: <Share />, name: 'Share Query', action: () => shareQuery() },
+    { icon: <Settings />, name: 'Settings', action: () => openSettings() }
+  ];
+
+  const exportAllData = () => {
+    showNotification('Export functionality coming soon', 'info');
+  };
+
+  const refreshData = () => {
+    if (selectedAlias) {
+      handleAliasChange(selectedAlias);
+    }
+  };
+
+  const shareQuery = () => {
+    const queryString = buildQueryString(formData, dateRange);
+    navigator.clipboard.writeText(window.location.href + '?query=' + encodeURIComponent(queryString));
+    showNotification('Query URL copied to clipboard', 'success');
+  };
+
+  const openSettings = () => {
+    showNotification('Settings panel coming soon', 'info');
   };
 
   useEffect(() => {
@@ -178,6 +288,8 @@ const HistText: React.FC = () => {
     setPartialResults([]);
     setAllResults([]);
     setWordFrequency([]);
+    setStatsReady(false);
+    setNerReady(false);
   };
 
   useEffect(() => {
@@ -207,7 +319,6 @@ const HistText: React.FC = () => {
     }
 
     const computeCloudOptimized = async () => {
-      console.log('Starting optimized cloud computation via batch tokenization…');
       setIsCloudLoading(true);
       setCloudProgress(0);
 
@@ -224,8 +335,6 @@ const HistText: React.FC = () => {
           current.length > prev.length ? current : prev,
         ).key;
 
-        console.log(`Using column '${contentColumn}' for word cloud analysis`);
-
         const maxTextLength = 5000;
         const maxTexts = Math.min(allResults.length, 2000);
         
@@ -239,13 +348,11 @@ const HistText: React.FC = () => {
           .filter(text => text.length > 10);
 
         if (texts.length === 0) {
-          console.log('No valid texts found for word cloud');
           setWordFrequency([]);
           setIsCloudLoading(false);
           return;
         }
 
-        console.log(`Processing ${texts.length} texts for word cloud`);
         setCloudProgress(25);
 
         const batchSize = 100;
@@ -253,13 +360,14 @@ const HistText: React.FC = () => {
         
         for (let i = 0; i < texts.length; i += batchSize) {
           const batch = texts.slice(i, i + batchSize);
-          console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(texts.length / batchSize)}`);
           
           try {
             const { data } = await authAxios.post('/api/tokenize/batch', {
               texts: batch,
               cloud: true,
               max_tokens_per_text: 200,
+            }, {
+              
             });
 
             data.results.forEach((result: any) => {
@@ -287,7 +395,6 @@ const HistText: React.FC = () => {
           .sort((a, b) => b.value - a.value)
           .slice(0, 150);
 
-        console.log(`Generated word cloud with ${wordFrequencyData.length} unique words`);
         setWordFrequency(wordFrequencyData);
         setCloudProgress(100);
 
@@ -318,6 +425,8 @@ const HistText: React.FC = () => {
     setPartialResults([]);
     setAllResults([]);
     setWordFrequency([]);
+    setStatsReady(false);
+    setNerReady(false);
 
     if (alias && selectedSolrDatabase) {
       try {
@@ -386,7 +495,6 @@ const HistText: React.FC = () => {
     setStatsReady(false);
     setNerReady(false);
     setIsDataLoading(true);
-    setNerReady(false);
 
     if (wantNER) {
       setIsNERLoading(true);
@@ -442,7 +550,7 @@ const HistText: React.FC = () => {
         const solrResponseAll = allResponse.data.solr_response;
         const docsAll = solrResponseAll.response.docs;
         setAllResults([...docsAll]);
-        setProgress((start / totalResults) * 100);
+        setProgress(100);
         setIsDataLoading(false);
 
         if (wantDownload) {
@@ -544,30 +652,17 @@ const HistText: React.FC = () => {
     setActiveTab(newValue);
   };
 
-  const getTabIcon = (tabIndex: number) => {
-    const icons = [
-      <Search />,
-      <TableChart />,
-      <TableChart />,
-      <Analytics />,
-      <CloudIcon />,
-      <AccountTree />
-    ];
-    return icons[tabIndex];
-  };
-
-  const getTabLabel = (tabIndex: number) => {
-    const labels = ['Query', 'Partial Results', 'All Results', 'Statistics', 'Word Cloud', 'NER'];
-    return labels[tabIndex];
-  };
-
   const renderDatabaseSelector = () => (
-    <Card sx={{ mb: 2, overflow: 'visible' }}>
-      <CardContent>
-        <Grid container spacing={2} alignItems="center">
+    <Card sx={{ mb: 3, overflow: 'visible', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <CardContent sx={{ color: 'white' }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
+          <Storage />
+          Data Source Configuration
+        </Typography>
+        
+        <Grid container spacing={3} alignItems="center">
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" gutterBottom>
-              <Storage sx={{ mr: 1, verticalAlign: 'middle' }} />
+            <Typography variant="subtitle2" gutterBottom sx={{ opacity: 0.9 }}>
               Solr Database
             </Typography>
             <Box sx={{ minWidth: 200 }}>
@@ -579,11 +674,14 @@ const HistText: React.FC = () => {
                 }}
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
+                  padding: '12px 16px',
+                  border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
-                  backgroundColor: 'white'
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
                 }}
               >
                 <option value="">Select a database...</option>
@@ -597,7 +695,7 @@ const HistText: React.FC = () => {
           </Grid>
           
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" gutterBottom sx={{ opacity: 0.9 }}>
               Collection
             </Typography>
             <Box sx={{ minWidth: 200 }}>
@@ -607,11 +705,14 @@ const HistText: React.FC = () => {
                 disabled={!selectedSolrDatabase}
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
+                  padding: '12px 16px',
+                  border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
-                  backgroundColor: selectedSolrDatabase ? 'white' : '#f5f5f5'
+                  backgroundColor: selectedSolrDatabase ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)',
+                  color: selectedSolrDatabase ? '#333' : '#666',
+                  cursor: selectedSolrDatabase ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s ease'
                 }}
               >
                 <option value="">Select a collection...</option>
@@ -626,257 +727,483 @@ const HistText: React.FC = () => {
         </Grid>
         
         {selectedAlias && (
-          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Chip 
               label={`Database: ${selectedSolrDatabase?.name}`} 
               size="small" 
-              color="primary" 
-              variant="outlined"
+              sx={{ 
+                bgcolor: 'rgba(255, 255, 255, 0.2)', 
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.3)'
+              }}
             />
             <Chip 
               label={`Collection: ${selectedAlias}`} 
               size="small" 
-              color="secondary" 
-              variant="outlined"
+              sx={{ 
+                bgcolor: 'rgba(255, 255, 255, 0.2)', 
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.3)'
+              }}
             />
+            {allResults.length > 0 && (
+              <Chip 
+                label={`${allResults.length} documents`} 
+                size="small" 
+                sx={{ 
+                  bgcolor: 'rgba(76, 175, 80, 0.2)', 
+                  color: 'white',
+                  border: '1px solid rgba(76, 175, 80, 0.3)'
+                }}
+              />
+            )}
+            {statsReady && stats?.corpus_overview?.total_documents != null && (
+              <Chip
+                label={`Maximum Docs: ${stats.corpus_overview.total_documents}`}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(25, 118, 210, 0.2)',
+                  color: 'white',
+                  border: '1px solid rgba(25, 118, 210, 0.3)'
+                }}
+              />
+            )}
+            {totalEntities > 0 && (
+              <Chip
+                label={`Entities: ${totalEntities}`}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(123, 31, 162, 0.2)',
+                  color: 'white',
+                  border: '1px solid rgba(123, 31, 162, 0.3)'
+                }}
+              />
+            )}
           </Box>
         )}
       </CardContent>
     </Card>
   );
 
-  if (!isAuthenticated) {
-    return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            Authentication Required
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Please log in to access HistText features.
-          </Typography>
-        </Paper>
-      </Container>
-    );
-  }
-
-  return (
-    <Box sx={{ width: '100%', bgcolor: 'background.default', minHeight: '100vh' }}>
-      <Container maxWidth="xl" sx={{ py: 3 }}>
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-            HistText Analysis
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Advanced text analysis and document search platform
-          </Typography>
-        </Box>
-
-        {renderDatabaseSelector()}
-
-        {loading && (
-          <Card sx={{ mb: 2 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Typography variant="body2" sx={{ mr: 2 }}>
-                  Processing query...
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {progress.toFixed(0)}%
-                </Typography>
-              </Box>
-              <LinearProgress 
-                variant="determinate" 
-                value={progress} 
-                sx={{ height: 8, borderRadius: 4 }}
-              />
-            </CardContent>
-          </Card>
+  const renderLoadingOverlay = () => (
+    <Backdrop open={loading} sx={{ zIndex: theme.zIndex.drawer + 1, color: '#fff' }}>
+      <Card sx={{ p: 4, textAlign: 'center', minWidth: 300 }}>
+        <CircularProgress size={60} sx={{ mb: 3 }} />
+        <Typography variant="h6" gutterBottom>
+          Processing Query
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          {progress > 0 ? `${progress.toFixed(0)}% complete` : 'Initializing...'}
+        </Typography>
+        {progress > 0 && (
+          <LinearProgress 
+            variant="determinate" 
+            value={progress} 
+            sx={{ height: 8, borderRadius: 4 }}
+          />
         )}
+      </Card>
+    </Backdrop>
+  );
 
-        <Paper sx={{ width: '100%', bgcolor: 'background.paper' }}>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs 
-              value={activeTab} 
-              onChange={handleTabChange}
-              variant={isMobile ? "scrollable" : "fullWidth"}
-              scrollButtons={isMobile ? "auto" : false}
-              sx={{
-                '& .MuiTab-root': {
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  minHeight: 64,
-                },
-              }}
-            >
-              {Array.from({ length: 6 }, (_, index) => (
-                <Tab
-                  key={index}
-                  icon={getTabIcon(index)}
-                  label={getTabLabel(index)}
-                  iconPosition="start"
-                  sx={{
-                    opacity: index === TABS.PARTIAL_RESULTS && partialResults.length === 0 ? 0.5 :
-                           index === TABS.ALL_RESULTS && allResults.length === 0 ? 0.5 :
-                           index === TABS.STATS && !statsReady ? 0.5 :
-                           index === TABS.CLOUD && wordFrequency.length === 0 ? 0.5 :
-                           index === TABS.NER && !nerReady ? 0.5 : 1,
-                  }}
-                  disabled={
-                    (index === TABS.PARTIAL_RESULTS && partialResults.length === 0) ||
-                    (index === TABS.ALL_RESULTS && allResults.length === 0) ||
-                    (index === TABS.STATS && !statsReady) ||
-                    (index === TABS.CLOUD && wordFrequency.length === 0) ||
-                    (index === TABS.NER && !nerReady)
-                  }
-                />
-              ))}
-            </Tabs>
-          </Box>
 
-          <TabPanel value={activeTab} index={TABS.QUERY}>
-            {selectedAlias && metadata.length > 0 && (
-              <MetadataForm
-                metadata={metadata}
-                formData={formData}
-                setFormData={setFormData}
-                dateRange={dateRange}
-                handleQuery={handleQuery}
-                getNER={getNER}
-                setGetNER={setGetNER}
-                downloadOnly={downloadOnly}
-                setdownloadOnly={setdownloadOnly}
-                statsLevel={statsLevel}
-                setStatsLevel={setStatsLevel}
-                docLevel={docLevel}
-                setDocLevel={setDocLevel}
-                solrDatabaseId={selectedSolrDatabase?.id || null}
-                selectedAlias={selectedAlias}
-              />
-            )}
-            {!selectedAlias && (
-              <Box sx={{ textAlign: 'center', py: 8 }}>
-                <Typography variant="h6" color="text.secondary" gutterBottom>
-                  Select a database and collection to get started
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Choose from the available Solr databases and collections above
-                </Typography>
-              </Box>
-            )}
-          </TabPanel>
 
-          <TabPanel value={activeTab} index={TABS.PARTIAL_RESULTS}>
-            <Box sx={{ position: 'relative' }}>
-              <DataGrid
-                results={partialResults}
-                formData={formData}
-                nerData={nerData}
-                viewNER={viewNER}
-                selectedAlias={selectedAlias}
-                selectedSolrDatabase={selectedSolrDatabase}
-                authAxios={authAxios}
-              />
-              {isNERVisible && (
-                <Tooltip title={viewNER ? 'Hide NER highlighting' : 'Show NER highlighting'}>
-                  <IconButton
-                    onClick={() => setViewNER(!viewNER)}
-                    sx={{
-                      position: 'absolute',
-                      bottom: 16,
-                      right: 16,
-                      bgcolor: 'primary.main',
-                      color: 'white',
-                      '&:hover': { bgcolor: 'primary.dark' },
-                    }}
-                  >
-                    {viewNER ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Box>
-          </TabPanel>
+ if (!isAuthenticated) {
+   return (
+     <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+       <Paper sx={{ p: 6, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+         <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>
+           Authentication Required
+         </Typography>
+         <Typography variant="h6" sx={{ opacity: 0.9 }}>
+           Please log in to access HistText features.
+         </Typography>
+       </Paper>
+     </Container>
+   );
+ }
 
-          <TabPanel value={activeTab} index={TABS.ALL_RESULTS}>
-            <DataGrid
-              results={allResults}
-              formData={formData}
-              nerData={nerData}
-              viewNER={false}
-              selectedAlias={selectedAlias}
-              selectedSolrDatabase={selectedSolrDatabase}
-              authAxios={authAxios}
-            />
-          </TabPanel>
+ return (
+   <Box sx={{ 
+     width: '100%', 
+     bgcolor: 'background.default', 
+     minHeight: '100vh',
+     position: 'relative'
+   }}>
+     {renderLoadingOverlay()}
+     
+     <Container maxWidth="xl" sx={{ py: 3 }}>
 
-          <TabPanel value={activeTab} index={TABS.STATS}>
-            {stats ? (
-              <StatisticsDisplay
-                stats={stats}
-                selectedStat={selectedStat}
-                onStatChange={setSelectedStat}
-              />
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 8 }}>
-                <Typography variant="h6" color="text.secondary">
-                  {isStatsLoading ? 'Loading statistics...' : 'No statistics available'}
-                </Typography>
-              </Box>
-            )}
-          </TabPanel>
 
-          <TabPanel value={activeTab} index={TABS.CLOUD}>
-            {isCloudLoading ? ( 
-              <Box sx={{ textAlign: 'center', py: 8 }}>
-               <Typography variant="h6" gutterBottom>
-                 Generating Word Cloud...
-               </Typography>
-               {cloudProgress > 0 && (
-                 <Box sx={{ mt: 2, mx: 'auto', maxWidth: 400 }}>
-                   <LinearProgress 
-                     variant="determinate" 
-                     value={cloudProgress} 
-                     sx={{ height: 8, borderRadius: 4 }}
+       {renderDatabaseSelector()}
+
+       <Paper 
+         sx={{ 
+           width: '100%', 
+           bgcolor: 'background.paper',
+           borderRadius: 3,
+           overflow: 'hidden',
+           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+           minHeight: fullscreen ? '90vh' : 'auto'
+         }}
+       >
+         <Box sx={{ 
+           borderBottom: 1, 
+           borderColor: 'divider',
+           background: 'linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%)',
+           position: 'relative'
+         }}>
+           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1 }}>
+             <Tabs 
+               value={activeTab} 
+               onChange={handleTabChange}
+               variant={isMobile ? "scrollable" : "fullWidth"}
+               scrollButtons={isMobile ? "auto" : false}
+               sx={{
+                 flex: 1,
+                 '& .MuiTab-root': {
+                   textTransform: 'none',
+                   fontWeight: 600,
+                   fontSize: isMobile ? '0.8rem' : '0.9rem',
+                   minHeight: 56,
+                   transition: 'all 0.2s ease',
+                   '&:hover': {
+                     backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                   }
+                 },
+                 '& .Mui-selected': {
+                   color: '#667eea !important',
+                 },
+                 '& .MuiTabs-indicator': {
+                   backgroundColor: '#667eea',
+                   height: 3,
+                 }
+               }}
+             >
+               {Array.from({ length: 6 }, (_, index) => {
+                 const tabInfo = getTabInfo(index);
+                 const isDisabled = 
+                   (index === TABS.PARTIAL_RESULTS && partialResults.length === 0) ||
+                   (index === TABS.ALL_RESULTS && allResults.length === 0) ||
+                   (index === TABS.STATS && !statsReady) ||
+                   (index === TABS.CLOUD && wordFrequency.length === 0) ||
+                   (index === TABS.NER && !nerReady);
+
+                 return (
+                   <Tab
+                     key={index}
+                     icon={
+                       <Badge 
+                         badgeContent={tabInfo.count || 0} 
+                         color={tabInfo.color as any}
+                         invisible={!tabInfo.count || tabInfo.count === 0}
+                         max={999}
+                       >
+                         {tabInfo.icon}
+                       </Badge>
+                     }
+                     label={tabInfo.label}
+                     iconPosition="start"
+                     disabled={isDisabled}
+                     sx={{
+                       opacity: isDisabled ? 0.5 : 1,
+                       '&.Mui-disabled': {
+                         color: 'text.disabled'
+                       }
+                     }}
                    />
-                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                     {Math.round(cloudProgress)}% complete
+                 );
+               })}
+             </Tabs>
+             
+             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+               {!isMobile && (
+                 <Tooltip title={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
+                   <IconButton 
+                     onClick={() => setFullscreen(!fullscreen)}
+                     size="small"
+                     sx={{ color: 'text.secondary' }}
+                   >
+                     {fullscreen ? <FullscreenExit /> : <Fullscreen />}
+                   </IconButton>
+                 </Tooltip>
+               )}
+             </Box>
+           </Box>
+         </Box>
+
+         <Box sx={{ position: 'relative', minHeight: fullscreen ? '80vh' : '60vh' }}>
+           <TabPanel value={activeTab} index={TABS.QUERY}>
+             {selectedAlias && metadata.length > 0 ? (
+               <Box sx={{ p: 3 }}>
+                 <MetadataForm
+                   metadata={metadata}
+                   formData={formData}
+                   setFormData={setFormData}
+                   dateRange={dateRange}
+                   handleQuery={handleQuery}
+                   getNER={getNER}
+                   setGetNER={setGetNER}
+                   downloadOnly={downloadOnly}
+                   setdownloadOnly={setdownloadOnly}
+                   statsLevel={statsLevel}
+                   setStatsLevel={setStatsLevel}
+                   docLevel={docLevel}
+                   setDocLevel={setDocLevel}
+                   solrDatabaseId={selectedSolrDatabase?.id || null}
+                   selectedAlias={selectedAlias}
+                 />
+               </Box>
+             ) : (
+               <Box sx={{ 
+                 textAlign: 'center', 
+                 py: 12,
+                 background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
+               }}>
+                 <Storage sx={{ fontSize: 80, color: 'text.secondary', mb: 3, opacity: 0.5 }} />
+                 <Typography variant="h5" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
+                   Get Started
+                 </Typography>
+                 <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto', mb: 3 }}>
+                   Select a database and collection from above to begin your text analysis journey
+                 </Typography>
+                 <Button 
+                   variant="outlined" 
+                   startIcon={<Search />}
+                   sx={{ 
+                     borderColor: '#667eea',
+                     color: '#667eea',
+                     '&:hover': { 
+                       borderColor: '#5a6fd8',
+                       backgroundColor: 'rgba(102, 126, 234, 0.1)'
+                     }
+                   }}
+                 >
+                   Choose Data Source
+                 </Button>
+               </Box>
+             )}
+           </TabPanel>
+
+           <TabPanel value={activeTab} index={TABS.PARTIAL_RESULTS}>
+             <Box sx={{ position: 'relative', height: '100%' }}>
+               {partialResults.length > 0 ? (
+                 <>
+                   <DataGrid
+                     results={partialResults}
+                     formData={formData}
+                     nerData={nerData}
+                     viewNER={viewNER}
+                     selectedAlias={selectedAlias}
+                     selectedSolrDatabase={selectedSolrDatabase}
+                     authAxios={authAxios}
+                   />
+                   {isNERVisible && (
+                     <Tooltip title={viewNER ? 'Hide NER highlighting' : 'Show NER highlighting'}>
+                       <Fab
+                         onClick={() => setViewNER(!viewNER)}
+                         size="medium"
+                         sx={{
+                           position: 'absolute',
+                           bottom: 24,
+                           right: 24,
+                           bgcolor: viewNER ? 'error.main' : 'primary.main',
+                           '&:hover': { bgcolor: viewNER ? 'error.dark' : 'primary.dark' },
+                         }}
+                       >
+                         {viewNER ? <VisibilityOff /> : <Visibility />}
+                       </Fab>
+                     </Tooltip>
+                   )}
+                 </>
+               ) : (
+                 <Box sx={{ textAlign: 'center', py: 8 }}>
+                   <TableRows sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                   <Typography variant="h6" color="text.secondary">
+                     No partial results available
+                   </Typography>
+                   <Typography variant="body2" color="text.secondary">
+                     Execute a query to see results
                    </Typography>
                  </Box>
                )}
              </Box>
-           ) : wordFrequency && wordFrequency.length > 0 ? (
-             <Cloud wordFrequency={wordFrequency} />
-           ) : (
-             <Box sx={{ textAlign: 'center', py: 8 }}>
-               <CloudIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-               <Typography variant="h6" color="text.secondary">
-                 No data available for word cloud
-               </Typography>
-             </Box>
-           )}
-         </TabPanel>
+           </TabPanel>
 
-         <TabPanel value={activeTab} index={TABS.NER}>
-           {nerData && Object.keys(nerData).length > 0 ? (
-             <NERDisplay
-               nerData={nerData}
-               authAxios={authAxios}
-               selectedAlias={selectedAlias}
-               selectedSolrDatabase={selectedSolrDatabase}
-               viewNER={viewNER}
-             />
-           ) : (
-             <Box sx={{ textAlign: 'center', py: 8 }}>
-               <AccountTree sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-               <Typography variant="h6" color="text.secondary">
-                 {isNERLoading ? 'Processing NER data...' : 'No NER data available'}
-               </Typography>
+           <TabPanel value={activeTab} index={TABS.ALL_RESULTS}>
+             <Box sx={{ position: 'relative', height: '100%' }}>
+               {allResults.length > 0 ? (
+                 <>
+                   {isDataLoading ? (
+                     <Box sx={{ textAlign: 'center', py: 8 }}>
+                       <CircularProgress size={60} sx={{ mb: 3 }} />
+                       <Typography variant="h6" gutterBottom>
+                         Loading complete dataset...
+                       </Typography>
+                       <LinearProgress sx={{ width: 300, mx: 'auto' }} />
+                     </Box>
+                   ) : (
+                     <DataGrid
+                       results={allResults}
+                       formData={formData}
+                       nerData={nerData}
+                       viewNER={false}
+                       selectedAlias={selectedAlias}
+                       selectedSolrDatabase={selectedSolrDatabase}
+                       authAxios={authAxios}
+                     />
+                   )}
+                 </>
+               ) : (
+                 <Box sx={{ textAlign: 'center', py: 8 }}>
+                   <TableChart sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                   <Typography variant="h6" color="text.secondary">
+                     No complete results available
+                   </Typography>
+                   <Typography variant="body2" color="text.secondary">
+                     Execute a query to see the full dataset
+                   </Typography>
+                 </Box>
+               )}
              </Box>
-           )}
-         </TabPanel>
+           </TabPanel>
+
+           <TabPanel value={activeTab} index={TABS.STATS}>
+             {stats ? (
+               <>
+                 <StatisticsDisplay
+                   stats={stats}
+                   selectedStat={selectedStat}
+                   onStatChange={setSelectedStat}
+                 />
+               </>
+             ) : (
+               <Box sx={{ textAlign: 'center', py: 8 }}>
+                 {isStatsLoading ? (
+                   <>
+                     <CircularProgress size={60} sx={{ mb: 3 }} />
+                     <Typography variant="h6" gutterBottom>
+                       Generating statistics...
+                     </Typography>
+                     <Typography variant="body2" color="text.secondary">
+                       This may take a moment for large datasets
+                     </Typography>
+                   </>
+                 ) : (
+                   <>
+                     <Analytics sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                     <Typography variant="h6" color="text.secondary">
+                       No statistics available
+                     </Typography>
+                     <Typography variant="body2" color="text.secondary">
+                       Execute a query to generate statistical analysis
+                     </Typography>
+                   </>
+                 )}
+               </Box>
+             )}
+           </TabPanel>
+
+           <TabPanel value={activeTab} index={TABS.CLOUD}>
+             {isCloudLoading ? (
+               <Box sx={{ textAlign: 'center', py: 8 }}>
+                 <CircularProgress size={60} sx={{ mb: 3 }} />
+                 <Typography variant="h6" gutterBottom>
+                   Generating Word Cloud...
+                 </Typography>
+                 {cloudProgress > 0 && (
+                   <Box sx={{ mt: 3, mx: 'auto', maxWidth: 400 }}>
+                     <LinearProgress 
+                       variant="determinate" 
+                       value={cloudProgress} 
+                       sx={{ height: 8, borderRadius: 4, mb: 1 }}
+                     />
+                     <Typography variant="body2" color="text.secondary">
+                       {Math.round(cloudProgress)}% complete
+                     </Typography>
+                   </Box>
+                 )}
+               </Box>
+             ) : wordFrequency && wordFrequency.length > 0 ? (
+               <>
+                 <Box sx={{ p: 3, minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                   <Cloud wordFrequency={wordFrequency} />
+                 </Box>
+               </>
+             ) : (
+               <Box sx={{ textAlign: 'center', py: 8 }}>
+                 <CloudIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                 <Typography variant="h6" color="text.secondary">
+                   No word cloud data available
+                 </Typography>
+                 <Typography variant="body2" color="text.secondary">
+                   Execute a query with text data to generate word cloud
+                 </Typography>
+               </Box>
+             )}
+           </TabPanel>
+
+           <TabPanel value={activeTab} index={TABS.NER}>
+             {nerData && Object.keys(nerData).length > 0 ? (
+               <>
+                 <NERDisplay
+                   nerData={nerData}
+                   authAxios={authAxios}
+                   selectedAlias={selectedAlias}
+                   selectedSolrDatabase={selectedSolrDatabase}
+                   viewNER={viewNER}
+                 />
+               </>
+             ) : (
+               <Box sx={{ textAlign: 'center', py: 8 }}>
+                 {isNERLoading ? (
+                   <>
+                     <CircularProgress size={60} sx={{ mb: 3 }} />
+                     <Typography variant="h6" gutterBottom>
+                       Processing NER data...
+                     </Typography>
+                     <Typography variant="body2" color="text.secondary">
+                       Analyzing entities in your text
+                     </Typography>
+                   </>
+                 ) : (
+                   <>
+                     <AccountTree sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                     <Typography variant="h6" color="text.secondary">
+                       No NER data available
+                     </Typography>
+                     <Typography variant="body2" color="text.secondary">
+                       Enable NER in query options to extract named entities
+                     </Typography>
+                   </>
+                 )}
+               </Box>
+             )}
+           </TabPanel>
+         </Box>
        </Paper>
      </Container>
+
+     <SpeedDial
+       ariaLabel="Quick Actions"
+       sx={{ position: 'fixed', bottom: 24, right: 24 }}
+       icon={<SpeedDialIcon />}
+       open={quickActions}
+       onOpen={() => setQuickActions(true)}
+       onClose={() => setQuickActions(false)}
+     >
+       {quickActionItems.map((action, index) => (
+         <SpeedDialAction
+           key={index}
+           icon={action.icon}
+           tooltipTitle={action.name}
+           onClick={() => {
+             action.action();
+             setQuickActions(false);
+           }}
+         />
+       ))}
+     </SpeedDial>
 
      <Snackbar
        open={notification.open}
@@ -889,6 +1216,12 @@ const HistText: React.FC = () => {
          severity={notification.severity}
          variant="filled"
          sx={{ width: '100%' }}
+         iconMapping={{
+           success: <CheckCircle fontSize="inherit" />,
+           error: <Error fontSize="inherit" />,
+           warning: <Warning fontSize="inherit" />,
+           info: <Info fontSize="inherit" />
+         }}
        >
          {notification.message}
        </Alert>

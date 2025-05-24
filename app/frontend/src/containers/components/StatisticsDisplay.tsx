@@ -15,6 +15,55 @@ import {
   PointElement,
   LineElement,
 } from 'chart.js/auto';
+import {
+  Box,
+  Paper,
+  Typography,
+  Card,
+  CardContent,
+  Grid,
+  IconButton,
+  Tooltip as MUITooltip,
+  Button,
+  ButtonGroup,
+  Chip,
+  Divider,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  ListItemButton,
+  Collapse,
+  Switch,
+  FormControlLabel,
+  TextField,
+  InputAdornment,
+  useTheme,
+  useMediaQuery,
+  Fade,
+  Slide,
+  Stack
+} from '@mui/material';
+import {
+  Analytics,
+  BarChart,
+  PieChart,
+  ShowChart,
+  GetApp,
+  Refresh,
+  Settings,
+  Search,
+  ExpandMore,
+  ExpandLess,
+  TrendingUp,
+  Assessment,
+  InsertChart,
+  DataUsage,
+  Timeline,
+  Download,
+  Visibility,
+  VisibilityOff,
+} from '@mui/icons-material';
 
 ChartJS.register(
   CategoryScale,
@@ -36,12 +85,18 @@ interface StatisticsDisplayProps {
 
 const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
   ({ stats, selectedStat, onStatChange }) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [gridApi, setGridApi] = useState<any>(null);
     const chartRef = useRef<any>(null);
     const [chartData, setChartData] = useState<any>(null);
     const [chartType, setChartType] = useState<'bar' | 'pie' | 'line'>('bar');
     const [loading, setLoading] = useState<boolean>(true);
     const [activeCategory, setActiveCategory] = useState<string>('overview');
+    const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['overview']));
+    const [searchTerm, setSearchTerm] = useState<string>('');
+    const [showChart, setShowChart] = useState<boolean>(true);
+    const [chartOptions, setChartOptions] = useState<any>({});
 
     useEffect(() => {
       if (selectedStat === 'Select Statistics' || !selectedStat) {
@@ -50,37 +105,42 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
       }
     }, [selectedStat, onStatChange]);
 
-    // Organize statistics into categories
     const statCategories = useMemo(() => {
       const categories = {
         overview: {
           title: 'Overview',
-          icon: '📊',
+          icon: <Assessment />,
+          color: '#1976d2',
           stats: ['corpus_overview', 'document_length_stats'],
         },
         content: {
           title: 'Content Analysis',
-          icon: '📝',
+          icon: <InsertChart />,
+          color: '#388e3c',
           stats: ['most_frequent_words', 'most_frequent_bigrams', 'most_frequent_trigrams', 'word_length_distribution'],
         },
         language: {
           title: 'Language & Style',
-          icon: '🌐',
+          icon: <DataUsage />,
+          color: '#f57c00',
           stats: ['languages_detected', 'most_common_punctuation'],
         },
         metadata: {
           title: 'Metadata & Fields',
-          icon: '🏷️',
+          icon: <Analytics />,
+          color: '#7b1fa2',
           stats: ['field_completeness_percentage'],
         },
         temporal: {
           title: 'Time Analysis',
-          icon: '📅',
+          icon: <Timeline />,
+          color: '#d32f2f',
           stats: ['distribution_over_time', 'distribution_over_decades'],
         },
         distributions: {
           title: 'Other Distributions',
-          icon: '📈',
+          icon: <TrendingUp />,
+          color: '#455a64',
           stats: Object.keys(stats).filter(key => 
             key.startsWith('distribution_over_') && 
             !['distribution_over_time', 'distribution_over_decades'].includes(key)
@@ -88,7 +148,6 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
         },
       };
 
-      // Filter out categories with no available stats
       return Object.fromEntries(
         Object.entries(categories).filter(([, category]) => 
           category.stats.some(stat => stats[stat])
@@ -96,7 +155,6 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
       );
     }, [stats]);
 
-    // Get current category based on selected stat
     useEffect(() => {
       for (const [categoryKey, category] of Object.entries(statCategories)) {
         if (category.stats.includes(selectedStat)) {
@@ -109,33 +167,33 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
     const columnDefs = useMemo(
       () => ({
         ngram: [
-          { headerName: 'Term/Phrase', field: 'ngram', sortable: true, filter: true, width: 300 },
-          { headerName: 'Frequency', field: 'count', sortable: true, filter: true, width: 150 },
+          { headerName: 'Term/Phrase', field: 'ngram', sortable: true, filter: true, width: 300, pinned: 'left' },
+          { headerName: 'Frequency', field: 'count', sortable: true, filter: true, width: 150, type: 'numericColumn' },
         ],
         wordLength: [
-          { headerName: 'Length (characters)', field: 'length', sortable: true, width: 200 },
-          { headerName: 'Word Count', field: 'count', sortable: true, width: 150 },
+          { headerName: 'Length (chars)', field: 'length', sortable: true, width: 200, type: 'numericColumn' },
+          { headerName: 'Word Count', field: 'count', sortable: true, width: 150, type: 'numericColumn' },
         ],
         languages: [
-          { headerName: 'Language Code', field: 'language', sortable: true, width: 150 },
-          { headerName: 'Documents', field: 'count', sortable: true, width: 150 },
+          { headerName: 'Language', field: 'language', sortable: true, width: 150, pinned: 'left' },
+          { headerName: 'Documents', field: 'count', sortable: true, width: 150, type: 'numericColumn' },
         ],
         punctuation: [
-          { headerName: 'Punctuation Mark', field: 'punct', sortable: true, width: 200 },
-          { headerName: 'Frequency', field: 'count', sortable: true, width: 150 },
+          { headerName: 'Punctuation', field: 'punct', sortable: true, width: 200, pinned: 'left' },
+          { headerName: 'Frequency', field: 'count', sortable: true, width: 150, type: 'numericColumn' },
         ],
         completeness: [
-          { headerName: 'Field Name', field: 'field', sortable: true, filter: true, width: 300 },
+          { headerName: 'Field Name', field: 'field', sortable: true, filter: true, width: 300, pinned: 'left' },
           { headerName: 'Completeness', field: 'percentage', sortable: true, width: 150 },
         ],
         overview: [
-          { headerName: 'Metric', field: 'metric', sortable: true, filter: true, width: 300 },
+          { headerName: 'Metric', field: 'metric', sortable: true, filter: true, width: 300, pinned: 'left' },
           { headerName: 'Value', field: 'value', sortable: true, filter: true, width: 200 },
         ],
         otherStats: [
-          { headerName: 'Item', field: 'key', sortable: true, filter: true, width: 250 },
+          { headerName: 'Item', field: 'key', sortable: true, filter: true, width: 250, pinned: 'left' },
           { headerName: 'Value', field: 'value', sortable: true, filter: true, width: 200 },
-          { headerName: 'Count', field: 'count', sortable: true, filter: true, width: 150 },
+          { headerName: 'Count', field: 'count', sortable: true, filter: true, width: 150, type: 'numericColumn' },
         ],
       }),
       [],
@@ -247,14 +305,14 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
 
     const getChartColors = (dataLength: number) => {
       const colors = [
-        'rgba(75, 192, 192, 0.6)',
-        'rgba(255, 99, 132, 0.6)',
-        'rgba(54, 162, 235, 0.6)',
-        'rgba(255, 206, 86, 0.6)',
-        'rgba(153, 102, 255, 0.6)',
-        'rgba(255, 159, 64, 0.6)',
-        'rgba(199, 199, 199, 0.6)',
-        'rgba(83, 102, 255, 0.6)',
+        'rgba(25, 118, 210, 0.8)',
+        'rgba(56, 142, 60, 0.8)',
+        'rgba(245, 124, 0, 0.8)',
+        'rgba(123, 31, 162, 0.8)',
+        'rgba(211, 47, 47, 0.8)',
+        'rgba(69, 90, 100, 0.8)',
+        'rgba(0, 150, 136, 0.8)',
+        'rgba(255, 152, 0, 0.8)',
       ];
       
       if (dataLength <= colors.length) {
@@ -280,7 +338,10 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
         selectedStat === 'word_length_distribution' ||
         selectedStat === 'languages_detected' ||
         selectedStat === 'most_common_punctuation' ||
-        selectedStat === 'field_completeness_percentage';
+        selectedStat === 'field_completeness_percentage' ||
+        selectedStat === 'most_frequent_words' ||
+        selectedStat === 'most_frequent_bigrams' ||
+        selectedStat === 'most_frequent_trigrams';
 
       if (shouldShowChart) {
         let labels: string[] = [];
@@ -315,6 +376,13 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
             }
             setChartType('pie');
           }
+        } else if (selectedStat.startsWith('most_frequent_')) {
+          if (Array.isArray(stats[selectedStat])) {
+            const topItems = stats[selectedStat].slice(0, 20);
+            labels = topItems.map((item: any) => item[0]);
+            data = topItems.map((item: any) => item[1]);
+            setChartType('bar');
+          }
         } else if (selectedStat.startsWith('distribution_over_')) {
           if (typeof stats[selectedStat] === 'object') {
             const entries = Object.entries(stats[selectedStat])
@@ -346,10 +414,50 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
                 label: chartTitle,
                 data,
                 backgroundColor: colors,
-                borderColor: colors.map(color => color.replace('0.6', '1')),
-                borderWidth: 1,
+                borderColor: colors.map(color => color.replace('0.8', '1')),
+                borderWidth: 2,
+                tension: chartType === 'line' ? 0.4 : 0,
               },
             ],
+          });
+
+          setChartOptions({
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: true,
+                text: chartTitle,
+                font: {
+                  size: 16,
+                  weight: 'bold'
+                }
+              },
+              legend: {
+                display: chartType === 'pie',
+                position: chartType === 'pie' ? 'right' as const : 'top' as const,
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: 'white',
+                bodyColor: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                borderWidth: 1
+              }
+            },
+            scales: chartType !== 'pie' ? {
+              y: {
+                beginAtZero: true,
+                grid: {
+                  color: 'rgba(0, 0, 0, 0.1)'
+                }
+              },
+              x: {
+                grid: {
+                  color: 'rgba(0, 0, 0, 0.1)'
+                }
+              }
+            } : undefined,
           });
           setLoading(false);
         } else {
@@ -360,7 +468,7 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
         setChartData(null);
         setLoading(true);
       }
-    }, [selectedStat, stats]);
+    }, [selectedStat, stats, chartType]);
 
     const onGridReady = useCallback(params => {
       setGridApi(params.api);
@@ -370,236 +478,373 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
     const downloadCsv = useCallback(() => {
       if (gridApi) {
         gridApi.exportDataAsCsv({
-          fileName: `${selectedStat}_data.csv`,
-        });
-      }
-    }, [gridApi, selectedStat]);
+          fileName: `${selectedStat}_data_${new Date().toISOString().split('T')[0]}.csv`,
+       });
+     }
+   }, [gridApi, selectedStat]);
 
-    const downloadChart = useCallback(() => {
-      if (chartRef.current) {
-        const url = chartRef.current.toBase64Image();
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${selectedStat}_chart.png`;
-        link.click();
-      }
-    }, [chartRef, selectedStat]);
+   const downloadChart = useCallback(() => {
+     if (chartRef.current) {
+       const url = chartRef.current.toBase64Image();
+       const link = document.createElement('a');
+       link.href = url;
+       link.download = `${selectedStat}_chart_${new Date().toISOString().split('T')[0]}.png`;
+       link.click();
+     }
+   }, [chartRef, selectedStat]);
 
-    const getColumnDef = () => {
-      switch (selectedStat) {
-        case 'corpus_overview':
-        case 'document_length_stats':
-          return columnDefs.overview;
-        case 'word_length_distribution':
-          return columnDefs.wordLength;
-        case 'languages_detected':
-          return columnDefs.languages;
-        case 'most_common_punctuation':
-          return columnDefs.punctuation;
-        case 'field_completeness_percentage':
-          return columnDefs.completeness;
-        case 'most_frequent_words':
-        case 'most_frequent_bigrams':
-        case 'most_frequent_trigrams':
-          return columnDefs.ngram;
-        default:
-          return columnDefs.otherStats;
-      }
-    };
+   const getColumnDef = () => {
+     switch (selectedStat) {
+       case 'corpus_overview':
+       case 'document_length_stats':
+         return columnDefs.overview;
+       case 'word_length_distribution':
+         return columnDefs.wordLength;
+       case 'languages_detected':
+         return columnDefs.languages;
+       case 'most_common_punctuation':
+         return columnDefs.punctuation;
+       case 'field_completeness_percentage':
+         return columnDefs.completeness;
+       case 'most_frequent_words':
+       case 'most_frequent_bigrams':
+       case 'most_frequent_trigrams':
+         return columnDefs.ngram;
+       default:
+         return columnDefs.otherStats;
+     }
+   };
 
-    const renderChart = () => {
-      if (!chartData || loading) return <div>Loading chart...</div>;
+   const renderChart = () => {
+     if (!chartData || loading) {
+       return (
+         <Box sx={{ textAlign: 'center', py: 8 }}>
+           <ShowChart sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+           <Typography variant="h6" color="text.secondary">
+             Loading chart...
+           </Typography>
+         </Box>
+       );
+     }
 
-      const chartOptions = {
-        maintainAspectRatio: false,
-        responsive: true,
-        plugins: {
-          title: {
-            display: true,
-            text: selectedStat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          },
-          legend: {
-            display: chartType === 'pie',
-            position: chartType === 'pie' ? 'right' as const : 'top' as const,
-          },
-        },
-        scales: chartType !== 'pie' ? {
-          y: {
-            beginAtZero: true,
-          },
-        } : undefined,
-      };
+     const ChartComponent = chartType === 'pie' ? Pie : chartType === 'line' ? Line : Bar;
 
-      const ChartComponent = chartType === 'pie' ? Pie : chartType === 'line' ? Line : Bar;
+     return (
+       <Card sx={{ height: '60vh', p: 2 }}>
+         <CardContent sx={{ height: '100%', position: 'relative' }}>
+           <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
+             <ButtonGroup size="small" variant="outlined">
+               <MUITooltip title="Bar Chart">
+                 <IconButton 
+                   onClick={() => setChartType('bar')} 
+                   color={chartType === 'bar' ? 'primary' : 'default'}
+                 >
+                   <BarChart />
+                 </IconButton>
+               </MUITooltip>
+               <MUITooltip title="Line Chart">
+                 <IconButton 
+                   onClick={() => setChartType('line')} 
+                   color={chartType === 'line' ? 'primary' : 'default'}
+                 >
+                   <ShowChart />
+                 </IconButton>
+               </MUITooltip>
+               <MUITooltip title="Pie Chart">
+                 <IconButton 
+                   onClick={() => setChartType('pie')} 
+                   color={chartType === 'pie' ? 'primary' : 'default'}
+                 >
+                   <PieChart />
+                 </IconButton>
+               </MUITooltip>
+             </ButtonGroup>
+           </Box>
+           <Box sx={{ height: '100%', pt: 4 }}>
+             <ChartComponent ref={chartRef} data={chartData} options={chartOptions} />
+           </Box>
+         </CardContent>
+       </Card>
+     );
+   };
 
-      return (
-        <div style={{ height: '60vh', width: '100%' }}>
-          <ChartComponent ref={chartRef} data={chartData} options={chartOptions} />
-        </div>
-      );
-    };
+   const renderGrid = () => (
+     <Card sx={{ height: '60vh' }}>
+       <CardContent sx={{ height: '100%', p: 0 }}>
+         <Box className="ag-theme-alpine" style={{ height: '100%', width: '100%' }}>
+           <AgGridReact
+             columnDefs={getColumnDef()}
+             rowData={rowData}
+             pagination={true}
+             paginationPageSize={isMobile ? 25 : 50}
+             paginationPageSizeSelector={[25, 50, 100, 200]}
+             onGridReady={onGridReady}
+             defaultColDef={{
+               sortable: true,
+               filter: true,
+               resizable: true,
+             }}
+             animateRows={true}
+             enableRangeSelection={true}
+             rowSelection="multiple"
+             suppressRowClickSelection={true}
+           />
+         </Box>
+       </CardContent>
+     </Card>
+   );
 
-    const renderGrid = () => (
-      <div className="ag-theme-alpine" style={{ height: '60vh', width: '100%' }}>
-        <AgGridReact
-          columnDefs={getColumnDef()}
-          rowData={rowData}
-          pagination={true}
-          paginationPageSize={50}
-          onGridReady={onGridReady}
-          defaultColDef={{
-            sortable: true,
-            filter: true,
-            resizable: true,
-          }}
-        />
-      </div>
-    );
+   const toggleCategoryExpansion = (categoryKey: string) => {
+     const newExpanded = new Set(expandedCategories);
+     if (newExpanded.has(categoryKey)) {
+       newExpanded.delete(categoryKey);
+     } else {
+       newExpanded.add(categoryKey);
+     }
+     setExpandedCategories(newExpanded);
+   };
 
-    const renderStats = useCallback(() => {
-      if (!stats || !selectedStat) return null;
+   const getStatDisplayName = (stat: string) => {
+     const displayNames: { [key: string]: string } = {
+       corpus_overview: 'Corpus Overview',
+       document_length_stats: 'Document Length Stats',
+       word_length_distribution: 'Word Length Distribution',
+       languages_detected: 'Languages Detected',
+       most_common_punctuation: 'Punctuation Analysis',
+       field_completeness_percentage: 'Field Completeness',
+       distribution_over_time: 'Timeline Distribution',
+       distribution_over_decades: 'Decade Distribution',
+       most_frequent_words: 'Frequent Words',
+       most_frequent_bigrams: 'Frequent Bigrams',
+       most_frequent_trigrams: 'Frequent Trigrams',
+     };
+     
+     return displayNames[stat] || stat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+   };
 
-      const shouldShowChart = 
-        selectedStat.startsWith('distribution_over_') ||
-        selectedStat === 'word_length_distribution' ||
-        selectedStat === 'languages_detected' ||
-        selectedStat === 'most_common_punctuation' ||
-        selectedStat === 'field_completeness_percentage';
+   const filteredCategories = useMemo(() => {
+     if (!searchTerm) return statCategories;
+     
+     const filtered = {};
+     Object.entries(statCategories).forEach(([categoryKey, category]) => {
+       const matchingStats = category.stats.filter(stat => 
+         getStatDisplayName(stat).toLowerCase().includes(searchTerm.toLowerCase())
+       );
+       if (matchingStats.length > 0) {
+         filtered[categoryKey] = { ...category, stats: matchingStats };
+       }
+     });
+     return filtered;
+   }, [statCategories, searchTerm]);
 
-      return (
-        <div style={{ padding: '20px' }}>
-          <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, color: '#333' }}>
-              {selectedStat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            </h3>
-            <button 
-              onClick={shouldShowChart && chartData ? downloadChart : downloadCsv} 
-              className="base-button"
-              style={{ 
-                padding: '5px 15px',
-                fontSize: '14px',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              📥 Download {shouldShowChart && chartData ? 'Chart' : 'CSV'}
-            </button>
-          </div>
-          
-          {shouldShowChart && chartData ? renderChart() : renderGrid()}
-        </div>
-      );
-    }, [stats, selectedStat, chartData, renderChart, renderGrid, downloadChart, downloadCsv]);
+   const renderSidebar = () => (
+     <Paper 
+       sx={{ 
+         width: isMobile ? '100%' : '350px', 
+         height: isMobile ? 'auto' : '80vh',
+         overflowY: 'auto',
+         borderRadius: 3,
+         background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)',
+       }}
+     >
+       <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'primary.main', color: 'white', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+         <Typography variant="h5" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+           <Analytics />
+           Statistics Explorer
+         </Typography>
+         <Typography variant="body2" sx={{ opacity: 0.9, mt: 1 }}>
+           Explore your data insights
+         </Typography>
+       </Box>
+       
+       <Box sx={{ p: 2 }}>
+         <TextField
+           fullWidth
+           size="small"
+           placeholder="Search statistics..."
+           value={searchTerm}
+           onChange={(e) => setSearchTerm(e.target.value)}
+           InputProps={{
+             startAdornment: (
+               <InputAdornment position="start">
+                 <Search />
+               </InputAdornment>
+             ),
+           }}
+           sx={{ mb: 2 }}
+         />
+       </Box>
+       
+       <List sx={{ p: 0 }}>
+         {Object.entries(filteredCategories).map(([categoryKey, category]) => (
+           <Box key={categoryKey}>
+             <ListItemButton
+               onClick={() => {
+                 toggleCategoryExpansion(categoryKey);
+                 setActiveCategory(categoryKey);
+                 const firstStat = category.stats.find(stat => stats[stat]);
+                 if (firstStat) onStatChange(firstStat);
+               }}
+               sx={{
+                 py: 2,
+                 px: 3,
+                 borderLeft: '4px solid',
+                 borderLeftColor: activeCategory === categoryKey ? category.color : 'transparent',
+                 backgroundColor: activeCategory === categoryKey ? `${category.color}15` : 'transparent',
+                 '&:hover': {
+                   backgroundColor: `${category.color}10`,
+                 }
+               }}
+             >
+               <ListItemIcon sx={{ color: category.color, minWidth: 40 }}>
+                 {category.icon}
+               </ListItemIcon>
+               <ListItemText 
+                 primary={
+                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: activeCategory === categoryKey ? category.color : 'text.primary' }}>
+                     {category.title}
+                   </Typography>
+                 }
+               />
+               <Chip 
+                 size="small" 
+                 label={category.stats.filter(stat => stats[stat]).length}
+                 sx={{ bgcolor: category.color, color: 'white', fontWeight: 600 }}
+               />
+               {expandedCategories.has(categoryKey) ? <ExpandLess /> : <ExpandMore />}
+             </ListItemButton>
+             
+             <Collapse in={expandedCategories.has(categoryKey)} timeout="auto" unmountOnExit>
+               <List sx={{ pl: 2, bgcolor: 'grey.50' }}>
+                 {category.stats
+                   .filter(stat => stats[stat])
+                   .map(stat => (
+                     <Fade in={expandedCategories.has(categoryKey)} key={stat}>
+                       <ListItemButton
+                         onClick={() => onStatChange(stat)}
+                         sx={{
+                           py: 1.5,
+                           px: 3,
+                           borderRadius: 2,
+                           mx: 1,
+                           mb: 0.5,
+                           backgroundColor: selectedStat === stat ? category.color : 'transparent',
+                           color: selectedStat === stat ? 'white' : 'text.primary',
+                           '&:hover': {
+                             backgroundColor: selectedStat === stat ? category.color : `${category.color}20`,
+                           },
+                         }}
+                       >
+                         <ListItemText 
+                           primary={
+                             <Typography variant="body2" sx={{ fontWeight: selectedStat === stat ? 600 : 400 }}>
+                               {getStatDisplayName(stat)}
+                             </Typography>
+                           }
+                         />
+                         {selectedStat === stat && (
+                           <Chip size="small" label="Active" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }} />
+                         )}
+                       </ListItemButton>
+                     </Fade>
+                   ))}
+               </List>
+             </Collapse>
+           </Box>
+         ))}
+       </List>
+     </Paper>
+   );
 
-    const getStatDisplayName = (stat: string) => {
-      const displayNames: { [key: string]: string } = {
-        corpus_overview: 'Corpus Overview',
-        document_length_stats: 'Document Length Stats',
-        word_length_distribution: 'Word Length Distribution',
-        languages_detected: 'Languages Detected',
-        most_common_punctuation: 'Punctuation Analysis',
-        field_completeness_percentage: 'Field Completeness',
-        distribution_over_time: 'Timeline Distribution',
-        distribution_over_decades: 'Decade Distribution',
-        most_frequent_words: 'Frequent Words',
-        most_frequent_bigrams: 'Frequent Bigrams',
-        most_frequent_trigrams: 'Frequent Trigrams',
-      };
-      
-      return displayNames[stat] || stat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    };
+   const renderMainContent = () => {
+     if (!stats || !selectedStat) {
+       return (
+         <Box sx={{ textAlign: 'center', py: 8 }}>
+           <Analytics sx={{ fontSize: 80, color: 'text.secondary', mb: 3, opacity: 0.5 }} />
+           <Typography variant="h5" color="text.secondary" gutterBottom>
+             No Statistics Available
+           </Typography>
+           <Typography variant="body1" color="text.secondary">
+             Execute a query to generate statistical analysis
+           </Typography>
+         </Box>
+       );
+     }
 
-    return (
-      <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f5f5f5' }}>
-        {/* Left Sidebar Navigation */}
-        <div style={{ 
-          width: '300px', 
-          backgroundColor: 'white', 
-          borderRight: '1px solid #e0e0e0',
-          overflowY: 'auto',
-          boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ padding: '20px', borderBottom: '1px solid #e0e0e0' }}>
-            <h2 style={{ margin: 0, color: '#333', fontSize: '18px' }}>📊 Statistics</h2>
-          </div>
-          
-          {Object.entries(statCategories).map(([categoryKey, category]) => (
-            <div key={categoryKey} style={{ marginBottom: '10px' }}>
-              <div 
-                style={{ 
-                  padding: '12px 20px', 
-                  backgroundColor: activeCategory === categoryKey ? '#e3f2fd' : 'transparent',
-                  borderLeft: activeCategory === categoryKey ? '4px solid #2196F3' : '4px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onClick={() => {
-                  setActiveCategory(categoryKey);
-                  const firstStat = category.stats.find(stat => stats[stat]);
-                  if (firstStat) onStatChange(firstStat);
-                }}
-              >
-                <div style={{ 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  color: activeCategory === categoryKey ? '#1976D2' : '#666',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span>{category.icon}</span>
-                  {category.title}
-                </div>
-              </div>
-              
-              {activeCategory === categoryKey && (
-                <div style={{ paddingLeft: '40px', paddingRight: '20px' }}>
-                  {category.stats
-                    .filter(stat => stats[stat])
-                    .map(stat => (
-                      <div
-                        key={stat}
-                        onClick={() => onStatChange(stat)}
-                        style={{
-                          padding: '8px 12px',
-                          margin: '2px 0',
-                          backgroundColor: selectedStat === stat ? '#1976D2' : 'transparent',
-                          color: selectedStat === stat ? 'white' : '#666',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          transition: 'all 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (selectedStat !== stat) {
-                            e.currentTarget.style.backgroundColor = '#f0f0f0';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (selectedStat !== stat) {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                          }
-                        }}
-                      >
-                        {getStatDisplayName(stat)}
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+     const shouldDisplayChart = chartData && !loading;
 
-        {/* Main Content Area */}
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          {renderStats()}
-        </div>
-      </div>
-    );
-  },
+     return (
+       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+         <Paper sx={{ p: 3, borderRadius: 3 }}>
+           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+             <Box>
+               <Typography variant="h5" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                 {getStatDisplayName(selectedStat)}
+               </Typography>
+               <Typography variant="body2" color="text.secondary">
+                 {rowData.length} data points available
+               </Typography>
+             </Box>
+             
+             <Stack direction="row" spacing={1}>
+               {shouldDisplayChart && (
+                 <FormControlLabel
+                   control={
+                     <Switch
+                       checked={showChart}
+                       onChange={(e) => setShowChart(e.target.checked)}
+                       icon={<VisibilityOff />}
+                       checkedIcon={<Visibility />}
+                     />
+                   }
+                   label="Chart View"
+                 />
+               )}
+               <ButtonGroup variant="outlined" size="small">
+                 <MUITooltip title="Download Data">
+                   <Button onClick={downloadCsv} startIcon={<GetApp />}>
+                     CSV
+                   </Button>
+                 </MUITooltip>
+                 {shouldDisplayChart && showChart && (
+                   <MUITooltip title="Download Chart">
+                     <Button onClick={downloadChart} startIcon={<Download />}>
+                       PNG
+                     </Button>
+                   </MUITooltip>
+                 )}
+               </ButtonGroup>
+             </Stack>
+           </Box>
+         </Paper>
+         
+         {shouldDisplayChart && showChart ? (
+           <Slide direction="up" in={showChart} mountOnEnter unmountOnExit>
+             <Box>{renderChart()}</Box>
+           </Slide>
+         ) : (
+           <Fade in={!showChart || !shouldDisplayChart}>
+             <Box>{renderGrid()}</Box>
+           </Fade>
+         )}
+       </Box>
+     );
+   };
+
+   return (
+     <Box sx={{ 
+       display: 'flex', 
+       height: '100%', 
+       bgcolor: 'background.default',
+       flexDirection: isMobile ? 'column' : 'row',
+       gap: 3,
+       p: 3
+     }}>
+       {renderSidebar()}
+       {renderMainContent()}
+     </Box>
+   );
+ },
 );
 
 export default StatisticsDisplay;
