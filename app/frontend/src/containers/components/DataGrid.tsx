@@ -514,56 +514,10 @@ const DataGridComponent = ({
     </Paper>
   );
 
-  const renderStatsCards = () => {
-    if (results.length === 0) return null;
-
-    const totalRecords = results.length;
-    const totalFields = Object.keys(results[0]).length;
-    const hasNERData = nerData && Object.keys(nerData).length > 0;
-    const searchMatches = searchText ? gridRef.current?.api?.getDisplayedRowCount() || 0 : totalRecords;
-
-    return (
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={3}>
-          <Card sx={{ textAlign: 'center', bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-            <CardContent sx={{ py: 2 }}>
-              <Typography variant="h6">{totalRecords.toLocaleString()}</Typography>
-              <Typography variant="body2">Records</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <Card sx={{ textAlign: 'center', bgcolor: 'secondary.light', color: 'secondary.contrastText' }}>
-            <CardContent sx={{ py: 2 }}>
-              <Typography variant="h6">{totalFields}</Typography>
-              <Typography variant="body2">Fields</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <Card sx={{ textAlign: 'center', bgcolor: hasNERData ? 'success.light' : 'grey.300' }}>
-            <CardContent sx={{ py: 2 }}>
-              <Typography variant="h6">{hasNERData ? 'Yes' : 'No'}</Typography>
-              <Typography variant="body2">NER Data</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <Card sx={{ textAlign: 'center', bgcolor: 'info.light', color: 'info.contrastText' }}>
-            <CardContent sx={{ py: 2 }}>
-              <Typography variant="h6">{searchMatches.toLocaleString()}</Typography>
-              <Typography variant="body2">Filtered</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    );
-  };
 
   return (
     <Box sx={{ p: 2, height: '100%' }}>
       {renderToolbar()}
-      {renderStatsCards()}
       
       <Paper 
         elevation={2} 
