@@ -67,14 +67,16 @@ const manageCacheSize = () => {
 
 // Helper function to create concordance (snippet around search terms)
 const createConcordance = (text, searchTerms, contextLength = 100) => {
-  if (!text || !searchTerms.length) return text;
+  // FIXED: Ensure text is a string
+  if (!text || typeof text !== 'string') return text?.toString() || '';
+  if (!searchTerms || !Array.isArray(searchTerms) || searchTerms.length === 0) return text;
   
   const lowerText = text.toLowerCase();
   const matches = [];
   
   // Find all matches for all search terms
   searchTerms.forEach(term => {
-    if (term && term.length > 1) {
+    if (term && typeof term === 'string' && term.length > 1) {
       const lowerTerm = term.toLowerCase();
       let index = lowerText.indexOf(lowerTerm);
       while (index !== -1) {
@@ -147,15 +149,26 @@ const CellRenderer = memo(({
     ), [field]);
 
   const processedContent = useMemo(() => {
-    if (!value) return null;
+    if (!value && value !== 0) return null;
 
-    let stringValue = String(value);
+    // FIXED: Ensure we have a string value
+    let stringValue = '';
+    if (typeof value === 'string') {
+      stringValue = value;
+    } else if (typeof value === 'number') {
+      stringValue = value.toString();
+    } else if (value !== null && value !== undefined) {
+      stringValue = String(value);
+    } else {
+      return null;
+    }
+
     const documentId = isId ? value : data.id;
     
     // Apply concordance for main text column when showing concordance mode
     const isMainTextColumn = field === mainTextColumn;
     if (showConcordance && isMainTextColumn) {
-      const searchTerms = formData[field]?.map(e => e.value).filter(w => w) || [];
+      const searchTerms = formData[field]?.map(e => e.value).filter(w => w && typeof w === 'string') || [];
       if (searchTerms.length > 0) {
         stringValue = createConcordance(stringValue, searchTerms);
       } else if (stringValue.length > 300) {
@@ -165,7 +178,7 @@ const CellRenderer = memo(({
     }
     
     // Create cache key
-    const searchTerms = formData[field]?.map(e => e.value).filter(w => w) || [];
+    const searchTerms = formData[field]?.map(e => e.value).filter(w => w && typeof w === 'string') || [];
     const cacheKey = `${documentId}_${field}_${stringValue.slice(0, 50)}_${viewNER}_${showConcordance}_${searchTerms.join('_')}`;
     
     // Check cache first
@@ -213,6 +226,7 @@ const CellRenderer = memo(({
           elements.push({ type: 'text', content: stringValue.slice(lastIndex) });
         }
       } catch (error) {
+        console.error('Error processing NER annotations:', error);
         elements = [{ type: 'text', content: stringValue }];
       }
     } else {
@@ -224,25 +238,35 @@ const CellRenderer = memo(({
       elements = elements.flatMap(element => {
         if (element.type === 'text') {
           let content = element.content;
+          
+          // FIXED: Ensure content is a string
+          if (typeof content !== 'string') {
+            content = String(content || '');
+          }
+          
           searchTerms.slice(0, 5).forEach(term => {
-            if (term.length > 1) {
+            if (term && typeof term === 'string' && term.length > 1) {
               const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
               const regex = new RegExp(`(${escapedTerm})`, 'gi');
-              const parts = content.split(regex);
-              const newElements = [];
-              parts.forEach((part, index) => {
-                if (index % 2 === 1) {
-                  newElements.push({ type: 'highlight', content: part, key: `${term}-${index}` });
-                } else if (part) {
-                  newElements.push({ type: 'text', content: part });
+              
+              // FIXED: Check if content is still a string before splitting
+              if (typeof content === 'string') {
+                const parts = content.split(regex);
+                const newElements = [];
+                parts.forEach((part, index) => {
+                  if (index % 2 === 1) {
+                    newElements.push({ type: 'highlight', content: part, key: `${term}-${index}` });
+                  } else if (part) {
+                    newElements.push({ type: 'text', content: part });
+                  }
+                });
+                if (newElements.length > 0) {
+                  content = newElements;
                 }
-              });
-              if (newElements.length > 0) {
-                content = newElements;
               }
             }
           });
-          return Array.isArray(content) ? content : [{ type: 'text', content }];
+          return Array.isArray(content) ? content : [{ type: 'text', content: String(content) }];
         }
         return [element];
       });
@@ -319,11 +343,11 @@ const CellRenderer = memo(({
                 fontWeight: 600
               }}
             >
-              {element.content}
+              {String(element.content)}
             </Box>
           );
         } else {
-          return <span key={`text-${index}`}>{element.content}</span>;
+          return <span key={`text-${index}`}>{String(element.content)}</span>;
         }
       })}
     </Box>
@@ -370,7 +394,9 @@ const DataGridComponent = memo(({
     fields.forEach(field => {
       const lengths = sample.map(row => {
         const value = row[field];
-        return value ? String(value).length : 0;
+        // FIXED: Handle non-string values
+        const stringValue = value ? String(value) : '';
+        return stringValue.length;
       });
       
       const avgLength = lengths.reduce((sum, len) => sum + len, 0) / lengths.length;
@@ -503,7 +529,12 @@ const DataGridComponent = memo(({
     const csvRows = [headers.join(',')];
 
     results.forEach(row => {
-      const values = headers.map(header => JSON.stringify(row[header] || ''));
+      const values = headers.map(header => {
+        const value = row[header];
+        // FIXED: Handle non-string values properly
+        const stringValue = value !== null && value !== undefined ? String(value) : '';
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      });
       csvRows.push(values.join(','));
     });
 
