@@ -47,6 +47,9 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency }) => {
   const [padding, setPadding] = useState(2);
   const [maxWords, setMaxWords] = useState(100);
 
+  const cloudWidth = isMobile ? 350 : 800;
+  const cloudHeight = isMobile ? 300 : 500;
+
   const colorSchemes = {
     default: ['#1976d2', '#388e3c', '#f57c00', '#d32f2f', '#7b1fa2', '#0097a7'],
     warm: ['#ff5722', '#ff9800', '#ffc107', '#ffeb3b', '#cddc39', '#8bc34a'],
@@ -92,8 +95,8 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency }) => {
       const ctx = canvas.getContext('2d');
       const img = new Image();
       
-      canvas.width = 800;
-      canvas.height = 600;
+      canvas.width = cloudWidth;
+      canvas.height = cloudHeight;
       
       img.onload = () => {
         ctx.fillStyle = 'white';
@@ -319,7 +322,7 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency }) => {
         sx={{ 
           p: 3, 
           borderRadius: 3, 
-          minHeight: '60vh',
+          minHeight: cloudHeight + 100,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -327,7 +330,7 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency }) => {
           position: 'relative'
         }}
       >
-        <Box id="word-cloud-container" sx={{ width: '100%', height: '60vh' }}>
+        <Box id="word-cloud-container" sx={{ width: cloudWidth, height: cloudHeight }}>
           {processedData.length > 0 ? (
             <WordCloud
               data={processedData}
@@ -336,8 +339,8 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency }) => {
               padding={padding}
               rotate={rotation ? () => (Math.random() - 0.5) * 60 : () => 0}
               spiral={spiral}
-              width={800}
-              height={500}
+              width={cloudWidth}
+              height={cloudHeight}
               fontWeight="600"
               fontFamily="Inter, Arial, sans-serif"
             />
