@@ -14,7 +14,13 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  Paper,
+  Typography,
+  Button
 } from '@mui/material';
 import {
   Search,
@@ -28,7 +34,9 @@ import {
   VisibilityOff,
   AspectRatio,
   CropFree,
-  ExpandMore
+  ExpandMore,
+  Close,
+  ExitToApp
 } from '@mui/icons-material';
 import {
   Cloud as CloudIcon
@@ -43,7 +51,6 @@ interface TabInfo {
   isLoading: boolean;
 }
 
-// Define fullscreen modes
 export type FullscreenMode = 'normal' | 'browser' | 'native';
 
 interface TabNavigationProps {
@@ -99,8 +106,10 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [fullscreenMenuAnchor, setFullscreenMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const [speedDialOpen, setSpeedDialOpen] = React.useState(false);
 
-  // Handle native fullscreen state changes
+  const isAnyFullscreen = fullscreenMode === 'browser' || fullscreenMode === 'native';
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isCurrentlyNativeFullscreen = Boolean(document.fullscreenElement);
@@ -115,10 +124,8 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     };
   }, [fullscreenMode, onFullscreenModeChange]);
 
-  // Handle fullscreen mode changes
   const handleFullscreenModeChange = async (mode: FullscreenMode) => {
     try {
-      // Exit current native fullscreen if active
       if (document.fullscreenElement) {
         if (document.exitFullscreen) {
           await document.exitFullscreen();
@@ -129,7 +136,6 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
         }
       }
 
-      // Enter new mode
       if (mode === 'native') {
         const element = containerRef?.current || document.documentElement;
         if (element.requestFullscreen) {
@@ -144,11 +150,11 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
       onFullscreenModeChange(mode);
     } catch (error) {
       console.error('Error changing fullscreen mode:', error);
-      // Fallback to browser mode if native fullscreen fails
       onFullscreenModeChange(mode === 'native' ? 'browser' : mode);
     }
 
     setFullscreenMenuAnchor(null);
+    setSpeedDialOpen(false);
   };
 
   const getFullscreenIcon = () => {
@@ -226,6 +232,27 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     };
     return tabsInfo[tabIndex];
   };
+
+  const fullscreenActions = [
+    {
+      icon: <AspectRatio />,
+      name: 'Normal View',
+      onClick: () => handleFullscreenModeChange('normal'),
+      disabled: fullscreenMode === 'normal'
+    },
+    {
+      icon: <CropFree />,
+      name: 'Browser Fullscreen',
+      onClick: () => handleFullscreenModeChange('browser'),
+      disabled: fullscreenMode === 'browser'
+    },
+    {
+      icon: <Fullscreen />,
+      name: 'Native Fullscreen',
+      onClick: () => handleFullscreenModeChange('native'),
+      disabled: fullscreenMode === 'native'
+    }
+  ];
 
   return (
     <Box sx={{ 
@@ -353,74 +380,140 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
           })}
         </Tabs>
                     
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Tooltip title={getFullscreenTooltip()}>
-            <IconButton 
-              onClick={(event) => setFullscreenMenuAnchor(event.currentTarget)}
-              size="small"
-              sx={{ 
-                color: 'text.secondary',
-                bgcolor: fullscreenMode !== 'normal' ? 'primary.light' : 'transparent',
-                '&:hover': {
-                  bgcolor: fullscreenMode !== 'normal' ? 'primary.main' : 'action.hover',
-                  color: fullscreenMode !== 'normal' ? 'white' : 'inherit'
-                }
-              }}
-            >
-              {getFullscreenIcon()}
-              <ExpandMore sx={{ fontSize: 12, ml: 0.5 }} />
-            </IconButton>
-          </Tooltip>
+        {!isAnyFullscreen ? (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Tooltip title={getFullscreenTooltip()}>
+              <IconButton 
+                onClick={(event) => setFullscreenMenuAnchor(event.currentTarget)}
+                size="small"
+                sx={{ 
+                  color: 'text.secondary',
+                  '&:hover': {
+                    bgcolor: 'action.hover'
+                  }
+                }}
+              >
+                {getFullscreenIcon()}
+                <ExpandMore sx={{ fontSize: 12, ml: 0.5 }} />
+              </IconButton>
+            </Tooltip>
 
-          {/* Fullscreen Mode Menu */}
-          <Menu
-            anchorEl={fullscreenMenuAnchor}
-            open={Boolean(fullscreenMenuAnchor)}
-            onClose={() => setFullscreenMenuAnchor(null)}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            <Menu
+              anchorEl={fullscreenMenuAnchor}
+              open={Boolean(fullscreenMenuAnchor)}
+              onClose={() => setFullscreenMenuAnchor(null)}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+              <MenuItem 
+                onClick={() => handleFullscreenModeChange('normal')}
+                selected={fullscreenMode === 'normal'}
+              >
+                <ListItemIcon>
+                  <AspectRatio fontSize="small" />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Normal View" 
+                  secondary="Standard layout with navigation"
+                />
+              </MenuItem>
+              <MenuItem 
+                onClick={() => handleFullscreenModeChange('browser')}
+                selected={fullscreenMode === 'browser'}
+              >
+                <ListItemIcon>
+                  <CropFree fontSize="small" />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Browser Fullscreen" 
+                  secondary="Full browser window (keeps browser UI)"
+                />
+              </MenuItem>
+              <MenuItem 
+                onClick={() => handleFullscreenModeChange('native')}
+                selected={fullscreenMode === 'native'}
+              >
+                <ListItemIcon>
+                  <Fullscreen fontSize="small" />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Native Fullscreen" 
+                  secondary="Complete screen takeover (ESC to exit)"
+                />
+              </MenuItem>
+            </Menu>
+          </Box>
+        ) : (
+          <Paper 
+            elevation={3}
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1, 
+              px: 2, 
+              py: 1,
+              borderRadius: 2,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white'
+            }}
           >
-            <MenuItem 
-              onClick={() => handleFullscreenModeChange('normal')}
-              selected={fullscreenMode === 'normal'}
-            >
-              <ListItemIcon>
-                <AspectRatio fontSize="small" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Normal View" 
-                secondary="Standard layout with navigation"
-              />
-            </MenuItem>
-            <MenuItem 
-              onClick={() => handleFullscreenModeChange('browser')}
-              selected={fullscreenMode === 'browser'}
-            >
-              <ListItemIcon>
-                <CropFree fontSize="small" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Browser Fullscreen" 
-                secondary="Full browser window (keeps browser UI)"
-              />
-            </MenuItem>
-            <MenuItem 
-              onClick={() => handleFullscreenModeChange('native')}
-              selected={fullscreenMode === 'native'}
-            >
-              <ListItemIcon>
-                <Fullscreen fontSize="small" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Native Fullscreen" 
-                secondary="Complete screen takeover (ESC to exit)"
-              />
-            </MenuItem>
-          </Menu>
-        </Box>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {fullscreenMode === 'browser' ? 'Browser Fullscreen' : 'Native Fullscreen'}
+            </Typography>
+            <Tooltip title="Exit Fullscreen (ESC)">
+              <IconButton 
+                size="small" 
+                onClick={() => handleFullscreenModeChange('normal')}
+                sx={{ 
+                  color: 'white',
+                  '&:hover': { 
+                    bgcolor: 'rgba(255,255,255,0.2)' 
+                  }
+                }}
+              >
+                <Close />
+              </IconButton>
+            </Tooltip>
+          </Paper>
+        )}
       </Box>
 
-      {/* NER Toggle FAB - Show only on Partial Results tab when NER is available */}
+      {isAnyFullscreen && (
+        <SpeedDial
+          ariaLabel="Fullscreen Options"
+          sx={{ 
+            position: 'fixed', 
+            bottom: 24, 
+            right: 24,
+            zIndex: 9999,
+            '& .MuiFab-primary': {
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            }
+          }}
+          icon={<SpeedDialIcon icon={getFullscreenIcon()} openIcon={<Close />} />}
+          open={speedDialOpen}
+          onOpen={() => setSpeedDialOpen(true)}
+          onClose={() => setSpeedDialOpen(false)}
+          direction="up"
+        >
+          {fullscreenActions.map((action) => (
+            <SpeedDialAction
+              key={action.name}
+              icon={action.icon}
+              tooltipTitle={action.name}
+              onClick={action.onClick}
+              sx={{
+                opacity: action.disabled ? 0.5 : 1,
+                bgcolor: action.disabled ? 'grey.300' : 'background.paper',
+                '&:hover': {
+                  bgcolor: action.disabled ? 'grey.300' : 'primary.light',
+                }
+              }}
+            />
+          ))}
+        </SpeedDial>
+      )}
+
       {activeTab === TABS.PARTIAL_RESULTS && isNERVisible && (
         <Tooltip title={viewNER ? 'Hide NER highlighting' : 'Show NER highlighting'}>
           <Fab
@@ -429,7 +522,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
             sx={{
               position: 'absolute',
               bottom: -28,
-              right: 24,
+              right: isAnyFullscreen ? 80 : 24,
               bgcolor: viewNER ? 'error.main' : 'primary.main',
               '&:hover': { bgcolor: viewNER ? 'error.dark' : 'primary.dark' },
               zIndex: 1000,
