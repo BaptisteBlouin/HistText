@@ -76,6 +76,11 @@ const SHAPE_PATTERNS = {
   circle: { name: 'Circle', spiral: 'archimedean', shape: 'circle' }
 };
 
+// Helper function to detect Chinese characters
+const containsChinese = (text: string): boolean => {
+  return /[\u4e00-\u9fff]/.test(text);
+};
+
 const Cloud: React.FC<CloudProps> = ({ wordFrequency, isLoading = false, progress = 0 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -119,21 +124,37 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency, isLoading = false, progres
     return { width: baseWidth, height: baseHeight };
   }, [isMobile, fullscreen]);
 
-  // Enhanced data processing with search highlighting
+  // FIXED: Enhanced data processing with proper Chinese support
   const processedData = useMemo(() => {
     if (!wordFrequency || wordFrequency.length === 0) return [];
+    
+    console.log('Cloud component received word frequency data:', wordFrequency.slice(0, 20));
     
     let filtered = wordFrequency
       .filter(item => item.value >= filterMinFreq)
       .filter(item => {
         const word = item.text.toLowerCase();
-        if (word.length < 3 || word.length > 25) return false;
+        const isChinese = containsChinese(item.text);
         
-        const stopWords = new Set([
-          'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use'
-        ]);
+        // FIXED: Different length requirements for Chinese vs non-Chinese
+        if (isChinese) {
+          // For Chinese: accept 1-4 character words
+          if (item.text.length < 1 || item.text.length > 4) return false;
+        } else {
+          // For non-Chinese: require 2-25 characters
+          if (word.length < 2 || word.length > 25) return false;
+        }
         
-        return !stopWords.has(word);
+        // FIXED: Only apply English stop words to non-Chinese text
+        if (!isChinese) {
+          const stopWords = new Set([
+            'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use'
+          ]);
+          
+          return !stopWords.has(word);
+        }
+        
+        return true; // Accept all Chinese characters
       });
 
     // Search filtering
@@ -149,6 +170,8 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency, isLoading = false, progres
     
     if (sortedData.length === 0) return [];
     
+    console.log('Cloud processed data (first 20):', sortedData.slice(0, 20));
+    
     const values = sortedData.map(w => Math.log2(w.value + 1));
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
@@ -162,7 +185,8 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency, isLoading = false, progres
       value: item.value,
       size: scale(Math.log2(item.value + 1)),
       rank: index + 1,
-      isHighlighted: highlightedWord === item.text
+      isHighlighted: highlightedWord === item.text,
+      isChinese: containsChinese(item.text)
     }));
   }, [wordFrequency, minFontSize, maxFontSize, maxWords, filterMinFreq, searchTerm, highlightedWord]);
 
@@ -252,12 +276,16 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency, isLoading = false, progres
     if (processedData.length === 0) return null;
     
     const searchResults = searchTerm ? processedData.length : null;
+    const chineseWords = processedData.filter(w => w.isChinese).length;
+    const englishWords = processedData.filter(w => !w.isChinese).length;
     
     return {
       totalWords: processedData.length,
       maxFrequency: Math.max(...processedData.map(w => w.value)),
       avgFrequency: Math.round(processedData.reduce((sum, w) => sum + w.value, 0) / processedData.length),
       searchResults,
+      chineseWords,
+      englishWords,
       uniqueLetters: new Set(processedData.map(w => w.text).join('').toLowerCase()).size
     };
   }, [processedData, searchTerm]);
@@ -321,7 +349,9 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency, isLoading = false, progres
           <Typography variant="body2" color="text.secondary">
             {stats && (
               <>
-                {stats.totalWords} words • Max: {stats.maxFrequency} • Avg: {stats.avgFrequency}
+                {stats.totalWords} words
+                {stats.chineseWords > 0 && ` (${stats.chineseWords} Chinese, ${stats.englishWords} English)`}
+                • Max: {stats.maxFrequency} • Avg: {stats.avgFrequency}
                 {stats.searchResults && ` • Found: ${stats.searchResults}`}
               </>
             )}
@@ -418,16 +448,16 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency, isLoading = false, progres
           <Grid item xs={6} sm={3}>
             <Card sx={{ textAlign: 'center', bgcolor: 'success.light', color: 'success.contrastText' }}>
               <CardContent sx={{ py: 1 }}>
-                <Typography variant="h6">{stats.avgFrequency}</Typography>
-                <Typography variant="caption">Avg Frequency</Typography>
+                <Typography variant="h6">{stats.chineseWords}</Typography>
+                <Typography variant="caption">Chinese Words</Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
             <Card sx={{ textAlign: 'center', bgcolor: 'info.light', color: 'info.contrastText' }}>
               <CardContent sx={{ py: 1 }}>
-                <Typography variant="h6">{stats.uniqueLetters}</Typography>
-                <Typography variant="caption">Unique Letters</Typography>
+                <Typography variant="h6">{stats.englishWords}</Typography>
+                <Typography variant="caption">English Words</Typography>
               </CardContent>
             </Card>
           </Grid>
@@ -644,6 +674,10 @@ const Cloud: React.FC<CloudProps> = ({ wordFrequency, isLoading = false, progres
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Font Size</Typography>
                   <Typography variant="h6">{Math.round(selectedWord.size)}px</Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="text.secondary">Type</Typography>
+                  <Typography variant="h6">{selectedWord.isChinese ? 'Chinese' : 'English'}</Typography>
                 </Grid>
               </Grid>
             </Box>
