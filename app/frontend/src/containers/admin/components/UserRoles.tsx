@@ -4,15 +4,37 @@ import {
   Button,
   Typography,
   Paper,
-  Snackbar,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   TextField,
+  Card,
+  CardContent,
+  Chip,
+  Stack,
+  Alert,
+  useTheme,
+  useMediaQuery,
+  Fade,
+  CircularProgress,
+  InputAdornment,
+  Avatar,
+  Tooltip,
+  IconButton,
+  Grid
 } from '@mui/material';
-import Autocomplete from '@mui/material/Autocomplete';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import {
+  Add,
+  Delete,
+  Search,
+  Security,
+  Person,
+  Badge,
+  Refresh
+} from '@mui/icons-material';
+import Autocomplete from '@mui/material/Autocomplete';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
@@ -25,11 +47,18 @@ interface UserRole {
 interface User {
   id: number;
   email: string;
+  firstname?: string;
+  lastname?: string;
+}
+
+interface NotificationState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error' | 'warning' | 'info';
 }
 
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
-
   return useMemo(() => {
     const instance = axios.create();
     instance.interceptors.request.use(config => {
@@ -47,6 +76,9 @@ const useAuthAxios = () => {
 
 const UserRoles: React.FC = () => {
   const authAxios = useAuthAxios();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
@@ -55,9 +87,11 @@ const UserRoles: React.FC = () => {
     role: '',
   });
   const [search, setSearch] = useState('');
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
+  const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState<NotificationState>({
     open: false,
     message: '',
+    severity: 'info'
   });
 
   useEffect(() => {
@@ -65,8 +99,14 @@ const UserRoles: React.FC = () => {
     fetchUsers();
   }, []);
 
+  const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
+    setNotification({ open: true, message, severity });
+    setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
+  };
+
   const fetchUserRoles = async () => {
     try {
+      setLoading(true);
       const { data } = await authAxios.get('/api/user_roles');
       setUserRoles(data);
       const uniqueRoles = Array.from(new Set(data.map((ur: UserRole) => ur.role)));
@@ -76,6 +116,9 @@ const UserRoles: React.FC = () => {
       }
     } catch (err) {
       console.error('Fetch user roles failed:', err);
+      showNotification('Failed to fetch user roles', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,136 +131,300 @@ const UserRoles: React.FC = () => {
       }
     } catch (err) {
       console.error('Fetch users failed:', err);
-    }
-  };
+     showNotification('Failed to fetch users', 'error');
+   }
+ };
+ const handleAdd = async () => {
+   if (!formState.user_id || !formState.role) {
+     showNotification('User and Role are required', 'warning');
+     return;
+   }
+   try {
+     await authAxios.post('/api/user_roles', formState);
+     setFormState({ user_id: users[0]?.id, role: roles[0] || '' });
+     fetchUserRoles();
+     showNotification('User role assigned successfully', 'success');
+   } catch (err) {
+     console.error('Add user role failed:', err);
+     showNotification('Failed to assign user role', 'error');
+   }
+ };
 
-  const handleAdd = async () => {
-    if (!formState.user_id || !formState.role) {
-      setSnackbar({ open: true, message: 'User and Role are required' });
-      return;
-    }
-    try {
-      await authAxios.post('/api/user_roles', formState);
-      setFormState({ user_id: users[0]?.id, role: roles[0] || '' });
-      fetchUserRoles();
-      setSnackbar({ open: true, message: 'User role added successfully' });
-    } catch (err) {
-      console.error('Add user role failed:', err);
-      setSnackbar({ open: true, message: 'Failed to add user role' });
-    }
-  };
+ const handleDelete = async (userId: number, role: string) => {
+   try {
+     await authAxios.delete(`/api/user_roles/${userId}/${encodeURIComponent(role)}`);
+     fetchUserRoles();
+     showNotification('User role removed successfully', 'success');
+   } catch (err) {
+     console.error('Delete user role failed:', err);
+     showNotification('Failed to remove user role', 'error');
+   }
+ };
 
-  const handleDelete = async (userId: number, role: string) => {
-    try {
-      await authAxios.delete(`/api/user_roles/${userId}/${encodeURIComponent(role)}`);
-      fetchUserRoles();
-      setSnackbar({ open: true, message: 'User role deleted successfully' });
-    } catch (err) {
-      console.error('Delete user role failed:', err);
-      setSnackbar({ open: true, message: 'Failed to delete user role' });
-    }
-  };
+ const getUserDisplayName = (userId: number) => {
+   const user = users.find(u => u.id === userId);
+   if (!user) return `User ${userId}`;
+   const fullName = `${user.firstname || ''} ${user.lastname || ''}`.trim();
+   return fullName || user.email;
+ };
 
-  const filteredUserRoles = userRoles.filter(ur => {
-    const user = users.find(u => u.id === ur.user_id);
-    return (
-      user?.email.toLowerCase().includes(search.toLowerCase()) ||
-      ur.role.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+ const getUserInitials = (userId: number) => {
+   const user = users.find(u => u.id === userId);
+   if (!user) return '?';
+   if (user.firstname && user.lastname) {
+     return `${user.firstname.charAt(0)}${user.lastname.charAt(0)}`;
+   }
+   return user.email.charAt(0).toUpperCase();
+ };
 
-  const columns: GridColDef[] = [
-    { field: 'user_id', headerName: 'User ID', width: 120 },
-    { field: 'role', headerName: 'Role', width: 200 },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 150,
-      renderCell: (params: GridRenderCellParams) => (
-        <Button
-          variant="contained"
-          color="secondary"
-          size="small"
-          onClick={() => handleDelete(params.row.user_id, params.row.role)}
-        >
-          Delete
-        </Button>
-      ),
-    },
-  ];
+ const filteredUserRoles = userRoles.filter(ur => {
+   const user = users.find(u => u.id === ur.user_id);
+   const searchTerm = search.toLowerCase();
+   return (
+     user?.email.toLowerCase().includes(searchTerm) ||
+     user?.firstname?.toLowerCase().includes(searchTerm) ||
+     user?.lastname?.toLowerCase().includes(searchTerm) ||
+     ur.role.toLowerCase().includes(searchTerm)
+   );
+ });
 
-  return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        User Roles
-      </Typography>
+ const getRoleColor = (role: string) => {
+   const colors = ['primary', 'secondary', 'success', 'warning', 'error', 'info'];
+   const index = role.length % colors.length;
+   return colors[index] as any;
+ };
 
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6">Assign Role</Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
-          <FormControl sx={{ minWidth: 240 }}>
-            <InputLabel>User</InputLabel>
-            <Select
-              value={formState.user_id ?? ''}
-              onChange={e => setFormState({ ...formState, user_id: Number(e.target.value) })}
-              label="User"
-            >
-              {users.map(user => (
-                <MenuItem key={user.id} value={user.id}>
-                  {user.email} (ID: {user.id})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+ const columns: GridColDef[] = [
+   {
+     field: 'avatar',
+     headerName: '',
+     width: 80,
+     sortable: false,
+     filterable: false,
+     renderCell: (params) => (
+       <Avatar sx={{ bgcolor: `${getRoleColor(params.row.role)}.main` }}>
+         {getUserInitials(params.row.user_id)}
+       </Avatar>
+     ),
+   },
+   { 
+     field: 'user_id', 
+     headerName: 'User ID', 
+     width: 100,
+     renderCell: (params) => (
+       <Chip label={params.value} size="small" variant="outlined" />
+     )
+   },
+   {
+     field: 'user_name',
+     headerName: 'User',
+     width: 250,
+     renderCell: (params) => (
+       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+         <Person fontSize="small" color="action" />
+         <Box>
+           <Typography variant="body2" sx={{ fontWeight: 600 }}>
+             {getUserDisplayName(params.row.user_id)}
+           </Typography>
+           <Typography variant="caption" color="text.secondary">
+             {users.find(u => u.id === params.row.user_id)?.email}
+           </Typography>
+         </Box>
+       </Box>
+     ),
+   },
+   { 
+     field: 'role', 
+     headerName: 'Role', 
+     width: 200,
+     renderCell: (params) => (
+       <Chip
+         icon={<Badge />}
+         label={params.value}
+         color={getRoleColor(params.value)}
+         size="small"
+         sx={{ fontWeight: 600 }}
+       />
+     )
+   },
+   {
+     field: 'created_at',
+     headerName: 'Assigned Date',
+     width: 180,
+     renderCell: (params) => (
+       <Typography variant="body2" color="text.secondary">
+         {new Date(params.value).toLocaleDateString()}
+       </Typography>
+     ),
+   },
+   {
+     field: 'actions',
+     headerName: 'Actions',
+     width: 120,
+     sortable: false,
+     filterable: false,
+     renderCell: (params: GridRenderCellParams) => (
+       <Tooltip title="Remove Role">
+         <IconButton
+           size="small"
+           color="error"
+           onClick={() => handleDelete(params.row.user_id, params.row.role)}
+         >
+           <Delete />
+         </IconButton>
+       </Tooltip>
+     ),
+   },
+ ];
 
-          <Autocomplete
-            freeSolo
-            options={roles}
-            value={formState.role || ''}
-            onChange={(_, value) =>
-              setFormState({
-                ...formState,
-                role: typeof value === 'string' ? value : '',
-              })
-            }
-            onInputChange={(_, inputValue) => setFormState({ ...formState, role: inputValue })}
-            renderInput={params => <TextField {...params} label="Role" />}
-            sx={{ minWidth: 200 }}
-          />
+ return (
+   <Fade in={true} timeout={600}>
+     <Box>
+       {notification.open && (
+         <Alert 
+           severity={notification.severity} 
+           sx={{ mb: 3 }}
+           onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+         >
+           {notification.message}
+         </Alert>
+       )}
 
-          <Button variant="contained" onClick={handleAdd}>
-            Add
-          </Button>
-        </Box>
-      </Paper>
+       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+         <Box>
+           <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+             <Security color="primary" />
+             User Roles
+           </Typography>
+           <Typography variant="body1" color="text.secondary">
+             Assign and manage user roles and permissions
+           </Typography>
+         </Box>
+         <Tooltip title="Refresh Data">
+           <IconButton onClick={fetchUserRoles} color="primary">
+             <Refresh />
+           </IconButton>
+         </Tooltip>
+       </Box>
 
-      <Box sx={{ mb: 2 }}>
-        <TextField
-          label="Search by user email or role"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          fullWidth
-        />
-      </Box>
+       <Card sx={{ mb: 4 }}>
+         <CardContent>
+           <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+             <Add />
+             Assign Role to User
+           </Typography>
+           <Grid container spacing={3} alignItems="center">
+             <Grid item xs={12} md={4}>
+               <FormControl fullWidth>
+                 <InputLabel>Select User</InputLabel>
+                 <Select
+                   value={formState.user_id ?? ''}
+                   onChange={e => setFormState({ ...formState, user_id: Number(e.target.value) })}
+                   label="Select User"
+                 >
+                   {users.map(user => (
+                     <MenuItem key={user.id} value={user.id}>
+                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                         <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+                           {user.firstname?.charAt(0) || user.email.charAt(0)}
+                         </Avatar>
+                         <Box>
+                           <Typography variant="body2">
+                             {`${user.firstname || ''} ${user.lastname || ''}`.trim() || user.email}
+                           </Typography>
+                           <Typography variant="caption" color="text.secondary">
+                             ID: {user.id}
+                           </Typography>
+                         </Box>
+                       </Box>
+                     </MenuItem>
+                   ))}
+                 </Select>
+               </FormControl>
+             </Grid>
+             
+             <Grid item xs={12} md={4}>
+               <Autocomplete
+                 freeSolo
+                 options={roles}
+                 value={formState.role || ''}
+                 onChange={(_, value) => setFormState({ ...formState, role: typeof value === 'string' ? value : '' })}
+                 onInputChange={(_, inputValue) => setFormState({ ...formState, role: inputValue })}
+                 renderInput={params => (
+                   <TextField 
+                     {...params} 
+                     label="Role Name" 
+                     placeholder="Enter or select role..."
+                   />
+                 )}
+               />
+             </Grid>
 
-      <Paper sx={{ height: 600 }}>
-        <DataGrid
-          rows={filteredUserRoles}
-          columns={columns}
-          pageSize={10}
-          rowsPerPageOptions={[10, 25, 50]}
-          getRowId={row => `${row.user_id}-${row.role}`}
-        />
-      </Paper>
+             <Grid item xs={12} md={4}>
+               <Button
+                 variant="contained"
+                 onClick={handleAdd}
+                 disabled={!formState.user_id || !formState.role}
+                 startIcon={<Add />}
+                 fullWidth
+                 sx={{
+                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                   '&:hover': {
+                     background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                   }
+                 }}
+               >
+                 Assign Role
+               </Button>
+             </Grid>
+           </Grid>
+         </CardContent>
+       </Card>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-        message={snackbar.message}
-      />
-    </Box>
-  );
+       <Card sx={{ mb: 3 }}>
+         <CardContent>
+           <TextField
+             fullWidth
+             placeholder="Search by user name, email, or role..."
+             value={search}
+             onChange={(e) => setSearch(e.target.value)}
+             InputProps={{
+               startAdornment: (
+                 <InputAdornment position="start">
+                   <Search color="action" />
+                 </InputAdornment>
+               ),
+             }}
+           />
+         </CardContent>
+       </Card>
+
+       <Paper sx={{ height: 600, borderRadius: 3, overflow: 'hidden' }}>
+         {loading ? (
+           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+             <CircularProgress />
+           </Box>
+         ) : (
+           <DataGrid
+             rows={filteredUserRoles}
+             columns={columns}
+             pageSize={10}
+             rowsPerPageOptions={[10, 25, 50]}
+             getRowId={row => `${row.user_id}-${row.role}`}
+             disableSelectionOnClick
+             sx={{
+               border: 'none',
+               '& .MuiDataGrid-cell': { outline: 'none' },
+               '& .MuiDataGrid-row:hover': {
+                 backgroundColor: 'rgba(102, 126, 234, 0.05)',
+               },
+             }}
+           />
+         )}
+       </Paper>
+     </Box>
+   </Fade>
+ );
 };
 
 export default UserRoles;

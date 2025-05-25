@@ -1,24 +1,55 @@
-// src/pages/AdminPanel.tsx
 import React, { useState, Suspense, useEffect } from 'react';
 import { useAuth, useAuthCheck } from '../../hooks/useAuth';
-import { Box, Typography, Card, CardContent, Tabs, Tab, Button } from '@mui/material';
+import { 
+  Box, 
+  Typography, 
+  Card, 
+  CardContent, 
+  Tabs, 
+  Tab, 
+  Button,
+  Container,
+  Paper,
+  Fade,
+  useTheme,
+  useMediaQuery,
+  IconButton,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Chip,
+  Stack,
+  LinearProgress,
+  Alert
+} from '@mui/material';
+import {
+  Dashboard as DashboardIcon,
+  People,
+  Security,
+  Storage,
+  Psychology,
+  MenuBook,
+  Menu as MenuIcon,
+  Close as CloseIcon,
+  AdminPanelSettings
+} from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// Lazy-loaded component imports
 const Users = React.lazy(() => import('./components/Users'));
 const RolePermissions = React.lazy(() => import('./components/RolePermissions'));
 const UserRoles = React.lazy(() => import('./components/UserRoles'));
 const SolrDatabase = React.lazy(() => import('./components/SolrDatabase'));
 const SolrDatabasePermissions = React.lazy(() => import('./components/SolrDatabasePermissions'));
 const SolrDatabaseInfo = React.lazy(() => import('./components/SolrDatabaseInfo'));
-const UpdateConfig = React.lazy(() => import('./components/UpdateConfig'));
 const Dashboard = React.lazy(() => import('./components/Dashboard'));
 const PrecomputeNER = React.lazy(() => import('./components/PrecomputedNER'));
-const TokenizeSolr = React.lazy(() => import('./components/TokenizeSolr')); // New component
-const ComputeWordEmbeddings = React.lazy(() => import('./components/ComputeWordEmbeddings')); // New component
+const TokenizeSolr = React.lazy(() => import('./components/TokenizeSolr'));
+const ComputeWordEmbeddings = React.lazy(() => import('./components/ComputeWordEmbeddings'));
 
-// ReadMeTab now fetches markdown from an external file in public/docs/README_NLP.md
 const ReadMeTab: React.FC = () => {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -43,16 +74,18 @@ const ReadMeTab: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
-        <Typography>Loading ReadMe...</Typography>
+      <Box sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <LinearProgress sx={{ width: '100%' }} />
+        <Typography>Loading Documentation...</Typography>
       </Box>
     );
   }
+
   if (error) {
     return (
-      <Box sx={{ p: 4 }}>
-        <Typography color="error">Error: {error}</Typography>
-      </Box>
+      <Alert severity="error" sx={{ m: 4 }}>
+        Error loading documentation: {error}
+      </Alert>
     );
   }
 
@@ -65,8 +98,8 @@ const ReadMeTab: React.FC = () => {
         fontSize: '16px',
         lineHeight: 1.6,
         color: 'rgba(0, 0, 0, 0.87)',
-
-        // Headers
+        maxWidth: '100%',
+        overflow: 'auto',
         '& h1': {
           fontSize: '2rem',
           mt: 4,
@@ -76,7 +109,6 @@ const ReadMeTab: React.FC = () => {
           fontWeight: 600,
           lineHeight: 1.25,
           letterSpacing: '-0.01em',
-          fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         },
         '& h2': {
           fontSize: '1.5rem',
@@ -87,7 +119,6 @@ const ReadMeTab: React.FC = () => {
           fontWeight: 600,
           lineHeight: 1.25,
           letterSpacing: '-0.01em',
-          fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         },
         '& h3': {
           fontSize: '1.25rem',
@@ -95,26 +126,7 @@ const ReadMeTab: React.FC = () => {
           mb: 1.5,
           fontWeight: 600,
           lineHeight: 1.25,
-          fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         },
-        '& h4': {
-          fontSize: '1rem',
-          mt: 2,
-          mb: 1,
-          fontWeight: 600,
-          lineHeight: 1.25,
-          fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        },
-        '& h5': {
-          fontSize: '0.875rem',
-          mt: 2,
-          mb: 1,
-          fontWeight: 600,
-          lineHeight: 1.25,
-          fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        },
-
-        // Links
         '& a': {
           color: '#0366d6',
           textDecoration: 'none',
@@ -122,31 +134,19 @@ const ReadMeTab: React.FC = () => {
             textDecoration: 'underline',
           },
         },
-
-        // Paragraphs
         '& p': {
           mt: 0,
           mb: 1.5,
           lineHeight: 1.6,
         },
-
-        // Lists
         '& ul, & ol': {
           mt: 0,
           mb: 2,
           paddingLeft: '2em',
           '& li': {
             mb: 0.5,
-            '& > p': {
-              mb: 0.75,
-            },
-            '& > ul, & > ol': {
-              mb: 0.75,
-            },
           },
         },
-
-        // Tables
         '& table': {
           width: '100%',
           borderCollapse: 'collapse',
@@ -154,20 +154,14 @@ const ReadMeTab: React.FC = () => {
           display: 'block',
           overflow: 'auto',
         },
-        '& thead': {
-          backgroundColor: '#f6f8fa',
+        '& th, & td': {
+          border: '1px solid #dfe2e5',
+          p: 1.5,
         },
         '& th': {
-          border: '1px solid #dfe2e5',
-          p: 1.5,
+          backgroundColor: '#f6f8fa',
           fontWeight: 600,
         },
-        '& td': {
-          border: '1px solid #dfe2e5',
-          p: 1.5,
-        },
-
-        // Code blocks
         '& pre': {
           backgroundColor: '#f6f8fa',
           borderRadius: 3,
@@ -184,10 +178,7 @@ const ReadMeTab: React.FC = () => {
           padding: '0.2em 0.4em',
           borderRadius: 3,
           fontSize: '85%',
-          wordBreak: 'break-word',
         },
-
-        // Blockquotes
         '& blockquote': {
           paddingLeft: 2,
           marginLeft: 0,
@@ -195,8 +186,6 @@ const ReadMeTab: React.FC = () => {
           borderLeft: '0.25em solid #dfe2e5',
           color: '#6a737d',
         },
-
-        // Horizontal rules
         '& hr': {
           height: '0.25em',
           padding: 0,
@@ -204,38 +193,11 @@ const ReadMeTab: React.FC = () => {
           backgroundColor: '#e1e4e8',
           border: 0,
         },
-
-        // Images
         '& img': {
           maxWidth: '100%',
           boxSizing: 'content-box',
           backgroundColor: '#fff',
         },
-
-        // Strong, Emphasis
-        '& strong': {
-          fontWeight: 600,
-        },
-        '& em': {
-          fontStyle: 'italic',
-        },
-
-        // Details & Summary
-        '& details': {
-          display: 'block',
-          mb: 2,
-        },
-        '& summary': {
-          display: 'list-item',
-          cursor: 'pointer',
-          fontWeight: 600,
-        },
-
-        // Alignment for overall container
-        textAlign: 'left',
-        width: '100%',
-        maxWidth: '100%',
-        overflowX: 'auto',
       }}
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
@@ -243,175 +205,348 @@ const ReadMeTab: React.FC = () => {
   );
 };
 
-// API Documentation component that redirects to Swagger UI
 const ApiDocumentation: React.FC = () => {
   const handleOpenApiDocs = () => {
-    // Open each API documentation in a new tab
     window.open('/swagger-ui/', '_blank');
   };
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h5" gutterBottom>
-        API Documentation
-      </Typography>
-      <Typography paragraph>
-        Access the complete API documentation with interactive endpoints using Swagger UI. This
-        documentation covers all available endpoints organized into three main sections:
-      </Typography>
-      <ul>
-        <li>User Management API - user accounts, roles, and permissions</li>
-        <li>Solr Administration API - database configurations and permissions</li>
-        <li>HistText Core API - document search, metadata, and text analysis</li>
-      </ul>
-      <Button variant="contained" color="primary" onClick={handleOpenApiDocs} sx={{ mt: 2 }}>
-        Open API Documentation
-      </Button>
-    </Box>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Card sx={{ textAlign: 'center', p: 4 }}>
+        <MenuBook sx={{ fontSize: 80, color: 'primary.main', mb: 3 }} />
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>
+          API Documentation
+        </Typography>
+        <Typography variant="body1" color="text.secondary" paragraph sx={{ mb: 4 }}>
+          Access the complete API documentation with interactive endpoints using Swagger UI. 
+          This documentation covers all available endpoints organized into three main sections:
+        </Typography>
+        
+        <Stack spacing={2} sx={{ mb: 4, textAlign: 'left' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <People color="primary" />
+            <Typography variant="body1">User Management API - accounts, roles, and permissions</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Storage color="primary" />
+            <Typography variant="body1">Solr Administration API - database configurations and permissions</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Psychology color="primary" />
+            <Typography variant="body1">HistText Core API - document search, metadata, and text analysis</Typography>
+          </Box>
+        </Stack>
+
+        <Button 
+          variant="contained" 
+          size="large"
+          onClick={handleOpenApiDocs}
+          sx={{
+            px: 4,
+            py: 1.5,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+            }
+          }}
+        >
+          Open API Documentation
+        </Button>
+      </Card>
+    </Container>
   );
 };
 
 const AdminPanel: React.FC = () => {
   useAuthCheck();
   const auth = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isAdmin = auth.session?.hasRole('Admin');
 
   const [mainTab, setMainTab] = useState<number>(() => {
-    const storedTab = localStorage.getItem('mainTab');
+    const storedTab = localStorage.getItem('adminMainTab');
     return storedTab ? parseInt(storedTab, 10) : 0;
   });
   const [subTab, setSubTab] = useState<number>(0);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const handleMainTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setMainTab(newValue);
-    localStorage.setItem('mainTab', newValue.toString());
+    localStorage.setItem('adminMainTab', newValue.toString());
     if (newValue !== 3) setSubTab(0);
+    if (isMobile) setMobileDrawerOpen(false);
   };
 
   const handleSubTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setSubTab(newValue);
   };
 
-  if (!auth.session) return <div>Loading...</div>;
-  if (!isAdmin) return <div>Access Denied</div>;
+  const mainTabs = [
+    { label: 'Dashboard', icon: <DashboardIcon />, color: 'primary' },
+    { label: 'User Management', icon: <People />, color: 'secondary' },
+    { label: 'Data Management', icon: <Storage />, color: 'success' },
+    { label: 'NLP Tools', icon: <Psychology />, color: 'warning' },
+    { label: 'API Docs', icon: <MenuBook />, color: 'info' },
+  ];
+
+  const userSubTabs = [
+    { label: 'Users', component: Users },
+    { label: 'User Roles', component: UserRoles },
+    { label: 'Role Permissions', component: RolePermissions },
+  ];
+
+  const dataSubTabs = [
+    { label: 'Databases', component: SolrDatabase },
+    { label: 'Database Info', component: SolrDatabaseInfo },
+    { label: 'Database Permissions', component: SolrDatabasePermissions },
+  ];
+
+  const nlpSubTabs = [
+    { label: 'Documentation', component: ReadMeTab },
+    { label: 'Named Entity Recognition', component: PrecomputeNER },
+    { label: 'Tokenization', component: TokenizeSolr },
+    { label: 'Word Embeddings', component: ComputeWordEmbeddings },
+  ];
+
+  if (!auth.session) {
+    return (
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+        <Paper sx={{ p: 6, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+          <LinearProgress sx={{ mb: 3 }} />
+          <Typography variant="h5" gutterBottom>Loading...</Typography>
+          <Typography variant="body1">Checking authentication...</Typography>
+        </Paper>
+      </Container>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+        <Paper sx={{ p: 6, background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white' }}>
+          <Security sx={{ fontSize: 80, mb: 3, opacity: 0.8 }} />
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>
+            Access Denied
+          </Typography>
+          <Typography variant="body1">
+            You need administrator privileges to access this panel.
+          </Typography>
+        </Paper>
+      </Container>
+    );
+  }
+
+  const renderContent = () => {
+    switch (mainTab) {
+      case 0:
+        return (
+          <Suspense fallback={<LinearProgress />}>
+            <Dashboard />
+          </Suspense>
+        );
+      
+      case 1:
+        return (
+          <Box>
+            <Tabs
+              value={subTab}
+              onChange={handleSubTabChange}
+              variant={isMobile ? "scrollable" : "fullWidth"}
+              scrollButtons="auto"
+              sx={{
+                mb: 3,
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                },
+              }}
+            >
+              {userSubTabs.map((tab, index) => (
+                <Tab key={index} label={tab.label} />
+              ))}
+            </Tabs>
+            <Suspense fallback={<LinearProgress />}>
+              {React.createElement(userSubTabs[subTab].component)}
+            </Suspense>
+          </Box>
+        );
+      
+      case 2:
+        return (
+          <Box>
+            <Tabs
+              value={subTab}
+              onChange={handleSubTabChange}
+              variant={isMobile ? "scrollable" : "fullWidth"}
+              scrollButtons="auto"
+              sx={{
+                mb: 3,
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                },
+              }}
+            >
+              {dataSubTabs.map((tab, index) => (
+                <Tab key={index} label={tab.label} />
+              ))}
+            </Tabs>
+            <Suspense fallback={<LinearProgress />}>
+              {React.createElement(dataSubTabs[subTab].component)}
+            </Suspense>
+          </Box>
+        );
+      
+      case 3:
+        return (
+          <Box>
+            <Tabs
+              value={subTab}
+              onChange={handleSubTabChange}
+              variant={isMobile ? "scrollable" : "fullWidth"}
+              scrollButtons="auto"
+              sx={{
+                mb: 3,
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                },
+              }}
+            >
+              {nlpSubTabs.map((tab, index) => (
+                <Tab key={index} label={tab.label} />
+              ))}
+            </Tabs>
+            <Suspense fallback={<LinearProgress />}>
+              {React.createElement(nlpSubTabs[subTab].component)}
+            </Suspense>
+          </Box>
+        );
+      
+      case 4:
+        return <ApiDocumentation />;
+      
+      default:
+        return null;
+    }
+  };
+
+  const sidebarContent = (
+    <Box sx={{ width: 280, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AdminPanelSettings color="primary" />
+          Admin Panel
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          System administration and configuration
+        </Typography>
+      </Box>
+      
+      <List sx={{ flex: 1, py: 0 }}>
+        {mainTabs.map((tab, index) => (
+          <ListItem 
+            key={index}
+            onClick={() => handleMainTabChange({} as React.SyntheticEvent, index)}
+            sx={{
+              cursor: 'pointer',
+              borderRadius: 2,
+              mx: 2,
+              my: 0.5,
+              backgroundColor: mainTab === index ? `${tab.color}.light` : 'transparent',
+              color: mainTab === index ? `${tab.color}.contrastText` : 'inherit',
+              '&:hover': {
+                backgroundColor: mainTab === index ? `${tab.color}.main` : `${tab.color}.light`,
+                color: `${tab.color}.contrastText`,
+              },
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
+              {tab.icon}
+            </ListItemIcon>
+            <ListItemText 
+              primary={tab.label}
+              primaryTypographyProps={{ fontWeight: mainTab === index ? 600 : 500 }}
+            />
+            {mainTab === index && (
+              <Chip size="small" label="Active" sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
+            )}
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  );
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Tabs value={mainTab} onChange={handleMainTabChange} aria-label="Admin Panel Tabs">
-        <Tab label="Dashboard" />
-        <Tab label="User & Role Management" />
-        <Tab label="Solr Management" />
-        <Tab label="NLP Management" />
-        <Tab label="API Documentation" />
-      </Tabs>
-
-      {mainTab === 0 && (
-        <Card sx={{ mt: 2 }}>
-          <CardContent>
-            <Suspense fallback={<div>Loading Dashboard...</div>}>
-              <Dashboard />
-            </Suspense>
-          </CardContent>
-        </Card>
-      )}
-
-      {mainTab === 1 && (
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+      {isMobile ? (
         <>
-          <Tabs
-            value={subTab}
-            onChange={handleSubTabChange}
-            aria-label="User Management Subtabs"
-            sx={{ mt: 2 }}
+          <IconButton
+            onClick={() => setMobileDrawerOpen(true)}
+            sx={{
+              position: 'fixed',
+              top: 16,
+              left: 16,
+              zIndex: theme.zIndex.speedDial,
+              bgcolor: 'primary.main',
+              color: 'white',
+              '&:hover': { bgcolor: 'primary.dark' }
+            }}
           >
-            <Tab label="Users" />
-            <Tab label="User Roles" />
-            <Tab label="Role Permissions" />
-          </Tabs>
-          <Box sx={{ mt: 2 }}>
-            {[Users, UserRoles, RolePermissions].map(
-              (Component, index) =>
-                subTab === index && (
-                  <Card key={index} sx={{ mb: 2 }}>
-                    <CardContent>
-                      <Suspense fallback={<div>Loading...</div>}>
-                        <Component />
-                      </Suspense>
-                    </CardContent>
-                  </Card>
-                ),
-            )}
-          </Box>
+            <MenuIcon />
+          </IconButton>
+          
+          <Drawer
+            anchor="left"
+            open={mobileDrawerOpen}
+            onClose={() => setMobileDrawerOpen(false)}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              '& .MuiDrawer-paper': {
+                background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)',
+              },
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+              <IconButton onClick={() => setMobileDrawerOpen(false)}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
+            {sidebarContent}
+          </Drawer>
         </>
+      ) : (
+        <Paper 
+          elevation={1}
+          sx={{ 
+            background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)',
+            borderRadius: 0,
+            borderRight: '1px solid',
+            borderColor: 'divider'
+          }}
+        >
+          {sidebarContent}
+        </Paper>
       )}
 
-      {mainTab === 2 && (
-        <>
-          <Tabs
-            value={subTab}
-            onChange={handleSubTabChange}
-            aria-label="Solr Management Subtabs"
-            sx={{ mt: 2 }}
-          >
-            <Tab label="Databases" />
-            <Tab label="Database Info" />
-            <Tab label="Database Permissions" />
-          </Tabs>
-          <Box sx={{ mt: 2 }}>
-            {[SolrDatabase, SolrDatabaseInfo, SolrDatabasePermissions].map(
-              (Component, index) =>
-                subTab === index && (
-                  <Card key={index} sx={{ mb: 2 }}>
-                    <CardContent>
-                      <Suspense fallback={<div>Loading...</div>}>
-                        <Component />
-                      </Suspense>
-                    </CardContent>
-                  </Card>
-                ),
-            )}
-          </Box>
-        </>
-      )}
-
-      {mainTab === 3 && (
-        <>
-          <Tabs
-            value={subTab}
-            onChange={handleSubTabChange}
-            aria-label="NLP Management Subtabs"
-            sx={{ mt: 2 }}
-          >
-            <Tab label="Read Me" />
-            <Tab label="Named Entity Recognition" />
-            <Tab label="Tokenization" />
-            <Tab label="Word Embeddings" />
-          </Tabs>
-          <Box sx={{ mt: 2 }}>
-            {[ReadMeTab, PrecomputeNER, TokenizeSolr, ComputeWordEmbeddings].map(
-              (Component, index) =>
-                subTab === index && (
-                  <Card key={index} sx={{ mb: 2 }}>
-                    <CardContent>
-                      <Suspense fallback={<div>Loading...</div>}>
-                        <Component />
-                      </Suspense>
-                    </CardContent>
-                  </Card>
-                ),
-            )}
-          </Box>
-        </>
-      )}
-
-      {mainTab === 4 && (
-        <Card sx={{ mt: 2 }}>
-          <CardContent>
-            <Suspense fallback={<div>Loading API Documentation...</div>}>
-              <ApiDocumentation />
-            </Suspense>
-          </CardContent>
-        </Card>
-      )}
+      <Box 
+        component="main" 
+        sx={{ 
+          flex: 1,
+          overflow: 'auto',
+          pt: isMobile ? 8 : 0,
+        }}
+      >
+        <Container maxWidth="xl" sx={{ py: 3 }}>
+          <Fade in={true} timeout={300}>
+            <Box>
+              {renderContent()}
+            </Box>
+          </Fade>
+        </Container>
+      </Box>
     </Box>
   );
 };

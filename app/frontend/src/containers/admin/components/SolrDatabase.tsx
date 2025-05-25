@@ -5,11 +5,39 @@ import {
   TextField,
   Typography,
   Paper,
-  Snackbar,
   CircularProgress,
   Tooltip,
+  Card,
+  CardContent,
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip,
+  Stack,
+  Alert,
+  useTheme,
+  useMediaQuery,
+  Fade,
+  InputAdornment,
+  IconButton
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import {
+  Add,
+  Edit,
+  Delete,
+  Storage,
+  Link as LinkIcon,
+  NetworkCheck,
+  Search,
+  Refresh,
+  Save,
+  Cancel,
+  CheckCircle,
+  Error as ErrorIcon
+} from '@mui/icons-material';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
@@ -23,9 +51,14 @@ interface SolrDatabase {
   updated_at: string;
 }
 
+interface NotificationState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error' | 'warning' | 'info';
+}
+
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
-
   return useMemo(() => {
     const instance = axios.create();
     instance.interceptors.request.use(config => {
@@ -43,20 +76,32 @@ const useAuthAxios = () => {
 
 const SolrDatabaseComponent: React.FC = () => {
   const authAxios = useAuthAxios();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [solrDatabases, setSolrDatabases] = useState<SolrDatabase[]>([]);
   const [newDatabase, setNewDatabase] = useState<Partial<SolrDatabase>>({});
   const [editingDatabase, setEditingDatabase] = useState<SolrDatabase | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [connectingSSH, setConnectingSSH] = useState<number | null>(null);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [databaseToDelete, setDatabaseToDelete] = useState<SolrDatabase | null>(null);
+  const [notification, setNotification] = useState<NotificationState>({
     open: false,
     message: '',
+    severity: 'info'
   });
 
   useEffect(() => {
     fetchSolrDatabases();
   }, []);
+
+  const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
+    setNotification({ open: true, message, severity });
+    setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
+  };
 
   const fetchSolrDatabases = async () => {
     setLoading(true);
@@ -67,6 +112,7 @@ const SolrDatabaseComponent: React.FC = () => {
     } catch (error) {
       console.error('Fetch Solr databases failed:', error);
       setSolrDatabases([]);
+      showNotification('Failed to fetch Solr databases', 'error');
     } finally {
       setLoading(false);
     }
@@ -75,47 +121,33 @@ const SolrDatabaseComponent: React.FC = () => {
   const resetForm = () => {
     setEditingDatabase(null);
     setNewDatabase({});
+    setOpenAddDialog(false);
   };
 
   const handleAddOrUpdate = async () => {
-    // Validate required fields
     if (
       !newDatabase.name ||
       !newDatabase.url ||
       newDatabase.server_port == null ||
       newDatabase.local_port == null
     ) {
-      setSnackbar({ open: true, message: 'All fields are required' });
+      showNotification('All fields are required', 'warning');
       return;
     }
 
     try {
       if (editingDatabase) {
-        // Update existing
         await authAxios.put(`/api/solr_databases/${editingDatabase.id}`, newDatabase);
-        setSnackbar({
-          open: true,
-          message: 'Solr database updated successfully',
-        });
+        showNotification('Solr database updated successfully', 'success');
       } else {
-        // Create new
         await authAxios.post('/api/solr_databases', newDatabase);
-        setSnackbar({
-          open: true,
-          message: 'Solr database added successfully',
-        });
+        showNotification('Solr database added successfully', 'success');
       }
       resetForm();
       fetchSolrDatabases();
     } catch (err) {
-      console.error(
-        editingDatabase ? 'Update Solr database failed:' : 'Add Solr database failed:',
-        err,
-      );
-      setSnackbar({
-        open: true,
-        message: editingDatabase ? 'Failed to update Solr database' : 'Failed to add Solr database',
-      });
+      console.error(editingDatabase ? 'Update Solr database failed:' : 'Add Solr database failed:', err);
+      showNotification(editingDatabase ? 'Failed to update Solr database' : 'Failed to add Solr database', 'error');
     }
   };
 
@@ -127,41 +159,31 @@ const SolrDatabaseComponent: React.FC = () => {
       server_port: db.server_port,
       local_port: db.local_port,
     });
+    setOpenAddDialog(true);
   };
 
   const handleDelete = async (id: number) => {
     try {
       await authAxios.delete(`/api/solr_databases/${id}`);
-      setSnackbar({
-        open: true,
-        message: 'Solr database deleted successfully',
-      });
-      // If we were editing this record, reset form
+      showNotification('Solr database deleted successfully', 'success');
       if (editingDatabase?.id === id) resetForm();
       fetchSolrDatabases();
+      setOpenDeleteDialog(false);
+      setDatabaseToDelete(null);
     } catch (err) {
       console.error('Delete Solr database failed:', err);
-      setSnackbar({ open: true, message: 'Failed to delete Solr database' });
+      showNotification('Failed to delete Solr database', 'error');
     }
   };
 
-  // New function to handle SSH connection
   const handleConnectSSH = async (id: number) => {
     setConnectingSSH(id);
     try {
-      const response = await authAxios.post(`/api/solr_databases/${id}/connect_ssh`);
-      setSnackbar({
-        open: true,
-        message: 'SSH connection established successfully',
-      });
+      await authAxios.post(`/api/solr_databases/${id}/connect_ssh`);
+      showNotification('SSH connection established successfully', 'success');
     } catch (err) {
       console.error('SSH connection failed:', err);
-      setSnackbar({
-        open: true,
-        message: `Failed to establish SSH connection: ${
-          err.response?.data || err.message || 'Unknown error'
-        }`,
-      });
+      showNotification(`Failed to establish SSH connection: ${err.response?.data || err.message || 'Unknown error'}`, 'error');
     } finally {
       setConnectingSSH(null);
     }
@@ -172,161 +194,303 @@ const SolrDatabaseComponent: React.FC = () => {
   );
 
   const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 70 },
-    { field: 'name', headerName: 'Name', flex: 1 },
-    { field: 'url', headerName: 'URL', flex: 1 },
-    { field: 'server_port', headerName: 'Server Port', width: 130 },
-    { field: 'local_port', headerName: 'Local Port', width: 130 },
-    { field: 'created_at', headerName: 'Created At', width: 200 },
-    { field: 'updated_at', headerName: 'Updated At', width: 200 },
+    { 
+      field: 'id', 
+      headerName: 'ID', 
+      width: 80,
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" variant="outlined" />
+      )
+    },
+    { 
+      field: 'name', 
+      headerName: 'Name', 
+      flex: 1,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Storage fontSize="small" color="primary" />
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.value}
+          </Typography>
+        </Box>
+      )
+    },
+    { 
+      field: 'url', 
+      headerName: 'URL', 
+      flex: 1,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LinkIcon fontSize="small" color="action" />
+          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+            {params.value}
+          </Typography>
+        </Box>
+      )
+    },
+    { 
+      field: 'server_port', 
+      headerName: 'Server Port', 
+      width: 130,
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" color="info" />
+      )
+    },
+    { 
+      field: 'local_port', 
+      headerName: 'Local Port', 
+      width: 130,
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" color="success" />
+      )
+    },
+    { 
+      field: 'created_at', 
+      headerName: 'Created', 
+      width: 120,
+      renderCell: (params) => (
+        <Typography variant="caption" color="text.secondary">
+          {new Date(params.value).toLocaleDateString()}
+        </Typography>
+      )
+    },
     {
       field: 'actions',
       headerName: 'Actions',
       width: 280,
+      sortable: false,
+      filterable: false,
       renderCell: (params: GridRenderCellParams) => {
         const db = params.row as SolrDatabase;
         const isConnecting = connectingSSH === db.id;
 
         return (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button variant="contained" color="primary" size="small" onClick={() => handleEdit(db)}>
-              Edit
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              size="small"
-              onClick={() => handleDelete(db.id)}
-            >
-              Delete
-            </Button>
-            <Tooltip title="Establish an SSH tunnel to this Solr database">
+          <Stack direction="row" spacing={1}>
+            <Tooltip title="Edit Database">
+              <IconButton size="small" color="primary" onClick={() => handleEdit(db)}>
+                <Edit />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete Database">
+              <IconButton size="small" color="error" onClick={() => {
+                setDatabaseToDelete(db);
+                setOpenDeleteDialog(true);
+              }}>
+                <Delete />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Establish SSH tunnel">
               <Button
-                variant="contained"
-                color="success"
+                variant="outlined"
                 size="small"
                 onClick={() => handleConnectSSH(db.id)}
                 disabled={isConnecting}
-                startIcon={isConnecting ? <CircularProgress size={20} color="inherit" /> : null}
+                startIcon={isConnecting ? <CircularProgress size={16} /> : <NetworkCheck />}
+                sx={{ minWidth: 120 }}
               >
                 {isConnecting ? 'Connecting...' : 'Connect SSH'}
               </Button>
             </Tooltip>
-          </Box>
+          </Stack>
         );
       },
     },
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Solr Databases
-      </Typography>
+    <Fade in={true} timeout={600}>
+      <Box>
+        {notification.open && (
+          <Alert 
+            severity={notification.severity} 
+            sx={{ mb: 3 }}
+            onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          >
+            {notification.message}
+          </Alert>
+        )}
 
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6">
-          {editingDatabase ? 'Update Solr Database' : 'Add Solr Database'}
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
-          <TextField
-            label="Name"
-            value={newDatabase.name ?? ''}
-            onChange={e => setNewDatabase({ ...newDatabase, name: e.target.value })}
-          />
-          <TextField
-            label="URL"
-            value={newDatabase.url ?? ''}
-            onChange={e => setNewDatabase({ ...newDatabase, url: e.target.value })}
-          />
-          <TextField
-            label="Server Port"
-            type="number"
-            value={newDatabase.server_port ?? ''}
-            onChange={e =>
-              setNewDatabase({
-                ...newDatabase,
-                server_port: parseInt(e.target.value, 10),
-              })
-            }
-          />
-          <TextField
-            label="Local Port"
-            type="number"
-            value={newDatabase.local_port ?? ''}
-            onChange={e =>
-              setNewDatabase({
-                ...newDatabase,
-                local_port: parseInt(e.target.value, 10),
-              })
-            }
-          />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Storage color="primary" />
+              Solr Databases
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Manage Solr database connections and configurations
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1}>
+            <Tooltip title="Refresh Databases">
+              <IconButton onClick={fetchSolrDatabases} color="primary">
+                <Refresh />
+              </IconButton>
+            </Tooltip>
             <Button
               variant="contained"
-              color="primary"
-              onClick={handleAddOrUpdate}
-              sx={{ height: '56px' }}
+              startIcon={<Add />}
+              onClick={() => setOpenAddDialog(true)}
+              sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                }
+              }}
             >
-              {editingDatabase ? 'Update' : 'Add'}
+              Add Database
             </Button>
-            {editingDatabase && (
-              <Button variant="outlined" onClick={resetForm} sx={{ height: '56px' }}>
-                Cancel
-              </Button>
-            )}
-          </Box>
+          </Stack>
         </Box>
-      </Paper>
 
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          SSH Connection Management
-        </Typography>
-        <Typography variant="body1">
-          When you add a new Solr database, you need to establish an SSH tunnel to connect to it.
-          You can establish this connection by clicking the "Connect SSH" button next to each
-          database.
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Note: This avoids the need to restart the application when adding new Solr databases.
-        </Typography>
-      </Paper>
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <NetworkCheck />
+              SSH Connection Management
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              When you add a new Solr database, you need to establish an SSH tunnel to connect to it.
+              You can establish this connection by clicking the "Connect SSH" button next to each database.
+            </Typography>
+            <Alert severity="info" sx={{ mt: 2 }}>
+              <Typography variant="body2">
+                <strong>Note:</strong> This avoids the need to restart the application when adding new Solr databases.
+              </Typography>
+            </Alert>
+          </CardContent>
+        </Card>
 
-      <Box sx={{ mb: 2 }}>
-        <TextField
-          label="Search by name or URL"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          fullWidth
-        />
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <TextField
+              fullWidth
+              placeholder="Search by database name or URL..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        <Paper sx={{ height: 600, borderRadius: 3, overflow: 'hidden' }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <DataGrid
+              rows={filteredDatabases}
+              columns={columns}
+              pageSize={10}
+              rowsPerPageOptions={[10, 25, 50]}
+              getRowId={row => row.id}
+              disableSelectionOnClick
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-cell': { outline: 'none' },
+                '& .MuiDataGrid-row:hover': {
+                  backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                },
+              }}
+            />
+          )}
+        </Paper>
+
+        <Dialog open={openAddDialog} onClose={() => setOpenAddDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {editingDatabase ? <Edit /> : <Add />}
+            {editingDatabase ? 'Edit Solr Database' : 'Add New Solr Database'}
+          </DialogTitle>
+          <DialogContent>
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              <Grid item xs={12}>
+                <TextField
+                  label="Database Name"
+                  value={newDatabase.name ?? ''}
+                  onChange={e => setNewDatabase({ ...newDatabase, name: e.target.value })}
+                  fullWidth
+                  required
+                  placeholder="Enter a descriptive name"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Database URL"
+                  value={newDatabase.url ?? ''}
+                  onChange={e => setNewDatabase({ ...newDatabase, url: e.target.value })}
+                  fullWidth
+                  required
+                  placeholder="e.g., example.com"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Server Port"
+                  type="number"
+                  value={newDatabase.server_port ?? ''}
+                  onChange={e => setNewDatabase({ ...newDatabase, server_port: parseInt(e.target.value, 10) })}
+                  fullWidth
+                  required
+                  placeholder="8983"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Local Port"
+                  type="number"
+                  value={newDatabase.local_port ?? ''}
+                  onChange={e => setNewDatabase({ ...newDatabase, local_port: parseInt(e.target.value, 10) })}
+                  fullWidth
+                  required
+                  placeholder="8984"
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ p: 3 }}>
+            <Button onClick={() => setOpenAddDialog(false)} startIcon={<Cancel />}>
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={handleAddOrUpdate}
+              startIcon={<Save />}
+              disabled={!newDatabase.name || !newDatabase.url || !newDatabase.server_port || !newDatabase.local_port}
+            >
+              {editingDatabase ? 'Update' : 'Add'} Database
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+          <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ErrorIcon />
+            Confirm Delete
+          </DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete the database "{databaseToDelete?.name}"? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => databaseToDelete && handleDelete(databaseToDelete.id)}
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
-
-      <Paper sx={{ height: 600 }}>
-        {loading ? (
-          <Box p={2} sx={{ display: 'flex', justifyContent: 'center' }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <DataGrid
-            rows={filteredDatabases}
-            columns={columns}
-            pageSize={10}
-            rowsPerPageOptions={[10, 25, 50]}
-            getRowId={row => row.id}
-            disableSelectionOnClick
-            sx={{ '& .MuiDataGrid-cell': { outline: 'none' } }}
-          />
-        )}
-      </Paper>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-        message={snackbar.message}
-      />
-    </Box>
+    </Fade>
   );
 };
 

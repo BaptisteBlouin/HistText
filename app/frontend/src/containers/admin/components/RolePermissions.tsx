@@ -3,15 +3,36 @@ import {
   Box,
   Button,
   Typography,
-  Paper,
-  Snackbar,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   TextField,
+  Card,
+  CardContent,
+  Chip,
+  Stack,
+  Alert,
+  useTheme,
+  useMediaQuery,
+  Fade,
+  CircularProgress,
+  InputAdornment,
+  Tooltip,
+  IconButton,
+  Grid,
+  Paper
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import {
+  Add,
+  Delete,
+  Search,
+  Security,
+  VpnKey,
+  Shield,
+  Refresh
+} from '@mui/icons-material';
 import Autocomplete from '@mui/material/Autocomplete';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
@@ -22,9 +43,14 @@ interface RolePermission {
   created_at: string;
 }
 
+interface NotificationState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error' | 'warning' | 'info';
+}
+
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
-
   return useMemo(() => {
     const instance = axios.create();
     instance.interceptors.request.use(config => {
@@ -42,14 +68,19 @@ const useAuthAxios = () => {
 
 const RolePermissions: React.FC = () => {
   const authAxios = useAuthAxios();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
   const [availablePermissions, setAvailablePermissions] = useState<string[]>([]);
   const [formState, setFormState] = useState<Partial<RolePermission>>({});
   const [search, setSearch] = useState('');
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
+  const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState<NotificationState>({
     open: false,
     message: '',
+    severity: 'info'
   });
 
   useEffect(() => {
@@ -58,12 +89,21 @@ const RolePermissions: React.FC = () => {
     fetchAvailablePermissions();
   }, []);
 
+  const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
+    setNotification({ open: true, message, severity });
+    setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
+  };
+
   const fetchPermissions = async () => {
     try {
+      setLoading(true);
       const { data } = await authAxios.get('/api/role_permissions');
       setPermissions(data);
     } catch (err) {
       console.error('Fetch role permissions failed', err);
+      showNotification('Failed to fetch role permissions', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,6 +117,7 @@ const RolePermissions: React.FC = () => {
       }
     } catch (err) {
       console.error('Fetch roles failed', err);
+      showNotification('Failed to fetch roles', 'error');
     }
   };
 
@@ -90,20 +131,22 @@ const RolePermissions: React.FC = () => {
       }
     } catch (err) {
       console.error('Fetch permissions failed', err);
+      showNotification('Failed to fetch available permissions', 'error');
     }
   };
 
   const handleAdd = async () => {
     if (!formState.role || !formState.permission) {
-      setSnackbar({ open: true, message: 'Role and Permission are required' });
+      showNotification('Role and Permission are required', 'warning');
       return;
     }
     try {
       await authAxios.post('/api/role_permissions', formState);
-      setSnackbar({ open: true, message: 'Added successfully' });
+      showNotification('Permission added to role successfully', 'success');
       fetchPermissions();
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to add role permission' });
+      setFormState({ role: formState.role, permission: '' });
+    } catch (err) {
+      showNotification('Failed to add role permission', 'error');
     }
   };
 
@@ -112,10 +155,10 @@ const RolePermissions: React.FC = () => {
       await authAxios.delete(
         `/api/role_permissions/${encodeURIComponent(role)}/${encodeURIComponent(permission)}`,
       );
-      setSnackbar({ open: true, message: 'Deleted successfully' });
+      showNotification('Permission removed from role successfully', 'success');
       fetchPermissions();
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to delete' });
+    } catch (err) {
+      showNotification('Failed to remove permission', 'error');
     }
   };
 
@@ -123,90 +166,218 @@ const RolePermissions: React.FC = () => {
     `${p.role} ${p.permission}`.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const getRoleColor = (role: string) => {
+    const colors = ['primary', 'secondary', 'success', 'warning', 'error', 'info'];
+    const index = role.length % colors.length;
+    return colors[index] as any;
+  };
+
+  const getPermissionColor = (permission: string) => {
+    if (permission.includes('read') || permission.includes('view')) return 'info';
+    if (permission.includes('write') || permission.includes('create')) return 'success';
+    if (permission.includes('delete') || permission.includes('remove')) return 'error';
+    if (permission.includes('admin')) return 'warning';
+    return 'default';
+  };
+
   const columns: GridColDef[] = [
-    { field: 'role', headerName: 'Role', width: 200 },
-    { field: 'permission', headerName: 'Permission', flex: 1 },
+    { 
+      field: 'role', 
+      headerName: 'Role', 
+      width: 200,
+      renderCell: (params) => (
+        <Chip
+          icon={<Shield />}
+          label={params.value}
+          color={getRoleColor(params.value)}
+          size="small"
+          sx={{ fontWeight: 600 }}
+        />
+      )
+    },
+    { 
+      field: 'permission', 
+      headerName: 'Permission', 
+      flex: 1,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <VpnKey fontSize="small" color="action" />
+          <Chip
+            label={params.value}
+            color={getPermissionColor(params.value)}
+            variant="outlined"
+            size="small"
+          />
+        </Box>
+      )
+    },
+    {
+      field: 'created_at',
+      headerName: 'Created Date',
+      width: 180,
+      renderCell: (params) => (
+        <Typography variant="body2" color="text.secondary">
+          {new Date(params.value).toLocaleDateString()}
+        </Typography>
+      ),
+    },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 150,
+      width: 120,
+      sortable: false,
+      filterable: false,
       renderCell: (params: GridRenderCellParams) => (
-        <Button
-          variant="contained"
-          color="secondary"
-          size="small"
-          onClick={() => handleDelete(params.row.role, params.row.permission)}
-        >
-          Delete
-        </Button>
+        <Tooltip title="Remove Permission">
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => handleDelete(params.row.role, params.row.permission)}
+          >
+            <Delete />
+          </IconButton>
+        </Tooltip>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Role Permissions
-      </Typography>
+    <Fade in={true} timeout={600}>
+      <Box>
+        {notification.open && (
+          <Alert 
+            severity={notification.severity} 
+            sx={{ mb: 3 }}
+            onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          >
+            {notification.message}
+          </Alert>
+        )}
 
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6">Assign Permission to Role</Typography>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>Role</InputLabel>
-            <Select
-              value={formState.role ?? ''}
-              onChange={e => setFormState({ ...formState, role: e.target.value })}
-              label="Role"
-            >
-              {roles.map(role => (
-                <MenuItem key={role} value={role}>
-                  {role}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Autocomplete
-            freeSolo
-            options={availablePermissions}
-            value={formState.permission || ''}
-            onInputChange={(_, value) => setFormState({ ...formState, permission: value })}
-            renderInput={params => <TextField {...params} label="Permission" />}
-            sx={{ minWidth: 200 }}
-          />
-
-          <Button variant="contained" onClick={handleAdd}>
-            Add
-          </Button>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Security color="primary" />
+              Role Permissions
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Configure permissions for each role in the system
+            </Typography>
+          </Box>
+          <Tooltip title="Refresh Data">
+            <IconButton onClick={fetchPermissions} color="primary">
+              <Refresh />
+            </IconButton>
+          </Tooltip>
         </Box>
-      </Paper>
 
-      <Box sx={{ mb: 2 }}>
-        <TextField
-          label="Search role or permission"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          fullWidth
-        />
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Add />
+              Assign Permission to Role
+            </Typography>
+            <Grid container spacing={3} alignItems="center">
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Select Role</InputLabel>
+                  <Select
+                    value={formState.role ?? ''}
+                    onChange={e => setFormState({ ...formState, role: e.target.value })}
+                    label="Select Role"
+                  >
+                    {roles.map(role => (
+                      <MenuItem key={role} value={role}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Shield fontSize="small" />
+                          {role}
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <Autocomplete
+                  freeSolo
+                  options={availablePermissions}
+                  value={formState.permission || ''}
+                  onInputChange={(_, value) => setFormState({ ...formState, permission: value })}
+                  renderInput={params => (
+                    <TextField 
+                      {...params} 
+                      label="Permission" 
+                      placeholder="Enter or select permission..."
+                    />
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <Button
+                  variant="contained"
+                  onClick={handleAdd}
+                  disabled={!formState.role || !formState.permission}
+                  startIcon={<Add />}
+                  fullWidth
+                  sx={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                    }
+                  }}
+                >
+                  Add Permission
+                </Button>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <TextField
+              fullWidth
+              placeholder="Search by role or permission..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        <Paper sx={{ height: 600, borderRadius: 3, overflow: 'hidden' }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <DataGrid
+              rows={filteredPermissions}
+              columns={columns}
+              pageSize={10}
+              rowsPerPageOptions={[10, 25, 50]}
+              getRowId={row => `${row.role}-${row.permission}`}
+              disableSelectionOnClick
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-cell': { outline: 'none' },
+                '& .MuiDataGrid-row:hover': {
+                  backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                },
+              }}
+            />
+          )}
+        </Paper>
       </Box>
-
-      <Paper sx={{ height: 600 }}>
-        <DataGrid
-          rows={filteredPermissions}
-          columns={columns}
-          pageSize={10}
-          getRowId={row => `${row.role}-${row.permission}`}
-        />
-      </Paper>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-        message={snackbar.message}
-      />
-    </Box>
+    </Fade>
   );
 };
 
