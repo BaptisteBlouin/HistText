@@ -63,6 +63,10 @@ import {
   Download,
   Visibility,
   VisibilityOff,
+  NavigateBefore,
+  NavigateNext,
+  KeyboardArrowLeft,
+  KeyboardArrowRight,
 } from '@mui/icons-material';
 
 ChartJS.register(
@@ -83,28 +87,113 @@ interface StatisticsDisplayProps {
   onStatChange: (stat: string) => void;
 }
 
+// Memoized chart color generator
+const generateChartColors = (dataLength: number) => {
+  const baseColors = [
+    'rgba(25, 118, 210, 0.8)',
+    'rgba(56, 142, 60, 0.8)',
+    'rgba(245, 124, 0, 0.8)',
+    'rgba(123, 31, 162, 0.8)',
+    'rgba(211, 47, 47, 0.8)',
+    'rgba(69, 90, 100, 0.8)',
+    'rgba(0, 150, 136, 0.8)',
+    'rgba(255, 152, 0, 0.8)',
+  ];
+  
+  if (dataLength <= baseColors.length) {
+    return baseColors.slice(0, dataLength);
+  }
+  
+  const colors = [];
+  for (let i = 0; i < dataLength; i++) {
+    colors.push(baseColors[i % baseColors.length]);
+  }
+  return colors;
+};
+
+// Memoized format value function
+const formatValue = (value: any): string => {
+  if (typeof value === 'number') {
+    if (Number.isInteger(value)) {
+      return value.toLocaleString();
+    } else {
+      return value.toFixed(2);
+    }
+  }
+  return String(value);
+};
+
+// Memoized recommended chart type function
+const getRecommendedChartType = (selectedStat: string): 'bar' | 'pie' | 'line' => {
+  // Line charts for time-based data
+  if (selectedStat === 'distribution_over_time' || 
+      selectedStat === 'distribution_over_decades' ||
+      selectedStat === 'word_length_distribution') {
+    return 'line';
+  }
+  
+  // Pie charts for categorical distributions with limited categories
+  if (selectedStat === 'languages_detected' || 
+      selectedStat === 'most_common_punctuation') {
+    return 'pie';
+  }
+  
+  // Bar charts for everything else (frequencies, counts, etc.)
+  return 'bar';
+};
+
+// Memoized column definitions
+const COLUMN_DEFS = {
+  ngram: [
+    { headerName: 'Term/Phrase', field: 'ngram', sortable: true, filter: true, width: 300, pinned: 'left' },
+    { headerName: 'Frequency', field: 'count', sortable: true, filter: true, width: 150, type: 'numericColumn' },
+  ],
+  wordLength: [
+    { headerName: 'Length (chars)', field: 'length', sortable: true, width: 200, type: 'numericColumn' },
+    { headerName: 'Word Count', field: 'count', sortable: true, width: 150, type: 'numericColumn' },
+  ],
+  languages: [
+    { headerName: 'Language', field: 'language', sortable: true, width: 150, pinned: 'left' },
+    { headerName: 'Documents', field: 'count', sortable: true, width: 150, type: 'numericColumn' },
+  ],
+  punctuation: [
+    { headerName: 'Punctuation', field: 'punct', sortable: true, width: 200, pinned: 'left' },
+    { headerName: 'Frequency', field: 'count', sortable: true, width: 150, type: 'numericColumn' },
+  ],
+  completeness: [
+    { headerName: 'Field Name', field: 'field', sortable: true, filter: true, width: 300, pinned: 'left' },
+    { headerName: 'Completeness', field: 'percentage', sortable: true, width: 150 },
+  ],
+  overview: [
+    { headerName: 'Metric', field: 'metric', sortable: true, filter: true, width: 300, pinned: 'left' },
+    { headerName: 'Value', field: 'value', sortable: true, filter: true, width: 200 },
+  ],
+  otherStats: [
+    { headerName: 'Item', field: 'key', sortable: true, filter: true, width: 250, pinned: 'left' },
+    { headerName: 'Value', field: 'value', sortable: true, filter: true, width: 200 },
+    { headerName: 'Count', field: 'count', sortable: true, filter: true, width: 150, type: 'numericColumn' },
+  ],
+};
+
 const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
   ({ stats, selectedStat, onStatChange }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [gridApi, setGridApi] = useState<any>(null);
     const chartRef = useRef<any>(null);
-    const [chartData, setChartData] = useState<any>(null);
-    const [chartType, setChartType] = useState<'bar' | 'pie' | 'line'>('bar');
-    const [loading, setLoading] = useState<boolean>(true);
+    const [manualChartType, setManualChartType] = useState<'bar' | 'pie' | 'line' | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>('overview');
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['overview']));
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [showChart, setShowChart] = useState<boolean>(true);
-    const [chartOptions, setChartOptions] = useState<any>({});
+    
+    // Ref to store the chart instance for cleanup
+    const chartInstanceRef = useRef<any>(null);
+    
+    // Ref for keyboard navigation
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-      if (selectedStat === 'Select Statistics' || !selectedStat) {
-        onStatChange('corpus_overview');
-        setActiveCategory('overview');
-      }
-    }, [selectedStat, onStatChange]);
-
+    // Memoized stat categories
     const statCategories = useMemo(() => {
       const categories = {
         overview: {
@@ -155,61 +244,67 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
       );
     }, [stats]);
 
+    // Memoized list of all available stats (for navigation)
+    const allAvailableStats = useMemo(() => {
+      const statsArray: string[] = [];
+      Object.values(statCategories).forEach(category => {
+        category.stats.forEach(stat => {
+          if (stats[stat]) {
+            statsArray.push(stat);
+          }
+        });
+      });
+      return statsArray;
+    }, [statCategories, stats]);
+
+    // Get current chart type (auto or manual)
+    const currentChartType = useMemo(() => {
+      return manualChartType || getRecommendedChartType(selectedStat);
+    }, [manualChartType, selectedStat]);
+
+    // Reset manual chart type when stat changes to use auto-selection
     useEffect(() => {
-      for (const [categoryKey, category] of Object.entries(statCategories)) {
-        if (category.stats.includes(selectedStat)) {
-          setActiveCategory(categoryKey);
-          break;
-        }
+      setManualChartType(null);
+    }, [selectedStat]);
+
+    // Navigation functions
+    const navigateToStat = useCallback((direction: 'next' | 'prev') => {
+      const currentIndex = allAvailableStats.indexOf(selectedStat);
+      if (currentIndex === -1) return;
+
+      let newIndex;
+      if (direction === 'next') {
+        newIndex = (currentIndex + 1) % allAvailableStats.length;
+      } else {
+        newIndex = currentIndex === 0 ? allAvailableStats.length - 1 : currentIndex - 1;
       }
-    }, [selectedStat, statCategories]);
 
-    const columnDefs = useMemo(
-      () => ({
-        ngram: [
-          { headerName: 'Term/Phrase', field: 'ngram', sortable: true, filter: true, width: 300, pinned: 'left' },
-          { headerName: 'Frequency', field: 'count', sortable: true, filter: true, width: 150, type: 'numericColumn' },
-        ],
-        wordLength: [
-          { headerName: 'Length (chars)', field: 'length', sortable: true, width: 200, type: 'numericColumn' },
-          { headerName: 'Word Count', field: 'count', sortable: true, width: 150, type: 'numericColumn' },
-        ],
-        languages: [
-          { headerName: 'Language', field: 'language', sortable: true, width: 150, pinned: 'left' },
-          { headerName: 'Documents', field: 'count', sortable: true, width: 150, type: 'numericColumn' },
-        ],
-        punctuation: [
-          { headerName: 'Punctuation', field: 'punct', sortable: true, width: 200, pinned: 'left' },
-          { headerName: 'Frequency', field: 'count', sortable: true, width: 150, type: 'numericColumn' },
-        ],
-        completeness: [
-          { headerName: 'Field Name', field: 'field', sortable: true, filter: true, width: 300, pinned: 'left' },
-          { headerName: 'Completeness', field: 'percentage', sortable: true, width: 150 },
-        ],
-        overview: [
-          { headerName: 'Metric', field: 'metric', sortable: true, filter: true, width: 300, pinned: 'left' },
-          { headerName: 'Value', field: 'value', sortable: true, filter: true, width: 200 },
-        ],
-        otherStats: [
-          { headerName: 'Item', field: 'key', sortable: true, filter: true, width: 250, pinned: 'left' },
-          { headerName: 'Value', field: 'value', sortable: true, filter: true, width: 200 },
-          { headerName: 'Count', field: 'count', sortable: true, filter: true, width: 150, type: 'numericColumn' },
-        ],
-      }),
-      [],
-    );
+      onStatChange(allAvailableStats[newIndex]);
+    }, [allAvailableStats, selectedStat, onStatChange]);
 
-    const formatValue = (value: any): string => {
-      if (typeof value === 'number') {
-        if (Number.isInteger(value)) {
-          return value.toLocaleString();
-        } else {
-          return value.toFixed(2);
+    // Keyboard navigation
+    useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+        // Only handle keyboard navigation when the container has focus or no input is focused
+        if (document.activeElement?.tagName === 'INPUT' || 
+            document.activeElement?.tagName === 'TEXTAREA') {
+          return;
         }
-      }
-      return String(value);
-    };
 
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          navigateToStat('prev');
+        } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+          event.preventDefault();
+          navigateToStat('next');
+        }
+      };
+
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [navigateToStat]);
+
+    // Memoized data transformation
     const transformData = useCallback(
       (stats: any, selectedStat: string) => {
         if (!stats || !selectedStat) return [];
@@ -278,7 +373,14 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
                     value: String(key),
                     count: Number(value) || 0,
                   }))
-                  .sort((a, b) => b.count - a.count);
+                  .sort((a, b) => {
+                    // For time-based distributions, sort chronologically
+                    if (selectedStat === 'distribution_over_time' || selectedStat === 'distribution_over_decades') {
+                      return a.key.localeCompare(b.key);
+                    }
+                    // For other distributions, sort by count
+                    return b.count - a.count;
+                  });
               }
 
               if (!stats[selectedStat] || typeof stats[selectedStat] !== 'object') return [];
@@ -298,39 +400,16 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
       [],
     );
 
+    // Memoized row data
     const rowData = useMemo(
       () => transformData(stats, selectedStat),
       [stats, selectedStat, transformData],
     );
 
-    const getChartColors = (dataLength: number) => {
-      const colors = [
-        'rgba(25, 118, 210, 0.8)',
-        'rgba(56, 142, 60, 0.8)',
-        'rgba(245, 124, 0, 0.8)',
-        'rgba(123, 31, 162, 0.8)',
-        'rgba(211, 47, 47, 0.8)',
-        'rgba(69, 90, 100, 0.8)',
-        'rgba(0, 150, 136, 0.8)',
-        'rgba(255, 152, 0, 0.8)',
-      ];
-      
-      if (dataLength <= colors.length) {
-        return colors.slice(0, dataLength);
-      }
-      
-      const repeatedColors = [];
-      for (let i = 0; i < dataLength; i++) {
-        repeatedColors.push(colors[i % colors.length]);
-      }
-      return repeatedColors;
-    };
-
-    useEffect(() => {
-      if (!stats[selectedStat]) {
-        setChartData(null);
-        setLoading(true);
-        return;
+    // Memoized chart data and options
+    const { chartData, chartOptions } = useMemo(() => {
+      if (!stats[selectedStat] || rowData.length === 0) {
+        return { chartData: null, chartOptions: null };
       }
 
       const shouldShowChart = 
@@ -343,316 +422,380 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
         selectedStat === 'most_frequent_bigrams' ||
         selectedStat === 'most_frequent_trigrams';
 
-      if (shouldShowChart) {
-        let labels: string[] = [];
-        let data: number[] = [];
-        let chartTitle = selectedStat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-
-        if (selectedStat === 'word_length_distribution') {
-          if (Array.isArray(stats[selectedStat])) {
-            const sortedData = stats[selectedStat].sort((a: any, b: any) => a[0] - b[0]);
-            labels = sortedData.map((item: any) => `${item[0]} char${item[0] === 1 ? '' : 's'}`);
-            data = sortedData.map((item: any) => item[1]);
-            setChartType('line');
-          }
-        } else if (selectedStat === 'field_completeness_percentage') {
-          if (stats[selectedStat]) {
-            const entries = Object.entries(stats[selectedStat])
-              .sort(([,a], [,b]) => (b as number) - (a as number));
-            labels = entries.map(([field]) => field.replace(/_/g, ' '));
-            data = entries.map(([, percentage]) => Number(percentage));
-            setChartType('bar');
-          }
-        } else if (selectedStat === 'languages_detected' || selectedStat === 'most_common_punctuation') {
-          if (stats[selectedStat]) {
-            if (selectedStat === 'languages_detected') {
-              const entries = Object.entries(stats[selectedStat]);
-              labels = entries.map(([lang]) => lang.toUpperCase());
-              data = entries.map(([, count]) => Number(count));
-            } else {
-              const punctData = stats[selectedStat].slice(0, 10);
-              labels = punctData.map((item: any) => `"${item[0]}"`);
-              data = punctData.map((item: any) => item[1]);
-            }
-            setChartType('pie');
-          }
-        } else if (selectedStat.startsWith('most_frequent_')) {
-          if (Array.isArray(stats[selectedStat])) {
-            const topItems = stats[selectedStat].slice(0, 20);
-            labels = topItems.map((item: any) => item[0]);
-            data = topItems.map((item: any) => item[1]);
-            setChartType('bar');
-          }
-        } else if (selectedStat.startsWith('distribution_over_')) {
-          if (typeof stats[selectedStat] === 'object') {
-            const entries = Object.entries(stats[selectedStat])
-              .sort(([a], [b]) => {
-                if (selectedStat === 'distribution_over_time' || selectedStat === 'distribution_over_decades') {
-                  return a.localeCompare(b);
-                }
-                return (b as number) - (a as number);
-              });
-            
-            labels = entries.map(([key]) => String(key));
-            data = entries.map(([, value]) => Number(value));
-            
-            if (selectedStat === 'distribution_over_time' || selectedStat === 'distribution_over_decades') {
-              setChartType('line');
-            } else {
-              setChartType('bar');
-            }
-          }
-        }
-
-        if (labels.length > 0 && data.length > 0) {
-          const colors = getChartColors(data.length);
-          
-          setChartData({
-            labels,
-            datasets: [
-              {
-                label: chartTitle,
-                data,
-                backgroundColor: colors,
-                borderColor: colors.map(color => color.replace('0.8', '1')),
-                borderWidth: 2,
-                tension: chartType === 'line' ? 0.4 : 0,
-              },
-            ],
-          });
-
-          setChartOptions({
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              title: {
-                display: true,
-                text: chartTitle,
-                font: {
-                  size: 16,
-                  weight: 'bold'
-                }
-              },
-              legend: {
-                display: chartType === 'pie',
-                position: chartType === 'pie' ? 'right' as const : 'top' as const,
-              },
-              tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                titleColor: 'white',
-                bodyColor: 'white',
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                borderWidth: 1
-              }
-            },
-            scales: chartType !== 'pie' ? {
-              y: {
-                beginAtZero: true,
-                grid: {
-                  color: 'rgba(0, 0, 0, 0.1)'
-                }
-              },
-              x: {
-                grid: {
-                  color: 'rgba(0, 0, 0, 0.1)'
-                }
-              }
-            } : undefined,
-          });
-          setLoading(false);
-        } else {
-          setChartData(null);
-          setLoading(true);
-        }
-      } else {
-        setChartData(null);
-        setLoading(true);
+      if (!shouldShowChart) {
+        return { chartData: null, chartOptions: null };
       }
-    }, [selectedStat, stats, chartType]);
 
+      let labels: string[] = [];
+      let data: number[] = [];
+      let chartTitle = selectedStat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+      if (selectedStat === 'word_length_distribution') {
+        if (Array.isArray(stats[selectedStat])) {
+          const sortedData = stats[selectedStat].sort((a: any, b: any) => a[0] - b[0]);
+          labels = sortedData.map((item: any) => `${item[0]} char${item[0] === 1 ? '' : 's'}`);
+          data = sortedData.map((item: any) => item[1]);
+        }
+      } else if (selectedStat === 'field_completeness_percentage') {
+        if (stats[selectedStat]) {
+          const entries = Object.entries(stats[selectedStat])
+            .sort(([,a], [,b]) => (b as number) - (a as number));
+          labels = entries.map(([field]) => field.replace(/_/g, ' '));
+          data = entries.map(([, percentage]) => Number(percentage));
+        }
+      } else if (selectedStat === 'languages_detected' || selectedStat === 'most_common_punctuation') {
+        if (stats[selectedStat]) {
+          if (selectedStat === 'languages_detected') {
+            const entries = Object.entries(stats[selectedStat]);
+            labels = entries.map(([lang]) => lang.toUpperCase());
+            data = entries.map(([, count]) => Number(count));
+          } else {
+            const punctData = stats[selectedStat].slice(0, 10);
+            labels = punctData.map((item: any) => `"${item[0]}"`);
+            data = punctData.map((item: any) => item[1]);
+          }
+        }
+      } else if (selectedStat.startsWith('most_frequent_')) {
+        if (Array.isArray(stats[selectedStat])) {
+          const topItems = stats[selectedStat].slice(0, 20);
+          labels = topItems.map((item: any) => item[0]);
+          data = topItems.map((item: any) => item[1]);
+        }
+      } else if (selectedStat.startsWith('distribution_over_')) {
+        if (typeof stats[selectedStat] === 'object') {
+          const entries = Object.entries(stats[selectedStat]);
+          
+          // Sort chronologically for time-based data
+          if (selectedStat === 'distribution_over_time' || selectedStat === 'distribution_over_decades') {
+            entries.sort(([a], [b]) => a.localeCompare(b));
+          } else {
+            entries.sort(([,a], [,b]) => (b as number) - (a as number));
+          }
+          
+          labels = entries.map(([key]) => String(key));
+          data = entries.map(([, value]) => Number(value));
+        }
+      }
+
+      if (labels.length === 0 || data.length === 0) {
+        return { chartData: null, chartOptions: null };
+      }
+
+      const colors = generateChartColors(data.length);
+      
+      const chartData = {
+        labels,
+        datasets: [
+          {
+            label: chartTitle,
+            data,
+            backgroundColor: colors,
+            borderColor: colors.map(color => color.replace('0.8', '1')),
+            borderWidth: 2,
+            tension: currentChartType === 'line' ? 0.4 : 0,
+          },
+        ],
+      };
+
+      const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: chartTitle,
+            font: {
+              size: 16,
+              weight: 'bold'
+            }
+          },
+          legend: {
+            display: currentChartType === 'pie',
+            position: currentChartType === 'pie' ? 'right' as const : 'top' as const,
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: 'white',
+            bodyColor: 'white',
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            borderWidth: 1
+          }
+        },
+        scales: currentChartType !== 'pie' ? {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          },
+          x: {
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          }
+        } : undefined,
+      };
+
+      return { chartData, chartOptions };
+    }, [selectedStat, stats, rowData, currentChartType]);
+
+    // Update active category when selectedStat changes
+    useEffect(() => {
+      if (!selectedStat || selectedStat === 'Select Statistics') {
+        onStatChange('corpus_overview');
+        setActiveCategory('overview');
+        return;
+      }
+
+      for (const [categoryKey, category] of Object.entries(statCategories)) {
+        if (category.stats.includes(selectedStat)) {
+          setActiveCategory(categoryKey);
+          break;
+        }
+      }
+    }, [selectedStat, statCategories, onStatChange]);
+
+    // Cleanup chart instance on unmount
+    useEffect(() => {
+      return () => {
+        if (chartInstanceRef.current) {
+          chartInstanceRef.current.destroy();
+          chartInstanceRef.current = null;
+        }
+      };
+    }, []);
+
+    // Memoized grid ready handler
     const onGridReady = useCallback(params => {
       setGridApi(params.api);
       params.api.sizeColumnsToFit();
     }, []);
 
+    // Memoized download handlers
     const downloadCsv = useCallback(() => {
       if (gridApi) {
         gridApi.exportDataAsCsv({
           fileName: `${selectedStat}_data_${new Date().toISOString().split('T')[0]}.csv`,
-       });
-     }
-   }, [gridApi, selectedStat]);
+        });
+      }
+    }, [gridApi, selectedStat]);
 
-   const downloadChart = useCallback(() => {
-     if (chartRef.current) {
-       const url = chartRef.current.toBase64Image();
-       const link = document.createElement('a');
-       link.href = url;
-       link.download = `${selectedStat}_chart_${new Date().toISOString().split('T')[0]}.png`;
-       link.click();
-     }
-   }, [chartRef, selectedStat]);
+    const downloadChart = useCallback(() => {
+      if (chartRef.current) {
+        const url = chartRef.current.toBase64Image();
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${selectedStat}_chart_${new Date().toISOString().split('T')[0]}.png`;
+        link.click();
+      }
+    }, [selectedStat]);
 
-   const getColumnDef = () => {
-     switch (selectedStat) {
-       case 'corpus_overview':
-       case 'document_length_stats':
-         return columnDefs.overview;
-       case 'word_length_distribution':
-         return columnDefs.wordLength;
-       case 'languages_detected':
-         return columnDefs.languages;
-       case 'most_common_punctuation':
-         return columnDefs.punctuation;
-       case 'field_completeness_percentage':
-         return columnDefs.completeness;
-       case 'most_frequent_words':
-       case 'most_frequent_bigrams':
-       case 'most_frequent_trigrams':
-         return columnDefs.ngram;
-       default:
-         return columnDefs.otherStats;
-     }
-   };
+    // Memoized column definition getter
+    const getColumnDef = useCallback(() => {
+      switch (selectedStat) {
+        case 'corpus_overview':
+        case 'document_length_stats':
+          return COLUMN_DEFS.overview;
+        case 'word_length_distribution':
+          return COLUMN_DEFS.wordLength;
+        case 'languages_detected':
+          return COLUMN_DEFS.languages;
+        case 'most_common_punctuation':
+          return COLUMN_DEFS.punctuation;
+        case 'field_completeness_percentage':
+          return COLUMN_DEFS.completeness;
+        case 'most_frequent_words':
+        case 'most_frequent_bigrams':
+        case 'most_frequent_trigrams':
+          return COLUMN_DEFS.ngram;
+        default:
+          return COLUMN_DEFS.otherStats;
+      }
+    }, [selectedStat]);
 
-   const renderChart = () => {
-     if (!chartData || loading) {
-       return (
-         <Box sx={{ textAlign: 'center', py: 8 }}>
-           <ShowChart sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-           <Typography variant="h6" color="text.secondary">
-             Loading chart...
-           </Typography>
-         </Box>
-       );
-     }
+    // Memoized chart component renderer
+    const renderChart = useCallback(() => {
+      if (!chartData) {
+        return (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <ShowChart sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+            <Typography variant="h6" color="text.secondary">
+              No chart data available
+            </Typography>
+          </Box>
+        );
+      }
 
-     const ChartComponent = chartType === 'pie' ? Pie : chartType === 'line' ? Line : Bar;
+      const ChartComponent = currentChartType === 'pie' ? Pie : currentChartType === 'line' ? Line : Bar;
+      const recommendedType = getRecommendedChartType(selectedStat);
 
-     return (
-       <Card sx={{ height: '60vh', p: 2 }}>
-         <CardContent sx={{ height: '100%', position: 'relative' }}>
-           <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
-             <ButtonGroup size="small" variant="outlined">
-               <MUITooltip title="Bar Chart">
-                 <IconButton 
-                   onClick={() => setChartType('bar')} 
-                   color={chartType === 'bar' ? 'primary' : 'default'}
-                 >
-                   <BarChart />
-                 </IconButton>
-               </MUITooltip>
-               <MUITooltip title="Line Chart">
-                 <IconButton 
-                   onClick={() => setChartType('line')} 
-                   color={chartType === 'line' ? 'primary' : 'default'}
-                 >
-                   <ShowChart />
-                 </IconButton>
-               </MUITooltip>
-               <MUITooltip title="Pie Chart">
-                 <IconButton 
-                   onClick={() => setChartType('pie')} 
-                   color={chartType === 'pie' ? 'primary' : 'default'}
-                 >
-                   <PieChart />
-                 </IconButton>
-               </MUITooltip>
-             </ButtonGroup>
-           </Box>
-           <Box sx={{ height: '100%', pt: 4 }}>
-             <ChartComponent ref={chartRef} data={chartData} options={chartOptions} />
-           </Box>
-         </CardContent>
-       </Card>
-     );
-   };
+      return (
+        <Card sx={{ height: '60vh', p: 2 }}>
+          <CardContent sx={{ height: '100%', position: 'relative' }}>
+            <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
+              <ButtonGroup size="small" variant="outlined">
+                <MUITooltip title={`Bar Chart${recommendedType === 'bar' ? ' (Recommended)' : ''}`}>
+                  <IconButton 
+                    onClick={() => setManualChartType('bar')} 
+                    color={currentChartType === 'bar' ? 'primary' : 'default'}
+                  >
+                    <BarChart />
+                  </IconButton>
+                </MUITooltip>
+                <MUITooltip title={`Line Chart${recommendedType === 'line' ? ' (Recommended)' : ''}`}>
+                  <IconButton 
+                    onClick={() => setManualChartType('line')} 
+                    color={currentChartType === 'line' ? 'primary' : 'default'}
+                  >
+                    <ShowChart />
+                  </IconButton>
+                </MUITooltip>
+                <MUITooltip title={`Pie Chart${recommendedType === 'pie' ? ' (Recommended)' : ''}`}>
+                  <IconButton 
+                    onClick={() => setManualChartType('pie')} 
+                    color={currentChartType === 'pie' ? 'primary' : 'default'}
+                  >
+                    <PieChart />
+                  </IconButton>
+                </MUITooltip>
+              </ButtonGroup>
+            </Box>
+            <Box sx={{ height: '100%', pt: 4 }}>
+              <ChartComponent 
+                ref={(ref) => {
+                  chartRef.current = ref;
+                  if (ref) {
+                    chartInstanceRef.current = ref;
+                  }
+                }} 
+                data={chartData} 
+                options={chartOptions} 
+              />
+            </Box>
+          </CardContent>
+        </Card>
+      );
+    }, [chartData, chartOptions, currentChartType, selectedStat]);
 
-   const renderGrid = () => (
-     <Card sx={{ height: '60vh' }}>
-       <CardContent sx={{ height: '100%', p: 0 }}>
-         <Box className="ag-theme-alpine" style={{ height: '100%', width: '100%' }}>
-           <AgGridReact
-             columnDefs={getColumnDef()}
-             rowData={rowData}
-             pagination={true}
-             paginationPageSize={isMobile ? 25 : 50}
-             paginationPageSizeSelector={[25, 50, 100, 200]}
-             onGridReady={onGridReady}
-             defaultColDef={{
-               sortable: true,
-               filter: true,
-               resizable: true,
-             }}
-             animateRows={true}
-             enableRangeSelection={true}
-             rowSelection="multiple"
-             suppressRowClickSelection={true}
-           />
-         </Box>
-       </CardContent>
-     </Card>
-   );
+    // Memoized grid renderer
+    const renderGrid = useCallback(() => {
+      // Special handling for overview statistics that need more height and better formatting
+      const isOverviewStat = selectedStat === 'corpus_overview' || selectedStat === 'document_length_stats';
+      const gridHeight = isOverviewStat ? (isMobile ? '50vh' : '70vh') : '60vh';
+      
+      return (
+        <Card sx={{ height: gridHeight }}>
+          <CardContent sx={{ height: '100%', p: 0 }}>
+            <Box className="ag-theme-alpine" style={{ height: '100%', width: '100%' }}>
+              <AgGridReact
+                columnDefs={getColumnDef()}
+                rowData={rowData}
+                pagination={true}
+                paginationPageSize={isOverviewStat ? (isMobile ? 10 : 15) : (isMobile ? 25 : 50)}
+                paginationPageSizeSelector={isOverviewStat ? [10, 15, 25] : [25, 50, 100, 200]}
+                onGridReady={onGridReady}
+                defaultColDef={{
+                  sortable: true,
+                  filter: true,
+                  resizable: true,
+                  ...(isOverviewStat && {
+                    minWidth: isMobile ? 120 : 150,
+                    flex: 1
+                  })
+                }}
+                animateRows={true}
+                enableRangeSelection={true}
+                rowSelection="multiple"
+                suppressRowClickSelection={true}
+                rowHeight={isOverviewStat ? 60 : undefined}
+              />
+            </Box>
+          </CardContent>
+        </Card>
+      );
+    }, [getColumnDef, rowData, isMobile, onGridReady, selectedStat]);
 
-   const toggleCategoryExpansion = (categoryKey: string) => {
-     const newExpanded = new Set(expandedCategories);
-     if (newExpanded.has(categoryKey)) {
-       newExpanded.delete(categoryKey);
-     } else {
-       newExpanded.add(categoryKey);
-     }
-     setExpandedCategories(newExpanded);
-   };
+    // Memoized category toggle handler
+    const toggleCategoryExpansion = useCallback((categoryKey: string) => {
+      setExpandedCategories(prev => {
+        const newExpanded = new Set(prev);
+        if (newExpanded.has(categoryKey)) {
+          newExpanded.delete(categoryKey);
+        } else {
+          newExpanded.add(categoryKey);
+        }
+        return newExpanded;
+      });
+    }, []);
 
-   const getStatDisplayName = (stat: string) => {
-     const displayNames: { [key: string]: string } = {
-       corpus_overview: 'Corpus Overview',
-       document_length_stats: 'Document Length Stats',
-       word_length_distribution: 'Word Length Distribution',
-       languages_detected: 'Languages Detected',
-       most_common_punctuation: 'Punctuation Analysis',
-       field_completeness_percentage: 'Field Completeness',
-       distribution_over_time: 'Timeline Distribution',
-       distribution_over_decades: 'Decade Distribution',
-       most_frequent_words: 'Frequent Words',
-       most_frequent_bigrams: 'Frequent Bigrams',
-       most_frequent_trigrams: 'Frequent Trigrams',
-     };
-     
-     return displayNames[stat] || stat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-   };
+    // Memoized stat display name getter
+    const getStatDisplayName = useCallback((stat: string) => {
+      const displayNames: { [key: string]: string } = {
+        corpus_overview: 'Corpus Overview',
+        document_length_stats: 'Document Length Stats',
+        word_length_distribution: 'Word Length Distribution',
+        languages_detected: 'Languages Detected',
+        most_common_punctuation: 'Punctuation Analysis',
+        field_completeness_percentage: 'Field Completeness',
+        distribution_over_time: 'Timeline Distribution',
+        distribution_over_decades: 'Decade Distribution',
+        most_frequent_words: 'Frequent Words',
+        most_frequent_bigrams: 'Frequent Bigrams',
+        most_frequent_trigrams: 'Frequent Trigrams',
+      };
+      
+      return displayNames[stat] || stat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }, []);
 
-   const filteredCategories = useMemo(() => {
-     if (!searchTerm) return statCategories;
-     
-     const filtered = {};
-     Object.entries(statCategories).forEach(([categoryKey, category]) => {
-       const matchingStats = category.stats.filter(stat => 
-         getStatDisplayName(stat).toLowerCase().includes(searchTerm.toLowerCase())
-       );
-       if (matchingStats.length > 0) {
-         filtered[categoryKey] = { ...category, stats: matchingStats };
-       }
-     });
-     return filtered;
-   }, [statCategories, searchTerm]);
+    // Memoized filtered categories
+    const filteredCategories = useMemo(() => {
+      if (!searchTerm) return statCategories;
+      
+      const filtered = {};
+      Object.entries(statCategories).forEach(([categoryKey, category]) => {
+        const matchingStats = category.stats.filter(stat => 
+          getStatDisplayName(stat).toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        if (matchingStats.length > 0) {
+          filtered[categoryKey] = { ...category, stats: matchingStats };
+        }
+      });
+      return filtered;
+    }, [statCategories, searchTerm, getStatDisplayName]);
 
-   const renderSidebar = () => (
-     <Paper 
-       sx={{ 
-         width: isMobile ? '100%' : '350px', 
-         height: isMobile ? 'auto' : '80vh',
-         overflowY: 'auto',
-         borderRadius: 3,
-         background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)',
-       }}
-     >
-       <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'primary.main', color: 'white', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-         <Typography variant="h5" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
-           <Analytics />
-           Statistics Explorer
-         </Typography>
-         <Typography variant="body2" sx={{ opacity: 0.9, mt: 1 }}>
+    // Memoized navigation info
+    const navigationInfo = useMemo(() => {
+      const currentIndex = allAvailableStats.indexOf(selectedStat);
+      const isFirst = currentIndex === 0;
+      const isLast = currentIndex === allAvailableStats.length - 1;
+      const total = allAvailableStats.length;
+      
+      return {
+        currentIndex,
+        isFirst,
+        isLast,
+        total,
+        hasNavigation: total > 1
+      };
+    }, [allAvailableStats, selectedStat]);
+
+    // Memoized sidebar renderer
+    const renderSidebar = useCallback(() => (
+      <Paper 
+        sx={{ 
+          width: isMobile ? '100%' : '350px', 
+          height: isMobile ? 'auto' : '80vh',
+          overflowY: 'auto',
+          borderRadius: 3,
+          background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)',
+        }}
+      >
+        <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'primary.main', color: 'white', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Analytics />
+            Statistics Explorer
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.9, mt: 1 }}>
            Explore your data insights
          </Typography>
        </Box>
@@ -754,9 +897,10 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
          ))}
        </List>
      </Paper>
-   );
+   ), [isMobile, searchTerm, filteredCategories, activeCategory, expandedCategories, stats, selectedStat, toggleCategoryExpansion, onStatChange, getStatDisplayName]);
 
-   const renderMainContent = () => {
+   // Memoized main content renderer
+   const renderMainContent = useCallback(() => {
      if (!stats || !selectedStat) {
        return (
          <Box sx={{ textAlign: 'center', py: 8 }}>
@@ -771,19 +915,65 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
        );
      }
 
-     const shouldDisplayChart = chartData && !loading;
+     const shouldDisplayChart = chartData !== null;
 
      return (
        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
          <Paper sx={{ p: 3, borderRadius: 3 }}>
            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-             <Box>
-               <Typography variant="h5" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                 {getStatDisplayName(selectedStat)}
-               </Typography>
-               <Typography variant="body2" color="text.secondary">
-                 {rowData.length} data points available
-               </Typography>
+             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+               <Box>
+                 <Typography variant="h5" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                   {getStatDisplayName(selectedStat)}
+                 </Typography>
+                 <Typography variant="body2" color="text.secondary">
+                   {rowData.length} data points available
+                   {navigationInfo.hasNavigation && (
+                     <> • {navigationInfo.currentIndex + 1} of {navigationInfo.total}</>
+                   )}
+                 </Typography>
+               </Box>
+
+               {/* Navigation Controls */}
+               {navigationInfo.hasNavigation && (
+                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                   <MUITooltip title="Previous statistic (←)">
+                     <IconButton 
+                       onClick={() => navigateToStat('prev')}
+                       disabled={navigationInfo.isFirst}
+                       size="small"
+                       sx={{ 
+                         bgcolor: 'primary.light',
+                         color: 'white',
+                         '&:hover': { bgcolor: 'primary.main' },
+                         '&:disabled': { bgcolor: 'grey.300', color: 'grey.500' }
+                       }}
+                     >
+                       <KeyboardArrowLeft />
+                     </IconButton>
+                   </MUITooltip>
+                   
+                   <Typography variant="caption" sx={{ px: 1, color: 'text.secondary' }}>
+                     {navigationInfo.currentIndex + 1}/{navigationInfo.total}
+                   </Typography>
+                   
+                   <MUITooltip title="Next statistic (→)">
+                     <IconButton 
+                       onClick={() => navigateToStat('next')}
+                       disabled={navigationInfo.isLast}
+                       size="small"
+                       sx={{ 
+                         bgcolor: 'primary.light',
+                         color: 'white',
+                         '&:hover': { bgcolor: 'primary.main' },
+                         '&:disabled': { bgcolor: 'grey.300', color: 'grey.500' }
+                       }}
+                     >
+                       <KeyboardArrowRight />
+                     </IconButton>
+                   </MUITooltip>
+                 </Box>
+               )}
              </Box>
              
              <Stack direction="row" spacing={1}>
@@ -816,6 +1006,23 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
                </ButtonGroup>
              </Stack>
            </Box>
+
+           {/* Keyboard Navigation Hint */}
+           {navigationInfo.hasNavigation && !isMobile && (
+             <Box sx={{ 
+               mt: 2, 
+               p: 2, 
+               bgcolor: 'info.light', 
+               borderRadius: 2,
+               display: 'flex',
+               alignItems: 'center',
+               gap: 1
+             }}>
+               <Typography variant="caption" color="info.contrastText">
+                 💡 Use arrow keys (← →) to navigate between statistics
+               </Typography>
+             </Box>
+           )}
          </Paper>
          
          {shouldDisplayChart && showChart ? (
@@ -829,22 +1036,29 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
          )}
        </Box>
      );
-   };
+   }, [stats, selectedStat, chartData, rowData.length, getStatDisplayName, navigationInfo, navigateToStat, isMobile, showChart, downloadCsv, downloadChart, renderChart, renderGrid]);
 
    return (
-     <Box sx={{ 
-       display: 'flex', 
-       height: '100%', 
-       bgcolor: 'background.default',
-       flexDirection: isMobile ? 'column' : 'row',
-       gap: 3,
-       p: 3
-     }}>
+     <Box 
+       ref={containerRef}
+       tabIndex={0} // Make focusable for keyboard navigation
+       sx={{ 
+         display: 'flex', 
+         height: '100%', 
+         bgcolor: 'background.default',
+         flexDirection: isMobile ? 'column' : 'row',
+         gap: 3,
+         p: 3,
+         outline: 'none' // Remove focus outline
+       }}
+     >
        {renderSidebar()}
        {renderMainContent()}
      </Box>
    );
  },
 );
+
+StatisticsDisplay.displayName = 'StatisticsDisplay';
 
 export default StatisticsDisplay;
