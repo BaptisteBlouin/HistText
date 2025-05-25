@@ -29,7 +29,9 @@ import {
   Divider,
   Typography,
   Button,
-  Fab
+  Fab,
+  Tooltip,
+  Collapse
 } from '@mui/material';
 import { 
   Home as HomeIcon, 
@@ -39,7 +41,9 @@ import {
   Login, 
   Logout, 
   Menu as MenuIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  ChevronLeft,
+  ChevronRight
 } from '@mui/icons-material';
 import HistLogo from './images/HistTextLogoC.png';
 
@@ -51,10 +55,15 @@ const App = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleSidebarToggle = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
   };
 
   const handleProfileMenuOpen = (event) => {
@@ -75,21 +84,73 @@ const App = () => {
   ];
 
   const drawerWidth = 280;
+  const collapsedWidth = 64;
 
-  const drawer = (
+  const drawer = (collapsed = false) => (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Toggle Button - Desktop Only */}
+      {!isMobile && (
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: collapsed ? 'center' : 'flex-end',
+          p: 1,
+          borderBottom: '1px solid',
+          borderColor: 'divider'
+        }}>
+          <Tooltip title={collapsed ? "Expand sidebar" : "Collapse sidebar"} placement="right">
+            <IconButton 
+              onClick={handleSidebarToggle}
+              sx={{
+                backgroundColor: 'background.paper',
+                boxShadow: 1,
+                '&:hover': {
+                  backgroundColor: 'primary.light',
+                  color: 'white'
+                }
+              }}
+            >
+              {collapsed ? <ChevronRight /> : <ChevronLeft />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
+
       {/* Logo Section */}
-      <Box sx={{ p: 3, textAlign: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
-        <img 
-          src={HistLogo} 
-          alt="HistText Logo" 
-          style={{ height: '50px', cursor: 'pointer', marginBottom: '8px' }} 
-          onClick={() => navigate('/histtext')}
-        />
-        <br></br>
-        <Typography variant="caption" color="text.secondary">
-          Text Analysis Platform
-        </Typography>
+      <Box sx={{ 
+        p: collapsed ? 1 : 3, 
+        textAlign: 'center', 
+        borderBottom: '1px solid', 
+        borderColor: 'divider' 
+      }}>
+        {collapsed ? (
+          <Tooltip title="HistText" placement="right">
+            <Avatar 
+              sx={{ 
+                width: 40, 
+                height: 40, 
+                bgcolor: 'primary.main',
+                cursor: 'pointer',
+                margin: '0 auto'
+              }}
+              onClick={() => navigate('/histtext')}
+            >
+              <Description />
+            </Avatar>
+          </Tooltip>
+        ) : (
+          <>
+            <img 
+              src={HistLogo} 
+              alt="HistText Logo" 
+              style={{ height: '50px', cursor: 'pointer', marginBottom: '8px' }} 
+              onClick={() => navigate('/histtext')}
+            />
+            <br />
+            <Typography variant="caption" color="text.secondary">
+              Text Analysis Platform
+            </Typography>
+          </>
+        )}
       </Box>
 
       {/* Navigation */}
@@ -100,32 +161,50 @@ const App = () => {
             if (item.public === false && !auth.isAuthenticated) return null;
             
             return (
-              <ListItem 
-                button 
-                key={item.text} 
-                onClick={() => {
-                  navigate(item.path);
-                  if (isMobile) setMobileOpen(false);
-                }}
-                sx={{
-                  borderRadius: 2,
-                  mx: 2,
-                  mb: 1,
-                  '&:hover': {
-                    backgroundColor: 'primary.light',
-                    color: 'white',
-                    '& .MuiListItemIcon-root': {
-                      color: 'white',
-                    }
-                  },
-                }}
+              <Tooltip 
+                key={item.text}
+                title={collapsed ? item.text : ''} 
+                placement="right"
+                disableHoverListener={!collapsed}
               >
-                <ListItemIcon sx={{ color: 'primary.main' }}>{item.icon}</ListItemIcon>
-                <ListItemText 
-                  primary={item.text}
-                  primaryTypographyProps={{ fontWeight: 500 }}
-                />
-              </ListItem>
+                <ListItem 
+                  button 
+                  onClick={() => {
+                    navigate(item.path);
+                    if (isMobile) setMobileOpen(false);
+                  }}
+                  sx={{
+                    borderRadius: 2,
+                    mx: collapsed ? 1 : 2,
+                    mb: 1,
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    px: collapsed ? 1 : 2,
+                    '&:hover': {
+                      backgroundColor: 'primary.light',
+                      color: 'white',
+                      '& .MuiListItemIcon-root': {
+                        color: 'white',
+                      }
+                    },
+                  }}
+                >
+                  <ListItemIcon 
+                    sx={{ 
+                      color: 'primary.main',
+                      minWidth: collapsed ? 'auto' : 40,
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {!collapsed && (
+                    <ListItemText 
+                      primary={item.text}
+                      primaryTypographyProps={{ fontWeight: 500 }}
+                    />
+                  )}
+                </ListItem>
+              </Tooltip>
             );
           })}
           
@@ -133,32 +212,50 @@ const App = () => {
             if (item.role && !auth.session?.hasRole(item.role)) return null;
             
             return (
-              <ListItem 
-                button 
-                key={item.text} 
-                onClick={() => {
-                  navigate(item.path);
-                  if (isMobile) setMobileOpen(false);
-                }}
-                sx={{
-                  borderRadius: 2,
-                  mx: 2,
-                  mb: 1,
-                  '&:hover': {
-                    backgroundColor: 'secondary.light',
-                    color: 'white',
-                    '& .MuiListItemIcon-root': {
-                      color: 'white',
-                    }
-                  },
-                }}
+              <Tooltip 
+                key={item.text}
+                title={collapsed ? item.text : ''} 
+                placement="right"
+                disableHoverListener={!collapsed}
               >
-                <ListItemIcon sx={{ color: 'secondary.main' }}>{item.icon}</ListItemIcon>
-                <ListItemText 
-                  primary={item.text}
-                  primaryTypographyProps={{ fontWeight: 500 }}
-                />
-              </ListItem>
+                <ListItem 
+                  button 
+                  onClick={() => {
+                    navigate(item.path);
+                    if (isMobile) setMobileOpen(false);
+                  }}
+                  sx={{
+                    borderRadius: 2,
+                    mx: collapsed ? 1 : 2,
+                    mb: 1,
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    px: collapsed ? 1 : 2,
+                    '&:hover': {
+                      backgroundColor: 'secondary.light',
+                      color: 'white',
+                      '& .MuiListItemIcon-root': {
+                        color: 'white',
+                      }
+                    },
+                  }}
+                >
+                  <ListItemIcon 
+                    sx={{ 
+                      color: 'secondary.main',
+                      minWidth: collapsed ? 'auto' : 40,
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {!collapsed && (
+                    <ListItemText 
+                      primary={item.text}
+                      primaryTypographyProps={{ fontWeight: 500 }}
+                    />
+                  )}
+                </ListItem>
+              </Tooltip>
             );
           })}
         </List>
@@ -167,48 +264,98 @@ const App = () => {
       <Divider />
 
       {/* User Section */}
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: collapsed ? 1 : 2 }}>
         {auth.isAuthenticated ? (
           <Box>
-            <ListItem 
-              button
-              onClick={handleProfileMenuOpen}
-              sx={{
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: 'divider',
-                mb: 1,
-                '&:hover': {
-                  backgroundColor: 'action.hover',
-                }
-              }}
-            >
-              <ListItemIcon>
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                  <AccountCircle />
-                </Avatar>
-              </ListItemIcon>
-              <ListItemText 
-                primary="Account"
-                secondary="Manage settings"
-                secondaryTypographyProps={{ fontSize: '0.75rem' }}
-              />
-            </ListItem>
+            {collapsed ? (
+              <Tooltip title="Account" placement="right">
+                <IconButton
+                  onClick={handleProfileMenuOpen}
+                  sx={{
+                    width: '100%',
+                    height: 48,
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    mb: 1,
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    }
+                  }}
+                >
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                    <AccountCircle />
+                  </Avatar>
+                </IconButton>
+              </Tooltip>
+            ) : (
+              <ListItem 
+                button
+                onClick={handleProfileMenuOpen}
+                sx={{
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  mb: 1,
+                  '&:hover': {
+                    backgroundColor: 'action.hover',
+                  }
+                }}
+              >
+                <ListItemIcon>
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                    <AccountCircle />
+                  </Avatar>
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Account"
+                  secondary="Manage settings"
+                  secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                />
+              </ListItem>
+            )}
 
-            <Button
-              fullWidth
-              variant="outlined"
-              color="error"
-              startIcon={<Logout />}
-              onClick={() => {
-                auth.logout();
-                apollo.resetStore();
-                if (isMobile) setMobileOpen(false);
-              }}
-              sx={{ mt: 1 }}
-            >
-              Sign Out
-            </Button>
+            {collapsed ? (
+              <Tooltip title="Sign Out" placement="right">
+                <IconButton
+                  color="error"
+                  onClick={() => {
+                    auth.logout();
+                    apollo.resetStore();
+                    if (isMobile) setMobileOpen(false);
+                  }}
+                  sx={{ 
+                    width: '100%',
+                    height: 40,
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'error.main',
+                    mt: 1,
+                    '&:hover': {
+                      backgroundColor: 'error.light',
+                      color: 'white'
+                    }
+                  }}
+                >
+                  <Logout />
+                </IconButton>
+              </Tooltip>
+            ) : (
+              <Button
+                fullWidth
+                variant="outlined"
+                color="error"
+                startIcon={<Logout />}
+                onClick={() => {
+                  auth.logout();
+                  apollo.resetStore();
+                  if (isMobile) setMobileOpen(false);
+                }}
+                sx={{ mt: 1 }}
+              >
+                Sign Out
+              </Button>
+            )}
 
             <Menu
               anchorEl={anchorEl}
@@ -227,27 +374,55 @@ const App = () => {
             </Menu>
           </Box>
         ) : (
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={<Login />}
-            onClick={() => {
-              navigate('/login');
-              if (isMobile) setMobileOpen(false);
-            }}
-            sx={{ 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-              }
-            }}
-          >
-            Sign In
-          </Button>
+          <>
+            {collapsed ? (
+              <Tooltip title="Sign In" placement="right">
+                <IconButton
+                  color="primary"
+                  onClick={() => {
+                    navigate('/login');
+                    if (isMobile) setMobileOpen(false);
+                  }}
+                  sx={{ 
+                    width: '100%',
+                    height: 40,
+                    borderRadius: 2,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                    }
+                  }}
+                >
+                  <Login />
+                </IconButton>
+              </Tooltip>
+            ) : (
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<Login />}
+                onClick={() => {
+                  navigate('/login');
+                  if (isMobile) setMobileOpen(false);
+                }}
+                sx={{ 
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                  }
+                }}
+              >
+                Sign In
+              </Button>
+            )}
+          </>
         )}
       </Box>
     </Box>
   );
+
+  const currentDrawerWidth = isMobile ? drawerWidth : (sidebarCollapsed ? collapsedWidth : drawerWidth);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -283,24 +458,33 @@ const App = () => {
             },
           }}
         >
-          {drawer}
+          {drawer(false)}
         </Drawer>
       ) : (
         <Drawer
           variant="permanent"
           sx={{
-            width: drawerWidth,
+            width: currentDrawerWidth,
             flexShrink: 0,
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
             '& .MuiDrawer-paper': {
-              width: drawerWidth,
+              width: currentDrawerWidth,
               boxSizing: 'border-box',
               borderRight: '1px solid',
               borderColor: 'divider',
               background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)',
+              transition: theme.transitions.create('width', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+              overflowX: 'hidden',
             },
           }}
         >
-          {drawer}
+          {drawer(sidebarCollapsed)}
         </Drawer>
       )}
 
@@ -311,8 +495,11 @@ const App = () => {
           flexGrow: 1, 
           backgroundColor: '#f5f7fa',
           minHeight: '100vh',
-          ml: isMobile ? 0 : 0,
-          pt: isMobile ? 8 : 0, // Add top padding on mobile for the floating menu button
+          pt: isMobile ? 8 : 0,
+          transition: theme.transitions.create('margin', {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
         }}
       >
         <Routes>
