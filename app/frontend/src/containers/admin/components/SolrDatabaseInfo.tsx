@@ -5,15 +5,45 @@ import {
   TextField,
   Typography,
   Paper,
-  Snackbar,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Chip,
-  Autocomplete,
+  Card,
+  CardContent,
+  Grid,
+  Stack,
+  Alert,
+  useTheme,
+  useMediaQuery,
+  Fade,
+  CircularProgress,
+  InputAdornment,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import {
+  Add,
+  Edit,
+  Delete,
+  Search,
+  Storage,
+  Description,
+  Language,
+  Settings,
+  Refresh,
+  Save,
+  Cancel,
+  Info,
+  DataObject
+} from '@mui/icons-material';
+import Autocomplete from '@mui/material/Autocomplete';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
@@ -31,6 +61,12 @@ interface SolrDatabaseInfo {
 interface SolrDatabase {
   id: number;
   name: string;
+}
+
+interface NotificationState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error' | 'warning' | 'info';
 }
 
 const useAuthAxios = () => {
@@ -52,6 +88,9 @@ const useAuthAxios = () => {
 
 const SolrDatabaseInfoComponent: React.FC = () => {
   const authAxios = useAuthAxios();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [solrDatabaseInfos, setSolrDatabaseInfos] = useState<SolrDatabaseInfo[]>([]);
   const [solrDatabases, setSolrDatabases] = useState<SolrDatabase[]>([]);
   const [selectedSolrDatabase, setSelectedSolrDatabase] = useState<SolrDatabase | null>(null);
@@ -66,13 +105,20 @@ const SolrDatabaseInfoComponent: React.FC = () => {
   const [newToNotDisplay, setNewToNotDisplay] = useState<Array<string | null> | null>(null);
   const [editingRecord, setEditingRecord] = useState<SolrDatabaseInfo | null>(null);
   const [search, setSearch] = useState('');
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
-
+  const [loading, setLoading] = useState(true);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<SolrDatabaseInfo | null>(null);
+  const [notification, setNotification] = useState<NotificationState>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+ 
   useEffect(() => {
     fetchSolrDatabaseInfos();
     fetchSolrDatabases();
   }, []);
-
+ 
   useEffect(() => {
     if (selectedSolrDatabase) {
       authAxios
@@ -85,30 +131,32 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     setNewCollectionName('');
     setAvailableFields([]);
   }, [selectedSolrDatabase]);
-
+ 
   useEffect(() => {
-    // Fetch collection metadata when collection name changes
     if (selectedSolrDatabase && newCollectionName) {
       fetchCollectionMetadata(selectedSolrDatabase.id, newCollectionName);
     } else {
       setAvailableFields([]);
     }
   }, [selectedSolrDatabase, newCollectionName]);
-
+ 
+  const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
+    setNotification({ open: true, message, severity });
+    setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
+  };
+ 
   const fetchCollectionMetadata = async (solrDatabaseId: number, collectionName: string) => {
     try {
       const metadataResponse = await authAxios.get(
         `/api/solr/collection_metadata?collection=${encodeURIComponent(collectionName)}&solr_database_id=${solrDatabaseId}`,
       );
-
+ 
       if (metadataResponse.data && Array.isArray(metadataResponse.data)) {
         const fields = metadataResponse.data;
         const fieldNames = fields.map((field: any) => field.name);
         setAvailableFields(fieldNames);
-
-        // Only auto-populate fields if we're not editing an existing record
+ 
         if (!editingRecord) {
-          // Don't override existing values when editing
           setNewTextField(null);
           setNewToNotDisplay(null);
         }
@@ -118,25 +166,32 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       setAvailableFields([]);
     }
   };
-
+ 
   const fetchSolrDatabaseInfos = async () => {
     try {
+      setLoading(true);
       const { data } = await authAxios.get('/api/solr_database_info');
       setSolrDatabaseInfos(data);
-    } catch {
+    } catch (error) {
+      console.error('Failed to fetch database info:', error);
       setSolrDatabaseInfos([]);
+      showNotification('Failed to fetch database information', 'error');
+    } finally {
+      setLoading(false);
     }
   };
-
+ 
   const fetchSolrDatabases = async () => {
     try {
       const { data } = await authAxios.get('/api/solr_databases');
       setSolrDatabases(data);
-    } catch {
+    } catch (error) {
+      console.error('Failed to fetch databases:', error);
       setSolrDatabases([]);
+      showNotification('Failed to fetch databases', 'error');
     }
   };
-
+ 
   const handleAddOrUpdate = async () => {
     if (
       !selectedSolrDatabase ||
@@ -144,10 +199,10 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       !newDescription.trim() ||
       !newEmbeddings.trim()
     ) {
-      setSnackbar({ open: true, message: 'Required fields are missing' });
+      showNotification('Required fields are missing', 'warning');
       return;
     }
-
+ 
     try {
       if (editingRecord) {
         await authAxios.put(
@@ -161,7 +216,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
             to_not_display: newToNotDisplay,
           },
         );
-        setSnackbar({ open: true, message: 'Record updated successfully' });
+        showNotification('Record updated successfully', 'success');
       } else {
         await authAxios.post('/api/solr_database_info', {
           solr_database_id: selectedSolrDatabase.id,
@@ -173,15 +228,16 @@ const SolrDatabaseInfoComponent: React.FC = () => {
           tokenizer: newTokenizer,
           to_not_display: newToNotDisplay,
         });
-        setSnackbar({ open: true, message: 'Record added successfully' });
+        showNotification('Record added successfully', 'success');
       }
       fetchSolrDatabaseInfos();
       resetForm();
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to save record' });
+    } catch (error) {
+      console.error('Failed to save record:', error);
+      showNotification('Failed to save record', 'error');
     }
   };
-
+ 
   const handleEdit = (record: SolrDatabaseInfo) => {
     const db = solrDatabases.find(db => db.id === record.solr_database_id) || null;
     setEditingRecord(record);
@@ -193,25 +249,27 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     setNewTextField(record.text_field);
     setNewTokenizer(record.tokenizer);
     setNewToNotDisplay(record.to_not_display);
-
-    // Fetch collection metadata to populate available fields
+ 
     if (db) {
       fetchCollectionMetadata(db.id, record.collection_name);
     }
   };
-
+ 
   const handleDelete = async (solr_database_id: number, collection_name: string) => {
     try {
       await authAxios.delete(
         `/api/solr_database_info/${solr_database_id}/${encodeURIComponent(collection_name)}`,
       );
       fetchSolrDatabaseInfos();
-      setSnackbar({ open: true, message: 'Record deleted successfully' });
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to delete record' });
+      setOpenDeleteDialog(false);
+      setRecordToDelete(null);
+      showNotification('Record deleted successfully', 'success');
+    } catch (error) {
+      console.error('Failed to delete record:', error);
+      showNotification('Failed to delete record', 'error');
     }
   };
-
+ 
   const resetForm = () => {
     setEditingRecord(null);
     setSelectedSolrDatabase(null);
@@ -224,51 +282,100 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     setNewToNotDisplay(null);
     setAvailableFields([]);
   };
-
+ 
   const filteredInfos = solrDatabaseInfos.filter(info =>
     `${info.collection_name} ${info.description} ${info.embeddings}`
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
-
+ 
   const handleToNotDisplayChange = (_: React.SyntheticEvent, newValue: string[]) => {
-    // Convert string[] to (string | null)[]
     setNewToNotDisplay(newValue.map(v => v || null));
   };
-
+ 
   const columns: GridColDef[] = [
-    { field: 'solr_database_id', headerName: 'Database ID', width: 120 },
-    { field: 'collection_name', headerName: 'Collection Name', width: 180 },
-    { field: 'description', headerName: 'Description', width: 200 },
-    { field: 'embeddings', headerName: 'Embeddings', width: 150 },
+    { 
+      field: 'solr_database_id', 
+      headerName: 'Database ID', 
+      width: 120,
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" variant="outlined" />
+      )
+    },
+    { 
+      field: 'collection_name', 
+      headerName: 'Collection', 
+      width: 180,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DataObject fontSize="small" color="primary" />
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.value}
+          </Typography>
+        </Box>
+      )
+    },
+    { 
+      field: 'description', 
+      headerName: 'Description', 
+      width: 200,
+      renderCell: (params) => (
+        <Typography variant="body2">
+          {params.value}
+        </Typography>
+      )
+    },
+    { 
+      field: 'embeddings', 
+      headerName: 'Embeddings', 
+      width: 150,
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" color="info" />
+      )
+    },
     {
       field: 'lang',
       headerName: 'Language',
       width: 120,
-      renderCell: params => params.value || '-',
+      renderCell: params => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Language fontSize="small" color="action" />
+          <Typography variant="body2">
+            {params.value || '-'}
+          </Typography>
+        </Box>
+      ),
     },
     {
       field: 'text_field',
       headerName: 'Text Field',
       width: 120,
-      renderCell: params => params.value || '-',
+      renderCell: params => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+          {params.value || '-'}
+        </Typography>
+      ),
     },
     {
       field: 'tokenizer',
       headerName: 'Tokenizer',
       width: 120,
-      renderCell: params => params.value || '-',
+      renderCell: params => (
+        <Typography variant="body2">
+          {params.value || '-'}
+        </Typography>
+      ),
     },
     {
       field: 'to_not_display',
-      headerName: 'To Not Display',
+      headerName: 'Hidden Fields',
       width: 200,
       renderCell: params => {
         const values = params.value as Array<string | null> | null;
-        if (!values || values.length === 0) return '-';
+        if (!values || values.length === 0) return <Typography variant="body2">-</Typography>;
         return (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {values.map((value, index) => value && <Chip key={index} label={value} size="small" />)}
+            {values.map((value, index) => value && <Chip key={index} label={value} size="small" variant="outlined" />)}
           </Box>
         );
       },
@@ -277,183 +384,295 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       field: 'actions',
       headerName: 'Actions',
       width: 180,
+      sortable: false,
+      filterable: false,
       renderCell: (params: GridRenderCellParams) => (
-        <>
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            onClick={() => handleEdit(params.row)}
-            sx={{ mr: 1 }}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            size="small"
-            onClick={() => handleDelete(params.row.solr_database_id, params.row.collection_name)}
-          >
-            Delete
-          </Button>
-        </>
+        <Stack direction="row" spacing={1}>
+          <Tooltip title="Edit Record">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={() => handleEdit(params.row)}
+            >
+              <Edit />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete Record">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => {
+                setRecordToDelete(params.row);
+                setOpenDeleteDialog(true);
+              }}
+            >
+              <Delete />
+            </IconButton>
+          </Tooltip>
+        </Stack>
       ),
     },
   ];
-
+ 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Solr Database Info
-      </Typography>
-
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6">{editingRecord ? 'Update Record' : 'Add New Record'}</Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>Solr Database</InputLabel>
-            <Select
-              value={selectedSolrDatabase?.id || ''}
-              onChange={e =>
-                setSelectedSolrDatabase(
-                  solrDatabases.find(db => db.id === Number(e.target.value)) || null,
-                )
-              }
-              label="Solr Database"
-            >
-              {solrDatabases.map(db => (
-                <MenuItem key={db.id} value={db.id}>
-                  {db.name} (ID: {db.id})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Autocomplete
-            freeSolo
-            options={aliases}
-            value={newCollectionName}
-            onChange={(_, value: string | null) => setNewCollectionName(value || '')}
-            renderInput={params => <TextField {...params} label="Collection Name *" />}
-            sx={{ minWidth: 200 }}
-          />
-
-          <TextField
-            label="Description *"
-            value={newDescription}
-            onChange={e => setNewDescription(e.target.value)}
-            sx={{ minWidth: 250 }}
-          />
-
-          <TextField
-            label="Embeddings *"
-            value={newEmbeddings}
-            onChange={e => setNewEmbeddings(e.target.value)}
-            sx={{ minWidth: 250 }}
-          />
-
-          <TextField
-            label="Language"
-            value={newLang || ''}
-            onChange={e => setNewLang(e.target.value || null)}
-            sx={{ minWidth: 150 }}
-          />
-
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>Text Field</InputLabel>
-            <Select
-              value={newTextField || ''}
-              onChange={e => setNewTextField(e.target.value || null)}
-              label="Text Field"
-              disabled={availableFields.length === 0}
-            >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              {availableFields.map(field => (
-                <MenuItem key={field} value={field}>
-                  {field}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <TextField
-            label="Tokenizer"
-            value={newTokenizer || ''}
-            onChange={e => setNewTokenizer(e.target.value || null)}
-            sx={{ minWidth: 150 }}
-          />
-
-          <FormControl sx={{ minWidth: 250 }}>
-            <Autocomplete
-              multiple
-              options={availableFields}
-              value={(newToNotDisplay || []).filter(Boolean) as string[]}
-              onChange={handleToNotDisplayChange}
-              renderInput={params => <TextField {...params} label="Fields To Not Display" />}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    variant="outlined"
-                    label={option}
-                    size="small"
-                    {...getTagProps({ index })}
-                  />
-                ))
-              }
-              disabled={availableFields.length === 0}
-            />
-          </FormControl>
-
-          <Box
-            sx={{
-              display: 'flex',
-              width: '100%',
-              justifyContent: 'flex-start',
-              mt: 2,
-            }}
+    <Fade in={true} timeout={600}>
+      <Box>
+        {notification.open && (
+          <Alert 
+            severity={notification.severity} 
+            sx={{ mb: 3 }}
+            onClose={() => setNotification(prev => ({ ...prev, open: false }))}
           >
-            <Button variant="contained" onClick={handleAddOrUpdate} sx={{ mr: 2 }}>
-              {editingRecord ? 'Update' : 'Add'}
-            </Button>
-            {editingRecord && (
-              <Button variant="outlined" onClick={resetForm}>
-                Cancel
-              </Button>
-            )}
+            {notification.message}
+          </Alert>
+        )}
+ 
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Info color="primary" />
+              Database Information
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Manage collection metadata and configuration settings
+            </Typography>
           </Box>
+          <Tooltip title="Refresh Data">
+            <IconButton onClick={fetchSolrDatabaseInfos} color="primary">
+              <Refresh />
+            </IconButton>
+          </Tooltip>
         </Box>
-      </Paper>
-
-      <Box sx={{ mb: 2 }}>
-        <TextField
-          label="Search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          fullWidth
-        />
+ 
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {editingRecord ? <Edit /> : <Add />}
+              {editingRecord ? 'Update Record' : 'Add New Record'}
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Solr Database</InputLabel>
+                  <Select
+                    value={selectedSolrDatabase?.id || ''}
+                    onChange={e =>
+                      setSelectedSolrDatabase(
+                        solrDatabases.find(db => db.id === Number(e.target.value)) || null,
+                      )
+                    }
+                    label="Solr Database"
+                  >
+                    {solrDatabases.map(db => (
+                      <MenuItem key={db.id} value={db.id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Storage fontSize="small" />
+                          {db.name}
+                          <Chip label={`ID: ${db.id}`} size="small" variant="outlined" />
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+ 
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  freeSolo
+                  options={aliases}
+                  value={newCollectionName}
+                  onChange={(_, value: string | null) => setNewCollectionName(value || '')}
+                  renderInput={params => (
+                    <TextField 
+                      {...params} 
+                      label="Collection Name *" 
+                      required
+                      error={!newCollectionName}
+                      helperText={!newCollectionName && 'Required'}
+                    />
+                  )}
+                />
+              </Grid>
+ 
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Description *"
+                  value={newDescription}
+                  onChange={e => setNewDescription(e.target.value)}
+                  fullWidth
+                  required
+                  error={!newDescription}
+                  helperText={!newDescription && 'Required'}
+                />
+              </Grid>
+ 
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Embeddings *"
+                  value={newEmbeddings}
+                  onChange={e => setNewEmbeddings(e.target.value)}
+                  fullWidth
+                  required
+                  error={!newEmbeddings}
+                  helperText={!newEmbeddings && 'Required'}
+                />
+              </Grid>
+ 
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Language"
+                  value={newLang || ''}
+                  onChange={e => setNewLang(e.target.value || null)}
+                  fullWidth
+                />
+              </Grid>
+ 
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Text Field</InputLabel>
+                  <Select
+                    value={newTextField || ''}
+                    onChange={e => setNewTextField(e.target.value || null)}
+                    label="Text Field"
+                    disabled={availableFields.length === 0}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {availableFields.map(field => (
+                      <MenuItem key={field} value={field}>
+                        {field}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+ 
+              <Grid item xs={12} md={4}>
+                <TextField
+                  label="Tokenizer"
+                  value={newTokenizer || ''}
+                  onChange={e => setNewTokenizer(e.target.value || null)}
+                  fullWidth
+                />
+              </Grid>
+ 
+              <Grid item xs={12}>
+                <Autocomplete
+                  multiple
+                  options={availableFields}
+                  value={(newToNotDisplay || []).filter(Boolean) as string[]}
+                  onChange={handleToNotDisplayChange}
+                  renderInput={params => (
+                    <TextField {...params} label="Fields To Not Display" />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        variant="outlined"
+                        label={option}
+                        size="small"
+                        {...getTagProps({ index })}
+                      />
+                    ))
+                  }
+                  disabled={availableFields.length === 0}
+                />
+              </Grid>
+ 
+              <Grid item xs={12}>
+                <Stack direction="row" spacing={2}>
+                  <Button 
+                    variant="contained" 
+                    onClick={handleAddOrUpdate}
+                    startIcon={editingRecord ? <Save /> : <Add />}
+                    disabled={!selectedSolrDatabase || !newCollectionName || !newDescription || !newEmbeddings}
+                    sx={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                      }
+                    }}
+                  >
+                    {editingRecord ? 'Update' : 'Add'} Record
+                  </Button>
+                  {editingRecord && (
+                    <Button variant="outlined" onClick={resetForm} startIcon={<Cancel />}>
+                      Cancel
+                    </Button>
+                  )}
+                </Stack>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+ 
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <TextField
+              fullWidth
+              placeholder="Search by collection, description, or embeddings..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </CardContent>
+        </Card>
+ 
+        <Paper sx={{ height: 600, borderRadius: 3, overflow: 'hidden' }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <DataGrid
+              rows={filteredInfos}
+              columns={columns}
+              pageSize={10}
+              rowsPerPageOptions={[10, 25, 50]}
+              getRowId={row => `${row.solr_database_id}-${row.collection_name}`}
+              disableSelectionOnClick
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-cell': { outline: 'none' },
+                '& .MuiDataGrid-row:hover': {
+                  backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                },
+              }}
+            />
+          )}
+        </Paper>
+ 
+        <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+          <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Delete />
+            Confirm Delete
+          </DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete the record for collection "{recordToDelete?.collection_name}"? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => recordToDelete && handleDelete(recordToDelete.solr_database_id, recordToDelete.collection_name)}
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
-
-      <Paper sx={{ height: 600 }}>
-        <DataGrid
-          rows={filteredInfos}
-          columns={columns}
-          pagination
-          pageSize={10}
-          rowsPerPageOptions={[5, 10, 20]}
-          getRowId={row => `${row.solr_database_id}-${row.collection_name}`}
-        />
-      </Paper>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-        message={snackbar.message}
-      />
-    </Box>
+    </Fade>
   );
-};
-
-export default SolrDatabaseInfoComponent;
+ };
+ 
+ export default SolrDatabaseInfoComponent;

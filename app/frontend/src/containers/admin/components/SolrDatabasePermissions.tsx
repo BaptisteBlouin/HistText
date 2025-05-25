@@ -5,7 +5,6 @@ import {
   TextField,
   Typography,
   Paper,
-  Snackbar,
   FormControl,
   InputLabel,
   Select,
@@ -13,9 +12,38 @@ import {
   OutlinedInput,
   Checkbox,
   ListItemText,
+  Card,
+  CardContent,
+  Grid,
+  Stack,
+  Alert,
+  useTheme,
+  useMediaQuery,
+  Fade,
+  CircularProgress,
+  InputAdornment,
+  IconButton,
+  Tooltip,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
-import Autocomplete from '@mui/material/Autocomplete';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import {
+  Add,
+  Delete,
+  Search,
+  Security,
+  Storage,
+  VpnKey,
+  Refresh,
+  SelectAll,
+  CheckBox,
+  CheckBoxOutlineBlank
+} from '@mui/icons-material';
+import Autocomplete from '@mui/material/Autocomplete';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
@@ -29,6 +57,12 @@ interface SolrDatabasePermission {
 interface SolrDatabase {
   id: number;
   name: string;
+}
+
+interface NotificationState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error' | 'warning' | 'info';
 }
 
 const useAuthAxios = () => {
@@ -50,6 +84,9 @@ const useAuthAxios = () => {
 
 const SolrDatabasePermissions: React.FC = () => {
   const authAxios = useAuthAxios();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [permissions, setPermissions] = useState<SolrDatabasePermission[]>([]);
   const [databases, setDatabases] = useState<SolrDatabase[]>([]);
   const [selectedDatabase, setSelectedDatabase] = useState<SolrDatabase | null>(null);
@@ -58,9 +95,13 @@ const SolrDatabasePermissions: React.FC = () => {
   const [availablePermissions, setAvailablePermissions] = useState<string[]>([]);
   const [newPermission, setNewPermission] = useState('');
   const [search, setSearch] = useState('');
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
+  const [loading, setLoading] = useState(true);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [permissionToDelete, setPermissionToDelete] = useState<SolrDatabasePermission | null>(null);
+  const [notification, setNotification] = useState<NotificationState>({
     open: false,
     message: '',
+    severity: 'info'
   });
 
   useEffect(() => {
@@ -80,16 +121,26 @@ const SolrDatabasePermissions: React.FC = () => {
     setSelectedCollections([]);
   }, [selectedDatabase]);
 
+  const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
+    setNotification({ open: true, message, severity });
+    setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
+  };
+
   const fetchPermissions = async () => {
     try {
+      setLoading(true);
       const { data } = await authAxios.get('/api/solr_database_permissions');
       setPermissions(data);
       const perms = Array.from(
         new Set(data.map((item: SolrDatabasePermission) => item.permission)),
       );
       setAvailablePermissions(perms);
-    } catch {
+    } catch (error) {
+      console.error('Failed to fetch permissions:', error);
       setPermissions([]);
+      showNotification('Failed to fetch permissions', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -97,8 +148,10 @@ const SolrDatabasePermissions: React.FC = () => {
     try {
       const { data } = await authAxios.get('/api/solr_databases');
       setDatabases(data);
-    } catch {
+    } catch (error) {
+      console.error('Failed to fetch databases:', error);
       setDatabases([]);
+      showNotification('Failed to fetch databases', 'error');
     }
   };
 
@@ -108,7 +161,7 @@ const SolrDatabasePermissions: React.FC = () => {
 
   const handleAdd = async () => {
     if (!selectedDatabase || !newPermission.trim() || selectedCollections.length === 0) {
-      setSnackbar({ open: true, message: 'All fields are required' });
+      showNotification('All fields are required', 'warning');
       return;
     }
     try {
@@ -121,12 +174,13 @@ const SolrDatabasePermissions: React.FC = () => {
           }),
         ),
       );
-      setSnackbar({ open: true, message: 'Permissions added successfully' });
+      showNotification(`Permissions added successfully to ${selectedCollections.length} collection(s)`, 'success');
       setSelectedCollections([]);
       setNewPermission('');
       fetchPermissions();
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to add permissions' });
+    } catch (error) {
+      console.error('Failed to add permissions:', error);
+      showNotification('Failed to add permissions', 'error');
     }
   };
 
@@ -135,10 +189,13 @@ const SolrDatabasePermissions: React.FC = () => {
       await authAxios.delete(
         `/api/solr_database_permissions/${id}/${encodeURIComponent(collection)}/${encodeURIComponent(permission)}`,
       );
-      setSnackbar({ open: true, message: 'Permission deleted successfully' });
+      showNotification('Permission deleted successfully', 'success');
+      setOpenDeleteDialog(false);
+      setPermissionToDelete(null);
       fetchPermissions();
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to delete permission' });
+    } catch (error) {
+      console.error('Failed to delete permission:', error);
+      showNotification('Failed to delete permission', 'error');
     }
   };
 
@@ -146,124 +203,310 @@ const SolrDatabasePermissions: React.FC = () => {
     `${p.collection_name} ${p.permission}`.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const getDatabaseName = (id: number) => {
+    const db = databases.find(d => d.id === id);
+    return db ? db.name : `Database ${id}`;
+  };
+
+  const getPermissionColor = (permission: string) => {
+    if (permission.includes('read') || permission.includes('view')) return 'info';
+    if (permission.includes('write') || permission.includes('create')) return 'success';
+    if (permission.includes('delete') || permission.includes('remove')) return 'error';
+    if (permission.includes('admin')) return 'warning';
+    return 'default';
+  };
+
   const columns: GridColDef[] = [
-    { field: 'solr_database_id', headerName: 'Database ID', width: 150 },
-    { field: 'collection_name', headerName: 'Collection', width: 200 },
-    { field: 'permission', headerName: 'Permission', flex: 1 },
-    { field: 'created_at', headerName: 'Created At', width: 200 },
+    { 
+      field: 'solr_database_id', 
+      headerName: 'Database', 
+      width: 200,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Storage fontSize="small" color="primary" />
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {getDatabaseName(params.value)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              ID: {params.value}
+            </Typography>
+          </Box>
+        </Box>
+      )
+    },
+    { 
+      field: 'collection_name', 
+      headerName: 'Collection', 
+      width: 200,
+      renderCell: (params) => (
+        <Chip 
+          label={params.value} 
+          size="small" 
+          variant="outlined"
+          sx={{ fontFamily: 'monospace' }}
+        />
+      )
+    },
+    { 
+      field: 'permission', 
+      headerName: 'Permission', 
+      flex: 1,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <VpnKey fontSize="small" color="action" />
+          <Chip
+            label={params.value}
+            color={getPermissionColor(params.value)}
+            size="small"
+          />
+        </Box>
+      )
+    },
+    { 
+      field: 'created_at', 
+      headerName: 'Created', 
+      width: 180,
+      renderCell: (params) => (
+        <Typography variant="body2" color="text.secondary">
+          {new Date(params.value).toLocaleDateString()}
+        </Typography>
+      )
+    },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 150,
+      width: 120,
+      sortable: false,
+      filterable: false,
       renderCell: (params: GridRenderCellParams) => (
-        <Button
-          variant="contained"
-          color="secondary"
-          size="small"
-          onClick={() =>
-            handleDelete(
-              params.row.solr_database_id,
-              params.row.collection_name,
-              params.row.permission,
-            )
-          }
-        >
-          Delete
-        </Button>
+        <Tooltip title="Delete Permission">
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => {
+              setPermissionToDelete(params.row);
+              setOpenDeleteDialog(true);
+            }}
+          >
+            <Delete />
+          </IconButton>
+        </Tooltip>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Solr Database Permissions
-      </Typography>
+    <Fade in={true} timeout={600}>
+      <Box>
+        {notification.open && (
+          <Alert 
+            severity={notification.severity} 
+            sx={{ mb: 3 }}
+            onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          >
+            {notification.message}
+          </Alert>
+        )}
 
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6">Assign Permissions</Typography>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>Database</InputLabel>
-            <Select
-              value={selectedDatabase?.id ?? ''}
-              onChange={e =>
-                setSelectedDatabase(databases.find(db => db.id === Number(e.target.value)) || null)
-              }
-              label="Database"
-            >
-              {databases.map(db => (
-                <MenuItem key={db.id} value={db.id}>{`${db.name} (ID: ${db.id})`}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl sx={{ minWidth: 300 }}>
-            <InputLabel>Collections</InputLabel>
-            <Select
-              multiple
-              value={selectedCollections}
-              onChange={e => setSelectedCollections(e.target.value as string[])}
-              input={<OutlinedInput label="Collections" />}
-              renderValue={selected => selected.join(', ')}
-            >
-              <MenuItem value="all">
-                <Checkbox
-                  checked={aliases.length > 0 && selectedCollections.length === aliases.length}
-                  onChange={handleSelectAll}
-                />
-                <ListItemText primary="Select All" />
-              </MenuItem>
-              {aliases.map(alias => (
-                <MenuItem key={alias} value={alias}>
-                  <Checkbox checked={selectedCollections.includes(alias)} />
-                  <ListItemText primary={alias} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Autocomplete
-            freeSolo
-            options={availablePermissions}
-            inputValue={newPermission}
-            onInputChange={(_, val) => setNewPermission(val)}
-            renderInput={params => <TextField {...params} label="Permission" />}
-            sx={{ minWidth: 200 }}
-          />
-
-          <Button variant="contained" onClick={handleAdd}>
-            Add
-          </Button>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Security color="primary" />
+              Database Permissions
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Manage access permissions for Solr collections
+            </Typography>
+          </Box>
+          <Tooltip title="Refresh Data">
+            <IconButton onClick={fetchPermissions} color="primary">
+              <Refresh />
+            </IconButton>
+          </Tooltip>
         </Box>
-      </Paper>
 
-      <Box sx={{ mb: 2 }}>
-        <TextField
-          label="Search by collection or permission"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          fullWidth
-        />
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Add />
+              Assign Permissions
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Database</InputLabel>
+                  <Select
+                    value={selectedDatabase?.id ?? ''}
+                    onChange={e =>
+                      setSelectedDatabase(databases.find(db => db.id === Number(e.target.value)) || null)
+                    }
+                    label="Database"
+                  >
+                    {databases.map(db => (
+                      <MenuItem key={db.id} value={db.id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Storage fontSize="small" />
+                          {db.name}
+                          <Chip label={`ID: ${db.id}`} size="small" variant="outlined" />
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+ 
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Collections</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedCollections}
+                    onChange={e => setSelectedCollections(e.target.value as string[])}
+                    input={<OutlinedInput label="Collections" />}
+                    renderValue={selected => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                    disabled={aliases.length === 0}
+                  >
+                    <MenuItem value="all">
+                      <Checkbox
+                        checked={aliases.length > 0 && selectedCollections.length === aliases.length}
+                        indeterminate={selectedCollections.length > 0 && selectedCollections.length < aliases.length}
+                        onChange={handleSelectAll}
+                        icon={<CheckBoxOutlineBlank fontSize="small" />}
+                        checkedIcon={<CheckBox fontSize="small" />}
+                      />
+                      <ListItemText primary="Select All" />
+                    </MenuItem>
+                    {aliases.map(alias => (
+                      <MenuItem key={alias} value={alias}>
+                        <Checkbox 
+                          checked={selectedCollections.includes(alias)} 
+                          icon={<CheckBoxOutlineBlank fontSize="small" />}
+                          checkedIcon={<CheckBox fontSize="small" />}
+                        />
+                        <ListItemText primary={alias} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+ 
+              <Grid item xs={12} md={4}>
+                <Autocomplete
+                  freeSolo
+                  options={availablePermissions}
+                  inputValue={newPermission}
+                  onInputChange={(_, val) => setNewPermission(val)}
+                  renderInput={params => (
+                    <TextField 
+                      {...params} 
+                      label="Permission" 
+                      placeholder="Enter permission name..."
+                    />
+                  )}
+                />
+              </Grid>
+ 
+              <Grid item xs={12}>
+                <Button 
+                  variant="contained" 
+                  onClick={handleAdd}
+                  disabled={!selectedDatabase || !newPermission.trim() || selectedCollections.length === 0}
+                  startIcon={<Add />}
+                  fullWidth={isMobile}
+                  sx={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                    }
+                  }}
+                >
+                  Add Permission to {selectedCollections.length || 0} Collection{selectedCollections.length !== 1 ? 's' : ''}
+                </Button>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+ 
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <TextField
+              fullWidth
+              placeholder="Search by collection or permission..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </CardContent>
+        </Card>
+ 
+        <Paper sx={{ height: 600, borderRadius: 3, overflow: 'hidden' }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <DataGrid
+              rows={filteredPermissions}
+              columns={columns}
+              pageSize={10}
+              rowsPerPageOptions={[10, 25, 50]}
+              getRowId={row => `${row.solr_database_id}-${row.collection_name}-${row.permission}`}
+              disableSelectionOnClick
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-cell': { outline: 'none' },
+                '& .MuiDataGrid-row:hover': {
+                  backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                },
+              }}
+            />
+          )}
+        </Paper>
+ 
+        <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+          <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Delete />
+            Confirm Delete
+          </DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete the permission "{permissionToDelete?.permission}" 
+              for collection "{permissionToDelete?.collection_name}"? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => 
+                permissionToDelete && handleDelete(
+                  permissionToDelete.solr_database_id, 
+                  permissionToDelete.collection_name, 
+                  permissionToDelete.permission
+                )
+              }
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
-
-      <Paper sx={{ height: 600 }}>
-        <DataGrid
-          rows={filteredPermissions}
-          columns={columns}
-          pageSize={10}
-          getRowId={row => `${row.solr_database_id}-${row.collection_name}-${row.permission}`}
-        />
-      </Paper>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-        message={snackbar.message}
-      />
-    </Box>
+    </Fade>
   );
-};
-
-export default SolrDatabasePermissions;
+ };
+ 
+ export default SolrDatabasePermissions;
