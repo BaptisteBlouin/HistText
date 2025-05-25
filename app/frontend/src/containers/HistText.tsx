@@ -1,38 +1,65 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useHistTextData } from '../hooks/useHistTextData';
 import { useHistTextActions } from '../hooks/useHistTextActions';
 import { useWordCloudProcessor } from '../hooks/useWordCloudProcessor';
 import HistTextLayout from './components/HistTextLayout';
-import { FullscreenMode } from './components/TabNavigation'; // Import the type
+import { FullscreenMode } from './components/TabNavigation';
 import { Container, Paper, Typography } from '@mui/material';
 
-const HistText: React.FC = () => {
+// Memoized notification state interface
+interface NotificationState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error' | 'warning' | 'info';
+}
+
+// Constants to prevent inline object creation
+const INITIAL_NOTIFICATION_STATE: NotificationState = {
+  open: false,
+  message: '',
+  severity: 'info'
+};
+
+const AUTH_REQUIRED_STYLES = {
+  mt: 8,
+  textAlign: 'center' as const
+} as const;
+
+const AUTH_PAPER_STYLES = {
+  p: 6,
+  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  color: 'white'
+} as const;
+
+const HistText: React.FC = React.memo(() => {
   const { isAuthenticated } = useAuth();
   const data = useHistTextData();
+  
+  // Local state with optimized initial values
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [fullscreenMode, setFullscreenMode] = useState<FullscreenMode>('normal'); // Updated state
+  const [fullscreenMode, setFullscreenMode] = useState<FullscreenMode>('normal');
   const [quickActions, setQuickActions] = useState<boolean>(false);
-  const [notification, setNotification] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'warning' | 'info';
-  }>({
-    open: false,
-    message: '',
-    severity: 'info'
-  });
+  const [notification, setNotification] = useState<NotificationState>(INITIAL_NOTIFICATION_STATE);
 
-  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+  // Memoized notification handler
+  const showNotification = useCallback((
+    message: string, 
+    severity: 'success' | 'error' | 'warning' | 'info' = 'info'
+  ) => {
     setNotification({ open: true, message, severity });
-  };
+  }, []);
 
-  const actions = useHistTextActions({
-    ...data,
-    showNotification,
-    setActiveTab
-  });
+  // Memoized actions with proper dependencies
+  const actions = useMemo(() => {
+    return useHistTextActions({
+      ...data,
+      showNotification,
+      setActiveTab
+    });
+  }, [data, showNotification]);
 
+  // Optimized word cloud processor with dependency control
   useWordCloudProcessor({
     allResults: data.allResults,
     authAxios: data.authAxios,
@@ -42,45 +69,8 @@ const HistText: React.FC = () => {
     showNotification
   });
 
-  // Load Solr databases on mount
-  useEffect(() => {
-    data.authAxios
-      .get('/api/solr_databases')
-      .then(response => {
-        if (Array.isArray(response.data)) {
-          data.setSolrDatabases(response.data);
-        } else {
-          console.error('Response data is not an array:', response.data);
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching Solr databases:', error);
-        showNotification('Failed to fetch Solr databases', 'error');
-      });
-  }, [data.authAxios]);
-
-  // Load aliases when database changes
-  useEffect(() => {
-    if (data.selectedSolrDatabase) {
-      data.authAxios
-        .get(`/api/solr/aliases?solr_database_id=${data.selectedSolrDatabase.id}`)
-        .then(response => {
-          if (Array.isArray(response.data)) {
-            data.setAliases(response.data);
-          } else {
-            console.error('Response data is not an array:', response.data);
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching aliases:', error);
-          showNotification('Failed to fetch collections', 'error');
-        });
-    } else {
-      data.setAliases([]);
-    }
-  }, [data.selectedSolrDatabase, data.authAxios]);
-
-  const handleSolrDatabaseChange = (database: any) => {
+  // Memoized database change handler
+  const handleSolrDatabaseChange = useCallback((database: any) => {
     data.setSelectedSolrDatabase(database);
     data.setSelectedAlias('');
     data.setAliases([]);
@@ -95,12 +85,78 @@ const HistText: React.FC = () => {
     data.setWordFrequency([]);
     data.setStatsReady(false);
     data.setNerReady(false);
-  };
+  }, [data]);
 
-  if (!isAuthenticated) {
+  // Optimized effect for loading Solr databases
+  useEffect(() => {
+    if (!data.authAxios) return;
+
+    let isMounted = true;
+    
+    const loadSolrDatabases = async () => {
+      try {
+        const response = await data.authAxios.get('/api/solr_databases');
+        if (isMounted && Array.isArray(response.data)) {
+          data.setSolrDatabases(response.data);
+        } else if (isMounted && !Array.isArray(response.data)) {
+          console.error('Response data is not an array:', response.data);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error('Error fetching Solr databases:', error);
+          showNotification('Failed to fetch Solr databases', 'error');
+        }
+      }
+    };
+
+    loadSolrDatabases();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [data.authAxios, data.setSolrDatabases, showNotification]);
+
+  // Optimized effect for loading aliases
+  useEffect(() => {
+    if (!data.selectedSolrDatabase || !data.authAxios) {
+      data.setAliases([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadAliases = async () => {
+      try {
+        const response = await data.authAxios.get(
+          `/api/solr/aliases?solr_database_id=${data.selectedSolrDatabase.id}`
+        );
+        if (isMounted && Array.isArray(response.data)) {
+          data.setAliases(response.data);
+        } else if (isMounted && !Array.isArray(response.data)) {
+          console.error('Response data is not an array:', response.data);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error('Error fetching aliases:', error);
+          showNotification('Failed to fetch collections', 'error');
+        }
+      }
+    };
+
+    loadAliases();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [data.selectedSolrDatabase, data.authAxios, data.setAliases, showNotification]);
+
+  // Memoized authentication check
+  const authenticationContent = useMemo(() => {
+    if (isAuthenticated) return null;
+
     return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
-        <Paper sx={{ p: 6, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+      <Container maxWidth="sm" sx={AUTH_REQUIRED_STYLES}>
+        <Paper sx={AUTH_PAPER_STYLES}>
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>
             Authentication Required
           </Typography>
@@ -110,6 +166,11 @@ const HistText: React.FC = () => {
         </Paper>
       </Container>
     );
+  }, [isAuthenticated]);
+
+  // Early return for unauthenticated users
+  if (!isAuthenticated) {
+    return authenticationContent;
   }
 
   return (
@@ -118,8 +179,8 @@ const HistText: React.FC = () => {
       actions={actions}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
-      fullscreenMode={fullscreenMode} // Updated prop
-      setFullscreenMode={setFullscreenMode} // Updated prop
+      fullscreenMode={fullscreenMode}
+      setFullscreenMode={setFullscreenMode}
       quickActions={quickActions}
       setQuickActions={setQuickActions}
       notification={notification}
@@ -128,6 +189,9 @@ const HistText: React.FC = () => {
       showNotification={showNotification}
     />
   );
-};
+});
+
+// Add display name for debugging
+HistText.displayName = 'HistText';
 
 export default HistText;

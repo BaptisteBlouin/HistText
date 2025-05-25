@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import { Box, Container, Paper, Fade, Typography } from '@mui/material';
 import { Search, Storage, TableRows, TableChart, Analytics, AccountTree } from '@mui/icons-material';
 import { Cloud as CloudIcon } from '@mui/icons-material';
@@ -15,6 +15,7 @@ import StatisticsDisplay from './StatisticsDisplay';
 import Cloud from './Cloud';
 import NERDisplay from './NERDisplay';
 
+// Constants for tabs to prevent magic numbers
 const TABS = {
   QUERY: 0,
   PARTIAL_RESULTS: 1,
@@ -22,17 +23,28 @@ const TABS = {
   STATS: 3,
   CLOUD: 4,
   NER: 5,
-};
+} as const;
 
-const TabPanel = ({ children, value, index, ...other }) => (
-  <div role="tabpanel" hidden={value !== index} {...other} style={{ height: value === index ? 'auto' : 0 }}>
+// Memoized TabPanel component
+const TabPanel = React.memo<{
+  children: React.ReactNode;
+  value: number;
+  index: number;
+}>(({ children, value, index }) => (
+  <div 
+    role="tabpanel" 
+    hidden={value !== index} 
+    style={{ height: value === index ? 'auto' : 0 }}
+  >
     {value === index && (
       <Fade in={true} timeout={300}>
         <Box sx={{ height: '100%' }}>{children}</Box>
       </Fade>
     )}
   </div>
-);
+));
+
+TabPanel.displayName = 'TabPanel';
 
 interface HistTextLayoutProps {
   data: any;
@@ -49,7 +61,96 @@ interface HistTextLayoutProps {
   showNotification: (message: string, severity?: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
-const HistTextLayout: React.FC<HistTextLayoutProps> = ({
+// Style constants to prevent inline object creation
+const getContainerStyles = (fullscreenMode: FullscreenMode, isNativeFullscreen: boolean) => {
+  const baseStyles = {
+    width: '100%',
+    bgcolor: 'background.default',
+    position: 'relative' as const,
+  };
+
+  switch (fullscreenMode) {
+    case 'browser':
+      return {
+        position: 'fixed' as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        bgcolor: 'background.default',
+        zIndex: 9998,
+        overflow: 'auto',
+      };
+    case 'native':
+      return {
+        ...baseStyles,
+        minHeight: '100vh',
+        ...(isNativeFullscreen && {
+          position: 'fixed' as const,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999,
+          overflow: 'auto'
+        })
+      };
+    default:
+      return {
+        ...baseStyles,
+        minHeight: '100vh',
+      };
+  }
+};
+
+const getPaperStyles = (fullscreenMode: FullscreenMode, isNativeFullscreen: boolean) => {
+  const baseStyles = {
+    width: '100%',
+    bgcolor: 'background.paper',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column' as const,
+  };
+
+  switch (fullscreenMode) {
+    case 'browser':
+      return {
+        ...baseStyles,
+        borderRadius: 0,
+        boxShadow: 'none',
+        height: '100vh',
+        minHeight: '100vh',
+      };
+    case 'native':
+      return {
+        ...baseStyles,
+        borderRadius: isNativeFullscreen ? 0 : 3,
+        boxShadow: isNativeFullscreen ? 'none' : '0 4px 20px rgba(0,0,0,0.1)',
+        height: isNativeFullscreen ? '100vh' : 'auto',
+        minHeight: isNativeFullscreen ? '100vh' : '60vh',
+      };
+    default:
+      return {
+        ...baseStyles,
+        borderRadius: 3,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        minHeight: '60vh',
+      };
+  }
+};
+
+const FULLSCREEN_INFO_STYLES = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  px: 2,
+  py: 1,
+  bgcolor: 'primary.main',
+  color: 'white',
+  mb: 0
+} as const;
+
+const HistTextLayout: React.FC<HistTextLayoutProps> = React.memo(({
   data,
   actions,
   activeTab,
@@ -66,133 +167,236 @@ const HistTextLayout: React.FC<HistTextLayoutProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const mainPaperRef = useRef<HTMLDivElement>(null);
 
-  // Handle ESC key to exit fullscreen
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        if (document.fullscreenElement) {
-          document.exitFullscreen();
-        } else if (fullscreenMode !== 'normal') {
-          setFullscreenMode('normal');
-        }
-      }
+  // Memoized fullscreen state calculations
+  const fullscreenState = useMemo(() => {
+    const isNativeFullscreen = Boolean(document.fullscreenElement);
+    const isBrowserFullscreen = fullscreenMode === 'browser';
+    const isAnyFullscreen = isNativeFullscreen || isBrowserFullscreen;
+    
+    return {
+      isNativeFullscreen,
+      isBrowserFullscreen,
+      isAnyFullscreen
     };
+  }, [fullscreenMode]);
 
+  // Memoized style objects
+  const containerStyles = useMemo(() => 
+    getContainerStyles(fullscreenMode, fullscreenState.isNativeFullscreen),
+    [fullscreenMode, fullscreenState.isNativeFullscreen]
+  );
+
+  const paperStyles = useMemo(() => 
+    getPaperStyles(fullscreenMode, fullscreenState.isNativeFullscreen),
+    [fullscreenMode, fullscreenState.isNativeFullscreen]
+  );
+
+  const containerConfig = useMemo(() => ({
+    maxWidth: fullscreenState.isAnyFullscreen ? false : "xl" as const,
+    sx: {
+      py: fullscreenState.isAnyFullscreen ? 1 : 3,
+      height: fullscreenState.isAnyFullscreen ? '100vh' : 'auto',
+      maxWidth: fullscreenState.isAnyFullscreen ? '100%' : undefined,
+      px: fullscreenState.isAnyFullscreen ? 1 : 3,
+      display: 'flex',
+      flexDirection: 'column' as const
+    }
+  }), [fullscreenState.isAnyFullscreen]);
+
+  // Optimized keyboard handler
+  const handleKeyPress = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else if (fullscreenMode !== 'normal') {
+        setFullscreenMode('normal');
+      }
+    }
+  }, [fullscreenMode, setFullscreenMode]);
+
+  // Effect for ESC key handling
+  useEffect(() => {
     document.addEventListener('keydown', handleKeyPress);
     return () => {
       document.removeEventListener('keydown', handleKeyPress);
     };
-  }, [fullscreenMode, setFullscreenMode]);
+  }, [handleKeyPress]);
 
-  // Determine layout based on fullscreen mode
-  const isNativeFullscreen = Boolean(document.fullscreenElement);
-  const isBrowserFullscreen = fullscreenMode === 'browser';
-  const isAnyFullscreen = isNativeFullscreen || isBrowserFullscreen;
+  // Memoized quick actions handlers
+  const quickActionsHandlers = useMemo(() => ({
+    onOpen: () => setQuickActions(true),
+    onClose: () => setQuickActions(false),
+    onExportData: actions.exportAllData,
+    onRefreshData: actions.refreshData,
+    onShareQuery: actions.shareQuery,
+    onOpenSettings: actions.openSettings,
+  }), [setQuickActions, actions]);
 
-  const getContainerStyles = () => {
-    switch (fullscreenMode) {
-      case 'normal':
-        return {
-          width: '100%',
-          bgcolor: 'background.default',
-          minHeight: '100vh',
-          position: 'relative' as const,
-        };
-      case 'browser':
-        return {
-          position: 'fixed' as const,
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          bgcolor: 'background.default',
-          zIndex: 9998,
-          overflow: 'auto',
-        };
-      case 'native':
-        return {
-          width: '100%',
-          bgcolor: 'background.default',
-          minHeight: '100vh',
-          position: 'relative' as const,
-          ...(isNativeFullscreen && {
-            position: 'fixed' as const,
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            overflow: 'auto'
-          })
-        };
-      default:
-        return {
-          width: '100%',
-          bgcolor: 'background.default',
-          minHeight: '100vh',
-          position: 'relative' as const,
-        };
-    }
-  };
+  // Memoized notification handlers
+  const notificationHandlers = useMemo(() => ({
+    onClose: () => setNotification(prev => ({ ...prev, open: false }))
+  }), [setNotification]);
 
-  const getPaperStyles = () => {
-    const baseStyles = {
-      width: '100%',
-      bgcolor: 'background.paper',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column' as const,
+  // Memoized empty state action
+  const emptyStateAction = useMemo(() => {
+    if (fullscreenState.isAnyFullscreen) return undefined;
+    
+    return {
+      label: "Choose Data Source",
+      icon: <Search />,
+      onClick: () => showNotification("Please select a database and collection above", "info")
     };
+  }, [fullscreenState.isAnyFullscreen, showNotification]);
 
-    switch (fullscreenMode) {
-      case 'normal':
-        return {
-          ...baseStyles,
-          borderRadius: 3,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          minHeight: '60vh',
-        };
-      case 'browser':
-        return {
-          ...baseStyles,
-          borderRadius: 0,
-          boxShadow: 'none',
-          height: '100vh',
-          minHeight: '100vh',
-        };
-      case 'native':
-        return {
-          ...baseStyles,
-          borderRadius: isNativeFullscreen ? 0 : 3,
-          boxShadow: isNativeFullscreen ? 'none' : '0 4px 20px rgba(0,0,0,0.1)',
-          height: isNativeFullscreen ? '100vh' : 'auto',
-          minHeight: isNativeFullscreen ? '100vh' : '60vh',
-        };
+  // Memoized tab content renderers
+  const renderTabContent = useCallback((tabIndex: number) => {
+    const tabContentStyles = { p: fullscreenState.isAnyFullscreen ? 2 : 3 };
+    
+    switch (tabIndex) {
+      case TABS.QUERY:
+        if (data.selectedAlias && data.metadata.length > 0) {
+          return (
+            <Box sx={tabContentStyles}>
+              <MetadataForm
+                metadata={data.metadata}
+                formData={data.formData}
+                setFormData={data.setFormData}
+                dateRange={data.dateRange}
+                handleQuery={actions.handleQuery}
+                getNER={data.getNER}
+                setGetNER={data.setGetNER}
+                downloadOnly={data.downloadOnly}
+                setdownloadOnly={data.setdownloadOnly}
+                statsLevel={data.statsLevel}
+                setStatsLevel={data.setStatsLevel}
+                docLevel={data.docLevel}
+                setDocLevel={data.setDocLevel}
+                solrDatabaseId={data.selectedSolrDatabase?.id || null}
+                selectedAlias={data.selectedAlias}
+              />
+            </Box>
+          );
+        }
+        return (
+          <EmptyState
+            icon={<Storage />}
+            title="Get Started"
+            description="Select a database and collection from above to begin your text analysis journey"
+            action={emptyStateAction}
+          />
+        );
+
+      case TABS.PARTIAL_RESULTS:
+        return data.partialResults.length > 0 ? (
+          <DataGrid
+            results={data.partialResults}
+            formData={data.formData}
+            nerData={data.nerData}
+            viewNER={data.viewNER}
+            selectedAlias={data.selectedAlias}
+            selectedSolrDatabase={data.selectedSolrDatabase}
+            authAxios={data.authAxios}
+          />
+        ) : (
+          <EmptyState
+            icon={<TableRows />}
+            title="No partial results available"
+            description="Execute a query to see results"
+          />
+        );
+
+      case TABS.ALL_RESULTS:
+        return data.allResults.length > 0 ? (
+          <DataGrid
+            results={data.allResults}
+            formData={data.formData}
+            nerData={data.nerData}
+            viewNER={false}
+            selectedAlias={data.selectedAlias}
+            selectedSolrDatabase={data.selectedSolrDatabase}
+            authAxios={data.authAxios}
+          />
+        ) : (
+          <EmptyState
+            icon={<TableChart />}
+            title="No complete results available"
+            description="Execute a query to see the full dataset"
+          />
+        );
+
+      case TABS.STATS:
+        return data.stats ? (
+          <StatisticsDisplay
+            stats={data.stats}
+            selectedStat={data.selectedStat}
+            onStatChange={data.setSelectedStat}
+          />
+        ) : (
+          <EmptyState
+            icon={<Analytics />}
+            title={data.isStatsLoading ? "Generating statistics..." : "No statistics available"}
+            description={data.isStatsLoading ? "This may take a moment for large datasets" : "Execute a query to generate statistical analysis"}
+          />
+        );
+
+      case TABS.CLOUD:
+        if (data.isCloudLoading) {
+          return (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <CloudIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+              <Typography variant="h6" gutterBottom>
+                Generating Word Cloud...
+              </Typography>
+            </Box>
+          );
+        }
+        
+        return data.wordFrequency && data.wordFrequency.length > 0 ? (
+          <Box sx={{ p: fullscreenState.isAnyFullscreen ? 1 : 3, minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Cloud wordFrequency={data.wordFrequency} />
+          </Box>
+        ) : (
+          <EmptyState
+            icon={<CloudIcon />}
+            title="No word cloud data available"
+            description="Execute a query with text data to generate word cloud"
+          />
+        );
+
+      case TABS.NER:
+        return data.nerData && Object.keys(data.nerData).length > 0 ? (
+          <NERDisplay
+            nerData={data.nerData}
+            authAxios={data.authAxios}
+            selectedAlias={data.selectedAlias}
+            selectedSolrDatabase={data.selectedSolrDatabase}
+            viewNER={data.viewNER}
+          />
+        ) : (
+          <EmptyState
+            icon={<AccountTree />}
+            title={data.isNERLoading ? "Processing NER data..." : "No NER data available"}
+            description={data.isNERLoading ? "Analyzing entities in your text" : "Enable NER in query options to extract named entities"}
+          />
+        );
+
       default:
-        return baseStyles;
+        return null;
     }
-  };
+  }, [
+    data, 
+    actions, 
+    fullscreenState.isAnyFullscreen, 
+    emptyStateAction
+  ]);
 
   return (
-    <Box 
-      ref={containerRef}
-      sx={getContainerStyles()}
-    >
+    <Box ref={containerRef} sx={containerStyles}>
       <LoadingOverlay loading={data.loading} progress={data.progress} />
       
-      <Container 
-        maxWidth={isAnyFullscreen ? false : "xl"} 
-        sx={{ 
-          py: isAnyFullscreen ? 1 : 3,
-          height: isAnyFullscreen ? '100vh' : 'auto',
-          maxWidth: isAnyFullscreen ? '100%' : undefined,
-          px: isAnyFullscreen ? 1 : 3,
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        {/* Hide database selector in fullscreen modes */}
-        {!isAnyFullscreen && (
+      <Container {...containerConfig}>
+        {/* Database Selector - Hidden in fullscreen */}
+        {!fullscreenState.isAnyFullscreen && (
           <DatabaseSelector
             solrDatabases={data.solrDatabases}
             selectedSolrDatabase={data.selectedSolrDatabase}
@@ -211,18 +415,9 @@ const HistTextLayout: React.FC<HistTextLayoutProps> = ({
           />
         )}
 
-        {/* Show minimal info in fullscreen modes */}
-        {isAnyFullscreen && data.selectedAlias && (
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
-            px: 2, 
-            py: 1, 
-            bgcolor: 'primary.main', 
-            color: 'white',
-            mb: 0
-          }}>
+        {/* Minimal info in fullscreen */}
+        {fullscreenState.isAnyFullscreen && data.selectedAlias && (
+          <Box sx={FULLSCREEN_INFO_STYLES}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
               {data.selectedSolrDatabase?.name} › {data.selectedAlias}
             </Typography>
@@ -239,10 +434,7 @@ const HistTextLayout: React.FC<HistTextLayoutProps> = ({
           </Box>
         )}
 
-        <Paper 
-          ref={mainPaperRef}
-          sx={getPaperStyles()}
-        >
+        <Paper ref={mainPaperRef} sx={paperStyles}>
           <TabNavigation
             activeTab={activeTab}
             onTabChange={(e, newValue) => setActiveTab(newValue)}
@@ -270,164 +462,33 @@ const HistTextLayout: React.FC<HistTextLayoutProps> = ({
             minHeight: 0,
             overflow: 'auto'
           }}>
-            <TabPanel value={activeTab} index={TABS.QUERY}>
-              {data.selectedAlias && data.metadata.length > 0 ? (
-                <Box sx={{ p: isAnyFullscreen ? 2 : 3 }}>
-                  <MetadataForm
-                    metadata={data.metadata}
-                    formData={data.formData}
-                    setFormData={data.setFormData}
-                    dateRange={data.dateRange}
-                    handleQuery={actions.handleQuery}
-                    getNER={data.getNER}
-                    setGetNER={data.setGetNER}
-                    downloadOnly={data.downloadOnly}
-                    setdownloadOnly={data.setdownloadOnly}
-                    statsLevel={data.statsLevel}
-                    setStatsLevel={data.setStatsLevel}
-                    docLevel={data.docLevel}
-                    setDocLevel={data.setDocLevel}
-                    solrDatabaseId={data.selectedSolrDatabase?.id || null}
-                    selectedAlias={data.selectedAlias}
-                  />
-                </Box>
-              ) : (
-                <EmptyState
-                  icon={<Storage />}
-                  title="Get Started"
-                  description="Select a database and collection from above to begin your text analysis journey"
-                  action={!isAnyFullscreen ? {
-                    label: "Choose Data Source",
-                    icon: <Search />,
-                    onClick: () => showNotification("Please select a database and collection above", "info")
-                  } : undefined}
-                />
-              )}
-            </TabPanel>
+            {Object.values(TABS).map(tabIndex => (
+              <TabPanel key={tabIndex} value={activeTab} index={tabIndex}>
+                {renderTabContent(tabIndex)}
+              </TabPanel>
+            ))}
+          </Box>
+        </Paper>
+      </Container>
 
-            <TabPanel value={activeTab} index={TABS.PARTIAL_RESULTS}>
-              <Box sx={{ position: 'relative', height: '100%' }}>
-                {data.partialResults.length > 0 ? (
-                  <DataGrid
-                    results={data.partialResults}
-                    formData={data.formData}
-                    nerData={data.nerData}
-                    viewNER={data.viewNER}
-                    selectedAlias={data.selectedAlias}
-                    selectedSolrDatabase={data.selectedSolrDatabase}
-                    authAxios={data.authAxios}
-                  />
-                ) : (
-                  <EmptyState
-                    icon={<TableRows />}
-                    title="No partial results available"
-                    description="Execute a query to see results"
-                  />
-                )}
-              </Box>
-            </TabPanel>
+      {/* Quick Actions - Hidden in fullscreen */}
+      {!fullscreenState.isAnyFullscreen && (
+        <QuickActions
+          open={quickActions}
+          {...quickActionsHandlers}
+        />
+      )}
 
-            <TabPanel value={activeTab} index={TABS.ALL_RESULTS}>
-              <Box sx={{ position: 'relative', height: '100%' }}>
-                {data.allResults.length > 0 ? (
-                  <DataGrid
-                    results={data.allResults}
-                    formData={data.formData}
-                    nerData={data.nerData}
-                    viewNER={false}
-                    selectedAlias={data.selectedAlias}
-                    selectedSolrDatabase={data.selectedSolrDatabase}
-                    authAxios={data.authAxios}
-                  />
-                ) : (
-                  <EmptyState
-                    icon={<TableChart />}
-                    title="No complete results available"
-                    description="Execute a query to see the full dataset"
-                  />
-                )}
-              </Box>
-            </TabPanel>
+      <NotificationSystem
+        open={notification.open}
+        message={notification.message}
+        severity={notification.severity}
+        {...notificationHandlers}
+      />
+    </Box>
+  );
+});
 
-            <TabPanel value={activeTab} index={TABS.STATS}>
-              {data.stats ? (
-                <StatisticsDisplay
-                  stats={data.stats}
-                  selectedStat={data.selectedStat}
-                  onStatChange={data.setSelectedStat}
-                />
-              ) : (
-                <EmptyState
-                  icon={<Analytics />}
-                  title={data.isStatsLoading ? "Generating statistics..." : "No statistics available"}
-                  description={data.isStatsLoading ? "This may take a moment for large datasets" : "Execute a query to generate statistical analysis"}
-                />
-              )}
-            </TabPanel>
-
-            <TabPanel value={activeTab} index={TABS.CLOUD}>
-              {data.isCloudLoading ? (
-                <Box sx={{ textAlign: 'center', py: 8 }}>
-                  <CloudIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-                  <Typography variant="h6" gutterBottom>
-                    Generating Word Cloud...
-                  </Typography>
-                </Box>
-              ) : data.wordFrequency && data.wordFrequency.length > 0 ? (
-                <Box sx={{ p: isAnyFullscreen ? 1 : 3, minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Cloud wordFrequency={data.wordFrequency} />
-                </Box>
-              ) : (
-                <EmptyState
-                  icon={<CloudIcon />}
-                  title="No word cloud data available"
-                  description="Execute a query with text data to generate word cloud"
-                />
-              )}
-            </TabPanel>
-
-            <TabPanel value={activeTab} index={TABS.NER}>
-              {data.nerData && Object.keys(data.nerData).length > 0 ? (
-                <NERDisplay
-                  nerData={data.nerData}
-                  authAxios={data.authAxios}
-                  selectedAlias={data.selectedAlias}
-                  selectedSolrDatabase={data.selectedSolrDatabase}
-                  viewNER={data.viewNER}
-                  />
-             ) : (
-               <EmptyState
-                 icon={<AccountTree />}
-                 title={data.isNERLoading ? "Processing NER data..." : "No NER data available"}
-                 description={data.isNERLoading ? "Analyzing entities in your text" : "Enable NER in query options to extract named entities"}
-               />
-             )}
-           </TabPanel>
-         </Box>
-       </Paper>
-     </Container>
-
-     {/* Hide quick actions in fullscreen modes */}
-     {!isAnyFullscreen && (
-       <QuickActions
-         open={quickActions}
-         onOpen={() => setQuickActions(true)}
-         onClose={() => setQuickActions(false)}
-         onExportData={actions.exportAllData}
-         onRefreshData={actions.refreshData}
-         onShareQuery={actions.shareQuery}
-         onOpenSettings={actions.openSettings}
-       />
-     )}
-
-     <NotificationSystem
-       open={notification.open}
-       message={notification.message}
-       severity={notification.severity}
-       onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-     />
-   </Box>
- );
-};
+HistTextLayout.displayName = 'HistTextLayout';
 
 export default HistTextLayout;
