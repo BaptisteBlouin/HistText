@@ -9,40 +9,6 @@ interface UseWordCloudProcessorProps {
   showNotification: (message: string, severity?: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
-// Simple but effective text processing
-const processText = (text: string): string[] => {
-  if (!text || typeof text !== 'string') return [];
-  
-  // Basic cleaning
-  const cleaned = text
-    .toLowerCase()
-    .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
-    .replace(/[^\w\s]/g, ' ') // Replace special chars with spaces
-    .replace(/\s+/g, ' ') // Normalize whitespace
-    .trim();
-  
-  const words = cleaned.split(' ').filter(word => {
-    if (word.length < 3 || word.length > 25) return false;
-    
-    // Enhanced stop words list
-    const stopWords = new Set([
-      'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 
-      'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 
-      'how', 'man', 'new', 'now', 'old', 'see', 'two', 'who', 'boy', 'did', 
-      'its', 'let', 'put', 'say', 'she', 'too', 'use', 'way', 'may', 'come',
-      'could', 'than', 'been', 'call', 'find', 'long', 'down', 'side', 'been',
-      'now', 'find', 'head', 'came', 'made', 'over', 'move', 'much', 'where',
-      'right', 'think', 'take', 'just', 'into', 'year', 'your', 'good', 'some',
-      'time', 'very', 'when', 'much', 'know', 'would', 'there', 'each', 'which',
-      'more', 'like', 'other', 'after', 'first', 'well', 'water', 'little'
-    ]);
-    
-    return !stopWords.has(word) && !/^\d+$/.test(word);
-  });
-  
-  return words;
-};
-
 // Find the best text column automatically
 const findContentColumn = (results: any[]): string | null => {
   if (results.length === 0) return null;
@@ -105,42 +71,89 @@ export const useWordCloudProcessor = ({
         throw new Error('No suitable text column found');
       }
 
-      setCloudProgress(20);
+      setCloudProgress(25);
 
-      // Process in batches to avoid blocking
-      const batchSize = 50;
-      const wordCounts = new Map<string, number>();
+      // Prepare texts for batch processing
+      const maxTextLength = 5000;
+      const maxTexts = Math.min(allResults.length, 2000);
       
-      for (let i = 0; i < allResults.length; i += batchSize) {
-        const batch = allResults.slice(i, i + batchSize);
-        
-        // Process batch
-        batch.forEach(row => {
-          const text = row[contentColumn];
-          if (text) {
-            const words = processText(text.toString().slice(0, 3000)); // Limit text length
-            words.forEach(word => {
-              wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
-            });
-          }
-        });
+      const texts = allResults
+        .slice(0, maxTexts)
+        .map(result => {
+          const text = result[contentColumn]?.toString();
+          if (!text) return '';
+          return text.length > maxTextLength ? text.substring(0, maxTextLength) : text;
+        })
+        .filter(text => text.length > 10);
 
-        // Update progress
-        const progress = 20 + ((i + batchSize) / allResults.length) * 70;
-        setCloudProgress(Math.min(progress, 90));
+      if (texts.length === 0) {
+        setWordFrequency([]);
+        setIsCloudLoading(false);
+        return;
+      }
+
+      setCloudProgress(50);
+
+      // Process in batches using the tokenize API (handles Chinese properly)
+      const batchSize = 100;
+      const wordMap = new Map<string, number>();
+      
+      for (let i = 0; i < texts.length; i += batchSize) {
+        const batch = texts.slice(i, i + batchSize);
         
-        // Allow UI to update
-        await new Promise(resolve => setTimeout(resolve, 10));
+        try {
+          const { data } = await authAxios.post('/api/tokenize/batch', {
+            texts: batch,
+            cloud: true,
+            max_tokens_per_text: 200,
+          });
+
+          // Process the tokenized results
+          data.results.forEach((result: any) => {
+            if (result.words && Array.isArray(result.words)) {
+              result.words.forEach((word: string) => {
+                if (word && typeof word === 'string') {
+                  const normalizedWord = word.toLowerCase().trim();
+                  // More flexible length check for different languages
+                  if (normalizedWord.length >= 1 && normalizedWord.length <= 25) {
+                    wordMap.set(normalizedWord, (wordMap.get(normalizedWord) || 0) + 1);
+                  }
+                }
+              });
+            }
+          });
+
+          const progressPercent = 50 + ((i + batch.length) / texts.length) * 40;
+          setCloudProgress(Math.min(progressPercent, 90));
+
+        } catch (err) {
+          console.error(`Error processing batch ${Math.floor(i / batchSize) + 1}:`, err);
+          // Fallback to basic processing for this batch if API fails
+          batch.forEach(text => {
+            if (text && typeof text === 'string') {
+              // Basic fallback tokenization
+              const words = text
+                .toLowerCase()
+                .replace(/[^\p{L}\p{N}\s]/gu, ' ') // Unicode-aware: keep letters, numbers, spaces
+                .split(/\s+/)
+                .filter(word => word.length >= 2 && word.length <= 25);
+              
+              words.forEach(word => {
+                wordMap.set(word, (wordMap.get(word) || 0) + 1);
+              });
+            }
+          });
+        }
       }
 
       setCloudProgress(95);
 
       // Convert to array and sort
-      const wordFrequencyData = Array.from(wordCounts.entries())
+      const wordFrequencyData = Array.from(wordMap.entries())
         .map(([text, value]) => ({ text, value }))
         .filter(item => item.value > 1) // Filter rare words
         .sort((a, b) => b.value - a.value)
-        .slice(0, 150); // Limit results
+        .slice(0, 150);
 
       setWordFrequency(wordFrequencyData);
       setCloudProgress(100);
