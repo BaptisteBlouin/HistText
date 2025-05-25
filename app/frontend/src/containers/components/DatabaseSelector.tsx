@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -9,6 +9,9 @@ import {
   CircularProgress
 } from '@mui/material';
 import { Storage } from '@mui/icons-material';
+import AliasSelector from './AliasSelector';
+import SolrDatabaseSelector from './SolrDatabaseSelector';
+import axios from 'axios';
 
 interface DatabaseSelectorProps {
   solrDatabases: any[];
@@ -27,6 +30,16 @@ interface DatabaseSelectorProps {
   totalEntities: number;
 }
 
+interface CollectionInfo {
+  collection_name: string;
+  description: string;
+  embeddings: string;
+  lang: string | null;
+  text_field: string;
+  tokenizer: string | null;
+  to_not_display: string[];
+}
+
 const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
   solrDatabases,
   selectedSolrDatabase,
@@ -43,6 +56,42 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
   stats,
   totalEntities
 }) => {
+  const [collectionDescriptions, setCollectionDescriptions] = useState<Record<string, string>>({});
+  const [isLoadingDescriptions, setIsLoadingDescriptions] = useState(false);
+
+  // Fetch collection descriptions when the selected Solr database changes
+  useEffect(() => {
+    if (selectedSolrDatabase && selectedSolrDatabase.id) {
+      setIsLoadingDescriptions(true);
+      console.log('Fetching descriptions for database ID:', selectedSolrDatabase.id);
+      
+      axios
+        .get(`/api/solr_database_info?solr_database_id=${selectedSolrDatabase.id}`)
+        .then(response => {
+          console.log('Collection info response:', response.data);
+          
+          const mapping: Record<string, string> = {};
+          if (Array.isArray(response.data)) {
+            response.data.forEach((info: CollectionInfo) => {
+              mapping[info.collection_name] = info.description || 'No description available';
+            });
+          }
+          
+          console.log('Created description mapping:', mapping);
+          setCollectionDescriptions(mapping);
+        })
+        .catch(error => {
+          console.error('Failed to fetch collection descriptions:', error);
+          setCollectionDescriptions({});
+        })
+        .finally(() => {
+          setIsLoadingDescriptions(false);
+        });
+    } else {
+      setCollectionDescriptions({});
+    }
+  }, [selectedSolrDatabase]);
+
   return (
     <Card sx={{ mb: 3, overflow: 'visible', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       <CardContent sx={{ color: 'white' }}>
@@ -51,92 +100,72 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
           Data Source Configuration
         </Typography>
         
-        <Grid container spacing={3} alignItems="center">
+        <Grid container spacing={3} alignItems="flex-start">
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle2" gutterBottom sx={{ opacity: 0.9 }}>
               Solr Database
             </Typography>
-            <Box sx={{ minWidth: 200 }}>
-              <select
-                value={selectedSolrDatabase?.id || ''}
-                onChange={(e) => {
-                  const db = solrDatabases.find(db => db.id === Number(e.target.value));
-                  onSolrDatabaseChange(db || null);
-                }}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  color: '#333',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <option value="">Select a database...</option>
-                {solrDatabases.map(db => (
-                  <option key={db.id} value={db.id}>
-                    {db.name}
-                  </option>
-                ))}
-              </select>
-            </Box>
+            <SolrDatabaseSelector
+              solrDatabases={solrDatabases}
+              selectedSolrDatabase={selectedSolrDatabase}
+              onSolrDatabaseChange={onSolrDatabaseChange}
+            />
           </Grid>
           
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle2" gutterBottom sx={{ opacity: 0.9 }}>
               Collection
+              {isLoadingDescriptions && (
+                <CircularProgress 
+                  size={12} 
+                  sx={{ color: 'white', ml: 1 }} 
+                />
+              )}
             </Typography>
-            <Box sx={{ minWidth: 200 }}>
-              <select
-                value={selectedAlias}
-                onChange={(e) => onAliasChange(e.target.value)}
-                disabled={!selectedSolrDatabase}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: selectedSolrDatabase ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)',
-                  color: selectedSolrDatabase ? '#333' : '#666',
-                  cursor: selectedSolrDatabase ? 'pointer' : 'not-allowed',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <option value="">Select a collection...</option>
-                {aliases.map(alias => (
-                  <option key={alias} value={alias}>
-                    {alias}
-                  </option>
-                ))}
-              </select>
-            </Box>
+            <AliasSelector
+              aliases={aliases}
+              selectedAlias={selectedAlias}
+              onAliasChange={onAliasChange}
+              descriptions={collectionDescriptions}
+            />
           </Grid>
         </Grid>
         
-        {selectedAlias && (
+        {(selectedAlias || selectedSolrDatabase) && (
           <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Chip 
-              label={`Database: ${selectedSolrDatabase?.name}`} 
-              size="small" 
-              sx={{ 
-                bgcolor: 'rgba(255, 255, 255, 0.2)', 
-                color: 'white',
-                border: '1px solid rgba(255, 255, 255, 0.3)'
-              }}
-            />
-            <Chip 
-              label={`Collection: ${selectedAlias}`} 
-              size="small" 
-              sx={{ 
-                bgcolor: 'rgba(255, 255, 255, 0.2)', 
-                color: 'white',
-                border: '1px solid rgba(255, 255, 255, 0.3)'
-              }}
-            />
+            {selectedSolrDatabase && (
+              <Chip 
+                label={`Database: ${selectedSolrDatabase.name}`} 
+                size="small" 
+                sx={{ 
+                  bgcolor: 'rgba(255, 255, 255, 0.2)', 
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.3)'
+                }}
+              />
+            )}
+            {selectedAlias && (
+              <Chip 
+                label={`Collection: ${selectedAlias}`} 
+                size="small" 
+                sx={{ 
+                  bgcolor: 'rgba(255, 255, 255, 0.2)', 
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.3)'
+                }}
+              />
+            )}
+            {collectionDescriptions[selectedAlias] && (
+              <Chip 
+                label="Has Description" 
+                size="small" 
+                sx={{ 
+                  bgcolor: 'rgba(76, 175, 80, 0.2)', 
+                  color: 'white',
+                  border: '1px solid rgba(76, 175, 80, 0.3)'
+                }}
+              />
+            )}
             {allResults.length > 0 && (
               <Chip 
                 label={`${allResults.length} documents`} 
@@ -148,6 +177,7 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
                 }}
               />
             )}
+            {/* Loading and status chips remain the same */}
             {isDataLoading && (
               <Chip
                 icon={<CircularProgress size={12} sx={{ color: 'white !important' }} />}
