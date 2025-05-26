@@ -11,7 +11,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::{SwaggerUi, Url};
 
 use crate::openapi::{HistTextApiDoc, SolrApiDoc, UserApiDoc};
-use crate::server::guards::has_permission;
+use crate::server::guards::{has_permission, can_access_user_resource};
 use crate::server::state::AppState;
 use crate::services::database::DbPool;
 use crate::services::database::Database;
@@ -295,18 +295,31 @@ fn configure_hist_text_routes(api_scope: Scope) -> Scope {
 /// Configure user management routes
 fn configure_user_routes(api_scope: Scope) -> Scope {
     api_scope
+        // Self-access routes (any authenticated user can access their own info)
+        .service(
+            web::resource("/user/me")
+                .route(web::get().to(get_current_user))
+                .route(web::put().to(update_current_user))
+        )
+        // Admin-only routes for managing all users
         .service(
             web::resource("/users")
                 .guard(guard::fn_guard(has_permission))
                 .route(web::get().to(get_users))
-                .route(web::post().to(create_user)),
+                .route(web::post().to(create_user))
         )
+        // Routes that allow admin access OR user accessing their own resource
         .service(
             web::resource("/users/{id}")
-                .guard(guard::fn_guard(has_permission))
+                .guard(guard::fn_guard(can_access_user_resource))
                 .route(web::get().to(get_user_by_id))
                 .route(web::put().to(update_user))
-                .route(web::delete().to(delete_user)),
+        )
+        // Admin-only delete (users shouldn't be able to delete themselves via API)
+        .service(
+            web::resource("/users/{id}/delete")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::delete().to(delete_user))
         )
 }
 

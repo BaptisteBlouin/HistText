@@ -739,3 +739,222 @@ pub async fn delete_user(
     let handler = UserHandler::new(config.get_ref().clone());
     handler.delete(db, user_id).await
 }
+
+/// Self-update structure with limited fields users can modify about themselves
+#[derive(AsChangeset, Deserialize, ToSchema)]
+#[diesel(table_name = users)]
+pub struct SelfUpdateUser {
+    /// User can update their own email
+    #[schema(example = "newemail@example.com")]
+    pub email: Option<String>,
+
+    /// User can update their own password
+    #[schema(example = "newpassword123")]
+    pub hash_password: Option<String>,
+
+    /// User can update their first name
+    #[schema(example = "NewFirstName")]
+    pub firstname: Option<String>,
+
+    /// User can update their last name
+    #[schema(example = "NewLastName")]
+    pub lastname: Option<String>,
+
+    // Note: activated is NOT included - users cannot change their activation status
+}
+
+impl UserHandler {
+    /// Self-update - allows users to update their own information
+    pub async fn self_update(
+        &self,
+        db: web::Data<Database>,
+        auth: crate::services::auth::Auth,
+        item: web::Json<SelfUpdateUser>,
+    ) -> AppResult<HttpResponse> {
+        let user_id = auth.user_id;
+        let mut update_data = item.into_inner();
+        
+        debug!("User {} updating their own account", user_id);
+        
+        // Validate the update data (reuse existing validation logic)
+        self.validate_self_update(&update_data)?;
+
+        // If email is being updated, check for conflicts
+        if let Some(ref new_email) = update_data.email {
+            let email_clone = new_email.clone();
+            let existing_user = execute_db_query(db.clone(), move |conn| {
+                use crate::schema::users::dsl::*;
+                users.filter(email.eq(&email_clone))
+                    .filter(id.ne(user_id))
+                    .first::<User>(conn)
+                    .optional()
+            }).await?;
+
+            if existing_user.is_some() {
+                warn!("User {} attempted to use existing email: {}", user_id, new_email);
+                return Err(AppError::validation(
+                    "A user with this email already exists", 
+                    Some("email")
+                ));
+            }
+        }
+
+        // Hash new password if provided
+        if let Some(ref password) = update_data.hash_password {
+            debug!("User {} updating their password", user_id);
+            let hashed_password = self.password_service.hash_password(password)?;
+            update_data.hash_password = Some(hashed_password);
+        }
+
+        // Convert SelfUpdateUser to UpdateUser for database operation
+        let db_update = UpdateUser {
+            email: update_data.email,
+            hash_password: update_data.hash_password,
+            firstname: update_data.firstname,
+            lastname: update_data.lastname,
+            activated: None, // Users cannot change their activation status
+        };
+
+        let result = execute_db_query(db, move |conn| {
+            use crate::schema::users::dsl::*;
+            diesel::update(users.find(user_id))
+                .set(&db_update)
+                .get_result::<User>(conn)
+        }).await?;
+
+        info!("User {} successfully updated their own account", result.id);
+        Ok(HttpResponse::Ok().json(result))
+    }
+
+    /// Get own user information
+    pub async fn get_self(
+        &self,
+        db: web::Data<Database>,
+        auth: crate::services::auth::Auth,
+    ) -> AppResult<HttpResponse> {
+        use crate::schema::users::dsl::*;
+        
+        let user_id = auth.user_id;
+        debug!("User {} fetching their own account info", user_id);
+        
+        let result = execute_db_query(db, move |conn| {
+            users.find(user_id).first::<User>(conn)
+        }).await?;
+        
+        debug!("Successfully fetched self info for user: {}", result.email);
+        Ok(HttpResponse::Ok().json(result))
+    }
+
+    /// Validates self-update data
+    fn validate_self_update(&self, item: &SelfUpdateUser) -> AppResult<()> {
+        // Reuse existing validation logic but for SelfUpdateUser
+        if let Some(ref email) = item.email {
+            if email.is_empty() {
+                return Err(AppError::validation("Email cannot be empty", Some("email")));
+            }
+            
+            if !email.contains('@') || !email.contains('.') {
+                return Err(AppError::validation("Invalid email format", Some("email")));
+            }
+            
+            if email.len() > 254 {
+                return Err(AppError::validation("Email is too long", Some("email")));
+            }
+        }
+
+        if let Some(ref password) = item.hash_password {
+            self.password_service.validate_password_strength(password)?;
+        }
+
+        if let Some(ref firstname) = item.firstname {
+            if firstname.is_empty() {
+                return Err(AppError::validation("First name cannot be empty", Some("firstname")));
+            }
+            
+            if firstname.len() > 100 {
+                return Err(AppError::validation(
+                    "First name must be no more than 100 characters", 
+                    Some("firstname")
+                ));
+            }
+            
+            let forbidden_chars = ['<', '>', '"', '\'', '&'];
+            if firstname.chars().any(|c| forbidden_chars.contains(&c)) {
+                return Err(AppError::validation(
+                    "First name contains invalid characters", 
+                    Some("firstname")
+                ));
+            }
+        }
+
+        if let Some(ref lastname) = item.lastname {
+            if lastname.is_empty() {
+                return Err(AppError::validation("Last name cannot be empty", Some("lastname")));
+            }
+            
+            if lastname.len() > 100 {
+                return Err(AppError::validation(
+                    "Last name must be no more than 100 characters", 
+                    Some("lastname")
+                ));
+            }
+            
+            let forbidden_chars = ['<', '>', '"', '\'', '&'];
+            if lastname.chars().any(|c| forbidden_chars.contains(&c)) {
+                return Err(AppError::validation(
+                    "Last name contains invalid characters", 
+                    Some("lastname")
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Gets current user's own information
+#[utoipa::path(
+    get,
+    path = "/api/user/me",
+    tag = "Users",
+    responses(
+        (status = 200, description = "Current user's account information", body = User),
+        (status = 401, description = "User not authenticated")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
+pub async fn get_current_user(
+    db: web::Data<Database>,
+    auth: crate::services::auth::Auth,
+    config: web::Data<Arc<Config>>,
+) -> Result<HttpResponse, AppError> {
+    let handler = UserHandler::new(config.get_ref().clone());
+    handler.get_self(db, auth).await
+}
+
+/// Updates current user's own information
+#[utoipa::path(
+    put,
+    path = "/api/user/me",
+    tag = "Users",
+    request_body = SelfUpdateUser,
+    responses(
+        (status = 200, description = "User account updated successfully", body = User),
+        (status = 400, description = "Validation error: invalid field formats or email conflicts"),
+        (status = 401, description = "User not authenticated")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
+pub async fn update_current_user(
+    db: web::Data<Database>,
+    auth: crate::services::auth::Auth,
+    item: web::Json<SelfUpdateUser>,
+    config: web::Data<Arc<Config>>,
+) -> Result<HttpResponse, AppError> {
+    let handler = UserHandler::new(config.get_ref().clone());
+    handler.self_update(db, auth, item).await
+}
