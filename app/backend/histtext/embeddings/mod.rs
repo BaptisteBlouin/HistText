@@ -7,7 +7,6 @@ pub mod types;
 
 pub use cache::clear_caches;
 pub use handlers::compute_neighbors;
-pub use stats::{get_cache_stats, CacheStats};
 pub use types::{Embedding, NeighborsRequest, NeighborsResponse};
 
 use actix_web::web;

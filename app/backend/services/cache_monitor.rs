@@ -1,9 +1,7 @@
-use crate::histtext::embeddings;
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder};
 use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use utoipa::ToSchema;
-use crate::histtext::embeddings::stats::reset_performance_metrics;
 use crate::histtext::embeddings::{cache, stats};
 use serde_json::json;
 use log::info;

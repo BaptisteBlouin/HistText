@@ -8,7 +8,7 @@ use crate::schema::users::dsl::*;
 use crate::schema::solr_databases::dsl as solr_dsl;
 use crate::schema::solr_database_info::dsl as info_dsl;
 use crate::services::database::Database;
-use crate::services::error::{AppError, AppResult};
+use crate::services::error::AppError;
 use crate::services::crud::execute_db_query;
 use crate::histtext::embeddings::{cache, stats as embedding_stats};
 

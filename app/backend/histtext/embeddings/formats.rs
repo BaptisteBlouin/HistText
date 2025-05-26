@@ -150,10 +150,6 @@ async fn try_finalfusion_loaders(
     file_size: u64,
     start_time: Instant,
 ) -> EmbeddingResult<(EmbeddingMap, EmbeddingStats)> {
-    use finalfusion::prelude::*;
-    use finalfusion::storage::NdArray;
-    use finalfusion::vocab::{SimpleVocab, SubwordVocab};
-    use finalfusion::compat::fasttext::FastTextIndexer;
     
     let loaders = vec![
         ("Word2Vec Binary", LoaderType::Word2Vec),
@@ -304,7 +300,6 @@ async fn convert_finalfusion_embeddings(
     embeddings: finalfusion::prelude::Embeddings<finalfusion::vocab::SimpleVocab, finalfusion::storage::NdArray>,
     config: &EmbeddingConfig,
 ) -> EmbeddingResult<(EmbeddingMap, usize)> {
-    use finalfusion::prelude::*;
     use finalfusion::vocab::Vocab;
     use finalfusion::storage::Storage;
     
@@ -359,7 +354,6 @@ async fn convert_finalfusion_fasttext_embeddings(
     embeddings: finalfusion::prelude::Embeddings<finalfusion::vocab::SubwordVocab<finalfusion::compat::fasttext::FastTextIndexer>, finalfusion::storage::NdArray>,
     config: &EmbeddingConfig,
 ) -> EmbeddingResult<(EmbeddingMap, usize)> {
-    use finalfusion::prelude::*;
     use finalfusion::vocab::Vocab;
     use finalfusion::storage::Storage;
     

@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use stop_words::{get, LANGUAGE as SwLang};
 use utoipa::{IntoParams, ToSchema};
-use whatlang::{detect, Script};
 use rayon::prelude::*;
 
 #[derive(Deserialize, ToSchema, IntoParams)]
@@ -116,7 +115,7 @@ fn tokenize_latin_ultra_fast(text: &str, cloud: bool, max_tokens: usize) -> Vec<
                 .collect::<String>()
                 .to_lowercase();
                 
-            if cleaned.len() > 0 && 
+            if !cleaned.is_empty() && 
                cleaned.len() < 20 && 
                !ENGLISH_STOPWORDS.contains(&cleaned) {
                 tokens.push(cleaned);

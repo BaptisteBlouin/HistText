@@ -1,5 +1,4 @@
 use serde_json::Value;
-use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 
 pub struct ResponsePool {

@@ -4,9 +4,7 @@ use diesel::prelude::*;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use reqwest::Client;
 use serde::Deserialize;
-use serde_json::Value as SerdeValue;
 use serde_json::{json, Value};
-use std::collections::HashMap;
 use std::collections::HashSet;
 use utoipa::{IntoParams, ToSchema};
 

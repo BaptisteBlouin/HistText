@@ -242,7 +242,7 @@ fn process_documents_ultra_optimized(
                             
                             *acc.word_lengths.entry(token.len()).or_insert(0) += 1;
                             
-                            if token.chars().next().map_or(false, |c| c.is_uppercase()) {
+                            if token.chars().next().is_some_and(|c| c.is_uppercase()) {
                                 acc.capitalized_words += 1;
                             }
                             
@@ -324,11 +324,11 @@ fn calculate_final_statistics_optimized(
     let Accumulator {
         date_counts,
         metadata_distributions,
-        aggregated_text,
+        aggregated_text: _,
         word_counts,
         ngram_counts_2,
         ngram_counts_3,
-        total_text_length,
+        total_text_length: _,
         sentence_count,
         document_lengths,
         word_lengths,

@@ -1,5 +1,4 @@
 use serde_json::Value;
-use std::collections::HashMap;
 
 pub struct QueryOptimizer;
 
