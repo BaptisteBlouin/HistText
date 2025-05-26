@@ -1,54 +1,28 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { useHistTextData } from '../hooks/useHistTextData';
-import { useHistTextActions } from '../hooks/useHistTextActions';
-import { useWordCloudProcessor } from '../hooks/useWordCloudProcessor';
-import HistTextLayout from './components/HistTextLayout';
-import { FullscreenMode } from './components/TabNavigation';
-import { Container, Paper, Typography } from '@mui/material';
-
-// Memoized notification state interface
-interface NotificationState {
-  open: boolean;
-  message: string;
-  severity: 'success' | 'error' | 'warning' | 'info';
-}
-
-// Constants to prevent inline object creation
-const INITIAL_NOTIFICATION_STATE: NotificationState = {
-  open: false,
-  message: '',
-  severity: 'info'
-};
-
-const AUTH_REQUIRED_STYLES = {
-  mt: 8,
-  textAlign: 'center' as const
-} as const;
-
-const AUTH_PAPER_STYLES = {
-  p: 6,
-  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  color: 'white'
-} as const;
+import React, { useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import { useHistTextData } from '../../hooks/useHistTextData';
+import { useHistTextActions } from '../../hooks/useHistTextActions';
+import { useWordCloudProcessor } from '../../hooks/useWordCloudProcessor';
+import HistTextLayout from '../components/HistTextLayout';
+import AuthenticationRequired from './components/AuthenticationRequired';
+import { useHistTextState } from './hooks/useHistTextState';
 
 const HistText: React.FC = React.memo(() => {
   const { isAuthenticated } = useAuth();
   const data = useHistTextData();
   
-  // Local state with optimized initial values
-  const [activeTab, setActiveTab] = useState<number>(0);
-  const [fullscreenMode, setFullscreenMode] = useState<FullscreenMode>('normal');
-  const [quickActions, setQuickActions] = useState<boolean>(false);
-  const [notification, setNotification] = useState<NotificationState>(INITIAL_NOTIFICATION_STATE);
-
-  // Memoized notification handler
-  const showNotification = useCallback((
-    message: string, 
-    severity: 'success' | 'error' | 'warning' | 'info' = 'info'
-  ) => {
-    setNotification({ open: true, message, severity });
-  }, []);
+  const {
+    activeTab,
+    setActiveTab,
+    fullscreenMode,
+    setFullscreenMode,
+    quickActions,
+    setQuickActions,
+    notification,
+    setNotification,
+    showNotification,
+    resetHistTextState
+  } = useHistTextState();
 
   // Memoized actions with proper dependencies
   const actions = useMemo(() => {
@@ -57,9 +31,9 @@ const HistText: React.FC = React.memo(() => {
       showNotification,
       setActiveTab
     });
-  }, [data, showNotification]);
+  }, [data, showNotification, setActiveTab]);
 
-  // Optimized word cloud processor with dependency control
+  // Optimized word cloud processor
   useWordCloudProcessor({
     allResults: data.allResults,
     authAxios: data.authAxios,
@@ -85,9 +59,10 @@ const HistText: React.FC = React.memo(() => {
     data.setWordFrequency([]);
     data.setStatsReady(false);
     data.setNerReady(false);
-  }, [data]);
+    resetHistTextState();
+  }, [data, setActiveTab, resetHistTextState]);
 
-  // Optimized effect for loading Solr databases
+  // Load Solr databases effect
   useEffect(() => {
     if (!data.authAxios) return;
 
@@ -116,7 +91,7 @@ const HistText: React.FC = React.memo(() => {
     };
   }, [data.authAxios, data.setSolrDatabases, showNotification]);
 
-  // Optimized effect for loading aliases
+  // Load aliases effect
   useEffect(() => {
     if (!data.selectedSolrDatabase || !data.authAxios) {
       data.setAliases([]);
@@ -150,27 +125,9 @@ const HistText: React.FC = React.memo(() => {
     };
   }, [data.selectedSolrDatabase, data.authAxios, data.setAliases, showNotification]);
 
-  // Memoized authentication check
-  const authenticationContent = useMemo(() => {
-    if (isAuthenticated) return null;
-
-    return (
-      <Container maxWidth="sm" sx={AUTH_REQUIRED_STYLES}>
-        <Paper sx={AUTH_PAPER_STYLES}>
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>
-            Authentication Required
-          </Typography>
-          <Typography variant="h6" sx={{ opacity: 0.9 }}>
-            Please log in to access HistText features.
-          </Typography>
-        </Paper>
-      </Container>
-    );
-  }, [isAuthenticated]);
-
   // Early return for unauthenticated users
   if (!isAuthenticated) {
-    return authenticationContent;
+    return <AuthenticationRequired />;
   }
 
   return (
@@ -191,7 +148,6 @@ const HistText: React.FC = React.memo(() => {
   );
 });
 
-// Add display name for debugging
 HistText.displayName = 'HistText';
 
 export default HistText;
