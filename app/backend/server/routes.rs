@@ -453,6 +453,11 @@ fn configure_stats_routes(api_scope: Scope) -> Scope {
             .guard(guard::fn_guard(has_permission))
             .route(web::get().to(get_dashboard_stats)),
     )
+    .service(
+        web::resource("/dashboard/comprehensive")
+            .guard(guard::fn_guard(has_permission))
+            .route(web::get().to(crate::services::stats::get_comprehensive_dashboard_stats)),
+    )
 }
 
 /// Configure health check endpoint
