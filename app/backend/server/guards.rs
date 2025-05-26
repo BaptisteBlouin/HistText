@@ -49,6 +49,7 @@ pub fn has_permission(ctx: &GuardContext) -> bool {
 
 /// Guards a route to allow access if user is admin OR if user is accessing their own resource
 pub fn has_permission_or_own_resource(ctx: &GuardContext, user_id_param: &str) -> bool {
+    let _ = user_id_param;
     // Get request headers
     let req_head = ctx.head();
 
