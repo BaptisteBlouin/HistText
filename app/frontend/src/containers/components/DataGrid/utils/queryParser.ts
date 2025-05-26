@@ -26,7 +26,33 @@ export const parseFormDataToTerms = (formData: any): QueryTerm[] => {
   return terms;
 };
 
+// Helper function to check if a field is a date field
+const isDateField = (fieldName: string): boolean => {
+  const dateFieldPatterns = [
+    'date',
+    'date_rdt', 
+    'min_date',
+    'max_date',
+    'created_at',
+    'updated_at',
+    'timestamp'
+  ];
+  
+  const lowerFieldName = fieldName.toLowerCase();
+  return dateFieldPatterns.some(pattern => 
+    lowerFieldName.includes(pattern) || 
+    lowerFieldName.endsWith('_date') ||
+    lowerFieldName.endsWith('_dt') ||
+    lowerFieldName.endsWith('_rdt')
+  );
+};
+
 export const getSearchTermsForField = (formData: any, fieldName: string): string[] => {
+  // Don't highlight date fields
+  if (isDateField(fieldName)) {
+    return [];
+  }
+  
   const terms = parseFormDataToTerms(formData);
   return terms
     .filter(term => term.field === fieldName && !term.not)
@@ -38,7 +64,7 @@ export const getSearchTermsForField = (formData: any, fieldName: string): string
 export const getAllSearchTermsFromQuery = (formData: any): string[] => {
   const terms = parseFormDataToTerms(formData);
   const allTerms = terms
-    .filter(term => !term.not) // Only include positive terms for highlighting
+    .filter(term => !term.not && !isDateField(term.field)) // Exclude date fields
     .map(term => term.value)
     .filter(value => value && value.length > 0);
   
@@ -48,10 +74,15 @@ export const getAllSearchTermsFromQuery = (formData: any): string[] => {
 
 // NEW: Get search terms for a specific field, but also include global terms for highlighting
 export const getHighlightTermsForField = (formData: any, fieldName: string): string[] => {
+  // Don't highlight date fields at all
+  if (isDateField(fieldName)) {
+    return [];
+  }
+  
   // Get terms specific to this field
   const fieldTerms = getSearchTermsForField(formData, fieldName);
   
-  // Get ALL terms from the query for cross-field highlighting
+  // Get ALL terms from the query for cross-field highlighting (excluding date fields)
   const allTerms = getAllSearchTermsFromQuery(formData);
   
   // Combine and deduplicate
@@ -80,6 +111,7 @@ export const debugFormData = (formData: any): void => {
     const fieldTerms = getSearchTermsForField(formData, field);
     const highlightTerms = getHighlightTermsForField(formData, field);
     console.log(`Field "${field}":`, {
+      isDateField: isDateField(field),
       fieldSpecificTerms: fieldTerms,
       allHighlightTerms: highlightTerms
     });

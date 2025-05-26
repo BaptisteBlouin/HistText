@@ -3,8 +3,8 @@ import { Box, Container, Paper, Fade, Typography } from '@mui/material';
 import { Search, Storage, TableRows, TableChart, Analytics, AccountTree } from '@mui/icons-material';
 import { Cloud as CloudIcon } from '@mui/icons-material';
 
-import DatabaseSelector from './DatabaseSelector';
-import TabNavigation, { FullscreenMode } from './TabNavigation';
+import DatabaseSelector from './DatabaseSelector/';
+import TabNavigation, { FullscreenMode } from './TabNavigation/';
 import LoadingOverlay from './LoadingOverlay';
 import QuickActions from './QuickActions';
 import NotificationSystem from './NotificationSystem';
