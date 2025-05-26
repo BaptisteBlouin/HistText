@@ -25,7 +25,8 @@ pub async fn run_server() -> std::io::Result<()> {
     use std::sync::Arc;
     use tokio::signal;
     use tokio::signal::unix::{signal, SignalKind};
-
+    
+    use crate::services::request_analytics::RequestAnalyticsMiddleware;
     use crate::server::security::SecurityHeaders;
 
     let config = match Config::load() {
@@ -98,6 +99,7 @@ pub async fn run_server() -> std::io::Result<()> {
         let shared_schema = web::Data::new(schema.clone());
 
         let app = App::new()
+            .wrap(RequestAnalyticsMiddleware)
             .wrap(Compress::default())
             .wrap(NormalizePath::new(TrailingSlash::MergeOnly))
             .wrap(Logger::default());

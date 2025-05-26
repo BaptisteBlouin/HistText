@@ -17,3 +17,4 @@ pub mod cache_monitor;
 pub mod cache_manager;
 pub mod query_optimizer;
 pub mod response_pool;
+pub mod request_analytics;

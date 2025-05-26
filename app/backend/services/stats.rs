@@ -14,6 +14,8 @@ use crate::services::database::Database;
 use crate::services::error::AppError;
 use crate::services::crud::execute_db_query;
 use crate::histtext::embeddings::{cache, stats as embedding_stats};
+use crate::services::request_analytics::{get_analytics_store, RequestAnalytics};
+
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct DashboardStats {
@@ -363,4 +365,19 @@ pub async fn clear_embeddings_cache() -> impl Responder {
         "message": "Embedding cache cleared successfully",
         "timestamp": chrono::Utc::now()
     }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/dashboard/analytics",
+    tag = "Stats",
+    responses(
+        (status = 200, description = "API usage analytics and performance metrics", body = RequestAnalytics),
+        (status = 500, description = "Failed to generate analytics")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn get_request_analytics() -> Result<HttpResponse, AppError> {
+    let analytics = get_analytics_store().get_analytics().await;
+    Ok(HttpResponse::Ok().json(analytics))
 }
