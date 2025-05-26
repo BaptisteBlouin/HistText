@@ -14,6 +14,66 @@ interface PaginationResult<T> {
   num_pages: number;
 }
 
+/** Struct representing a row in table `security_events` */
+interface SecurityEvents {
+  /** Field representing column `id` */
+  id: number;
+  /** Field representing column `event_type` */
+  event_type: string;
+  /** Field representing column `user_id` */
+  user_id?: number;
+  /** Field representing column `user_email` */
+  user_email?: string;
+  /** Field representing column `description` */
+  description: string;
+  /** Field representing column `severity` */
+  severity: string;
+  /** Field representing column `ip_address` */
+  ip_address?: string;
+  /** Field representing column `user_agent` */
+  user_agent?: string;
+  /** Field representing column `created_at` */
+  created_at: Date;
+}
+
+/** Create Struct for a row in table `security_events` for [`SecurityEvents`] */
+interface CreateSecurityEvents {
+  /** Field representing column `event_type` */
+  event_type: string;
+  /** Field representing column `user_id` */
+  user_id?: number;
+  /** Field representing column `user_email` */
+  user_email?: string;
+  /** Field representing column `description` */
+  description: string;
+  /** Field representing column `severity` */
+  severity: string;
+  /** Field representing column `ip_address` */
+  ip_address?: string;
+  /** Field representing column `user_agent` */
+  user_agent?: string;
+}
+
+/** Update Struct for a row in table `security_events` for [`SecurityEvents`] */
+interface UpdateSecurityEvents {
+  /** Field representing column `event_type` */
+  event_type?: string;
+  /** Field representing column `user_id` */
+  user_id?: number;
+  /** Field representing column `user_email` */
+  user_email?: string;
+  /** Field representing column `description` */
+  description?: string;
+  /** Field representing column `severity` */
+  severity?: string;
+  /** Field representing column `ip_address` */
+  ip_address?: string;
+  /** Field representing column `user_agent` */
+  user_agent?: string;
+  /** Field representing column `created_at` */
+  created_at?: Date;
+}
+
 interface SolrDatabasePermission {
   solr_database_id: number;
   collection_name: string;

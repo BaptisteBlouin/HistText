@@ -1,7 +1,9 @@
+//! Security event logging service for comprehensive audit trails.
+
 use actix_web::{web, HttpRequest};
-use chrono::Utc;
+use chrono::NaiveDateTime; // Changed from Utc
 use diesel::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize; // Removed Deserialize since it's unused
 use utoipa::ToSchema;
 
 use crate::schema::security_events;
@@ -20,7 +22,7 @@ pub struct SecurityEvent {
     pub severity: String,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
-    pub created_at: chrono::NaiveDateTime,
+    pub created_at: NaiveDateTime, // Changed from chrono::NaiveDateTime
 }
 
 #[derive(Insertable, Debug)]
@@ -49,7 +51,7 @@ impl SecurityEventLogger {
     ) -> AppResult<()> {
         let ip_address = req.and_then(|r| {
             r.connection_info()
-                .remote_addr()
+                .peer_addr() // Changed from remote_addr() to peer_addr()
                 .map(|addr| addr.to_string())
         });
 
