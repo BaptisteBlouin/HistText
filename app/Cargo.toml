@@ -98,7 +98,7 @@ version = "0.4.19"
 
 [dependencies.diesel]
 default-features = false
-features = ["postgres", "r2d2", "chrono"]
+features = ["postgres", "r2d2", "chrono", "serde_json"]
 version = "2.1"
 
 [dependencies.serde]

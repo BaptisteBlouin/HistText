@@ -18,3 +18,5 @@ pub mod cache_manager;
 pub mod query_optimizer;
 pub mod response_pool;
 pub mod request_analytics;
+pub mod security_events;
+pub mod types;

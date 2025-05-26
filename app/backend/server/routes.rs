@@ -444,11 +444,7 @@ fn configure_user_permission_routes(api_scope: Scope) -> Scope {
                 .route(web::get().to(get_user_permission_by_user_id_and_permission))
                 .route(web::delete().to(delete_user_permission)),
         )
-        .service(
-            web::resource("/dashboard/analytics")
-                .guard(guard::fn_guard(has_permission))
-                .route(web::get().to(crate::services::stats::get_request_analytics)),
-        )
+        
 }
 
 /// Configure application statistics routes
@@ -462,6 +458,16 @@ fn configure_stats_routes(api_scope: Scope) -> Scope {
         web::resource("/dashboard/comprehensive")
             .guard(guard::fn_guard(has_permission))
             .route(web::get().to(crate::services::stats::get_comprehensive_dashboard_stats)),
+    )
+    .service(
+        web::resource("/dashboard/analytics")
+            .guard(guard::fn_guard(has_permission))
+            .route(web::get().to(crate::services::stats::get_request_analytics)),
+    )
+    .service(
+        web::resource("/dashboard/user-activity")
+            .guard(guard::fn_guard(has_permission))
+            .route(web::get().to(crate::services::stats::get_user_activity)),
     )
 }
 

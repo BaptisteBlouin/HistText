@@ -42,6 +42,9 @@ import { useAnalytics } from './hooks/useAnalytics';
 // Import utilities
 import { formatNumber } from './utils/formatters';
 
+import { UserActivityMonitoring } from './components/UserActivityMonitoring';
+import { useUserActivity } from './hooks/useUserActivity';
+
 const Dashboard: React.FC = () => {
   useAuthCheck();
   const { accessToken, session } = useAuth();
@@ -53,6 +56,8 @@ const Dashboard: React.FC = () => {
   const [showEmbeddingDetails, setShowEmbeddingDetails] = useState<boolean>(false);
   const [showAdvancedStats, setShowAdvancedStats] = useState<boolean>(false);
   const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
+
+  const [showUserActivity, setShowUserActivity] = useState<boolean>(false);
 
   // Custom hooks for data fetching
   const {
@@ -76,6 +81,10 @@ const Dashboard: React.FC = () => {
     analyticsLoading,
   } = useAnalytics(accessToken, showAnalytics);
 
+  const {
+    userActivity,
+    userActivityLoading,
+  } = useUserActivity(accessToken, showUserActivity);
   // Auth checks
   if (!session) {
     return (
@@ -226,6 +235,13 @@ const Dashboard: React.FC = () => {
                 onToggle={() => setShowAnalytics(!showAnalytics)}
                 isVisible={showAnalytics}
               />
+
+                <UserActivityMonitoring
+                userActivity={userActivity}
+                loading={userActivityLoading}
+                onToggle={() => setShowUserActivity(!showUserActivity)}
+                isVisible={showUserActivity}
+                />
 
               {/* Embedding Cache Management */}
               <EmbeddingCacheManagement

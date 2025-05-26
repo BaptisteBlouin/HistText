@@ -29,7 +29,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
 use actix_web::web::Query;
-
+use crate::services::security_events::SecurityEventLogger;
 pub const COOKIE_NAME: &str = "refresh_token";
 
 /// User ID type

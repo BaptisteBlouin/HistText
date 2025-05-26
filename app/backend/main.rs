@@ -13,6 +13,7 @@ mod services;
 mod template;
 mod mail;
 
+
 mod histtext {
     pub mod documents;
     pub mod embeddings;

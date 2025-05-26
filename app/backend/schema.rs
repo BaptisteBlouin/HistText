@@ -58,6 +58,24 @@ diesel::table! {
 }
 
 diesel::table! {
+    security_events (id) {
+        id -> Int4,
+        #[max_length = 50]
+        event_type -> Varchar,
+        user_id -> Nullable<Int4>,
+        #[max_length = 255]
+        user_email -> Nullable<Varchar>,
+        description -> Text,
+        #[max_length = 20]
+        severity -> Varchar,
+        #[max_length = 45]
+        ip_address -> Nullable<Varchar>,
+        user_agent -> Nullable<Text>,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     solr_database_info (solr_database_id, collection_name) {
         solr_database_id -> Int4,
         collection_name -> Text,
@@ -85,6 +103,15 @@ diesel::table! {
         url -> Text,
         server_port -> Int4,
         local_port -> Int4,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    todos (id) {
+        id -> Int4,
+        text -> Text,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
@@ -147,6 +174,7 @@ diesel::table! {
 }
 
 diesel::joinable!(attachments -> attachment_blobs (blob_id));
+diesel::joinable!(security_events -> users (user_id));
 diesel::joinable!(solr_database_info -> solr_databases (solr_database_id));
 diesel::joinable!(solr_database_permissions -> solr_databases (solr_database_id));
 diesel::joinable!(user_oauth2_links -> users (user_id));
@@ -159,9 +187,11 @@ diesel::allow_tables_to_appear_in_same_query!(
     attachments,
     fang_tasks,
     role_permissions,
+    security_events,
     solr_database_info,
     solr_database_permissions,
     solr_databases,
+    todos,
     user_oauth2_links,
     user_permissions,
     user_roles,

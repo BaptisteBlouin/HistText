@@ -118,3 +118,58 @@ export interface LegacyStats {
     average_response_time_ms: number;
     request_count: number;
   }
+
+export interface UserActivity {
+    recent_logins: RecentLogin[];
+    failed_login_attempts: FailedLoginAttempt[];
+    user_registrations: UserRegistration[];
+    session_statistics: SessionStatistics;
+    security_events: SecurityEvent[];
+    last_updated: string;
+  }
+  
+  export interface RecentLogin {
+    user_id: number;
+    email: string;
+    firstname: string;
+    lastname: string;
+    login_time: string;
+    device?: string;
+    ip_address?: string;
+    success: boolean;
+  }
+  
+  export interface FailedLoginAttempt {
+    email: string;
+    attempt_time: string;
+    ip_address?: string;
+    reason: string;
+    count: number;
+  }
+  
+  export interface UserRegistration {
+    user_id: number;
+    email: string;
+    firstname: string;
+    lastname: string;
+    registration_time: string;
+    activated: boolean;
+    activation_time?: string;
+  }
+  
+  export interface SessionStatistics {
+    total_active_sessions: number;
+    sessions_last_24h: number;
+    sessions_last_week: number;
+    average_session_duration_minutes: number;
+    unique_users_24h: number;
+  }
+  
+  export interface SecurityEvent {
+    event_type: 'password_change' | 'password_reset' | 'account_activation' | 'failed_login' | 'suspicious_activity';
+    user_email?: string;
+    description: string;
+    timestamp: string;
+    severity: 'low' | 'medium' | 'high';
+    ip_address?: string;
+  }

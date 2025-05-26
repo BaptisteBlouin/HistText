@@ -16,6 +16,70 @@ use crate::services::crud::execute_db_query;
 use crate::histtext::embeddings::{cache, stats as embedding_stats};
 use crate::services::request_analytics::{get_analytics_store, RequestAnalytics};
 
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use crate::services::security_events::SecurityEventLogger;
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UserActivity {
+    pub recent_logins: Vec<RecentLogin>,
+    pub failed_login_attempts: Vec<FailedLoginAttempt>,
+    pub user_registrations: Vec<UserRegistration>,
+    pub session_statistics: SessionStatistics,
+    pub security_events: Vec<SecurityEvent>,
+    pub last_updated: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct RecentLogin {
+    pub user_id: i32,
+    pub email: String,
+    pub firstname: String,
+    pub lastname: String,
+    pub login_time: chrono::DateTime<chrono::Utc>,
+    pub device: Option<String>,
+    pub ip_address: Option<String>,
+    pub success: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct FailedLoginAttempt {
+    pub email: String,
+    pub attempt_time: chrono::DateTime<chrono::Utc>,
+    pub ip_address: Option<String>,
+    pub reason: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UserRegistration {
+    pub user_id: i32,
+    pub email: String,
+    pub firstname: String,
+    pub lastname: String,
+    pub registration_time: chrono::DateTime<chrono::Utc>,
+    pub activated: bool,
+    pub activation_time: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SessionStatistics {
+    pub total_active_sessions: i64,
+    pub sessions_last_24h: i64,
+    pub sessions_last_week: i64,
+    pub average_session_duration_minutes: f64,
+    pub unique_users_24h: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SecurityEvent {
+    pub event_type: String,
+    pub user_email: Option<String>,
+    pub description: String,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub severity: String,
+    pub ip_address: Option<String>,
+}
+
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct DashboardStats {
@@ -380,4 +444,183 @@ pub async fn clear_embeddings_cache() -> impl Responder {
 pub async fn get_request_analytics() -> Result<HttpResponse, AppError> {
     let analytics = get_analytics_store().get_analytics().await;
     Ok(HttpResponse::Ok().json(analytics))
+}
+
+// Updated get_user_activity function with fixed variable names
+
+#[utoipa::path(
+    get,
+    path = "/api/dashboard/user-activity",
+    tag = "Stats",
+    responses(
+        (status = 200, description = "User activity and security monitoring data", body = UserActivity),
+        (status = 500, description = "Failed to fetch user activity data")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn get_user_activity(
+    db: web::Data<Database>
+) -> Result<HttpResponse, AppError> {
+    let now = Utc::now().naive_utc();
+    let twenty_four_hours_ago = now - ChronoDuration::hours(24);
+    let one_week_ago = now - ChronoDuration::weeks(1);
+    let one_hour_ago = now - ChronoDuration::hours(1);
+
+    // Get recent successful logins (from sessions)
+    let recent_logins = execute_db_query(db.clone(), move |conn| {
+        use crate::schema::users::dsl as users_dsl;
+        
+        session_dsl::user_sessions
+            .inner_join(users_dsl::users.on(users_dsl::id.eq(session_dsl::user_id)))
+            .filter(session_dsl::created_at.gt(twenty_four_hours_ago))
+            .order(session_dsl::created_at.desc())
+            .limit(20)
+            .select((
+                users_dsl::id,
+                users_dsl::email,
+                users_dsl::firstname,
+                users_dsl::lastname,
+                session_dsl::created_at,
+                session_dsl::device,
+            ))
+            .load::<(i32, String, String, String, chrono::NaiveDateTime, Option<String>)>(conn)
+    }).await.unwrap_or_default();
+
+    let recent_logins: Vec<RecentLogin> = recent_logins
+        .into_iter()
+        .map(|(user_id, user_email, user_firstname, user_lastname, login_time, device)| {
+            RecentLogin {
+                user_id,
+                email: user_email,
+                firstname: user_firstname,
+                lastname: user_lastname,
+                login_time: DateTime::from_naive_utc_and_offset(login_time, Utc),
+                device,
+                ip_address: None, // Would need to be tracked separately
+                success: true,
+            }
+        })
+        .collect();
+
+    // Get recent user registrations
+    let user_registrations = execute_db_query(db.clone(), move |conn| {
+        use crate::schema::users::dsl as users_dsl;
+        
+        users_dsl::users
+            .filter(users_dsl::created_at.gt(one_week_ago))
+            .order(users_dsl::created_at.desc())
+            .limit(10)
+            .select((
+                users_dsl::id,
+                users_dsl::email,
+                users_dsl::firstname,
+                users_dsl::lastname,
+                users_dsl::created_at,
+                users_dsl::activated,
+            ))
+            .load::<(i32, String, String, String, chrono::NaiveDateTime, bool)>(conn)
+    }).await.unwrap_or_default();
+
+    let user_registrations: Vec<UserRegistration> = user_registrations
+        .into_iter()
+        .map(|(user_id, user_email, user_firstname, user_lastname, registration_time, user_activated)| {
+            UserRegistration {
+                user_id,
+                email: user_email,
+                firstname: user_firstname,
+                lastname: user_lastname,
+                registration_time: DateTime::from_naive_utc_and_offset(registration_time, Utc),
+                activated: user_activated,
+                activation_time: None, // Would need to be tracked separately
+            }
+        })
+        .collect();
+
+    // Calculate session statistics
+    let session_stats = execute_db_query(db.clone(), move |conn| {
+        // Total active sessions (updated in last hour)
+        let total_active = session_dsl::user_sessions
+            .filter(session_dsl::updated_at.gt(one_hour_ago))
+            .count()
+            .get_result::<i64>(conn)?;
+
+        // Sessions in last 24h
+        let sessions_24h = session_dsl::user_sessions
+            .filter(session_dsl::created_at.gt(twenty_four_hours_ago))
+            .count()
+            .get_result::<i64>(conn)?;
+
+        // Sessions in last week
+        let sessions_week = session_dsl::user_sessions
+            .filter(session_dsl::created_at.gt(one_week_ago))
+            .count()
+            .get_result::<i64>(conn)?;
+
+        // Unique users in last 24h
+        let unique_users_24h = session_dsl::user_sessions
+            .filter(session_dsl::created_at.gt(twenty_four_hours_ago))
+            .select(session_dsl::user_id)
+            .distinct()
+            .count()
+            .get_result::<i64>(conn)?;
+
+        Ok((total_active, sessions_24h, sessions_week, unique_users_24h))
+    }).await.unwrap_or((0, 0, 0, 0));
+
+    let session_statistics = SessionStatistics {
+        total_active_sessions: session_stats.0,
+        sessions_last_24h: session_stats.1,
+        sessions_last_week: session_stats.2,
+        average_session_duration_minutes: 45.0, // Mock value - would need session tracking
+        unique_users_24h: session_stats.3,
+    };
+
+
+    let security_events_data = SecurityEventLogger::get_recent_events(db.clone(), 20).await.unwrap_or_default();
+
+    let security_events: Vec<SecurityEvent> = security_events_data
+        .into_iter()
+        .map(|event| SecurityEvent {
+            event_type: event.event_type,
+            user_email: event.user_email,
+            description: event.description,
+            timestamp: DateTime::from_naive_utc_and_offset(event.created_at, Utc),
+            severity: event.severity,
+            ip_address: event.ip_address,
+        })
+        .collect();
+
+    // Get real failed login attempts from security events
+    let failed_login_events = execute_db_query(db.clone(), move |conn| {
+        use crate::schema::security_events::dsl::*;
+        
+        security_events
+            .filter(event_type.eq("failed_login"))
+            .filter(created_at.gt(twenty_four_hours_ago))
+            .order(created_at.desc())
+            .limit(10)
+            .load::<crate::services::security_events::SecurityEvent>(conn)
+    }).await.unwrap_or_default();
+
+    let failed_login_attempts: Vec<FailedLoginAttempt> = failed_login_events
+        .into_iter()
+        .map(|event| FailedLoginAttempt {
+            email: event.user_email.unwrap_or_else(|| "unknown".to_string()),
+            attempt_time: DateTime::from_naive_utc_and_offset(event.created_at, Utc),
+            ip_address: event.ip_address,
+            reason: event.description,
+            count: 1, // Individual events, not aggregated
+        })
+        .collect();
+
+    let activity = UserActivity {
+        recent_logins,
+        failed_login_attempts,
+        user_registrations,
+        session_statistics,
+        security_events,
+        last_updated: Utc::now(),
+    };
+
+    Ok(HttpResponse::Ok().json(activity))
 }
