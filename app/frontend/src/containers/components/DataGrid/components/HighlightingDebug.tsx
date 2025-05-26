@@ -8,6 +8,7 @@ import DataGridToolbar from './DataGrid/components/DataGridToolbar';
 import DataGridMain from './DataGrid/components/DataGridMain';
 import ExportDialog from './DataGrid/components/ExportDialog';
 import DocumentDetailsModal from './DocumentDetailsModal';
+// import HighlightingDebug from './DataGrid/components/HighlightingDebug'; // Uncomment for debugging
 
 interface DataGridComponentProps {
   results: any[];
@@ -64,7 +65,7 @@ const DataGridComponent: React.FC<DataGridComponentProps> = React.memo(({
     selectedSolrDatabase,
     authAxios,
     isAllResultsTab,
-    handleIdClick // Pass handleIdClick here
+    handleIdClick
   );
 
   const {
@@ -94,6 +95,9 @@ const DataGridComponent: React.FC<DataGridComponentProps> = React.memo(({
     );
   }
 
+  // Get sample fields for debugging
+  const sampleFields = results.length > 0 ? Object.keys(results[0]).slice(0, 3) : [];
+
   return (
     <Box sx={{ p: 2, height: '100%' }}>
       {showConcordance && (
@@ -104,6 +108,9 @@ const DataGridComponent: React.FC<DataGridComponentProps> = React.memo(({
           </Typography>
         </Alert>
       )}
+
+      {/* Uncomment for debugging highlighting */}
+      {/* <HighlightingDebug formData={formData} sampleFields={sampleFields} /> */}
 
       <DataGridToolbar
         resultsLength={results.length}
