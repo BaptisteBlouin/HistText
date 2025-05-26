@@ -5,7 +5,7 @@
 
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    Error, HttpMessage,
+    Error,
 };
 use futures::future::{ready, LocalBoxFuture, Ready};
 use log::{debug, warn};
@@ -310,14 +310,18 @@ where
                 Ok(response) => {
                     let status_code = response.status().as_u16();
                     
+                    // Clone path and method before moving into async closure
+                    let path_clone = path.clone();
+                    let method_clone = method.clone();
+                    
                     // Record the request asynchronously
                     tokio::spawn(async move {
                         get_analytics_store()
-                            .record_request(path, method, status_code, response_time)
+                            .record_request(path_clone, method_clone, status_code, response_time)
                             .await;
                     });
                     
-                    // Log slow requests
+                    // Log slow requests (use original path and method here)
                     if response_time > Duration::from_millis(1000) {
                         warn!("Slow request: {} {} took {:?}", method, path, response_time);
                     } else {
@@ -326,9 +330,11 @@ where
                 }
                 Err(_) => {
                     // Record error
+                    let path_clone = path.clone();
+                    let method_clone = method.clone();
                     tokio::spawn(async move {
                         get_analytics_store()
-                            .record_request(path, method, 500, response_time)
+                            .record_request(path_clone, method_clone, 500, response_time)
                             .await;
                     });
                 }

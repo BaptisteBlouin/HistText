@@ -45,7 +45,7 @@ const UserRoles = React.lazy(() => import('./components/UserRoles'));
 const SolrDatabase = React.lazy(() => import('./components/SolrDatabase'));
 const SolrDatabasePermissions = React.lazy(() => import('./components/SolrDatabasePermissions'));
 const SolrDatabaseInfo = React.lazy(() => import('./components/SolrDatabaseInfo'));
-const Dashboard = React.lazy(() => import('./components/Dashboard'));
+const Dashboard = React.lazy(() => import('./components/dashboard'));
 const PrecomputeNER = React.lazy(() => import('./components/PrecomputedNER'));
 const TokenizeSolr = React.lazy(() => import('./components/TokenizeSolr'));
 const ComputeWordEmbeddings = React.lazy(() => import('./components/ComputeWordEmbeddings'));
