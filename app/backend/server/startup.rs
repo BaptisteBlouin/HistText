@@ -1,32 +1,62 @@
 //! Server startup procedures and initialization tasks.
-//!
-//! This module contains functions that are executed during server initialization
-//! to prepare resources, load data, and ensure the system is ready for operation.
-//! It handles tasks like verifying embedding files availability.
 
 use crate::config::Config;
 use crate::schema::solr_database_info::dsl as info_dsl;
 use crate::schema::solr_databases::dsl::*;
 use crate::server::error::AppError;
-use crate::services::database::DbPool;
+use crate::services::database::{DbPool, Database};
 use crate::services::solr_database::SolrDatabase;
 use crate::services::solr_database_info::SolrDatabaseInfo;
-use anyhow::Context;
+use crate::services::role_assignment::get_role_assignment_service;
+use actix_web::web::Data;
+use anyhow::{self, Context};
 use diesel::prelude::*;
 use log::{info, warn};
 
-/// Verifies and prepares embeddings for all configured collections
-///
-/// This function runs during server startup to:
-/// 1. Fetch all Solr databases from the database
-/// 2. For each database, find all collections with embeddings enabled
-/// 3. Verify that embedding files exist and are accessible
-///
-/// # Arguments
-/// * `pool` - Database connection pool
-///
-/// # Returns
-/// Result indicating success or an error wrapped in AppError
+/// Enhanced startup initialization with role setup
+pub async fn initialize_application(pool: DbPool) -> Result<(), AppError> {
+    info!("Starting application initialization...");
+
+    // Initialize embeddings (existing functionality)
+    if let Err(e) = preload_embeddings(pool.clone()).await {
+        return Err(AppError::External(anyhow::Error::msg(format!("Failed to preload embeddings: {}", e))));
+    }
+
+    // Initialize default roles
+    if let Err(e) = initialize_default_roles(pool.clone()).await {
+        return Err(AppError::External(anyhow::Error::msg(format!("Failed to initialize default roles: {}", e))));
+    }
+
+    info!("Application initialization completed successfully");
+    Ok(())
+}
+
+/// Initialize default roles and permissions
+async fn initialize_default_roles(_pool: DbPool) -> Result<(), AppError> {
+    info!("Initializing default roles and permissions...");
+
+    let db_data = Data::new(Database::new());
+    let role_service = get_role_assignment_service();
+
+    // Ensure the default role exists
+    role_service.ensure_default_role_exists(db_data.clone()).await
+        .map_err(|e| AppError::External(anyhow::Error::msg(format!("Failed to ensure default role exists: {}", e))))?;
+
+    // Check for and fix any users missing the default role
+    let missing_users = role_service.get_users_missing_default_role(db_data.clone()).await
+        .map_err(|e| AppError::External(anyhow::Error::msg(format!("Failed to get users missing default role: {}", e))))?;
+    
+    if !missing_users.is_empty() {
+        info!("Found {} activated users missing default role, assigning now...", missing_users.len());
+        role_service.batch_assign_default_role(db_data, missing_users, None).await
+            .map_err(|e| AppError::External(anyhow::Error::msg(format!("Failed to batch assign default role: {}", e))))?;
+    }
+
+    info!("Default roles initialization completed");
+    Ok(())
+}
+
+/// Verifies and prepares embeddings for all configured collections (existing function)
 pub async fn preload_embeddings(pool: DbPool) -> Result<(), AppError> {
     info!("Starting to preload embeddings on server startup...");
     let config = Config::global();

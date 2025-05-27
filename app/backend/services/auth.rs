@@ -29,6 +29,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
 use actix_web::web::Query;
+use crate::services::crud::execute_db_transaction_named;
+use crate::services::role_assignment::get_role_assignment_service;
+
 pub const COOKIE_NAME: &str = "refresh_token";
 
 /// User ID type
@@ -692,26 +695,45 @@ impl AuthHandler {
             return Err(AppError::auth(AuthErrorReason::InvalidToken, "Invalid token type"));
         }
 
-        let user = execute_db_query(db.clone(), move |conn| {
+        // Get user before activation for role assignment
+        let user_before_activation = execute_db_query(db.clone(), move |conn| {
             users_dsl::users
                 .filter(users_dsl::id.eq(token_data.claims.sub))
                 .filter(users_dsl::activated.eq(false))
                 .first::<crate::services::users::User>(conn)
         }).await?;
 
-        execute_db_query(db, move |conn| {
-            diesel::update(users_dsl::users.filter(users_dsl::id.eq(user.id)))
+        // Activate the user in a transaction
+        execute_db_transaction_named(db.clone(), move |conn| {
+            diesel::update(users_dsl::users.filter(users_dsl::id.eq(user_before_activation.id)))
                 .set(users_dsl::activated.eq(true))
                 .execute(conn)
-        }).await?;
+        }, Some("user_activation")).await?;
 
-        mailer.send_activated(&user.email);
-        info!("Account activated for user: {}", user.email);
+        // Send activation confirmation email
+        mailer.send_activated(&user_before_activation.email);
+        info!("Account activated for user: {}", user_before_activation.email);
+
+        // Automatically assign default role to newly activated user
+        let role_service = get_role_assignment_service();
+        if let Err(e) = role_service.assign_default_role_to_user(
+            db,
+            user_before_activation.id,
+            &user_before_activation.email,
+            "activation",
+            None, // No HTTP request context in this flow
+        ).await {
+            // Log error but don't fail activation
+            warn!("Failed to assign default role to user {}: {}", 
+                user_before_activation.id, e);
+        }
 
         Ok(HttpResponse::Ok().json(serde_json::json!({
             "message": "Account activated successfully!"
         })))
     }
+
+
 
     pub async fn logout(
         &self,

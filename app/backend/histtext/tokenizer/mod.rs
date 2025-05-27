@@ -13,11 +13,10 @@ pub mod utils;
 pub use handlers::{tokenize, batch_tokenize};
 
 // Re-export types
-pub use types::{TokenizeRequest, BatchTokenizeRequest, TokenizeResponse, BatchTokenizeResponse};
+pub use types::{TokenizeRequest, TokenizeResponse};
 
 // Re-export core functions for internal use
-pub use engines::{tokenize_text_fast, tokenize_text_ultra_fast, tokenize_text_with_limit, tokenize_text};
-pub use utils::batch_tokenize_parallel;
+pub use engines::tokenize_text_fast;
 
 // Re-export OpenAPI path structs for utoipa
-pub use handlers::{__path_tokenize, __path_batch_tokenize};
+pub use handlers::__path_tokenize;

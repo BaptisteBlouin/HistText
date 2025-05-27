@@ -19,6 +19,7 @@ use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 use crate::services::password::PasswordService;
 use crate::services::security_events::SecurityEventLogger;
+use crate::services::role_assignment::get_role_assignment_service;
 
 /// User account record
 ///
@@ -514,6 +515,22 @@ impl UserHandler {
         }).await?;
 
         info!("Successfully created user account: {} (ID: {})", result.email, result.id);
+
+        // If the user was created as activated, automatically assign default role
+        if result.activated {
+            let role_service = get_role_assignment_service();
+            if let Err(e) = role_service.assign_default_role_to_user(
+                db.clone(),
+                result.id,
+                &result.email,
+                "admin_creation",
+                req,
+            ).await {
+                // Log error but don't fail user creation
+                warn!("Failed to assign default role to newly created user {}: {}", 
+                    result.id, e);
+            }
+        }
 
         // Log successful user creation
         if let Err(e) = SecurityEventLogger::log_event(
@@ -1044,45 +1061,60 @@ impl UserHandler {
         req: Option<&HttpRequest>,
     ) -> AppResult<()> {
         use crate::schema::users::dsl::*;
-        
-        debug!("Activating user account: {}", user_id);
+       
+       debug!("Activating user account: {}", user_id);
 
-        // Get user info before activation
-        let user = execute_db_query(db.clone(), move |conn| {
-            users.find(user_id).first::<User>(conn)
-        }).await?;
+       // Get user info before activation
+       let user = execute_db_query(db.clone(), move |conn| {
+           users.find(user_id).first::<User>(conn)
+       }).await?;
 
-        if user.activated {
-            warn!("Attempted to activate already active user: {}", user.email);
-            return Ok(()); // Already activated, no error needed
-        }
+       if user.activated {
+           warn!("Attempted to activate already active user: {}", user.email);
+           return Ok(()); // Already activated, no error needed
+       }
 
-        let user_email = user.email.clone(); // Clone before moving
+       let user_email = user.email.clone(); // Clone before moving
 
-        // Activate the user
-        execute_db_query(db.clone(), move |conn| {
-            diesel::update(users.filter(id.eq(user_id)))
-                .set(activated.eq(true))
-                .execute(conn)
-        }).await?;
+       // Activate the user
+       execute_db_query(db.clone(), move |conn| {
+           diesel::update(users.filter(id.eq(user_id)))
+               .set(activated.eq(true))
+               .execute(conn)
+       }).await?;
 
-        info!("Successfully activated user account: {}", user_email);
+       info!("Successfully activated user account: {}", user_email);
 
-        // Log account activation
-        if let Err(e) = SecurityEventLogger::log_event(
-            db,
-            "account_activation",
-            Some(user_id),
-            Some(user_email),
-            "User account successfully activated",
-            "medium",
-            req,
-        ).await {
-            warn!("Failed to log account activation: {}", e);
-        }
+       // Automatically assign default role to newly activated user
+       let role_service = get_role_assignment_service();
+       if let Err(e) = role_service.assign_default_role_to_user(
+           db.clone(),
+           user_id,
+           &user_email,
+           "admin_activation",
+           req,
+       ).await {
+           // Log error but don't fail activation
+           warn!("Failed to assign default role to activated user {}: {}", 
+               user_id, e);
+       }
 
-        Ok(())
-    }
+       // Log account activation
+       if let Err(e) = SecurityEventLogger::log_event(
+           db,
+           "account_activation",
+           Some(user_id),
+           Some(user_email),
+           "User account successfully activated",
+           "medium",
+           req,
+       ).await {
+           warn!("Failed to log account activation: {}", e);
+       }
+
+       Ok(())
+   }
+
 
     /// Deactivate a user account with security logging
     ///
@@ -1095,52 +1127,65 @@ impl UserHandler {
     /// # Returns
     /// Result indicating success or failure
     pub async fn deactivate_user(
-        &self,
-        db: web::Data<Database>,
-        user_id: i32,
-        reason: &str,
-        req: Option<&HttpRequest>,
-    ) -> AppResult<()> {
-        use crate::schema::users::dsl::*;
-        
-        debug!("Deactivating user account: {} (reason: {})", user_id, reason);
+       &self,
+       db: web::Data<Database>,
+       user_id: i32,
+       reason: &str,
+       req: Option<&HttpRequest>,
+   ) -> AppResult<()> {
+       use crate::schema::users::dsl::*;
+       
+       debug!("Deactivating user account: {} (reason: {})", user_id, reason);
 
-        // Get user info before deactivation
-        let user = execute_db_query(db.clone(), move |conn| {
-            users.find(user_id).first::<User>(conn)
-        }).await?;
+       // Get user info before deactivation
+       let user = execute_db_query(db.clone(), move |conn| {
+           users.find(user_id).first::<User>(conn)
+       }).await?;
 
-        if !user.activated {
-            warn!("Attempted to deactivate already inactive user: {}", user.email);
-            return Ok(()); // Already deactivated, no error needed
-        }
+       if !user.activated {
+           warn!("Attempted to deactivate already inactive user: {}", user.email);
+           return Ok(()); // Already deactivated, no error needed
+       }
 
-        let user_email = user.email.clone(); // Clone before moving
+       let user_email = user.email.clone(); // Clone before moving
 
-        // Deactivate the user
-        execute_db_query(db.clone(), move |conn| {
-            diesel::update(users.filter(id.eq(user_id)))
-                .set(activated.eq(false))
-                .execute(conn)
-        }).await?;
+       // Deactivate the user
+       execute_db_query(db.clone(), move |conn| {
+           diesel::update(users.filter(id.eq(user_id)))
+               .set(activated.eq(false))
+               .execute(conn)
+       }).await?;
 
-        info!("Successfully deactivated user account: {} (reason: {})", user_email, reason);
+       info!("Successfully deactivated user account: {} (reason: {})", user_email, reason);
 
-        // Log account deactivation
-        if let Err(e) = SecurityEventLogger::log_event(
-            db,
-            "account_deactivation",
-            Some(user_id),
-            Some(user_email),
-            &format!("User account deactivated: {}", reason),
-            "high",
-            req,
-        ).await {
-            warn!("Failed to log account deactivation: {}", e);
-        }
+       // Optionally remove default role (you can choose whether to do this)
+       let role_service = get_role_assignment_service();
+       if let Err(e) = role_service.remove_default_role_from_user(
+           db.clone(),
+           user_id,
+           &user_email,
+           req,
+       ).await {
+           // Log error but don't fail deactivation
+           warn!("Failed to remove default role from deactivated user {}: {}", 
+               user_id, e);
+       }
 
-        Ok(())
-    }
+       // Log account deactivation
+       if let Err(e) = SecurityEventLogger::log_event(
+           db,
+           "account_deactivation",
+           Some(user_id),
+           Some(user_email),
+           &format!("User account deactivated: {}", reason),
+           "high",
+           req,
+       ).await {
+           warn!("Failed to log account deactivation: {}", e);
+       }
+
+       Ok(())
+   }
 
     /// Lock a user account due to suspicious activity
     ///

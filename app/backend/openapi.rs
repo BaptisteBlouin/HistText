@@ -73,6 +73,10 @@ impl Modify for SecurityAddon {
         crate::services::role_permissions::get_role_permission_by_role_and_permission,
         crate::services::role_permissions::create_role_permission,
         crate::services::role_permissions::delete_role_permission,
+        crate::services::role_management::get_role_assignment_stats,
+        crate::services::role_management::fix_missing_role_assignments,
+        crate::services::role_management::assign_roles_to_users,
+        crate::services::role_management::get_users_missing_default_role,
     ),
     components(schemas(
         crate::services::users::User,
@@ -84,6 +88,9 @@ impl Modify for SecurityAddon {
         crate::services::user_permissions::NewUserPermission,
         crate::services::role_permissions::RolePermission,
         crate::services::role_permissions::NewRolePermission,
+        crate::services::role_management::RoleAssignmentStats,
+        crate::services::role_management::BatchRoleAssignmentRequest,
+        crate::services::role_management::BatchRoleAssignmentResponse,
     )),
     modifiers(&SecurityAddon),
     security(

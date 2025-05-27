@@ -30,6 +30,13 @@ async fn main() -> std::io::Result<()> {
         std::process::exit(1);
     }
 
+    // Initialize application components including roles
+    let db_pool = services::database::Database::new().pool.clone();
+    if let Err(e) = server::startup::initialize_application(db_pool).await {
+        eprintln!("Failed to initialize application: {}", e);
+        std::process::exit(1);
+    }
+
     let result = server::run_server().await;
 
     histtext::embeddings::shutdown_embedding_system().await;

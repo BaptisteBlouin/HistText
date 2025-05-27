@@ -28,6 +28,8 @@ use crate::services::user_permissions::*;
 use crate::services::user_roles::*;
 use crate::services::users::*;
 
+use crate::services::role_management;
+
 use crate::server::ssh::connect_solr_database_ssh;
 
 use crate::config::Config;
@@ -67,6 +69,29 @@ async fn basic_validator(
     }
 }
 
+fn configure_admin_routes(api_scope: Scope) -> Scope {
+    api_scope.service(
+        web::scope("/admin")
+            .guard(guard::fn_guard(has_permission)) // Require admin permission
+            .service(
+                web::resource("/role-assignment-stats")
+                    .route(web::get().to(role_management::get_role_assignment_stats))
+            )
+            .service(
+                web::resource("/fix-missing-roles")
+                    .route(web::post().to(role_management::fix_missing_role_assignments))
+            )
+            .service(
+                web::resource("/assign-roles")
+                    .route(web::post().to(role_management::assign_roles_to_users))
+            )
+            .service(
+                web::resource("/users-missing-roles")
+                    .route(web::get().to(role_management::get_users_missing_default_role))
+            )
+    )
+}
+
 /// Sets up all API routes for the application
 pub fn configure_routes(
     config: &mut ServiceConfig,
@@ -89,6 +114,8 @@ pub fn configure_routes(
 
     // Initialize API scope
     let mut api_scope = web::scope("/api");
+
+    api_scope = configure_admin_routes(api_scope);
 
     // Configure auth routes
     api_scope = api_scope.service(

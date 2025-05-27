@@ -5,6 +5,8 @@ pub mod database;
 pub mod error;
 pub mod mailer;
 pub mod role_permissions;
+pub mod role_assignment;
+pub mod role_management;
 pub mod solr_database;
 pub mod solr_database_info;
 pub mod solr_database_permissions;
