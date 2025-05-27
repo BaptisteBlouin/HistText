@@ -335,18 +335,25 @@ fn configure_user_routes(api_scope: Scope) -> Scope {
                 .route(web::get().to(get_users))
                 .route(web::post().to(create_user))
         )
-        // Routes that allow admin access OR user accessing their own resource
+        // Routes that allow admin access OR user accessing their own resource for GET/PUT
+        // But DELETE requires admin permission only
         .service(
             web::resource("/users/{id}")
-                .guard(guard::fn_guard(can_access_user_resource))
-                .route(web::get().to(get_user_by_id))
-                .route(web::put().to(update_user))
-        )
-        // Admin-only delete (users shouldn't be able to delete themselves via API)
-        .service(
-            web::resource("/users/{id}/delete")
-                .guard(guard::fn_guard(has_permission))
-                .route(web::delete().to(delete_user))
+                .route(
+                    web::get()
+                        .guard(guard::fn_guard(can_access_user_resource))
+                        .to(get_user_by_id)
+                )
+                .route(
+                    web::put()
+                        .guard(guard::fn_guard(can_access_user_resource))
+                        .to(update_user)
+                )
+                .route(
+                    web::delete()
+                        .guard(guard::fn_guard(has_permission))  // Admin-only for DELETE
+                        .to(delete_user)
+                )
         )
 }
 

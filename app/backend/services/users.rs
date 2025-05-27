@@ -14,7 +14,7 @@ use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::schema::users;
-use crate::services::crud::execute_db_query;
+use crate::services::crud::{execute_db_query, execute_db_transaction_named};
 use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
 use crate::services::password::PasswordService;
@@ -711,19 +711,19 @@ impl UserHandler {
     ///
     /// # Returns
     /// HTTP response indicating success or not found
+    /// Deletes a user account with security logging
     pub async fn delete(
         &self,
         db: web::Data<Database>,
         path: web::Path<i32>,
         req: Option<&HttpRequest>,
     ) -> AppResult<HttpResponse> {
-        use crate::schema::users::dsl::*;
-        
         let user_id = path.into_inner();
         debug!("Deleting user account with ID: {}", user_id);
 
         // First get the user to log the deletion
         let user_to_delete = execute_db_query(db.clone(), move |conn| {
+            use crate::schema::users::dsl::*;
             users.find(user_id).first::<User>(conn).optional()
         }).await?;
 
@@ -733,16 +733,51 @@ impl UserHandler {
         }
 
         let user = user_to_delete.unwrap();
-        let user_email = user.email.clone(); // Clone email before user is moved
+        let user_email = user.email.clone();
 
-        let deleted_count = execute_db_query(db.clone(), move |conn| {
-            diesel::delete(users.filter(id.eq(user_id))).execute(conn)
-        }).await?;
-        
-        if deleted_count == 0 {
-            debug!("No user found with ID: {}", user_id);
-            return Err(AppError::not_found("User", Some(user_id.to_string())));
-        }
+        // Delete related records in a transaction
+        execute_db_transaction_named(db.clone(), move |conn| {
+            // Delete user sessions
+            diesel::delete(
+                crate::schema::user_sessions::dsl::user_sessions
+                    .filter(crate::schema::user_sessions::dsl::user_id.eq(user_id))
+            ).execute(conn)?;
+
+            // Delete user roles
+            diesel::delete(
+                crate::schema::user_roles::dsl::user_roles
+                    .filter(crate::schema::user_roles::dsl::user_id.eq(user_id))
+            ).execute(conn)?;
+
+            // Delete user permissions
+            diesel::delete(
+                crate::schema::user_permissions::dsl::user_permissions
+                    .filter(crate::schema::user_permissions::dsl::user_id.eq(user_id))
+            ).execute(conn)?;
+
+            // Delete OAuth links
+            diesel::delete(
+                crate::schema::user_oauth2_links::dsl::user_oauth2_links
+                    .filter(crate::schema::user_oauth2_links::dsl::user_id.eq(user_id))
+            ).execute(conn)?;
+
+            // Note: Don't delete security_events as they're audit logs
+            // Just nullify the user_id instead
+            diesel::update(
+                crate::schema::security_events::dsl::security_events
+                    .filter(crate::schema::security_events::dsl::user_id.eq(user_id))
+            )
+            .set(crate::schema::security_events::dsl::user_id.eq(None::<i32>))
+            .execute(conn)?;
+
+            // Finally delete the user
+            diesel::delete(
+                crate::schema::users::dsl::users
+                    .filter(crate::schema::users::dsl::id.eq(user_id))
+            ).execute(conn)?;
+
+            Ok::<(), diesel::result::Error>(())
+        }, Some("delete_user_cascade")).await?;
 
         info!("Successfully deleted user account: {} (ID: {})", user_email, user.id);
 
@@ -750,7 +785,7 @@ impl UserHandler {
         if let Err(e) = SecurityEventLogger::log_event(
             db,
             "user_deletion",
-            Some(user.id),
+            None, // Don't use user.id since user is deleted
             Some(user_email.clone()),
             &format!("Administrator deleted user account: {} ({})", 
                 user_email, 
