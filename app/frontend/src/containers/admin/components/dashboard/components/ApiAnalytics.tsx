@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// app/frontend/src/containers/admin/components/dashboard/components/ApiAnalytics.tsx
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -17,28 +18,105 @@ import {
   TableCell,
   TableBody,
   Chip,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   Analytics,
   ExpandMore,
   ExpandLess,
+  Refresh,
+  TrendingUp,
+  TrendingDown,
+  Timeline,
 } from '@mui/icons-material';
+import { useAuth } from '../../../../../hooks/useAuth';
 import { RequestAnalytics } from '../types';
 import { formatNumber } from '../utils/formatters';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface ApiAnalyticsProps {
-  analytics: RequestAnalytics | null;
-  loading: boolean;
-  onToggle: () => void;
-  isVisible: boolean;
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+  onToggle?: () => void;
+  isVisible?: boolean;
 }
 
 export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
-  analytics,
-  loading,
+  autoRefresh = false,
+  refreshInterval = 60000,
   onToggle,
-  isVisible,
+  isVisible: propIsVisible,
 }) => {
+  const { accessToken } = useAuth();
+  const [internalIsVisible, setInternalIsVisible] = useState(false);
+  const [previousData, setPreviousData] = useState<RequestAnalytics | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Use prop visibility if provided, otherwise use internal state
+  const isVisible = propIsVisible !== undefined ? propIsVisible : internalIsVisible;
+
+  const {
+    analytics,
+    analyticsLoading,
+    fetchAnalytics,
+  } = useAnalytics(accessToken, isVisible); // Fixed: provide both arguments
+
+  // Auto-refresh logic
+  useEffect(() => {
+    if (autoRefresh && isVisible && !analyticsLoading) {
+      intervalRef.current = setInterval(() => {
+        fetchAnalytics();
+      }, refreshInterval);
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
+    }
+  }, [autoRefresh, isVisible, analyticsLoading, refreshInterval, fetchAnalytics]);
+
+  // Track changes for trend indicators
+  useEffect(() => {
+    if (analytics && previousData) {
+      // You can add notification logic here for significant changes
+    }
+    if (analytics) {
+      setPreviousData(analytics);
+    }
+  }, [analytics, previousData]);
+
+  const getTrendIndicator = (current: number, previous: number) => {
+    if (!previous) return null;
+    const change = ((current - previous) / previous) * 100;
+    
+    if (Math.abs(change) < 5) return null; // No significant change
+    
+    return (
+      <Chip
+        icon={change > 0 ? <TrendingUp /> : <TrendingDown />}
+        label={`${change > 0 ? '+' : ''}${change.toFixed(1)}%`}
+        color={change > 0 ? 'success' : 'error'}
+        size="small"
+        variant="outlined"
+      />
+    );
+  };
+
+  const handleToggle = () => {
+    if (onToggle) {
+      onToggle();
+    } else {
+      const newVisible = !internalIsVisible;
+      setInternalIsVisible(newVisible);
+      
+      if (newVisible && !analytics) {
+        fetchAnalytics();
+      }
+    }
+  };
+
   return (
     <Card sx={{ mb: 4 }}>
       <CardContent>
@@ -46,25 +124,45 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
           <Typography variant="h5" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
             <Analytics />
             API Usage Analytics
+            {autoRefresh && isVisible && (
+              <Chip 
+                icon={<Timeline />}
+                label="Live"
+                color="success"
+                size="small"
+              />
+            )}
           </Typography>
-          <Button
-            variant="outlined"
-            onClick={onToggle}
-            endIcon={isVisible ? <ExpandLess /> : <ExpandMore />}
-            size="small"
-          >
-            {isVisible ? 'Hide Analytics' : 'Show Analytics'}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Tooltip title="Refresh Analytics">
+              <IconButton onClick={fetchAnalytics} disabled={analyticsLoading}>
+                <Refresh />
+              </IconButton>
+            </Tooltip>
+            <Button
+              variant="outlined"
+              onClick={handleToggle}
+              endIcon={isVisible ? <ExpandLess /> : <ExpandMore />}
+              size="small"
+            >
+              {isVisible ? 'Hide Analytics' : 'Show Analytics'}
+            </Button>
+          </Stack>
         </Box>
 
         <Collapse in={isVisible}>
-          {loading ? (
-            <LinearProgress sx={{ my: 2 }} />
+          {analyticsLoading ? (
+            <Box>
+              <LinearProgress sx={{ my: 2 }} />
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                Loading API analytics...
+              </Typography>
+            </Box>
           ) : !analytics ? (
             <Alert severity="info">No analytics data available</Alert>
           ) : (
             <Stack spacing={3}>
-              {/* Overall API Stats */}
+              {/* Overall API Stats with Trends */}
               <Box>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                   24-Hour Overview
@@ -74,12 +172,20 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                     <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'primary.light', color: 'primary.contrastText' }}>
                       <Typography variant="h6">{formatNumber(analytics.total_requests_24h)}</Typography>
                       <Typography variant="body2">Total Requests</Typography>
+                      {previousData && getTrendIndicator(
+                        analytics.total_requests_24h, 
+                        previousData.total_requests_24h
+                      )}
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
                     <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'success.light', color: 'success.contrastText' }}>
                       <Typography variant="h6">{analytics.average_response_time_ms.toFixed(1)} ms</Typography>
                       <Typography variant="body2">Avg Response Time</Typography>
+                      {previousData && getTrendIndicator(
+                        analytics.average_response_time_ms, 
+                        previousData.average_response_time_ms
+                      )}
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -91,6 +197,10 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                     }}>
                       <Typography variant="h6">{analytics.error_rate_percent.toFixed(1)}%</Typography>
                       <Typography variant="body2">Error Rate</Typography>
+                      {previousData && getTrendIndicator(
+                        analytics.error_rate_percent, 
+                        previousData.error_rate_percent
+                      )}
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -102,7 +212,7 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                 </Grid>
               </Box>
 
-              {/* Top Endpoints by Usage */}
+              {/* Most Used Endpoints */}
               <Box>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                   Most Used Endpoints
@@ -195,6 +305,7 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
 
               <Typography variant="caption" display="block" sx={{ textAlign: 'center', color: 'text.secondary' }}>
                 Last updated: {new Date(analytics.last_updated * 1000).toLocaleString()}
+                {autoRefresh && ` • Auto-refresh: ${refreshInterval / 1000}s`}
               </Typography>
             </Stack>
           )}
@@ -203,3 +314,5 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
     </Card>
   );
 };
+
+export default ApiAnalytics;

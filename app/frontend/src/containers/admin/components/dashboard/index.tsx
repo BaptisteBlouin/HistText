@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// app/frontend/src/containers/admin/components/dashboard/index.tsx
+import React, { useState, useCallback, Suspense } from 'react';
 import { 
   Box, 
   Grid, 
@@ -12,6 +13,10 @@ import {
   Alert,
   useTheme,
   useMediaQuery,
+  Switch,
+  FormControlLabel,
+  Chip,
+  Stack,
 } from '@mui/material';
 import {
   People,
@@ -25,25 +30,25 @@ import {
   PersonAdd,
   Psychology,
   Security,
+  AutorenewOutlined,
 } from '@mui/icons-material';
 import { useAuth, useAuthCheck } from '../../../../hooks/useAuth';
 
-// Import components
+// Import components directly instead of lazy loading for now
 import { LoadingWrapper } from './components/LoadingStates';
 import { StatCard } from './components/StatCard';
 import { SolrDatabaseStatus } from './components/SolrDatabaseStatus';
 import { ApiAnalytics } from './components/ApiAnalytics';
 import { EmbeddingCacheManagement } from './components/EmbeddingCacheManagement';
+import { UserActivityMonitoring } from './components/UserActivityMonitoring';
 
-// Import hooks
+// Hooks
 import { useDashboardData } from './hooks/useDashboardData';
 import { useAnalytics } from './hooks/useAnalytics';
-
-// Import utilities
-import { formatNumber } from './utils/formatters';
-
-import { UserActivityMonitoring } from './components/UserActivityMonitoring';
 import { useUserActivity } from './hooks/useUserActivity';
+
+// Utilities
+import { formatNumber } from './utils/formatters';
 
 const Dashboard: React.FC = () => {
   useAuthCheck();
@@ -56,10 +61,10 @@ const Dashboard: React.FC = () => {
   const [showEmbeddingDetails, setShowEmbeddingDetails] = useState<boolean>(false);
   const [showAdvancedStats, setShowAdvancedStats] = useState<boolean>(false);
   const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
-
   const [showUserActivity, setShowUserActivity] = useState<boolean>(false);
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
 
-  // Custom hooks for data fetching
+  // Main dashboard data hook
   const {
     comprehensiveStats,
     legacyStats,
@@ -76,15 +81,51 @@ const Dashboard: React.FC = () => {
     resetMetrics,
   } = useDashboardData(accessToken);
 
+  // Other data hooks
   const {
     analytics,
     analyticsLoading,
+    fetchAnalytics,
   } = useAnalytics(accessToken, showAnalytics);
 
   const {
     userActivity,
     userActivityLoading,
+    fetchUserActivity,
   } = useUserActivity(accessToken, showUserActivity);
+
+  // Refresh all data
+  const refreshAll = useCallback(async () => {
+    const promises = [
+      fetchComprehensiveStats(),
+    ];
+
+    if (showAnalytics) {
+      promises.push(fetchAnalytics());
+    }
+    if (showUserActivity) {
+      promises.push(fetchUserActivity());
+    }
+    if (showEmbeddingDetails) {
+      promises.push(fetchEmbeddingDetails());
+    }
+    if (showAdvancedStats) {
+      promises.push(fetchAdvancedStats());
+    }
+
+    await Promise.allSettled(promises);
+  }, [
+    fetchComprehensiveStats,
+    fetchAnalytics,
+    fetchUserActivity,
+    fetchEmbeddingDetails,
+    fetchAdvancedStats,
+    showAnalytics,
+    showUserActivity,
+    showEmbeddingDetails,
+    showAdvancedStats,
+  ]);
+
   // Auth checks
   if (!session) {
     return (
@@ -124,7 +165,8 @@ const Dashboard: React.FC = () => {
     >
       <Fade in={true} timeout={600}>
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          {/* Header with Controls */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
             <Box>
               <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Assessment color="primary" />
@@ -134,11 +176,37 @@ const Dashboard: React.FC = () => {
                 Monitor system performance and resource usage
               </Typography>
             </Box>
-            <Tooltip title="Refresh Data">
-              <IconButton onClick={fetchComprehensiveStats} color="primary">
-                <Refresh />
-              </IconButton>
-            </Tooltip>
+            
+            {/* Controls */}
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+              {/* Auto-refresh Toggle */}
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    size="small"
+                  />
+                }
+                label="Auto Refresh"
+              />
+
+              {autoRefresh && (
+                <Chip 
+                  icon={<AutorenewOutlined />}
+                  label="Live"
+                  color="success"
+                  size="small"
+                />
+              )}
+
+              {/* Refresh All */}
+              <Tooltip title="Refresh All Data">
+                <IconButton onClick={refreshAll} color="primary">
+                  <Refresh />
+                </IconButton>
+              </Tooltip>
+            </Stack>
           </Box>
 
           {stats && (
@@ -166,7 +234,7 @@ const Dashboard: React.FC = () => {
                   <StatCard
                     icon={<Description />}
                     title="Documents"
-                    value={formatNumber(comprehensiveStats ? comprehensiveStats.total_documents : stats.total_docs)}
+                    value={formatNumber(comprehensiveStats ? comprehensiveStats.total_documents : (stats as any).total_docs)}
                     subtitle={comprehensiveStats ? "Real-time count" : "From cache"}
                     color="success"
                   />
@@ -180,7 +248,7 @@ const Dashboard: React.FC = () => {
                   />
                 </Grid>
                 
-                {/* Additional stats if comprehensive data is available */}
+                {/* Additional comprehensive stats */}
                 {comprehensiveStats && (
                   <>
                     <Grid item xs={12} sm={6} md={3}>
@@ -236,12 +304,13 @@ const Dashboard: React.FC = () => {
                 isVisible={showAnalytics}
               />
 
-                <UserActivityMonitoring
+              {/* User Activity Monitoring */}
+              <UserActivityMonitoring
                 userActivity={userActivity}
                 loading={userActivityLoading}
                 onToggle={() => setShowUserActivity(!showUserActivity)}
                 isVisible={showUserActivity}
-                />
+              />
 
               {/* Embedding Cache Management */}
               <EmbeddingCacheManagement
@@ -267,7 +336,7 @@ const Dashboard: React.FC = () => {
                 onResetMetrics={resetMetrics}
               />
 
-              {/* Show fallback message if using legacy stats */}
+              {/* Fallback message */}
               {!comprehensiveStats && legacyStats && (
                 <Alert severity="info" sx={{ mb: 4 }}>
                   Using basic statistics. Some advanced features may not be available. 
