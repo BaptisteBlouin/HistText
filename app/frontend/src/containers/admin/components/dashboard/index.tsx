@@ -89,6 +89,8 @@ const Dashboard: React.FC = () => {
     detailsLoading,
     advancedLoading,
     error,
+    lastUpdated,
+    isDataFresh,
     fetchComprehensiveStats,
     fetchEmbeddingDetails,
     fetchAdvancedStats,
@@ -109,22 +111,11 @@ const Dashboard: React.FC = () => {
     fetchUserActivity,
   } = useUserActivity(accessToken, showUserActivity);
 
-  // Auto refresh effect
-  useEffect(() => {
-    if (!autoRefresh) return;
-    
-    const interval = setInterval(() => {
-      refreshAll();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [autoRefresh]);
-
   // Refresh all data
-  const refreshAll = useCallback(async () => {
+  const refreshAll = useCallback(async (force: boolean = false): Promise<void> => {
     setLastRefresh(new Date());
-    const promises = [
-      fetchComprehensiveStats(),
+    const promises: Promise<void>[] = [
+      fetchComprehensiveStats({ force }),
     ];
 
     if (showAnalytics) {
@@ -134,10 +125,10 @@ const Dashboard: React.FC = () => {
       promises.push(fetchUserActivity());
     }
     if (showEmbeddingDetails) {
-      promises.push(fetchEmbeddingDetails());
+      promises.push(fetchEmbeddingDetails({ force }));
     }
     if (showAdvancedStats) {
-      promises.push(fetchAdvancedStats());
+      promises.push(fetchAdvancedStats({ force }));
     }
 
     await Promise.allSettled(promises);
@@ -153,9 +144,36 @@ const Dashboard: React.FC = () => {
     showAdvancedStats,
   ]);
 
+  // Auto refresh effect - only refresh if data is stale
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      // Only auto-refresh if data is stale
+      if (!isDataFresh) {
+        refreshAll(false); // Don't force, respect cache
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, isDataFresh, refreshAll]);
+
   // Calculate additional metrics
   const getSystemMetrics = () => {
-    if (!stats) return {};
+    if (!stats) return {
+      dbOnlineCount: 0,
+      dbTotalCount: 0,
+      dbUptime: 100,
+      avgResponseTime: 0,
+      errorRate: 0,
+      totalRequests: 0,
+      activeEndpoints: 0,
+      docsPerCollection: 0,
+      userEngagement: 0,
+      systemLoad: 0,
+      totalDocs: 0,
+      totalCollections: 0,
+    };
     
     const dbOnlineCount = comprehensiveStats?.solr_databases.filter(db => db.status === 'online').length || 0;
     const dbTotalCount = comprehensiveStats?.solr_databases.length || 0;
@@ -164,7 +182,7 @@ const Dashboard: React.FC = () => {
     const totalRequests = analytics?.total_requests_24h || 0;
     const activeEndpoints = analytics ? Object.keys(analytics.endpoint_stats).length : 0;
     
-    // Fix: Calculate documents per collection correctly using actual collection data
+    // Calculate documents per collection correctly using actual collection data
     let totalDocs = 0;
     let totalCollections = 0;
     let docsPerCollection = 0;
@@ -204,7 +222,7 @@ const Dashboard: React.FC = () => {
       activeEndpoints,
       docsPerCollection,
       userEngagement,
-      systemLoad: Math.min(100, (totalRequests / 10000) * 100),
+      systemLoad: Math.min(100, (totalRequests / 10000) * 100), // Simulate system load
       totalDocs,
       totalCollections,
     };
@@ -244,9 +262,9 @@ const Dashboard: React.FC = () => {
 
   return (
     <LoadingWrapper
-      loading={loading}
+      loading={loading && !stats}
       error={!stats ? error : null}
-      onRetry={fetchComprehensiveStats}
+      onRetry={() => fetchComprehensiveStats({ force: true })}
     >
       <Fade in={true} timeout={600}>
         <Box>
@@ -263,8 +281,13 @@ const Dashboard: React.FC = () => {
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                 <Chip 
                   icon={<Schedule />} 
-                  label={`Updated: ${lastRefresh.toLocaleTimeString()}`} 
+                  label={lastUpdated ? `Updated: ${lastUpdated.toLocaleTimeString()}` : 'Never updated'} 
                   variant="outlined" 
+                  size="small" 
+                />
+                <Chip 
+                  label={isDataFresh ? "Data Fresh" : "Data Stale"} 
+                  color={isDataFresh ? "success" : "warning"}
                   size="small" 
                 />
                 {autoRefresh && (
@@ -290,8 +313,11 @@ const Dashboard: React.FC = () => {
                 }
                 label="Auto Refresh"
               />
-              <Tooltip title="Refresh All Data">
-                <IconButton onClick={refreshAll} color="primary">
+              <Tooltip title={isDataFresh ? "Force Refresh" : "Refresh Stale Data"}>
+                <IconButton 
+                  onClick={() => refreshAll(true)} 
+                  color="primary"
+                >
                   <Refresh />
                 </IconButton>
               </Tooltip>
@@ -300,7 +326,7 @@ const Dashboard: React.FC = () => {
 
           {stats && (
             <>
-              {/* Main Stats Grid - More comprehensive */}
+              {/* Main Stats Grid */}
               <Grid container spacing={3} sx={{ mb: 4 }}>
                 {/* Row 1: Core System Stats */}
                 <Grid item xs={12} sm={6} md={3}>
@@ -310,6 +336,7 @@ const Dashboard: React.FC = () => {
                     value={formatNumber(stats.total_users)}
                     subtitle="Registered in system"
                     color="primary"
+                    loading={loading}
                   />
                 </Grid>
 
@@ -320,6 +347,7 @@ const Dashboard: React.FC = () => {
                     value={formatNumber(stats.total_collections)}
                     subtitle={`${stats.active_collections} active`}
                     color="secondary"
+                    loading={loading}
                   />
                 </Grid>
 
@@ -334,6 +362,7 @@ const Dashboard: React.FC = () => {
                         : "No collections"
                     }
                     color="success"
+                    loading={loading}
                   />
                 </Grid>
 
@@ -344,6 +373,7 @@ const Dashboard: React.FC = () => {
                     value={`${metrics.dbOnlineCount}/${metrics.dbTotalCount}`}
                     subtitle={`${metrics.dbUptime.toFixed(1)}% uptime`}
                     color={metrics.dbUptime === 100 ? 'success' : metrics.dbUptime > 80 ? 'warning' : 'error'}
+                    loading={loading}
                   />
                 </Grid>
 
@@ -406,144 +436,144 @@ const Dashboard: React.FC = () => {
                     </Grid>
 
                     <Grid item xs={12} sm={6} md={3}>
-                      <StatCard
-                        icon={<PersonAdd />}
-                        title="New Registrations"
-                        value={formatNumber(comprehensiveStats.recent_registrations_24h)}
-                        subtitle="Last 24 hours"
-                        color="success"
-                      />
-                    </Grid>
+                     <StatCard
+                       icon={<PersonAdd />}
+                       title="New Registrations"
+                       value={formatNumber(comprehensiveStats.recent_registrations_24h)}
+                       subtitle="Last 24 hours"
+                       color="success"
+                     />
+                   </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
-                      <StatCard
-                        icon={<Memory />}
-                        title="Cache Memory"
-                        value={`${comprehensiveStats.embedding_summary.memory_usage_mb.toFixed(1)}MB`}
-                        subtitle={`${comprehensiveStats.embedding_summary.memory_usage_percent.toFixed(1)}% used`}
-                        color={comprehensiveStats.embedding_summary.memory_usage_percent > 80 ? 'error' : comprehensiveStats.embedding_summary.memory_usage_percent > 60 ? 'warning' : 'success'}
-                      />
-                    </Grid>
+                   <Grid item xs={12} sm={6} md={3}>
+                     <StatCard
+                       icon={<Memory />}
+                       title="Cache Memory"
+                       value={`${comprehensiveStats.embedding_summary.memory_usage_mb.toFixed(1)}MB`}
+                       subtitle={`${comprehensiveStats.embedding_summary.memory_usage_percent.toFixed(1)}% used`}
+                       color={comprehensiveStats.embedding_summary.memory_usage_percent > 80 ? 'error' : comprehensiveStats.embedding_summary.memory_usage_percent > 60 ? 'warning' : 'success'}
+                     />
+                   </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
-                      <StatCard
-                        icon={<Psychology />}
-                        title="AI Embeddings"
-                        value={formatNumber(comprehensiveStats.embedding_summary.total_cached_embeddings)}
-                        subtitle={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}% cache hit rate`}
-                        color="primary"
-                      />
-                    </Grid>
+                   <Grid item xs={12} sm={6} md={3}>
+                     <StatCard
+                       icon={<Psychology />}
+                       title="AI Embeddings"
+                       value={formatNumber(comprehensiveStats.embedding_summary.total_cached_embeddings)}
+                       subtitle={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}% cache hit rate`}
+                       color="primary"
+                     />
+                   </Grid>
 
-                    {/* Row 4: System Health & Performance */}
-                    <Grid item xs={12} sm={6} md={3}>
-                      <StatCard
-                        icon={<Computer />}
-                        title="System Load"
-                        value={`${metrics.systemLoad.toFixed(1)}%`}
-                        subtitle="Estimated load based on requests"
-                        color={metrics.systemLoad > 80 ? 'error' : metrics.systemLoad > 60 ? 'warning' : 'success'}
-                      />
-                    </Grid>
+                   {/* Row 4: System Health & Performance */}
+                   <Grid item xs={12} sm={6} md={3}>
+                     <StatCard
+                       icon={<Computer />}
+                       title="System Load"
+                       value={`${metrics.systemLoad.toFixed(1)}%`}
+                       subtitle="Estimated load based on requests"
+                       color={metrics.systemLoad > 80 ? 'error' : metrics.systemLoad > 60 ? 'warning' : 'success'}
+                     />
+                   </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
-                      <StatCard
-                        icon={<DataUsage />}
-                        title="Cache Efficiency"
-                        value={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}%`}
-                        subtitle={`${comprehensiveStats.embedding_summary.cached_collections} collections cached`}
-                        color={comprehensiveStats.embedding_summary.cache_hit_ratio > 80 ? 'success' : comprehensiveStats.embedding_summary.cache_hit_ratio > 60 ? 'warning' : 'error'}
-                      />
-                    </Grid>
+                   <Grid item xs={12} sm={6} md={3}>
+                     <StatCard
+                       icon={<DataUsage />}
+                       title="Cache Efficiency"
+                       value={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}%`}
+                       subtitle={`${comprehensiveStats.embedding_summary.cached_collections} collections cached`}
+                       color={comprehensiveStats.embedding_summary.cache_hit_ratio > 80 ? 'success' : comprehensiveStats.embedding_summary.cache_hit_ratio > 60 ? 'warning' : 'error'}
+                     />
+                   </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
-                      <StatCard
-                        icon={<Timeline />}
-                        title="Data Growth"
-                        value={`${(comprehensiveStats.total_documents / 1000).toFixed(1)}K`}
-                        subtitle="Total indexed documents"
-                        color="info"
-                      />
-                    </Grid>
+                   <Grid item xs={12} sm={6} md={3}>
+                     <StatCard
+                       icon={<Timeline />}
+                       title="Data Growth"
+                       value={`${(comprehensiveStats.total_documents / 1000).toFixed(1)}K`}
+                       subtitle="Total indexed documents"
+                       color="info"
+                     />
+                   </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
-                      <StatCard
-                        icon={<CheckCircle />}
-                        title="System Health"
-                        value={metrics.dbUptime === 100 && metrics.errorRate < 1 ? "Excellent" : metrics.dbUptime > 95 && metrics.errorRate < 5 ? "Good" : "Needs Attention"}
-                        subtitle="Overall system status"
-                        color={metrics.dbUptime === 100 && metrics.errorRate < 1 ? 'success' : metrics.dbUptime > 95 && metrics.errorRate < 5 ? 'warning' : 'error'}
-                      />
-                    </Grid>
-                  </>
-                )}
-              </Grid>
+                   <Grid item xs={12} sm={6} md={3}>
+                     <StatCard
+                       icon={<CheckCircle />}
+                       title="System Health"
+                       value={metrics.dbUptime === 100 && metrics.errorRate < 1 ? "Excellent" : metrics.dbUptime > 95 && metrics.errorRate < 5 ? "Good" : "Needs Attention"}
+                       subtitle="Overall system status"
+                       color={metrics.dbUptime === 100 && metrics.errorRate < 1 ? 'success' : metrics.dbUptime > 95 && metrics.errorRate < 5 ? 'warning' : 'error'}
+                     />
+                   </Grid>
+                 </>
+               )}
+             </Grid>
 
-              <Divider sx={{ my: 4 }} />
+             <Divider sx={{ my: 4 }} />
 
-              {/* Detailed Component Sections */}
-              {comprehensiveStats && (
-                <SolrDatabaseStatus comprehensiveStats={comprehensiveStats} />
-              )}
+             {/* Detailed Component Sections */}
+             {comprehensiveStats && (
+               <SolrDatabaseStatus comprehensiveStats={comprehensiveStats} />
+             )}
 
-              <ApiAnalytics
-                analytics={analytics}
-                loading={analyticsLoading}
-                onToggle={() => setShowAnalytics(!showAnalytics)}
-                isVisible={showAnalytics}
-              />
+             <ApiAnalytics
+               analytics={analytics}
+               loading={analyticsLoading}
+               onToggle={() => setShowAnalytics(!showAnalytics)}
+               isVisible={showAnalytics}
+             />
 
-              <UserActivityMonitoring
-                userActivity={userActivity}
-                loading={userActivityLoading}
-                onToggle={() => setShowUserActivity(!showUserActivity)}
-                isVisible={showUserActivity}
-              />
+             <UserActivityMonitoring
+               userActivity={userActivity}
+               loading={userActivityLoading}
+               onToggle={() => setShowUserActivity(!showUserActivity)}
+               isVisible={showUserActivity}
+             />
 
-              <EmbeddingCacheManagement
-                embeddingDetails={embeddingDetails}
-                advancedStats={advancedStats}
-                detailsLoading={detailsLoading}
-                advancedLoading={advancedLoading}
-                showEmbeddingDetails={showEmbeddingDetails}
-                showAdvancedStats={showAdvancedStats}
-                onToggleEmbeddingDetails={() => {
-                  setShowEmbeddingDetails(!showEmbeddingDetails);
-                  if (!showEmbeddingDetails) {
-                    fetchEmbeddingDetails();
-                  }
-                }}
-                onToggleAdvancedStats={() => {
-                  setShowAdvancedStats(!showAdvancedStats);
-                  if (!showAdvancedStats) {
-                    fetchAdvancedStats();
-                  }
-                }}
-                onClearCache={clearEmbeddingCache}
-                onResetMetrics={resetMetrics}
-              />
+             <EmbeddingCacheManagement
+               embeddingDetails={embeddingDetails}
+               advancedStats={advancedStats}
+               detailsLoading={detailsLoading}
+               advancedLoading={advancedLoading}
+               showEmbeddingDetails={showEmbeddingDetails}
+               showAdvancedStats={showAdvancedStats}
+               onToggleEmbeddingDetails={() => {
+                 setShowEmbeddingDetails(!showEmbeddingDetails);
+                 if (!showEmbeddingDetails) {
+                   fetchEmbeddingDetails();
+                 }
+               }}
+               onToggleAdvancedStats={() => {
+                 setShowAdvancedStats(!showAdvancedStats);
+                 if (!showAdvancedStats) {
+                   fetchAdvancedStats();
+                 }
+               }}
+               onClearCache={clearEmbeddingCache}
+               onResetMetrics={resetMetrics}
+             />
 
-              {/* Fallback message */}
-              {!comprehensiveStats && legacyStats && (
-                <Alert 
-                  severity="info" 
-                  sx={{ mb: 4 }}
-                  action={
-                    <IconButton color="inherit" size="small" onClick={fetchComprehensiveStats}>
-                      <Refresh />
-                    </IconButton>
-                  }
-                >
-                  Using basic statistics. Some advanced features may not be available. 
-                  Click refresh to try loading comprehensive data again.
-                </Alert>
-              )}
-            </>
-          )}
-        </Box>
-      </Fade>
-    </LoadingWrapper>
-  );
+             {/* Fallback message */}
+             {!comprehensiveStats && legacyStats && (
+               <Alert 
+                 severity="info" 
+                 sx={{ mb: 4 }}
+                 action={
+                   <IconButton color="inherit" size="small" onClick={() => fetchComprehensiveStats({ force: true })}>
+                     <Refresh />
+                   </IconButton>
+                 }
+               >
+                 Using basic statistics. Some advanced features may not be available. 
+                 Click refresh to try loading comprehensive data again.
+               </Alert>
+             )}
+           </>
+         )}
+       </Box>
+     </Fade>
+   </LoadingWrapper>
+ );
 };
 
 export default Dashboard;

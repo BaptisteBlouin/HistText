@@ -1,14 +1,12 @@
 // app/frontend/src/containers/admin/components/dashboard/hooks/useDashboardData.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { ComprehensiveStats, LegacyStats, DetailedEmbeddingStats, AdvancedCacheStats } from '../types';
 
-interface RequestCache {
-  [key: string]: {
-    promise: Promise<any>;
-    timestamp: number;
-    data?: any;
-  };
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  expiresAt: number;
 }
 
 interface UseDashboardDataReturn {
@@ -20,12 +18,22 @@ interface UseDashboardDataReturn {
   detailsLoading: boolean;
   advancedLoading: boolean;
   error: string | null;
-  fetchComprehensiveStats: (options?: { useCache?: boolean }) => Promise<void>;
-  fetchEmbeddingDetails: (options?: { useCache?: boolean }) => Promise<void>;
-  fetchAdvancedStats: (options?: { useCache?: boolean }) => Promise<void>;
+  lastUpdated: Date | null;
+  isDataFresh: boolean;
+  fetchComprehensiveStats: (options?: { useCache?: boolean; force?: boolean }) => Promise<void>;
+  fetchEmbeddingDetails: (options?: { useCache?: boolean; force?: boolean }) => Promise<void>;
+  fetchAdvancedStats: (options?: { useCache?: boolean; force?: boolean }) => Promise<void>;
   clearEmbeddingCache: () => Promise<void>;
   resetMetrics: () => Promise<void>;
 }
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_KEYS = {
+  COMPREHENSIVE: 'dashboard_comprehensive',
+  LEGACY: 'dashboard_legacy',
+  EMBEDDING: 'dashboard_embedding',
+  ADVANCED: 'dashboard_advanced',
+} as const;
 
 export const useDashboardData = (accessToken: string | null): UseDashboardDataReturn => {
   // State variables
@@ -33,19 +41,111 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
   const [legacyStats, setLegacyStats] = useState<LegacyStats | null>(null);
   const [embeddingDetails, setEmbeddingDetails] = useState<DetailedEmbeddingStats | null>(null);
   const [advancedStats, setAdvancedStats] = useState<AdvancedCacheStats | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [advancedLoading, setAdvancedLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
   // Refs for cleanup and caching
-  const requestCacheRef = useRef<RequestCache>({});
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef<{ [key: string]: CacheEntry<any> }>({});
   const isMountedRef = useRef<boolean>(true);
 
+  // Helper functions
+  const isDataFresh = useCallback((key: string): boolean => {
+    const cached = cacheRef.current[key];
+    if (!cached) return false;
+    return Date.now() < cached.expiresAt;
+  }, []);
+
+  const getCachedData = useCallback(<T>(key: string): T | null => {
+    const cached = cacheRef.current[key];
+    if (!cached || Date.now() >= cached.expiresAt) {
+      return null;
+    }
+    return cached.data;
+  }, []);
+
+  const setCachedData = useCallback(<T>(key: string, data: T): void => {
+    const now = Date.now();
+    cacheRef.current[key] = {
+      data,
+      timestamp: now,
+      expiresAt: now + CACHE_DURATION,
+    };
+    setLastUpdated(new Date(now));
+  }, []);
+
+  const shouldFetch = useCallback((key: string, force: boolean = false, useCache: boolean = true): boolean => {
+    if (force) return true;
+    if (!useCache) return true;
+    return !isDataFresh(key);
+  }, [isDataFresh]);
+
+  // Load data from localStorage on mount
+  useEffect(() => {
+    const loadFromStorage = (): void => {
+      try {
+        const storedCache = localStorage.getItem('dashboard_cache');
+        if (storedCache) {
+          const parsed = JSON.parse(storedCache);
+          
+          // Check if data is still fresh
+          Object.entries(parsed).forEach(([key, entry]: [string, any]) => {
+            if (Date.now() < entry.expiresAt) {
+              cacheRef.current[key] = entry;
+              
+              // Set state based on cached data
+              switch (key) {
+                case CACHE_KEYS.COMPREHENSIVE:
+                  setComprehensiveStats(entry.data);
+                  setLastUpdated(new Date(entry.timestamp));
+                  break;
+                case CACHE_KEYS.LEGACY:
+                  setLegacyStats(entry.data);
+                  setLastUpdated(new Date(entry.timestamp));
+                  break;
+                case CACHE_KEYS.EMBEDDING:
+                  setEmbeddingDetails(entry.data);
+                  break;
+                case CACHE_KEYS.ADVANCED:
+                  setAdvancedStats(entry.data);
+                  break;
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load cache from localStorage:', error);
+      }
+    };
+
+    loadFromStorage();
+  }, []);
+
+  // Save cache to localStorage when it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('dashboard_cache', JSON.stringify(cacheRef.current));
+    } catch (error) {
+      console.error('Failed to save cache to localStorage:', error);
+    }
+  }, [comprehensiveStats, legacyStats, embeddingDetails, advancedStats]);
+
   // Fetch comprehensive stats
-  const fetchComprehensiveStats = useCallback(async (options: { useCache?: boolean } = {}) => {
+  const fetchComprehensiveStats = useCallback(async (options: { useCache?: boolean; force?: boolean } = {}): Promise<void> => {
+    const { useCache = true, force = false } = options;
+    
     if (!accessToken) return;
+
+    // Check if we should use cached data
+    if (!shouldFetch(CACHE_KEYS.COMPREHENSIVE, force, useCache)) {
+      const cached = getCachedData<ComprehensiveStats>(CACHE_KEYS.COMPREHENSIVE);
+      if (cached) {
+        setComprehensiveStats(cached);
+        return;
+      }
+    }
 
     try {
       setLoading(true);
@@ -57,12 +157,13 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
       
       if (isMountedRef.current) {
         setComprehensiveStats(response.data);
-        setLegacyStats(null); // Clear legacy stats when comprehensive is available
+        setLegacyStats(null);
+        setCachedData(CACHE_KEYS.COMPREHENSIVE, response.data);
       }
     } catch (err: any) {
       console.error('Failed to load comprehensive stats:', err);
       
-      // Fallback to legacy stats
+      // Try legacy stats as fallback
       try {
         const legacyResponse = await axios.get<LegacyStats>('/api/stats', {
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -71,6 +172,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
         if (isMountedRef.current) {
           setLegacyStats(legacyResponse.data);
           setComprehensiveStats(null);
+          setCachedData(CACHE_KEYS.LEGACY, legacyResponse.data);
         }
       } catch (legacyErr: any) {
         console.error('Failed to load legacy stats:', legacyErr);
@@ -83,11 +185,22 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
         setLoading(false);
       }
     }
-  }, [accessToken]);
+  }, [accessToken, shouldFetch, getCachedData, setCachedData]);
 
   // Fetch embedding details
-  const fetchEmbeddingDetails = useCallback(async (options: { useCache?: boolean } = {}) => {
+  const fetchEmbeddingDetails = useCallback(async (options: { useCache?: boolean; force?: boolean } = {}): Promise<void> => {
+    const { useCache = true, force = false } = options;
+    
     if (!accessToken) return;
+
+    // Check cache first
+    if (!shouldFetch(CACHE_KEYS.EMBEDDING, force, useCache)) {
+      const cached = getCachedData<DetailedEmbeddingStats>(CACHE_KEYS.EMBEDDING);
+      if (cached) {
+        setEmbeddingDetails(cached);
+        return;
+      }
+    }
 
     try {
       setDetailsLoading(true);
@@ -98,20 +211,31 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
       
       if (isMountedRef.current) {
         setEmbeddingDetails(response.data);
+        setCachedData(CACHE_KEYS.EMBEDDING, response.data);
       }
     } catch (err: any) {
       console.error('Failed to load embedding details:', err);
-      // Don't set error state for embedding details as it's not critical
     } finally {
       if (isMountedRef.current) {
         setDetailsLoading(false);
       }
     }
-  }, [accessToken]);
+  }, [accessToken, shouldFetch, getCachedData, setCachedData]);
 
   // Fetch advanced stats
-  const fetchAdvancedStats = useCallback(async (options: { useCache?: boolean } = {}) => {
+  const fetchAdvancedStats = useCallback(async (options: { useCache?: boolean; force?: boolean } = {}): Promise<void> => {
+    const { useCache = true, force = false } = options;
+    
     if (!accessToken) return;
+
+    // Check cache first
+    if (!shouldFetch(CACHE_KEYS.ADVANCED, force, useCache)) {
+      const cached = getCachedData<AdvancedCacheStats>(CACHE_KEYS.ADVANCED);
+      if (cached) {
+        setAdvancedStats(cached);
+        return;
+      }
+    }
 
     try {
       setAdvancedLoading(true);
@@ -122,16 +246,16 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
       
       if (isMountedRef.current) {
         setAdvancedStats(response.data);
+        setCachedData(CACHE_KEYS.ADVANCED, response.data);
       }
     } catch (err: any) {
       console.error('Failed to load advanced cache stats:', err);
-      // Don't set error state for advanced stats as it's not critical
     } finally {
       if (isMountedRef.current) {
         setAdvancedLoading(false);
       }
     }
-  }, [accessToken]);
+  }, [accessToken, shouldFetch, getCachedData, setCachedData]);
 
   // Clear embedding cache
   const clearEmbeddingCache = useCallback(async (): Promise<void> => {
@@ -148,10 +272,15 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
         }
       );
       
-      // Refresh relevant data after clearing cache
+      // Clear related cache entries
+      delete cacheRef.current[CACHE_KEYS.COMPREHENSIVE];
+      delete cacheRef.current[CACHE_KEYS.EMBEDDING];
+      delete cacheRef.current[CACHE_KEYS.ADVANCED];
+      
+      // Force refresh relevant data
       await Promise.all([
-        fetchComprehensiveStats({ useCache: false }),
-        fetchEmbeddingDetails({ useCache: false }),
+        fetchComprehensiveStats({ force: true }),
+        fetchEmbeddingDetails({ force: true }),
       ]);
     } catch (err: any) {
       console.error('Failed to clear embedding cache:', err);
@@ -174,20 +303,26 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
         }
       );
       
-      // Refresh advanced stats after reset
-      await fetchAdvancedStats({ useCache: false });
+      // Clear advanced stats cache
+      delete cacheRef.current[CACHE_KEYS.ADVANCED];
+      
+      // Force refresh advanced stats
+      await fetchAdvancedStats({ force: true });
     } catch (err: any) {
       console.error('Failed to reset metrics:', err);
       throw new Error(err.response?.data?.message || 'Failed to reset metrics');
     }
   }, [accessToken, fetchAdvancedStats]);
 
-  // Initial load effect
+  // Initial load effect - only load if no fresh cached data
   useEffect(() => {
     if (accessToken && isMountedRef.current) {
-      fetchComprehensiveStats();
+      // Only fetch if we don't have fresh cached data
+      if (!isDataFresh(CACHE_KEYS.COMPREHENSIVE) && !isDataFresh(CACHE_KEYS.LEGACY)) {
+        fetchComprehensiveStats();
+      }
     }
-  }, [accessToken, fetchComprehensiveStats]);
+  }, [accessToken, fetchComprehensiveStats, isDataFresh]);
 
   // Cleanup effect
   useEffect(() => {
@@ -195,18 +330,12 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     
     return () => {
       isMountedRef.current = false;
-      
-      // Cancel any ongoing requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      
-      // Clear cache
-      requestCacheRef.current = {};
     };
   }, []);
 
-  // Return all state and functions
+  // Calculate if current data is fresh
+  const currentDataFresh = isDataFresh(CACHE_KEYS.COMPREHENSIVE) || isDataFresh(CACHE_KEYS.LEGACY);
+
   return {
     comprehensiveStats,
     legacyStats,
@@ -216,6 +345,8 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     detailsLoading,
     advancedLoading,
     error,
+    lastUpdated,
+    isDataFresh: currentDataFresh,
     fetchComprehensiveStats,
     fetchEmbeddingDetails,
     fetchAdvancedStats,
