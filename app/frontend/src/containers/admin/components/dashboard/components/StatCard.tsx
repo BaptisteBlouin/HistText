@@ -1,3 +1,4 @@
+// app/frontend/src/containers/admin/components/dashboard/components/StatCard.tsx
 import React from 'react';
 import { Card, CardContent, Box, Typography, useTheme } from '@mui/material';
 
@@ -7,6 +8,7 @@ interface StatCardProps {
   value: string | number;
   subtitle?: string;
   color?: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info';
+  loading?: boolean;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({ 
@@ -14,7 +16,8 @@ export const StatCard: React.FC<StatCardProps> = ({
   title, 
   value, 
   subtitle, 
-  color = 'primary' 
+  color = 'primary',
+  loading = false
 }) => {
   const theme = useTheme();
 
@@ -31,13 +34,13 @@ export const StatCard: React.FC<StatCardProps> = ({
         }
       }}
     >
-      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
         <Box sx={{ fontSize: 40, opacity: 0.9 }}>
           {icon}
         </Box>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {value}
+            {loading ? '...' : value}
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: 600, opacity: 0.9 }}>
             {title}

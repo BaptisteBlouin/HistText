@@ -1,5 +1,5 @@
 // app/frontend/src/containers/admin/components/dashboard/index.tsx
-import React, { useState, useCallback, Suspense } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
   Box, 
   Grid, 
@@ -17,6 +17,7 @@ import {
   FormControlLabel,
   Chip,
   Stack,
+  Divider,
 } from '@mui/material';
 import {
   People,
@@ -31,10 +32,23 @@ import {
   Psychology,
   Security,
   AutorenewOutlined,
+  Schedule,
+  Speed,
+  CloudQueue,
+  Analytics,
+  Error as ErrorIcon,
+  CheckCircle,
+  AccessTime,
+  DataUsage,
+  Api,
+  Computer,
+  Timeline,
+  Dns,
+  AccountTree,
 } from '@mui/icons-material';
 import { useAuth, useAuthCheck } from '../../../../hooks/useAuth';
 
-// Import components directly instead of lazy loading for now
+// Components
 import { LoadingWrapper } from './components/LoadingStates';
 import { StatCard } from './components/StatCard';
 import { SolrDatabaseStatus } from './components/SolrDatabaseStatus';
@@ -63,6 +77,7 @@ const Dashboard: React.FC = () => {
   const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
   const [showUserActivity, setShowUserActivity] = useState<boolean>(false);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   // Main dashboard data hook
   const {
@@ -94,8 +109,20 @@ const Dashboard: React.FC = () => {
     fetchUserActivity,
   } = useUserActivity(accessToken, showUserActivity);
 
+  // Auto refresh effect
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      refreshAll();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
+
   // Refresh all data
   const refreshAll = useCallback(async () => {
+    setLastRefresh(new Date());
     const promises = [
       fetchComprehensiveStats(),
     ];
@@ -125,6 +152,63 @@ const Dashboard: React.FC = () => {
     showEmbeddingDetails,
     showAdvancedStats,
   ]);
+
+  // Calculate additional metrics
+  const getSystemMetrics = () => {
+    if (!stats) return {};
+    
+    const dbOnlineCount = comprehensiveStats?.solr_databases.filter(db => db.status === 'online').length || 0;
+    const dbTotalCount = comprehensiveStats?.solr_databases.length || 0;
+    const avgResponseTime = analytics?.average_response_time_ms || 0;
+    const errorRate = analytics?.error_rate_percent || 0;
+    const totalRequests = analytics?.total_requests_24h || 0;
+    const activeEndpoints = analytics ? Object.keys(analytics.endpoint_stats).length : 0;
+    
+    // Fix: Calculate documents per collection correctly using actual collection data
+    let totalDocs = 0;
+    let totalCollections = 0;
+    let docsPerCollection = 0;
+    
+    if (comprehensiveStats) {
+      // Count all collections across all databases and their documents
+      comprehensiveStats.solr_databases.forEach(db => {
+        db.collections.forEach(collection => {
+          totalCollections++;
+          if (collection.document_count !== undefined) {
+            totalDocs += collection.document_count;
+          }
+        });
+      });
+      
+      // Calculate average documents per collection
+      docsPerCollection = totalCollections > 0 ? Math.round(totalDocs / totalCollections) : 0;
+    } else {
+      // Fallback to legacy stats
+      totalDocs = (stats as any).total_docs;
+      totalCollections = stats.total_collections;
+      docsPerCollection = totalCollections > 0 ? Math.round(totalDocs / totalCollections) : 0;
+    }
+    
+    // Calculate user engagement
+    const userEngagement = comprehensiveStats 
+      ? (comprehensiveStats.active_sessions / stats.total_users) * 100
+      : 0;
+
+    return {
+      dbOnlineCount,
+      dbTotalCount,
+      dbUptime: dbTotalCount > 0 ? (dbOnlineCount / dbTotalCount) * 100 : 100,
+      avgResponseTime,
+      errorRate,
+      totalRequests,
+      activeEndpoints,
+      docsPerCollection,
+      userEngagement,
+      systemLoad: Math.min(100, (totalRequests / 10000) * 100),
+      totalDocs,
+      totalCollections,
+    };
+  };
 
   // Auth checks
   if (!session) {
@@ -156,6 +240,7 @@ const Dashboard: React.FC = () => {
   }
 
   const stats = comprehensiveStats || legacyStats;
+  const metrics = getSystemMetrics();
 
   return (
     <LoadingWrapper
@@ -165,7 +250,7 @@ const Dashboard: React.FC = () => {
     >
       <Fade in={true} timeout={600}>
         <Box>
-          {/* Header with Controls */}
+          {/* Header */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
             <Box>
               <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -173,13 +258,28 @@ const Dashboard: React.FC = () => {
                 System Dashboard
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Monitor system performance and resource usage
+                Real-time monitoring and system analytics
               </Typography>
+              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                <Chip 
+                  icon={<Schedule />} 
+                  label={`Updated: ${lastRefresh.toLocaleTimeString()}`} 
+                  variant="outlined" 
+                  size="small" 
+                />
+                {autoRefresh && (
+                  <Chip 
+                    icon={<AutorenewOutlined />}
+                    label="Live Updates"
+                    color="success"
+                    size="small"
+                  />
+                )}
+              </Stack>
             </Box>
             
             {/* Controls */}
-            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-              {/* Auto-refresh Toggle */}
+            <Stack direction="row" spacing={2} alignItems="center">
               <FormControlLabel
                 control={
                   <Switch
@@ -190,17 +290,6 @@ const Dashboard: React.FC = () => {
                 }
                 label="Auto Refresh"
               />
-
-              {autoRefresh && (
-                <Chip 
-                  icon={<AutorenewOutlined />}
-                  label="Live"
-                  color="success"
-                  size="small"
-                />
-              )}
-
-              {/* Refresh All */}
               <Tooltip title="Refresh All Data">
                 <IconButton onClick={refreshAll} color="primary">
                   <Refresh />
@@ -211,16 +300,19 @@ const Dashboard: React.FC = () => {
 
           {stats && (
             <>
-              {/* Main Stats Grid */}
+              {/* Main Stats Grid - More comprehensive */}
               <Grid container spacing={3} sx={{ mb: 4 }}>
+                {/* Row 1: Core System Stats */}
                 <Grid item xs={12} sm={6} md={3}>
                   <StatCard
                     icon={<People />}
                     title="Total Users"
                     value={formatNumber(stats.total_users)}
+                    subtitle="Registered in system"
                     color="primary"
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6} md={3}>
                   <StatCard
                     icon={<Storage />}
@@ -230,25 +322,77 @@ const Dashboard: React.FC = () => {
                     color="secondary"
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6} md={3}>
                   <StatCard
                     icon={<Description />}
                     title="Documents"
-                    value={formatNumber(comprehensiveStats ? comprehensiveStats.total_documents : (stats as any).total_docs)}
-                    subtitle={comprehensiveStats ? "Real-time count" : "From cache"}
+                    value={formatNumber(metrics.totalDocs)}
+                    subtitle={
+                      metrics.totalCollections > 0 
+                        ? `${formatNumber(metrics.totalCollections)} collections • ~${formatNumber(metrics.docsPerCollection)} avg per collection`
+                        : "No collections"
+                    }
                     color="success"
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6} md={3}>
                   <StatCard
-                    icon={<TrendingUp />}
-                    title="Active Collections"
-                    value={formatNumber(stats.active_collections)}
-                    color="warning"
+                    icon={<Dns />}
+                    title="Database Status"
+                    value={`${metrics.dbOnlineCount}/${metrics.dbTotalCount}`}
+                    subtitle={`${metrics.dbUptime.toFixed(1)}% uptime`}
+                    color={metrics.dbUptime === 100 ? 'success' : metrics.dbUptime > 80 ? 'warning' : 'error'}
                   />
                 </Grid>
-                
-                {/* Additional comprehensive stats */}
+
+                {/* Row 2: Performance & Activity */}
+                {analytics && (
+                  <>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<Speed />}
+                        title="Response Time"
+                        value={`${metrics.avgResponseTime.toFixed(0)}ms`}
+                        subtitle="Average API response"
+                        color={metrics.avgResponseTime > 1000 ? 'error' : metrics.avgResponseTime > 500 ? 'warning' : 'success'}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<ErrorIcon />}
+                        title="Error Rate"
+                        value={`${metrics.errorRate.toFixed(2)}%`}
+                        subtitle="Last 24 hours"
+                        color={metrics.errorRate > 5 ? 'error' : metrics.errorRate > 2 ? 'warning' : 'success'}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<Api />}
+                        title="API Requests"
+                        value={formatNumber(metrics.totalRequests)}
+                        subtitle="Last 24 hours"
+                        color="info"
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<AccountTree />}
+                        title="Active Endpoints"
+                        value={formatNumber(metrics.activeEndpoints)}
+                        subtitle="Available API routes"
+                        color="secondary"
+                      />
+                    </Grid>
+                  </>
+                )}
+
+                {/* Row 3: Advanced Stats (if comprehensive data available) */}
                 {comprehensiveStats && (
                   <>
                     <Grid item xs={12} sm={6} md={3}>
@@ -256,47 +400,92 @@ const Dashboard: React.FC = () => {
                         icon={<Group />}
                         title="Active Sessions"
                         value={formatNumber(comprehensiveStats.active_sessions)}
-                        subtitle="Last 24 hours"
+                        subtitle={`${metrics.userEngagement.toFixed(1)}% user engagement`}
                         color="info"
                       />
                     </Grid>
+
                     <Grid item xs={12} sm={6} md={3}>
                       <StatCard
                         icon={<PersonAdd />}
-                        title="New Users"
+                        title="New Registrations"
                         value={formatNumber(comprehensiveStats.recent_registrations_24h)}
                         subtitle="Last 24 hours"
                         color="success"
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <StatCard
-                        icon={<Psychology />}
-                        title="Cached Embeddings"
-                        value={formatNumber(comprehensiveStats.embedding_summary.total_cached_embeddings)}
-                        subtitle={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}% hit ratio`}
-                        color="primary"
-                      />
-                    </Grid>
+
                     <Grid item xs={12} sm={6} md={3}>
                       <StatCard
                         icon={<Memory />}
                         title="Cache Memory"
-                        value={comprehensiveStats.embedding_summary.memory_usage_mb.toFixed(1) + ' MB'}
+                        value={`${comprehensiveStats.embedding_summary.memory_usage_mb.toFixed(1)}MB`}
                         subtitle={`${comprehensiveStats.embedding_summary.memory_usage_percent.toFixed(1)}% used`}
-                        color="warning"
+                        color={comprehensiveStats.embedding_summary.memory_usage_percent > 80 ? 'error' : comprehensiveStats.embedding_summary.memory_usage_percent > 60 ? 'warning' : 'success'}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<Psychology />}
+                        title="AI Embeddings"
+                        value={formatNumber(comprehensiveStats.embedding_summary.total_cached_embeddings)}
+                        subtitle={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}% cache hit rate`}
+                        color="primary"
+                      />
+                    </Grid>
+
+                    {/* Row 4: System Health & Performance */}
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<Computer />}
+                        title="System Load"
+                        value={`${metrics.systemLoad.toFixed(1)}%`}
+                        subtitle="Estimated load based on requests"
+                        color={metrics.systemLoad > 80 ? 'error' : metrics.systemLoad > 60 ? 'warning' : 'success'}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<DataUsage />}
+                        title="Cache Efficiency"
+                        value={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}%`}
+                        subtitle={`${comprehensiveStats.embedding_summary.cached_collections} collections cached`}
+                        color={comprehensiveStats.embedding_summary.cache_hit_ratio > 80 ? 'success' : comprehensiveStats.embedding_summary.cache_hit_ratio > 60 ? 'warning' : 'error'}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<Timeline />}
+                        title="Data Growth"
+                        value={`${(comprehensiveStats.total_documents / 1000).toFixed(1)}K`}
+                        subtitle="Total indexed documents"
+                        color="info"
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<CheckCircle />}
+                        title="System Health"
+                        value={metrics.dbUptime === 100 && metrics.errorRate < 1 ? "Excellent" : metrics.dbUptime > 95 && metrics.errorRate < 5 ? "Good" : "Needs Attention"}
+                        subtitle="Overall system status"
+                        color={metrics.dbUptime === 100 && metrics.errorRate < 1 ? 'success' : metrics.dbUptime > 95 && metrics.errorRate < 5 ? 'warning' : 'error'}
                       />
                     </Grid>
                   </>
                 )}
               </Grid>
 
-              {/* Solr Database Status */}
+              <Divider sx={{ my: 4 }} />
+
+              {/* Detailed Component Sections */}
               {comprehensiveStats && (
                 <SolrDatabaseStatus comprehensiveStats={comprehensiveStats} />
               )}
 
-              {/* API Usage Analytics */}
               <ApiAnalytics
                 analytics={analytics}
                 loading={analyticsLoading}
@@ -304,7 +493,6 @@ const Dashboard: React.FC = () => {
                 isVisible={showAnalytics}
               />
 
-              {/* User Activity Monitoring */}
               <UserActivityMonitoring
                 userActivity={userActivity}
                 loading={userActivityLoading}
@@ -312,7 +500,6 @@ const Dashboard: React.FC = () => {
                 isVisible={showUserActivity}
               />
 
-              {/* Embedding Cache Management */}
               <EmbeddingCacheManagement
                 embeddingDetails={embeddingDetails}
                 advancedStats={advancedStats}
@@ -338,9 +525,17 @@ const Dashboard: React.FC = () => {
 
               {/* Fallback message */}
               {!comprehensiveStats && legacyStats && (
-                <Alert severity="info" sx={{ mb: 4 }}>
+                <Alert 
+                  severity="info" 
+                  sx={{ mb: 4 }}
+                  action={
+                    <IconButton color="inherit" size="small" onClick={fetchComprehensiveStats}>
+                      <Refresh />
+                    </IconButton>
+                  }
+                >
                   Using basic statistics. Some advanced features may not be available. 
-                  The comprehensive dashboard endpoint might not be implemented yet.
+                  Click refresh to try loading comprehensive data again.
                 </Alert>
               )}
             </>
