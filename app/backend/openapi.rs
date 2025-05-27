@@ -7,7 +7,6 @@
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
-
 /// Security scheme modifier for OpenAPI documentation
 ///
 /// Injects the JWT bearer token authentication scheme into the

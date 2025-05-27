@@ -638,7 +638,7 @@ impl UserHandler {
         }
 
         // Clone update_data before moving it into the closure
-        let update_data_clone = update_data.clone();
+        let _update_data_clone = update_data.clone();
         let result = execute_db_query(db.clone(), move |conn| {
             use crate::schema::users::dsl::*;
             diesel::update(users.find(user_id))
