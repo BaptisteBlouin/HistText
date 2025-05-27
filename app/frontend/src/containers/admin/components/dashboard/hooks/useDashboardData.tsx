@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { ComprehensiveStats, LegacyStats, DetailedEmbeddingStats, AdvancedCacheStats } from '../types';
 
-interface CacheEntry<T> {
-  data: T;
+interface CacheEntry {
+  data: any;
   timestamp: number;
   expiresAt: number;
 }
@@ -48,7 +48,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
   // Refs for cleanup and caching
-  const cacheRef = useRef<{ [key: string]: CacheEntry<any> }>({});
+  const cacheRef = useRef<{ [key: string]: CacheEntry }>({});
   const isMountedRef = useRef<boolean>(true);
 
   // Helper functions
@@ -58,7 +58,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     return Date.now() < cached.expiresAt;
   }, []);
 
-  const getCachedData = useCallback(<T>(key: string): T | null => {
+  const getCachedData = useCallback((key: string): any => {
     const cached = cacheRef.current[key];
     if (!cached || Date.now() >= cached.expiresAt) {
       return null;
@@ -66,7 +66,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     return cached.data;
   }, []);
 
-  const setCachedData = useCallback(<T>(key: string, data: T): void => {
+  const setCachedData = useCallback((key: string, data: any): void => {
     const now = Date.now();
     cacheRef.current[key] = {
       data,
@@ -140,7 +140,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
 
     // Check if we should use cached data
     if (!shouldFetch(CACHE_KEYS.COMPREHENSIVE, force, useCache)) {
-      const cached = getCachedData<ComprehensiveStats>(CACHE_KEYS.COMPREHENSIVE);
+      const cached = getCachedData(CACHE_KEYS.COMPREHENSIVE);
       if (cached) {
         setComprehensiveStats(cached);
         return;
@@ -151,7 +151,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
       setLoading(true);
       setError(null);
       
-      const response = await axios.get<ComprehensiveStats>('/api/dashboard/comprehensive', {
+      const response = await axios.get('/api/dashboard/comprehensive', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       
@@ -165,7 +165,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
       
       // Try legacy stats as fallback
       try {
-        const legacyResponse = await axios.get<LegacyStats>('/api/stats', {
+        const legacyResponse = await axios.get('/api/stats', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         
@@ -195,7 +195,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
 
     // Check cache first
     if (!shouldFetch(CACHE_KEYS.EMBEDDING, force, useCache)) {
-      const cached = getCachedData<DetailedEmbeddingStats>(CACHE_KEYS.EMBEDDING);
+      const cached = getCachedData(CACHE_KEYS.EMBEDDING);
       if (cached) {
         setEmbeddingDetails(cached);
         return;
@@ -205,7 +205,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     try {
       setDetailsLoading(true);
       
-      const response = await axios.get<DetailedEmbeddingStats>('/api/embeddings/stats', {
+      const response = await axios.get('/api/embeddings/stats', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       
@@ -230,7 +230,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
 
     // Check cache first
     if (!shouldFetch(CACHE_KEYS.ADVANCED, force, useCache)) {
-      const cached = getCachedData<AdvancedCacheStats>(CACHE_KEYS.ADVANCED);
+      const cached = getCachedData(CACHE_KEYS.ADVANCED);
       if (cached) {
         setAdvancedStats(cached);
         return;
@@ -240,7 +240,7 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     try {
       setAdvancedLoading(true);
       
-      const response = await axios.get<AdvancedCacheStats>('/api/embeddings/advanced-stats', {
+      const response = await axios.get('/api/embeddings/advanced-stats', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       

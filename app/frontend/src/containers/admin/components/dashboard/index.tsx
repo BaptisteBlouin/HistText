@@ -31,7 +31,7 @@ import {
   PersonAdd,
   Psychology,
   Security,
-  AutorenewOutlined,
+  Sync, // Changed from AutoMode to fix spell check
   Schedule,
   Speed,
   CloudQueue,
@@ -79,7 +79,7 @@ const Dashboard: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  // Main dashboard data hook
+  // Main dashboard data hook - Fixed: handle undefined accessToken
   const {
     comprehensiveStats,
     legacyStats,
@@ -96,20 +96,20 @@ const Dashboard: React.FC = () => {
     fetchAdvancedStats,
     clearEmbeddingCache,
     resetMetrics,
-  } = useDashboardData(accessToken);
+  } = useDashboardData(accessToken || null);
 
-  // Other data hooks
+  // Other data hooks - Fixed: handle undefined accessToken
   const {
     analytics,
     analyticsLoading,
     fetchAnalytics,
-  } = useAnalytics(accessToken, showAnalytics);
+  } = useAnalytics(accessToken || null, showAnalytics);
 
   const {
     userActivity,
     userActivityLoading,
     fetchUserActivity,
-  } = useUserActivity(accessToken, showUserActivity);
+  } = useUserActivity(accessToken || null, showUserActivity);
 
   // Refresh all data
   const refreshAll = useCallback(async (force: boolean = false): Promise<void> => {
@@ -222,7 +222,7 @@ const Dashboard: React.FC = () => {
       activeEndpoints,
       docsPerCollection,
       userEngagement,
-      systemLoad: Math.min(100, (totalRequests / 10000) * 100), // Simulate system load
+      systemLoad: Math.min(100, (totalRequests / 10000) * 100),
       totalDocs,
       totalCollections,
     };
@@ -292,7 +292,7 @@ const Dashboard: React.FC = () => {
                 />
                 {autoRefresh && (
                   <Chip 
-                    icon={<AutorenewOutlined />}
+                    icon={<Sync />} // Fixed: changed from AutoMode
                     label="Live Updates"
                     color="success"
                     size="small"
@@ -436,144 +436,145 @@ const Dashboard: React.FC = () => {
                     </Grid>
 
                     <Grid item xs={12} sm={6} md={3}>
-                     <StatCard
-                       icon={<PersonAdd />}
-                       title="New Registrations"
-                       value={formatNumber(comprehensiveStats.recent_registrations_24h)}
-                       subtitle="Last 24 hours"
-                       color="success"
-                     />
-                   </Grid>
+                      <StatCard
+                        icon={<PersonAdd />}
+                        title="New Registrations"
+                        value={formatNumber(comprehensiveStats.recent_registrations_24h)}
+                        subtitle="Last 24 hours"
+                        color="success"
+                      />
+                    </Grid>
 
-                   <Grid item xs={12} sm={6} md={3}>
-                     <StatCard
-                       icon={<Memory />}
-                       title="Cache Memory"
-                       value={`${comprehensiveStats.embedding_summary.memory_usage_mb.toFixed(1)}MB`}
-                       subtitle={`${comprehensiveStats.embedding_summary.memory_usage_percent.toFixed(1)}% used`}
-                       color={comprehensiveStats.embedding_summary.memory_usage_percent > 80 ? 'error' : comprehensiveStats.embedding_summary.memory_usage_percent > 60 ? 'warning' : 'success'}
-                     />
-                   </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<Memory />}
+                        title="Cache Memory"
+                        value={`${comprehensiveStats.embedding_summary.memory_usage_mb.toFixed(1)}MB`}
+                        subtitle={`${comprehensiveStats.embedding_summary.memory_usage_percent.toFixed(1)}% used`}
+                        color={comprehensiveStats.embedding_summary.memory_usage_percent > 80 ? 'error' : comprehensiveStats.embedding_summary.memory_usage_percent > 60 ? 'warning' : 'success'}
+                      />
+                    </Grid>
 
-                   <Grid item xs={12} sm={6} md={3}>
-                     <StatCard
-                       icon={<Psychology />}
-                       title="AI Embeddings"
-                       value={formatNumber(comprehensiveStats.embedding_summary.total_cached_embeddings)}
-                       subtitle={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}% cache hit rate`}
-                       color="primary"
-                     />
-                   </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<Psychology />}
+                        title="AI Embeddings"
+                        value={formatNumber(comprehensiveStats.embedding_summary.total_cached_embeddings)}
+                        subtitle={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}% cache hit rate`}
+                        color="primary"
+                      />
+                    </Grid>
 
-                   {/* Row 4: System Health & Performance */}
-                   <Grid item xs={12} sm={6} md={3}>
-                     <StatCard
-                       icon={<Computer />}
-                       title="System Load"
-                       value={`${metrics.systemLoad.toFixed(1)}%`}
-                       subtitle="Estimated load based on requests"
-                       color={metrics.systemLoad > 80 ? 'error' : metrics.systemLoad > 60 ? 'warning' : 'success'}
-                     />
-                   </Grid>
+                    {/* Row 4: System Health & Performance */}
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<Computer />}
+                        title="System Load"
+                        value={`${metrics.systemLoad.toFixed(1)}%`}
+                        subtitle="Estimated load based on requests"
+                        color={metrics.systemLoad > 80 ? 'error' : metrics.systemLoad > 60 ? 'warning' : 'success'}
+                      />
+                    </Grid>
 
-                   <Grid item xs={12} sm={6} md={3}>
-                     <StatCard
-                       icon={<DataUsage />}
-                       title="Cache Efficiency"
-                       value={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}%`}
-                       subtitle={`${comprehensiveStats.embedding_summary.cached_collections} collections cached`}
-                       color={comprehensiveStats.embedding_summary.cache_hit_ratio > 80 ? 'success' : comprehensiveStats.embedding_summary.cache_hit_ratio > 60 ? 'warning' : 'error'}
-                     />
-                   </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<DataUsage />}
+                        title="Cache Efficiency"
+                        value={`${comprehensiveStats.embedding_summary.cache_hit_ratio.toFixed(1)}%`}
+                        subtitle={`${comprehensiveStats.embedding_summary.cached_collections} collections cached`}
+                        color={comprehensiveStats.embedding_summary.cache_hit_ratio > 80 ? 'success' : comprehensiveStats.embedding_summary.cache_hit_ratio > 60 ? 'warning' : 'error'}
+                      />
+                    </Grid>
 
-                   <Grid item xs={12} sm={6} md={3}>
-                     <StatCard
-                       icon={<Timeline />}
-                       title="Data Growth"
-                       value={`${(comprehensiveStats.total_documents / 1000).toFixed(1)}K`}
-                       subtitle="Total indexed documents"
-                       color="info"
-                     />
-                   </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<Timeline />}
+                        title="Data Growth"
+                        value={`${(comprehensiveStats.total_documents / 1000).toFixed(1)}K`}
+                        subtitle="Total indexed documents"
+                        color="info"
+                      />
+                    </Grid>
 
-                   <Grid item xs={12} sm={6} md={3}>
-                     <StatCard
-                       icon={<CheckCircle />}
-                       title="System Health"
-                       value={metrics.dbUptime === 100 && metrics.errorRate < 1 ? "Excellent" : metrics.dbUptime > 95 && metrics.errorRate < 5 ? "Good" : "Needs Attention"}
-                       subtitle="Overall system status"
-                       color={metrics.dbUptime === 100 && metrics.errorRate < 1 ? 'success' : metrics.dbUptime > 95 && metrics.errorRate < 5 ? 'warning' : 'error'}
-                     />
-                   </Grid>
-                 </>
-               )}
-             </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <StatCard
+                        icon={<CheckCircle />}
+                        title="System Health"
+                        value={metrics.dbUptime === 100 && metrics.errorRate < 1 ? "Excellent" : metrics.dbUptime > 95 && metrics.errorRate < 5 ? "Good" : "Needs Attention"}
+                        subtitle="Overall system status"
+                        color={metrics.dbUptime === 100 && metrics.errorRate < 1 ? 'success' : metrics.dbUptime > 95 && metrics.errorRate < 5 ? 'warning' : 'error'}
+                      />
+                    </Grid>
+                  </>
+                )}
+              </Grid>
 
-             <Divider sx={{ my: 4 }} />
+              <Divider sx={{ my: 4 }} />
 
-             {/* Detailed Component Sections */}
-             {comprehensiveStats && (
-               <SolrDatabaseStatus comprehensiveStats={comprehensiveStats} />
-             )}
+              {/* Detailed Component Sections */}
+              {comprehensiveStats && (
+                <SolrDatabaseStatus comprehensiveStats={comprehensiveStats} />
+              )}
 
-             <ApiAnalytics
-               analytics={analytics}
-               loading={analyticsLoading}
-               onToggle={() => setShowAnalytics(!showAnalytics)}
-               isVisible={showAnalytics}
-             />
+              {/* Fixed: Use correct ApiAnalytics component props based on your original implementation */}
+              <ApiAnalytics
+                autoRefresh={autoRefresh}
+                refreshInterval={60000}
+                onToggle={() => setShowAnalytics(!showAnalytics)}
+                isVisible={showAnalytics}
+              />
 
-             <UserActivityMonitoring
-               userActivity={userActivity}
-               loading={userActivityLoading}
-               onToggle={() => setShowUserActivity(!showUserActivity)}
-               isVisible={showUserActivity}
-             />
+              <UserActivityMonitoring
+                userActivity={userActivity}
+                loading={userActivityLoading}
+                onToggle={() => setShowUserActivity(!showUserActivity)}
+                isVisible={showUserActivity}
+              />
 
-             <EmbeddingCacheManagement
-               embeddingDetails={embeddingDetails}
-               advancedStats={advancedStats}
-               detailsLoading={detailsLoading}
-               advancedLoading={advancedLoading}
-               showEmbeddingDetails={showEmbeddingDetails}
-               showAdvancedStats={showAdvancedStats}
-               onToggleEmbeddingDetails={() => {
-                 setShowEmbeddingDetails(!showEmbeddingDetails);
-                 if (!showEmbeddingDetails) {
-                   fetchEmbeddingDetails();
-                 }
-               }}
-               onToggleAdvancedStats={() => {
-                 setShowAdvancedStats(!showAdvancedStats);
-                 if (!showAdvancedStats) {
-                   fetchAdvancedStats();
-                 }
-               }}
-               onClearCache={clearEmbeddingCache}
-               onResetMetrics={resetMetrics}
-             />
+              <EmbeddingCacheManagement
+                embeddingDetails={embeddingDetails}
+                advancedStats={advancedStats}
+                detailsLoading={detailsLoading}
+                advancedLoading={advancedLoading}
+                showEmbeddingDetails={showEmbeddingDetails}
+                showAdvancedStats={showAdvancedStats}
+                onToggleEmbeddingDetails={() => {
+                  setShowEmbeddingDetails(!showEmbeddingDetails);
+                  if (!showEmbeddingDetails) {
+                    fetchEmbeddingDetails();
+                  }
+                }}
+                onToggleAdvancedStats={() => {
+                  setShowAdvancedStats(!showAdvancedStats);
+                  if (!showAdvancedStats) {
+                    fetchAdvancedStats();
+                  }
+                }}
+                onClearCache={clearEmbeddingCache}
+                onResetMetrics={resetMetrics}
+              />
 
-             {/* Fallback message */}
-             {!comprehensiveStats && legacyStats && (
-               <Alert 
-                 severity="info" 
-                 sx={{ mb: 4 }}
-                 action={
-                   <IconButton color="inherit" size="small" onClick={() => fetchComprehensiveStats({ force: true })}>
-                     <Refresh />
-                   </IconButton>
-                 }
-               >
-                 Using basic statistics. Some advanced features may not be available. 
-                 Click refresh to try loading comprehensive data again.
-               </Alert>
-             )}
-           </>
-         )}
-       </Box>
-     </Fade>
-   </LoadingWrapper>
- );
+              {/* Fallback message */}
+              {!comprehensiveStats && legacyStats && (
+                <Alert 
+                  severity="info" 
+                  sx={{ mb: 4 }}
+                  action={
+                    <IconButton color="inherit" size="small" onClick={() => fetchComprehensiveStats({ force: true })}>
+                      <Refresh />
+                    </IconButton>
+                  }
+                >
+                  Using basic statistics. Some advanced features may not be available. 
+                  Click refresh to try loading comprehensive data again.
+                </Alert>
+              )}
+            </>
+          )}
+        </Box>
+      </Fade>
+    </LoadingWrapper>
+  );
 };
 
 export default Dashboard;

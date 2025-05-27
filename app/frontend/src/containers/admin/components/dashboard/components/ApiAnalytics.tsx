@@ -60,7 +60,7 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
     analytics,
     analyticsLoading,
     fetchAnalytics,
-  } = useAnalytics(accessToken, isVisible); // Fixed: provide both arguments
+  } = useAnalytics(accessToken || null, isVisible); // Fixed: provide both arguments
 
   // Auto-refresh logic
   useEffect(() => {
