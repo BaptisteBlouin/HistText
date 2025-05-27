@@ -139,7 +139,7 @@ export const RegistrationPage = () => {
 
       const data = await response.json();
       console.log(data);
-      navigate('/activate');
+      navigate('/login');
     } catch (error) {
       console.error('Registration failed', error);
       setErrors(['Registration failed. Please try again later.']);

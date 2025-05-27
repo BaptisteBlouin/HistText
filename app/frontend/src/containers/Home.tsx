@@ -32,7 +32,7 @@ export const Home = () => {
   const navigate = useNavigate();
 
   const homeMessage = config.HOME_MESSAGE ||
-    "The application is currently in beta version. Feel free to try it out with the free / free account.";
+    "The application is currently in beta version. Don't hesitate to send us your feedback.";
   
   const iframeUrl = config.HOME_URL ||
     "https://www.enpchina.eu/2024/09/03/poc/";

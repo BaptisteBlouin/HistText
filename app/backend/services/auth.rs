@@ -466,47 +466,78 @@ impl AuthHandler {
         let hashed_password = self.password_service.hash_password(&register_data.password)?;
         let email_clone2 = email_clone.clone();
 
-        let new_user = execute_db_query(db, move |conn| {
+        // Check if we should auto-activate the account
+        let should_auto_activate = self.config.should_auto_activate_accounts();
+        
+        debug!("Auto-activation enabled: {}", should_auto_activate);
+
+        let new_user = execute_db_query(db.clone(), move |conn| {
             diesel::insert_into(users_dsl::users)
                 .values((
                     users_dsl::email.eq(&email_clone2),
                     users_dsl::hash_password.eq(&hashed_password),
                     users_dsl::firstname.eq(&register_data.firstname),
                     users_dsl::lastname.eq(&register_data.lastname),
-                    users_dsl::activated.eq(false),
+                    users_dsl::activated.eq(should_auto_activate), // Auto-activate if email is not configured
                 ))
                 .get_result::<crate::services::users::User>(conn)
         }).await?;
 
-        // Create activation token
-        let activation_claims = RefreshTokenClaims {
-            exp: (Utc::now() + Duration::days(30)).timestamp() as usize,
-            sub: new_user.id,
-            token_type: "activation_token".to_string(),
-        };
+        if should_auto_activate {
+            info!("Auto-activated user account during registration: {}", email_clone);
 
-        let activation_token = encode(
-            &Header::default(),
-            &activation_claims,
-            &EncodingKey::from_secret(self.config.secret_key.as_ref()),
-        )
-        .map_err(|e| {
-            warn!("Failed to create activation token: {}", e);
-            AppError::auth(
-                AuthErrorReason::InvalidToken,
-                "Token creation failed"
+            // Automatically assign default role to newly activated user
+            let role_service = get_role_assignment_service();
+            if let Err(e) = role_service.assign_default_role_to_user(
+                db.clone(),
+                new_user.id,
+                &new_user.email,
+                "auto_registration",
+                None, // No HTTP request context in this flow
+            ).await {
+                // Log error but don't fail registration
+                warn!("Failed to assign default role to auto-activated user {}: {}", 
+                    new_user.id, e);
+            }
+
+            // Send a different response for auto-activated accounts
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "message": "Registration successful. Your account has been automatically activated and you can now log in.",
+                "activated": true
+            })))
+        } else {
+            // Original email-based activation flow
+            // Create activation token
+            let activation_claims = RefreshTokenClaims {
+                exp: (Utc::now() + Duration::days(30)).timestamp() as usize,
+                sub: new_user.id,
+                token_type: "activation_token".to_string(),
+            };
+
+            let activation_token = encode(
+                &Header::default(),
+                &activation_claims,
+                &EncodingKey::from_secret(self.config.secret_key.as_ref()),
             )
-        })?;
+            .map_err(|e| {
+                warn!("Failed to create activation token: {}", e);
+                AppError::auth(
+                    AuthErrorReason::InvalidToken,
+                    "Token creation failed"
+                )
+            })?;
 
-        // Send activation email
-        let activation_link = format!("{}/activate?token={}", self.config.app_url, activation_token);
-        mailer.send_register(&email_clone, &activation_link);
+            // Send activation email
+            let activation_link = format!("{}/activate?token={}", self.config.app_url, activation_token);
+            mailer.send_register(&email_clone, &activation_link);
 
-        info!("Successfully registered user: {}", email_clone);
+            info!("Successfully registered user: {}", email_clone);
 
-        Ok(HttpResponse::Ok().json(serde_json::json!({
-            "message": "Registration successful. Please check your email to activate your account."
-        })))
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "message": "Registration successful. Please check your email to activate your account.",
+                "activated": false
+            })))
+        }
     }
 
     /// Initiates password recovery process
@@ -710,8 +741,11 @@ impl AuthHandler {
                 .execute(conn)
         }, Some("user_activation")).await?;
 
-        // Send activation confirmation email
-        mailer.send_activated(&user_before_activation.email);
+        // Send activation confirmation email only if email is enabled
+        if self.config.is_email_enabled() {
+            mailer.send_activated(&user_before_activation.email);
+        }
+        
         info!("Account activated for user: {}", user_before_activation.email);
 
         // Automatically assign default role to newly activated user
@@ -720,7 +754,7 @@ impl AuthHandler {
             db,
             user_before_activation.id,
             &user_before_activation.email,
-            "activation",
+            "token_activation",
             None, // No HTTP request context in this flow
         ).await {
             // Log error but don't fail activation
@@ -732,8 +766,6 @@ impl AuthHandler {
             "message": "Account activated successfully!"
         })))
     }
-
-
 
     pub async fn logout(
         &self,

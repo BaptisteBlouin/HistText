@@ -112,7 +112,7 @@ export const LoginPage = () => {
               onChange={(e) => setEmail(e.target.value)}
               required
               sx={{ mb: 3 }}
-              placeholder="Enter username (try 'free')"
+              placeholder="Enter username"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -130,7 +130,7 @@ export const LoginPage = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               sx={{ mb: 3 }}
-              placeholder="Enter password (try 'free')"
+              placeholder="Enter password"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -158,7 +158,7 @@ export const LoginPage = () => {
 
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body2">
-                <strong>Demo Access:</strong> Use "free" as both username and password
+                <strong>Free Access:</strong> Create an account to access our free collections.
               </Typography>
             </Alert>
 

@@ -192,6 +192,20 @@ impl Config {
         web::Data::new(CONFIG.clone())
     }
 
+
+    pub fn is_email_enabled(&self) -> bool {
+        self.send_mail && 
+        !self.smtp_server.is_empty() && 
+        self.smtp_server != "localhost" &&
+        !self.smtp_username.is_empty() &&
+        !self.smtp_password.is_empty()
+    }
+
+    /// Checks if accounts should be auto-activated (when email is not configured)
+    pub fn should_auto_activate_accounts(&self) -> bool {
+        !self.is_email_enabled()
+    }
+
     /// Loads application configuration from environment variables
     ///
     /// This function:
