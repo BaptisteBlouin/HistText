@@ -35,6 +35,7 @@ import { UserToken } from './components/account/UserToken';
 import { Permissions } from './components/account/Permissions';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { LogoutButton } from '../components/LogoutButton';
 
 interface MenuItem {
   id: number;

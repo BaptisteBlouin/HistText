@@ -1,5 +1,5 @@
 import { useApolloClient } from '@apollo/client';
-import { useAuth, useAuthCheck } from './hooks/useAuth';
+import { useAuth, useAuthCheck, AuthProvider } from './hooks/useAuth';
 import { AccountPage } from './containers/AccountPage';
 import { LoginPage } from './containers/LoginPage';
 import { OauthLoginResultPage } from './containers/OauthLoginResultPage';
@@ -7,6 +7,8 @@ import { ActivationPage } from './containers/ActivationPage';
 import { RegistrationPage } from './containers/RegistrationPage';
 import { RecoveryPage } from './containers/RecoveryPage';
 import { ResetPage } from './containers/ResetPage';
+import { ProtectedRoute, PublicRoute } from './components/RouteGuards';
+import { LogoutButton } from './components/LogoutButton';
 import React, { useState } from 'react';
 import './App.css';
 import { Home } from './containers/Home';
@@ -31,7 +33,6 @@ import {
   Button,
   Fab,
   Tooltip,
-  Collapse
 } from '@mui/material';
 import { 
   Home as HomeIcon, 
@@ -39,7 +40,6 @@ import {
   AdminPanelSettings, 
   AccountCircle, 
   Login, 
-  Logout, 
   Menu as MenuIcon,
   Close as CloseIcon,
   ChevronLeft,
@@ -47,16 +47,15 @@ import {
 } from '@mui/icons-material';
 import HistLogo from './images/HistTextLogoC.png';
 
-const App = () => {
+const AppContent = () => {
   useAuthCheck();
   const auth = useAuth();
   const navigate = useNavigate();
-  const apollo = useApolloClient();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // Add proper typing
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -66,7 +65,8 @@ const App = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  const handleProfileMenuOpen = (event) => {
+  // Add proper typing for the event parameter
+  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
 
@@ -315,47 +315,14 @@ const App = () => {
               </ListItem>
             )}
 
-            {collapsed ? (
-              <Tooltip title="Sign Out" placement="right">
-                <IconButton
-                  color="error"
-                  onClick={() => {
-                    auth.logout();
-                    apollo.resetStore();
-                    if (isMobile) setMobileOpen(false);
-                  }}
-                  sx={{ 
-                    width: '100%',
-                    height: 40,
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'error.main',
-                    mt: 1,
-                    '&:hover': {
-                      backgroundColor: 'error.light',
-                      color: 'white'
-                    }
-                  }}
-                >
-                  <Logout />
-                </IconButton>
-              </Tooltip>
-            ) : (
-              <Button
-                fullWidth
-                variant="outlined"
-                color="error"
-                startIcon={<Logout />}
-                onClick={() => {
-                  auth.logout();
-                  apollo.resetStore();
-                  if (isMobile) setMobileOpen(false);
-                }}
-                sx={{ mt: 1 }}
-              >
-                Sign Out
-              </Button>
-            )}
+            {/* Use the new LogoutButton component */}
+            <LogoutButton 
+              variant={collapsed ? 'icon' : 'button'}
+              collapsed={collapsed}
+              onComplete={() => {
+                if (isMobile) setMobileOpen(false);
+              }}
+            />
 
             <Menu
               anchorEl={anchorEl}
@@ -503,20 +470,57 @@ const App = () => {
         }}
       >
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<LoginPage />} />
+          {/* Public routes - only accessible when NOT authenticated */}
+           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegistrationPage />} />
+          <Route path="/recovery" element={<RecoveryPage />} />
+          <Route path="/activate" element={<ActivationPage />} />
+          <Route path="/reset" element={<ResetPage />} />
+          
+          {/* OAuth routes - these need special handling */}
           <Route path="/oauth/success" element={<OauthLoginResultPage />} />
           <Route path="/oauth/error" element={<OauthLoginResultPage />} />
-          <Route path="/recovery" element={<RecoveryPage />} />
-          <Route path="/reset" element={<ResetPage />} />
-          <Route path="/activate" element={<ActivationPage />} />
-          <Route path="/register" element={<RegistrationPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/histtext" element={<HistText />} />
-          <Route path="/Admin" element={<AdminPanel />} />
+          
+          {/* Public/Mixed routes */}
+          <Route path="/" element={<Home />} />
+          
+          {/* Protected routes - only accessible when authenticated */}
+          <Route 
+            path="/account" 
+            element={
+              <ProtectedRoute>
+                <AccountPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/histtext" 
+            element={
+              <ProtectedRoute>
+                <HistText />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/Admin" 
+            element={
+              <ProtectedRoute>
+                <AdminPanel />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </Box>
     </Box>
+  );
+};
+
+// Wrap the entire app with AuthProvider
+const App = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

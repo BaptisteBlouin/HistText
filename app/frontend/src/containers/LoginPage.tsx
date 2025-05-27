@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   Container,
@@ -27,24 +27,30 @@ import {
   LockReset
 } from '@mui/icons-material';
 
+// Update the LoginPage to handle authentication state properly
 export const LoginPage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [processing, setProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
+  // Get the intended destination from state, or default to home
+  const from = location.state?.from?.pathname || '/';
+
   const login = async () => {
     setProcessing(true);
     setError(null);
     try {
-      await auth.login(email, password);
-      if (!auth.isAuthenticated) {
-        setError('Invalid credentials. Please try again.');
+      const success = await auth.login(email, password);
+      if (success) {
+        // Navigate to intended destination or home
+        navigate(from, { replace: true });
       } else {
-        navigate('/');
+        setError('Invalid credentials. Please try again.');
       }
     } catch (err) {
       setError('Invalid credentials. Please try again.');
@@ -58,8 +64,9 @@ export const LoginPage = () => {
     login();
   };
 
-  if (auth.isAuthenticated) {
-    navigate('/');
+  // Only redirect if user is authenticated AND there's no error AND not currently processing
+  // This allows error messages to be displayed
+  if (auth.isAuthenticated && !error && !processing) {
     return (
       <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
         <Alert severity="info">
@@ -99,17 +106,17 @@ export const LoginPage = () => {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Username" // Changed from "Email Address" to "Username"
-              type="text" // Changed from "email" to "text"
+              label="Username"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               sx={{ mb: 3 }}
-              placeholder="Enter username (try 'free')" // Added helpful placeholder
+              placeholder="Enter username (try 'free')"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Person color="action" /> {/* Changed from Email to Person icon */}
+                    <Person color="action" />
                   </InputAdornment>
                 ),
               }}
@@ -123,7 +130,7 @@ export const LoginPage = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               sx={{ mb: 3 }}
-              placeholder="Enter password (try 'free')" // Added helpful placeholder
+              placeholder="Enter password (try 'free')"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -149,7 +156,6 @@ export const LoginPage = () => {
               </Alert>
             )}
 
-            {/* Add helpful info for demo users */}
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body2">
                 <strong>Demo Access:</strong> Use "free" as both username and password

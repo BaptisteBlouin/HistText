@@ -11,6 +11,17 @@ import React, {
 const MILLISECONDS_UNTIL_EXPIRY_CHECK = 10 * 1000; // check expiry every 10 seconds
 const REMAINING_TOKEN_EXPIRY_TIME_ALLOWED = 60 * 1000; // 1 minute before token should be refreshed
 
+// Extend the AccessTokenClaims interface to include user info
+interface ExtendedAccessTokenClaims extends AccessTokenClaims {
+  email?: string;
+  firstname?: string;
+  lastname?: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  preferred_username?: string;
+}
+
 class Permissions {
   private readonly rolesSet: Set<string>;
   private readonly rolesArray: string[];
@@ -48,6 +59,11 @@ interface Session {
   userId: ID;
   roles: string[];
   permissions: string[];
+  user?: {
+    email?: string;
+    firstname?: string;
+    lastname?: string;
+  };
   hasRole(role: string): boolean;
   hasPermission(permission: string): boolean;
 }
@@ -55,8 +71,10 @@ interface Session {
 interface AuthContext {
   accessToken: string | undefined;
   session: Session | undefined;
+  isLoading: boolean;
   setAccessToken: (accessToken: string | undefined) => void;
   setSession: (session: Session | undefined) => void;
+  setIsLoading: (loading: boolean) => void;
   isCheckingAuth: MutableRefObject<boolean>;
 }
 
@@ -69,6 +87,7 @@ const Context = createContext<AuthContext>(undefined as any);
 export const AuthProvider = (props: AuthWrapperProps) => {
   const [accessToken, setAccessToken] = useState<string | undefined>();
   const [session, setSession] = useState<Session | undefined>();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const isCheckingAuth = useRef<boolean>(false);
 
   return (
@@ -76,8 +95,10 @@ export const AuthProvider = (props: AuthWrapperProps) => {
       value={{
         accessToken,
         session,
+        isLoading,
         setAccessToken,
         setSession,
+        setIsLoading,
         isCheckingAuth,
       }}
     >
@@ -86,35 +107,58 @@ export const AuthProvider = (props: AuthWrapperProps) => {
   );
 };
 
+// Helper function to extract user info from token claims
+const extractUserInfo = (claims: ExtendedAccessTokenClaims, fallbackEmail?: string) => {
+  return {
+    email: claims.email || claims.preferred_username || fallbackEmail || '',
+    firstname: claims.firstname || claims.given_name || '',
+    lastname: claims.lastname || claims.family_name || '',
+  };
+};
+
 export const useAuth = () => {
   const context = useContext(Context);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
-    if (response.ok) {
-      const responseJson = await response.json();
-      const parsedToken = parseJwt(responseJson.access_token) as AccessTokenClaims;
-      const permissions = new Permissions(parsedToken.roles, parsedToken.permissions);
-      context.setAccessToken(responseJson.access_token);
-      context.setSession({
-        userId: parsedToken.sub,
-        expiresOnUTC: parsedToken.exp,
-        roles: permissions.roles,
-        permissions: permissions.permissions,
-        hasPermission: permissions.hasPermission,
-        hasRole: permissions.hasRole,
+    context.setIsLoading(true);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
-      return true;
-    } else {
+      
+      if (response.ok) {
+        const responseJson = await response.json();
+        const parsedToken = parseJwt(responseJson.access_token) as ExtendedAccessTokenClaims;
+        const permissions = new Permissions(parsedToken.roles, parsedToken.permissions);
+        const userInfo = extractUserInfo(parsedToken, email);
+        
+        context.setAccessToken(responseJson.access_token);
+        context.setSession({
+          userId: parsedToken.sub,
+          expiresOnUTC: parsedToken.exp,
+          roles: permissions.roles,
+          permissions: permissions.permissions,
+          user: userInfo,
+          hasPermission: permissions.hasPermission,
+          hasRole: permissions.hasRole,
+        });
+        return true;
+      } else {
+        context.setAccessToken(undefined);
+        context.setSession(undefined);
+        return false;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
       context.setAccessToken(undefined);
       context.setSession(undefined);
       return false;
+    } finally {
+      context.setIsLoading(false);
     }
   };
 
@@ -140,20 +184,24 @@ export const useAuth = () => {
     if (!access_token) {
       context.setAccessToken(undefined);
       context.setSession(undefined);
-
+      context.setIsLoading(false);
       return false;
     } else {
-      const parsedToken = parseJwt(access_token) as AccessTokenClaims;
+      const parsedToken = parseJwt(access_token) as ExtendedAccessTokenClaims;
       const permissions = new Permissions(parsedToken.roles, parsedToken.permissions);
+      const userInfo = extractUserInfo(parsedToken);
+      
       context.setAccessToken(access_token);
       context.setSession({
         userId: parsedToken.sub,
         expiresOnUTC: parsedToken.exp,
         roles: permissions.roles,
         permissions: permissions.permissions,
+        user: userInfo,
         hasPermission: permissions.hasPermission,
         hasRole: permissions.hasRole,
       });
+      context.setIsLoading(false);
 
       if (localStorage.getItem('create_rust_app_oauth_redirect')) {
         window.location.href = localStorage.getItem('create_rust_app_oauth_redirect') as string;
@@ -163,23 +211,51 @@ export const useAuth = () => {
     }
   };
 
-  const logout = async (): Promise<boolean> => {
-    const response = await fetch('/api/auth/logout', {
-      method: 'POST',
-    });
-
-    if (response.ok) {
+  // Enhanced logout with proper error handling and loading states
+  const logout = useCallback(async (): Promise<boolean> => {
+    context.setIsLoading(true);
+    try {
+      // Always clear local state first to prevent UI inconsistencies
+      const currentToken = context.accessToken;
+      
+      // Clear state immediately to prevent loops
       context.setAccessToken(undefined);
       context.setSession(undefined);
+      
+      // Then try to notify the server (but don't fail if this doesn't work)
+      if (currentToken) {
+        try {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${currentToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        } catch (error) {
+          console.warn('Server logout failed, but local logout succeeded:', error);
+        }
+      }
+      
+      // Clear any stored tokens
+      localStorage.removeItem('create_rust_app_oauth_redirect');
+      
       return true;
-    } else {
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Ensure state is cleared even if there's an error
+      context.setAccessToken(undefined);
+      context.setSession(undefined);
       return false;
+    } finally {
+      context.setIsLoading(false);
     }
-  };
+  }, [context]);
 
   return {
     accessToken: context.accessToken,
     session: context.session,
+    isLoading: context.isLoading,
     isCheckingAuth: context.isCheckingAuth,
     isAuthenticated: !!context.accessToken,
     login,
@@ -210,36 +286,44 @@ export const useAuthCheck = () => {
       return true;
     };
 
-    if (!context.accessToken || isExpiringSoon()) {
-      // console.log('Restoring session')
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        const responseJson = await response.json();
-        const parsedToken = parseJwt(responseJson.access_token) as AccessTokenClaims;
-        const permissions = new Permissions(parsedToken.roles, parsedToken.permissions);
-
-        context.setAccessToken(responseJson.access_token);
-        context.setSession({
-          userId: parsedToken.sub,
-          expiresOnUTC: parsedToken.exp,
-          roles: permissions.roles,
-          permissions: permissions.permissions,
-          hasRole: permissions.hasRole,
-          hasPermission: permissions.hasPermission,
+    try {
+      if (!context.accessToken || isExpiringSoon()) {
+        // console.log('Restoring session')
+        const response = await fetch('/api/auth/refresh', {
+          method: 'POST',
         });
-      } else {
-        context.setAccessToken(undefined);
-        context.setSession(undefined);
-      }
-    } else {
-      // console.log(`${context.accessToken ? 'access token' : ''} ${isExpiringSoon() ? ' is not expiring' : ''}`)
-    }
 
-    isCheckingAuth.current = false;
-  }, [context.accessToken, context.session]);
+        if (response.ok) {
+          const responseJson = await response.json();
+          const parsedToken = parseJwt(responseJson.access_token) as ExtendedAccessTokenClaims;
+          const permissions = new Permissions(parsedToken.roles, parsedToken.permissions);
+          const userInfo = extractUserInfo(parsedToken);
+
+          context.setAccessToken(responseJson.access_token);
+          context.setSession({
+            userId: parsedToken.sub,
+            expiresOnUTC: parsedToken.exp,
+            roles: permissions.roles,
+            permissions: permissions.permissions,
+            user: userInfo,
+            hasRole: permissions.hasRole,
+            hasPermission: permissions.hasPermission,
+          });
+        } else {
+          context.setAccessToken(undefined);
+          context.setSession(undefined);
+        }
+      }
+    } catch (error) {
+      console.error('Auth refresh error:', error);
+      context.setAccessToken(undefined);
+      context.setSession(undefined);
+    } finally {
+      // Set loading to false after initial auth check
+      context.setIsLoading(false);
+      isCheckingAuth.current = false;
+    }
+  }, [context]);
 
   useEffect(() => {
     refreshIfNecessary();
