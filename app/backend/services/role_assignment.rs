@@ -46,11 +46,7 @@ impl RoleAssignmentService {
                     let default_permissions = vec![
                         crate::services::role_permissions::NewRolePermission {
                             role: DEFAULT_USER_ROLE.to_string(),
-                            permission: "read".to_string(),
-                        },
-                        crate::services::role_permissions::NewRolePermission {
-                            role: DEFAULT_USER_ROLE.to_string(),
-                            permission: "search".to_string(),
+                            permission: "free".to_string(),
                         },
                     ];
 
