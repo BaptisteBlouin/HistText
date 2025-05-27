@@ -23,6 +23,7 @@ use super::types::CollectionQueryParams;
 use super::search::fetch_documents;
 use super::processing::{prepare_csv_writer, write_csv_records};
 use super::utils::{get_solr_database, log_elapsed, write_cache_file};
+use log::warn;
 
 #[utoipa::path(
     get,
@@ -68,6 +69,7 @@ pub async fn query_collection(
         Err(_) => return Ok(HttpResponse::Unauthorized().body("Invalid token")),
     };
 
+    // Extract user permissions from token
     let user_permissions: HashSet<String> = token_data
         .claims
         .permissions
@@ -78,22 +80,64 @@ pub async fn query_collection(
     let solr_database_id_value = query.solr_database_id;
     let collection_requested = &query.collection;
 
+    // DEBUG: Log user information
+    info!("DEBUG: User ID: {}", token_data.claims.sub);
+    info!("DEBUG: User permissions: {:?}", user_permissions);
+    info!("DEBUG: Requested collection: '{}', database_id: {}", collection_requested, solr_database_id_value);
+
     let mut conn = pool.get().map_err(ErrorInternalServerError)?;
 
-    let permission_record: Option<SolrDatabasePermission> = solr_database_permissions
+    // FIXED: Get ALL permission records for this collection (not just the first one)
+    let permission_records: Vec<SolrDatabasePermission> = solr_database_permissions
         .filter(solr_database_id.eq(solr_database_id_value))
         .filter(collection_name.eq(collection_requested))
-        .first::<SolrDatabasePermission>(&mut conn)
-        .optional()
+        .load::<SolrDatabasePermission>(&mut conn)
         .map_err(ErrorInternalServerError)?;
 
-    if let Some(permission_rec) = permission_record {
-        if !user_permissions.contains(&permission_rec.permission) {
-            return Ok(HttpResponse::Forbidden().body("No permission for this collection"));
-        }
-    } else {
+    // DEBUG: Log what permission records were found
+    info!("DEBUG: Found {} permission records for collection '{}'", 
+        permission_records.len(), collection_requested);
+    
+    for (i, perm_rec) in permission_records.iter().enumerate() {
+        info!("DEBUG: Permission record {}: requires '{}' permission", i + 1, perm_rec.permission);
+    }
+
+    // Check if any permission records exist for this collection
+    if permission_records.is_empty() {
+        warn!("DEBUG: No permission records found for collection '{}' in database {}", 
+            collection_requested, solr_database_id_value);
         return Ok(HttpResponse::Forbidden().body("No permission for this collection"));
     }
+
+    // FIXED: Check if user has ANY of the required permissions (not just the first one)
+    let mut has_required_permission = false;
+    let mut required_permissions: Vec<String> = Vec::new();
+    
+    for perm_rec in &permission_records {
+        required_permissions.push(perm_rec.permission.clone());
+        if user_permissions.contains(&perm_rec.permission) {
+            info!("DEBUG: ✅ User HAS required permission: '{}'", perm_rec.permission);
+            has_required_permission = true;
+            break; // Found a matching permission, no need to check others
+        } else {
+            info!("DEBUG: ❌ User does NOT have required permission: '{}'", perm_rec.permission);
+        }
+    }
+
+    // DEBUG: Final permission check result
+    info!("DEBUG: Required permissions for collection '{}': {:?}", collection_requested, required_permissions);
+    info!("DEBUG: User permissions: {:?}", user_permissions);
+    info!("DEBUG: Permission check result: {}", if has_required_permission { "ALLOWED" } else { "DENIED" });
+
+    if !has_required_permission {
+        warn!("User {} denied access to collection '{}'. Required: {:?}, User has: {:?}", 
+            token_data.claims.sub, collection_requested, required_permissions, user_permissions);
+        return Ok(HttpResponse::Forbidden().body("No permission for this collection"));
+    }
+
+    // Permission check passed, continue with the rest of the function...
+    info!("DEBUG: ✅ Permission check PASSED for user {} on collection '{}'", 
+        token_data.claims.sub, collection_requested);
 
     let start_time = Instant::now();
     let start = query.start.unwrap_or(0);
