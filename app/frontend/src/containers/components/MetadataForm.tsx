@@ -337,7 +337,20 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
               <QueryStats />
               Search Fields
             </Typography>
-            
+                        {/* Search History Integration */}
+            <Box sx={{ mb: 3 }}>
+              <SearchHistoryIntegration
+                formData={formData}
+                dateRange={dateRange}
+                selectedAlias={selectedAlias}
+                selectedSolrDatabase={solrDatabaseId ? { 
+                  id: solrDatabaseId, 
+                  name: collectionInfo?.collection_name || 'Database' 
+                } : null}
+                resultsCount={allResults.length || undefined}
+                onShowHistory={() => setHistoryPanelOpen(true)}
+              />
+            </Box>
             <Grid container spacing={3} sx={{ mb: 3 }}>
               {visibleFields.map(field => (
                 <Grid item xs={12} md={6} lg={4} key={field.name}>
@@ -397,20 +410,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
               </Alert>
             </Box>
 
-            {/* Search History Integration */}
-            <Box sx={{ mb: 3 }}>
-              <SearchHistoryIntegration
-                formData={formData}
-                dateRange={dateRange}
-                selectedAlias={selectedAlias}
-                selectedSolrDatabase={solrDatabaseId ? { 
-                  id: solrDatabaseId, 
-                  name: collectionInfo?.collection_name || 'Database' 
-                } : null}
-                resultsCount={allResults.length || undefined}
-                onShowHistory={() => setHistoryPanelOpen(true)}
-              />
-            </Box>
+
 
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Button 
