@@ -116,7 +116,7 @@ export const Home = () => {
                lineHeight: 1.6
              }}
            >
-             Advanced text analysis and document search platform for researchers and analysts
+             A platform for document discovery and advanced text analysis, designed for students, researchers, and professionals
            </Typography>
 
            <Box sx={{ mb: 4 }}>
