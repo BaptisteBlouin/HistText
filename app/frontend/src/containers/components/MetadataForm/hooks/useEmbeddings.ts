@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { fetchNeighbors, computeSimilarity, computeAnalogy } from '../utils/embeddingsApi';
 
 export const useEmbeddings = (
@@ -13,6 +13,12 @@ export const useEmbeddings = (
   const [analogyResult, setAnalogyResult] = useState<any>(null);
   const [embeddingLoading, setEmbeddingLoading] = useState(false);
 
+  useEffect(() => {
+    setNeighbors({});
+    setLoadingNeighbors({});
+    setSimilarityResult(null);
+    setAnalogyResult(null);
+  }, [solrDatabaseId, selectedAlias]);
   const getNeighbors = useCallback(async (inputValue: string, fieldName: string) => {
     if (!inputValue || !solrDatabaseId || !hasEmbeddings) return;
     
