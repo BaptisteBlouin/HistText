@@ -136,14 +136,14 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
         </Paper>
       </Container>
 
-      {/* Quick Actions - Hidden in fullscreen */}
+      {/* Quick Actions - Temporarily disabled
       {!fullscreenState.isAnyFullscreen && (
         <QuickActions
           open={quickActions}
           {...quickActionsHandlers}
         />
       )}
-
+      */}
       <NotificationSystem
         open={notification.open}
         message={notification.message}
