@@ -17,6 +17,7 @@ import { buildQueryString } from './buildQueryString';
 import { useAuth } from '../../hooks/useAuth';
 import { useEmbeddings } from './MetadataForm/hooks/useEmbeddings';
 import { useSmartValidation } from '../../hooks/useSmartValidation';
+import { useSearchHistory, SavedSearch } from '../../hooks/useSearchHistory';
 import { shouldExcludeField, isTextField, sortFieldsByPriority } from './MetadataForm/utils/fieldUtils';
 import FormHeader from './MetadataForm/components/FormHeader';
 import FormField from './MetadataForm/components/FormField';
@@ -24,6 +25,8 @@ import DateRangeField from './MetadataForm/components/DateRangeField';
 import QueryOptions from './MetadataForm/components/QueryOptions';
 import CodeGeneration from './MetadataForm/components/CodeGeneration';
 import EmbeddingTools from './MetadataForm/components/EmbeddingTools';
+import SearchHistoryIntegration from './MetadataForm/components/SearchHistoryIntegration';
+import SearchHistoryPanel from './SearchHistory/SearchHistoryPanel';
 
 type StatsLevel = (typeof config.statsLevelOptions)[number];
 type DocLevel = (typeof config.docLevelOptions)[number];
@@ -66,6 +69,9 @@ interface MetadataFormProps {
   setDocLevel: React.Dispatch<React.SetStateAction<DocLevel>>;
   solrDatabaseId: number | null;
   selectedAlias: string;
+  allResults?: any[]; // Optional: for tracking results count
+  onDatabaseChange?: (database: any) => void; // Optional: for handling database changes
+  onAliasChange?: (alias: string) => void; // Optional: for handling alias changes
 }
 
 const MetadataForm: React.FC<MetadataFormProps> = ({
@@ -84,6 +90,9 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   setDocLevel,
   solrDatabaseId,
   selectedAlias,
+  allResults = [],
+  onDatabaseChange,
+  onAliasChange,
 }) => {
   const { accessToken } = useAuth();
   const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(null);
@@ -91,6 +100,10 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showEmbeddingAlert, setShowEmbeddingAlert] = useState(false);
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false);
+  const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
+
+  // Search history hook
+  const { addToHistory } = useSearchHistory();
 
   // Custom hooks
   const {
@@ -144,6 +157,106 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     setFormData((prevData: any) => ({ ...prevData, ...initializedFormData }));
   }, [metadata, setFormData, formData]);
 
+  // Auto-save searches to history when query is executed
+  const handleSubmitWithHistory = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (formValidation.canSubmit) {
+      // Save to history before executing query
+      if (selectedAlias && solrDatabaseId) {
+        const queryString = buildQueryString(formData, dateRange);
+        
+        // Generate a default name for the search
+        const keyTerms: string[] = [];
+        Object.entries(formData).forEach(([field, entries]: [string, any]) => {
+          entries.forEach((entry: any) => {
+            if (entry.value && entry.value.trim()) {
+              keyTerms.push(entry.value.trim());
+            }
+          });
+        });
+
+        const termsPart = keyTerms.slice(0, 2).join(', ');
+        const defaultName = `${selectedAlias}: ${termsPart}`.slice(0, 80);
+        
+        const searchData: Omit<SavedSearch, 'id' | 'createdAt' | 'lastUsed'> = {
+          name: defaultName || `Search in ${selectedAlias}`,
+          formData,
+          dateRange,
+          selectedAlias,
+          selectedSolrDatabase: {
+            id: solrDatabaseId,
+            name: collectionInfo?.collection_name || 'Unknown'
+          },
+          isBookmarked: false,
+          tags: [],
+          queryString,
+          resultsCount: allResults.length || undefined
+        };
+
+        addToHistory(searchData);
+      }
+
+      // Execute the query
+      handleQuery(e, false, getNER, downloadOnly, statsLevel, docLevel);
+    }
+  }, [
+    formValidation.canSubmit,
+    selectedAlias,
+    solrDatabaseId,
+    formData,
+    dateRange,
+    collectionInfo,
+    allResults.length,
+    addToHistory,
+    handleQuery,
+    getNER,
+    downloadOnly,
+    statsLevel,
+    docLevel
+  ]);
+
+  // Handle applying saved search
+  const handleApplySavedSearch = useCallback(async (search: SavedSearch) => {
+    try {
+      // Strict compatibility check - prevent cross-collection application
+      if (!solrDatabaseId || !selectedAlias) {
+        console.warn('No current database/alias selected');
+        return;
+      }
+
+      if (search.selectedSolrDatabase.id !== solrDatabaseId || 
+          search.selectedAlias !== selectedAlias) {
+        console.warn('Search is not compatible with current collection:', {
+          searchDatabase: search.selectedSolrDatabase.id,
+          searchAlias: search.selectedAlias,
+          currentDatabase: solrDatabaseId,
+          currentAlias: selectedAlias
+        });
+        return;
+      }
+      
+      // Only apply the form data if the collections match exactly
+      setFormData(search.formData);
+      
+      // Note: dateRange changes would need to be handled by parent component
+      // since it's typically managed at a higher level
+      
+    } catch (error) {
+      console.error('Error applying saved search:', error);
+    }
+  }, [solrDatabaseId, selectedAlias, setFormData]);
+
+    // Handle saving current search manually
+  const handleSaveCurrentSearch = useCallback(() => {
+    setHistoryPanelOpen(false);
+    // Add a small delay to allow the panel to close, then trigger save
+    setTimeout(() => {
+      // This will be handled by the SearchHistoryIntegration component
+      // We can trigger it by setting a flag or calling a function
+    }, 300);
+  }, []);
+
   // Handlers
   const handleFormChange = useCallback((
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | { name?: string; value: unknown }>,
@@ -190,13 +303,6 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     }));
   }, [setFormData]);
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (formValidation.canSubmit) {
-      handleQuery(e, false, getNER, downloadOnly, statsLevel, docLevel);
-    }
-  }, [handleQuery, getNER, downloadOnly, statsLevel, docLevel, formValidation.canSubmit]);
-
   const handleOpenEmbeddingModal = useCallback(() => {
     setEmbeddingModalOpen(true);
   }, []);
@@ -210,6 +316,11 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     metadata.filter(field => !shouldExcludeField(field.name, collectionInfo))
   );
 
+  // Check if we have any search content
+  const hasSearchContent = Object.values(formData).some((entries: any) =>
+    entries.some((entry: any) => entry.value && entry.value.trim())
+  );
+
   return (
     <Box sx={{ width: '100%' }}>
       <FormHeader
@@ -221,7 +332,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Box component="form" onSubmit={handleSubmit}>
+          <Box component="form" onSubmit={handleSubmitWithHistory}>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <QueryStats />
               Search Fields
@@ -282,9 +393,23 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                   <Typography variant="body2">
                     {formValidation.summary}
                   </Typography>
-
                 </Box>
               </Alert>
+            </Box>
+
+            {/* Search History Integration */}
+            <Box sx={{ mb: 3 }}>
+              <SearchHistoryIntegration
+                formData={formData}
+                dateRange={dateRange}
+                selectedAlias={selectedAlias}
+                selectedSolrDatabase={solrDatabaseId ? { 
+                  id: solrDatabaseId, 
+                  name: collectionInfo?.collection_name || 'Database' 
+                } : null}
+                resultsCount={allResults.length || undefined}
+                onShowHistory={() => setHistoryPanelOpen(true)}
+              />
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
@@ -320,6 +445,21 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
           </Box>
         </CardContent>
       </Card>
+
+      {/* Search History Panel */}
+      <SearchHistoryPanel
+        open={historyPanelOpen}
+        onClose={() => setHistoryPanelOpen(false)}
+        onApplySearch={handleApplySavedSearch}
+        currentFormData={hasSearchContent ? formData : undefined}
+        currentDateRange={dateRange}
+        currentAlias={selectedAlias}
+        currentSolrDatabase={solrDatabaseId ? { 
+          id: solrDatabaseId, 
+          name: collectionInfo?.collection_name || 'Database' 
+        } : undefined}
+        onSaveCurrentSearch={handleSaveCurrentSearch}
+      />
 
       <EmbeddingTools
         hasEmbeddings={hasEmbeddings}
