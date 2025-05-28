@@ -231,7 +231,6 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
                 Search Preview:
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                <Chip label={selectedSolrDatabase.name} size="small" color="primary" />
                 <Chip label={selectedAlias} size="small" color="secondary" />
                 {resultsCount && (
                   <Chip label={`${resultsCount} results`} size="small" color="success" />

@@ -27,7 +27,8 @@ import {
   Divider,
   Avatar,
   Badge,
-  Paper
+  Paper,
+  CircularProgress
 } from '@mui/material';
 import {
   History,
@@ -62,6 +63,10 @@ interface SearchHistoryPanelProps {
   currentAlias?: string;
   currentSolrDatabase?: any;
   onSaveCurrentSearch?: () => void;
+  availableDatabases?: Array<{ id: number; name: string; }>;
+  availableCollections?: Record<number, string[]>; // database_id -> collections[]
+  onSwitchAndApply?: (search: SavedSearch) => Promise<void>;
+  canSwitchCollections?: boolean;
 }
 
 const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
@@ -72,7 +77,11 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
   currentDateRange,
   currentAlias,
   currentSolrDatabase,
-  onSaveCurrentSearch
+  onSaveCurrentSearch,
+  availableDatabases = [],
+  availableCollections = {},
+  onSwitchAndApply,
+  canSwitchCollections = false
 }) => {
   const {
     searchHistory,
@@ -101,6 +110,48 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
   const [editingSearch, setEditingSearch] = useState<SavedSearch | null>(null);
   const [incompatibleDialogOpen, setIncompatibleDialogOpen] = useState(false);
   const [incompatibleSearch, setIncompatibleSearch] = useState<SavedSearch | null>(null);
+  const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
+  const [switchingSearch, setSwitchingSearch] = useState<SavedSearch | null>(null);
+  const [isSwitching, setIsSwitching] = useState(false);
+
+  const canSwitchToSearch = useCallback((search: SavedSearch) => {
+    if (!canSwitchCollections || !onSwitchAndApply) return false;
+    
+    // Check if the database is available
+    const databaseExists = availableDatabases.some(db => db.id === search.selectedSolrDatabase.id);
+    if (!databaseExists) return false;
+
+    // Check if the collection is available for that database
+    const collectionsForDb = availableCollections[search.selectedSolrDatabase.id] || [];
+    const collectionExists = collectionsForDb.includes(search.selectedAlias);
+    
+    return collectionExists;
+  }, [canSwitchCollections, onSwitchAndApply, availableDatabases, availableCollections]);
+
+  // Handle switching to a different collection and applying search
+  const handleSwitchAndApply = useCallback(async (search: SavedSearch) => {
+    if (!onSwitchAndApply || !canSwitchToSearch(search)) return;
+
+    setSwitchingSearch(search);
+    setSwitchDialogOpen(true);
+  }, [onSwitchAndApply, canSwitchToSearch]);
+
+  const handleConfirmSwitch = useCallback(async () => {
+    if (!switchingSearch || !onSwitchAndApply) return;
+
+    setIsSwitching(true);
+    try {
+      await onSwitchAndApply(switchingSearch);
+      setSwitchDialogOpen(false);
+      setSwitchingSearch(null);
+      onClose(); // Close the search history panel after successful switch
+    } catch (error) {
+      console.error('Error switching collection and applying search:', error);
+      // Could show error notification here
+    } finally {
+      setIsSwitching(false);
+    }
+  }, [switchingSearch, onSwitchAndApply, onClose]);
 
   // Check if a search is compatible with current collection
   const isSearchCompatible = useCallback((search: SavedSearch) => {
@@ -231,6 +282,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
 
   const renderSearchItem = (search: SavedSearch, isBookmark: boolean, isCompatible: boolean) => {
     const isCurrentCollection = isCompatible;
+    const canSwitch = !isCompatible && canSwitchToSearch(search);
     
     return (
       <Card 
@@ -241,7 +293,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
           transition: 'all 0.2s ease',
           opacity: isCompatible ? 1 : 0.7,
           border: isCompatible ? '1px solid transparent' : '1px solid',
-          borderColor: isCompatible ? 'transparent' : 'warning.main',
+          borderColor: isCompatible ? 'transparent' : (canSwitch ? 'info.main' : 'warning.main'),
           '&:hover': isCompatible ? {
             transform: 'translateY(-2px)',
             boxShadow: 4
@@ -258,8 +310,24 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
               zIndex: 1
             }}
           >
-            <Tooltip title="Incompatible with current collection">
-              <Block color="warning" />
+            <Tooltip title={canSwitch ? "Can switch to this collection" : "Collection not available"}>
+              {canSwitch ? (
+                <Badge 
+                  badgeContent="!" 
+                  color="info"
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      fontSize: '10px',
+                      height: '16px',
+                      minWidth: '16px'
+                    }
+                  }}
+                >
+                  <Block color="info" />
+                </Badge>
+              ) : (
+                <Block color="warning" />
+              )}
             </Tooltip>
           </Box>
         )}
@@ -272,7 +340,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
             <Avatar sx={{ 
               bgcolor: isCompatible 
                 ? (isBookmark ? 'warning.main' : 'secondary.main')
-                : 'grey.400'
+                : (canSwitch ? 'info.main' : 'grey.400')
             }}>
               {isBookmark ? <Bookmark /> : <History />}
             </Avatar>
@@ -301,12 +369,6 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
               
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
                 <Chip 
-                  label={search.selectedSolrDatabase.name} 
-                  size="small" 
-                  color={isCurrentCollection && search.selectedSolrDatabase.id === currentSolrDatabase?.id ? "primary" : "default"}
-                  variant={isCurrentCollection && search.selectedSolrDatabase.id === currentSolrDatabase?.id ? "filled" : "outlined"}
-                />
-                <Chip 
                   label={search.selectedAlias} 
                   size="small" 
                   color={isCurrentCollection && search.selectedAlias === currentAlias ? "secondary" : "default"}
@@ -323,12 +385,35 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
               </Box>
               
               {!isCompatible && (
-                <Alert severity="warning" sx={{ mt: 1, mb: 1 }} variant="outlined">
+                <Alert 
+                  severity={canSwitch ? "info" : "warning"} 
+                  sx={{ mt: 1, mb: 1 }} 
+                  variant="outlined"
+                  action={
+                    canSwitch ? (
+                      <Button
+                        color="info"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSwitchAndApply(search);
+                        }}
+                        startIcon={<PlayArrow />}
+                      >
+                        Switch & Apply
+                      </Button>
+                    ) : undefined
+                  }
+                >
                   <Typography variant="caption">
-                    This search is for {search.selectedSolrDatabase.name} › {search.selectedAlias}
-                    {currentSolrDatabase && currentAlias && 
-                      `, but you're currently in ${currentSolrDatabase.name} › ${currentAlias}`
-                    }
+                    {canSwitch ? (
+                      <>Switch to {search.selectedAlias} to use this search</>
+                    ) : (
+                      <>This search is for {search.selectedAlias}
+                      {currentSolrDatabase && currentAlias && 
+                        `, but you're currently in ${currentAlias}`
+                      }</>
+                    )}
                   </Typography>
                 </Alert>
               )}
@@ -387,8 +472,23 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                 </Tooltip>
               )}
               
-              {!isCompatible && (
-                <Tooltip title="Cannot apply - incompatible collection">
+              {!isCompatible && canSwitch && (
+                <Tooltip title="Switch collection and apply">
+                  <IconButton
+                    size="small"
+                    color="info"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSwitchAndApply(search);
+                    }}
+                  >
+                    <PlayArrow />
+                  </IconButton>
+                </Tooltip>
+              )}
+              
+              {!isCompatible && !canSwitch && (
+                <Tooltip title="Collection not available">
                   <IconButton
                     size="small"
                     disabled
@@ -458,7 +558,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
         {currentSolrDatabase && currentAlias && (
           <Box sx={{ ml: 'auto' }}>
             <Chip 
-              label={`${currentSolrDatabase.name} › ${currentAlias}`}
+              label={`${currentAlias}`}
               size="small"
               color="primary"
               variant="outlined"
@@ -545,24 +645,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
             </Button>
           </Box>
           
-          {/* Save Current Search */}
-          {currentFormData && currentAlias && (
-            <Alert severity="info" sx={{ mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography variant="body2">
-                  You have an active search that you can save
-                </Typography>
-                <Button
-                  size="small"
-                  variant="contained"
-                  startIcon={<BookmarkAdd />}
-                  onClick={onSaveCurrentSearch}
-                >
-                  Save Current Search
-                </Button>
-              </Box>
-            </Alert>
-          )}
+
           
           {/* Search Results */}
           <Box sx={{ maxHeight: 'calc(80vh - 350px)', overflow: 'auto' }}>
@@ -607,7 +690,88 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
       <DialogActions sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
-      
+
+      {/* Switch Collection Confirmation Dialog */}
+      <Dialog 
+        open={switchDialogOpen} 
+        onClose={() => !isSwitching && setSwitchDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PlayArrow color="info" />
+          Switch Collection & Apply Search
+        </DialogTitle>
+        <DialogContent>
+          {switchingSearch && (
+            <Box>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  This will switch your current database and collection, then apply the saved search.
+                </Typography>
+              </Alert>
+              
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Search to Apply:
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Name:</strong> {switchingSearch.name}
+                </Typography>
+                {switchingSearch.description && (
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Description:</strong> {switchingSearch.description}
+                  </Typography>
+                )}
+                <Typography variant="body2" gutterBottom>
+                  <strong>Target:</strong>  {switchingSearch.selectedAlias}
+                </Typography>
+                {switchingSearch.resultsCount && (
+                  <Typography variant="body2">
+                    <strong>Previous Results:</strong> {switchingSearch.resultsCount} documents
+                  </Typography>
+                )}
+              </Box>
+              
+              {currentSolrDatabase && currentAlias && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'warning.light', borderRadius: 1, opacity: 0.8 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Current Selection (will be changed):
+                  </Typography>
+                  <Typography variant="body2">
+                     {currentAlias}
+                  </Typography>
+                </Box>
+              )}
+              
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>Note:</strong> Any unsaved changes in your current search form will be lost. 
+                  Make sure to save your current search first if you want to keep it.
+                </Typography>
+              </Alert>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setSwitchDialogOpen(false)} 
+            disabled={isSwitching}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmSwitch} 
+            variant="contained" 
+            color="info"
+            disabled={isSwitching}
+            startIcon={isSwitching ? <CircularProgress size={16} /> : <PlayArrow />}
+          >
+            {isSwitching ? 'Switching...' : 'Switch & Apply'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Incompatible Search Dialog */}
       <Dialog 
         open={incompatibleDialogOpen} 
@@ -634,18 +798,18 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                   <strong>Name:</strong> {incompatibleSearch.name}
                 </Typography>
                 <Typography variant="body2" gutterBottom>
-                  <strong>Created for:</strong> {incompatibleSearch.selectedSolrDatabase.name} › {incompatibleSearch.selectedAlias}
+                  <strong>Created for:</strong>  {incompatibleSearch.selectedAlias}
                 </Typography>
                 {currentSolrDatabase && currentAlias && (
                   <Typography variant="body2">
-                    <strong>Current collection:</strong> {currentSolrDatabase.name} › {currentAlias}
+                    <strong>Current collection:</strong> {currentAlias}
                   </Typography>
                 )}
               </Box>
               
               <Alert severity="info" sx={{ mt: 2 }}>
                 <Typography variant="body2">
-                  To use this search, please switch to the {incompatibleSearch.selectedSolrDatabase.name} database and {incompatibleSearch.selectedAlias} collection first.
+                  To use this search, please switch to the {incompatibleSearch.selectedAlias} collection first.
                 </Typography>
               </Alert>
             </Box>

@@ -69,9 +69,13 @@ interface MetadataFormProps {
   setDocLevel: React.Dispatch<React.SetStateAction<DocLevel>>;
   solrDatabaseId: number | null;
   selectedAlias: string;
-  allResults?: any[]; // Optional: for tracking results count
-  onDatabaseChange?: (database: any) => void; // Optional: for handling database changes
-  onAliasChange?: (alias: string) => void; // Optional: for handling alias changes
+  allResults?: any[];
+  // Search history integration props
+  availableDatabases?: Array<{ id: number; name: string; }>;
+  availableCollections?: Record<number, string[]>;
+  onDatabaseChange?: (database: any) => void;
+  onAliasChange?: (alias: string) => void;
+  onSwitchAndApply?: (search: any) => Promise<void>;
 }
 
 const MetadataForm: React.FC<MetadataFormProps> = ({
@@ -91,8 +95,10 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   solrDatabaseId,
   selectedAlias,
   allResults = [],
+  availableDatabases, 
+  availableCollections,
   onDatabaseChange,
-  onAliasChange,
+  onAliasChange
 }) => {
   const { accessToken } = useAuth();
   const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(null);
@@ -157,6 +163,50 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     setFormData((prevData: any) => ({ ...prevData, ...initializedFormData }));
   }, [metadata, setFormData, formData]);
 
+  const handleSwitchAndApply = useCallback(async (search: SavedSearch) => {
+    try {
+      // Check if handlers are available
+      if (!onDatabaseChange || !onAliasChange) {
+        throw new Error('Database/collection switching not supported');
+      }
+
+      // Switch database if different
+      if (search.selectedSolrDatabase.id !== solrDatabaseId) {
+        const targetDatabase = availableDatabases?.find(db => db.id === search.selectedSolrDatabase.id);
+        if (!targetDatabase) {
+          throw new Error('Target database not found');
+        }
+        await onDatabaseChange(targetDatabase);
+        
+        // Wait for database change to propagate
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Switch collection if different
+      if (search.selectedAlias !== selectedAlias) {
+        await onAliasChange(search.selectedAlias);
+        
+        // Wait for alias change to propagate
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Apply the form data
+      setFormData(search.formData);
+      
+      // Note: You might also want to handle dateRange if it's managed at this level
+      
+    } catch (error) {
+      console.error('Error switching collection and applying search:', error);
+      throw error; // Re-throw to let the panel handle the error
+    }
+  }, [
+    solrDatabaseId, 
+    selectedAlias, 
+    availableDatabases, 
+    onDatabaseChange, 
+    onAliasChange, 
+    setFormData
+  ]);
   // Auto-save searches to history when query is executed
   const handleSubmitWithHistory = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -459,6 +509,10 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
           name: collectionInfo?.collection_name || 'Database' 
         } : undefined}
         onSaveCurrentSearch={handleSaveCurrentSearch}
+        availableDatabases={availableDatabases}
+        availableCollections={availableCollections}
+        onSwitchAndApply={handleSwitchAndApply}
+        canSwitchCollections={!!(onDatabaseChange && onAliasChange)}
       />
 
       <EmbeddingTools

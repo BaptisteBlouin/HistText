@@ -57,6 +57,13 @@ export const useTabContent = (data: any, actions: any, fullscreenState: any) => 
                 setDocLevel={data.setDocLevel}
                 solrDatabaseId={data.selectedSolrDatabase?.id || null}
                 selectedAlias={data.selectedAlias}
+                allResults={data.allResults}
+                // Search history integration props
+                availableDatabases={data.availableDatabases || []}
+                availableCollections={data.allCollections || {}}
+                onDatabaseChange={actions.handleSolrDatabaseChange}
+                onAliasChange={actions.handleAliasChange}
+                onSwitchAndApply={actions.handleSwitchAndApplySearch}
               />
             </Box>
           );
