@@ -141,8 +141,11 @@ export const useWordCloudProcessor = ({
       // Find best text column
       const contentColumn = findContentColumn(allResults);
       if (!contentColumn) {
-        throw new Error('No suitable text column found');
+        showNotification('No suitable text content found for word cloud generation', 'info');
+        setWordFrequency([]);
+        return;
       }
+
 
       console.log('Using content column:', contentColumn);
       setCloudProgress(25);
@@ -294,14 +297,13 @@ export const useWordCloudProcessor = ({
     } catch (error) {
       console.error('Error in word cloud computation:', error);
       setWordFrequency([]);
-      showNotification('Failed to generate word cloud', 'error');
+      showNotification('Word cloud generation failed, but your data is still available', 'warning');
     } finally {
       setIsCloudLoading(false);
       setTimeout(() => setCloudProgress(0), 1000);
       isProcessingRef.current = false;
     }
   }, [allResults, authAxios, setWordFrequency, setIsCloudLoading, setCloudProgress, showNotification]);
-
   // Debounced effect
   useEffect(() => {
     const timeoutId = setTimeout(() => {

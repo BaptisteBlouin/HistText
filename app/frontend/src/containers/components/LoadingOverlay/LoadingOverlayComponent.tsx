@@ -1,13 +1,14 @@
 import React from 'react';
 import {
   Backdrop,
-  Card,
   CircularProgress,
   Typography,
   LinearProgress,
   Box,
-  useTheme
+  useTheme,
+  Button
 } from '@mui/material';
+import { Warning, Refresh } from '@mui/icons-material';
 import { GradientPaper } from '../../../components/ui';
 
 interface LoadingOverlayComponentProps {
@@ -15,33 +16,41 @@ interface LoadingOverlayComponentProps {
   progress: number;
   title?: string;
   description?: string;
+  error?: string;
+  onRetry?: () => void;
+  showRetry?: boolean;
 }
 
 const LoadingOverlayComponent: React.FC<LoadingOverlayComponentProps> = ({ 
   loading, 
   progress,
   title = "Processing Query",
-  description
+  description,
+  error,
+  onRetry,
+  showRetry = false
 }) => {
   const theme = useTheme();
 
   const getProgressText = () => {
-    if (progress > 0) {
-      return `${progress.toFixed(0)}% complete`;
-    }
+    if (error) return 'Error occurred';
+    if (progress > 0) return `${progress.toFixed(0)}% complete`;
     return 'Initializing...';
   };
 
   const getDescription = () => {
+    if (error) return error;
     if (description) return description;
     if (progress > 0) return getProgressText();
     return 'Please wait while we process your request';
   };
 
+  if (!loading && !error) return null;
+
   return (
-    <Backdrop open={loading} sx={{ zIndex: theme.zIndex.drawer + 1, color: '#fff' }}>
+    <Backdrop open={loading || !!error} sx={{ zIndex: theme.zIndex.drawer + 1, color: '#fff' }}>
       <GradientPaper 
-        gradient="primary"
+        gradient={error ? "error" : "primary"}
         sx={{ 
           p: 4, 
           textAlign: 'center', 
@@ -51,24 +60,37 @@ const LoadingOverlayComponent: React.FC<LoadingOverlayComponentProps> = ({
           boxShadow: theme.shadows[10]
         }}
       >
-        <Box sx={{ mb: 3 }}>
-          <CircularProgress 
-            size={60} 
-            sx={{ 
-              color: 'white',
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-            }} 
-          />
-        </Box>
+        {error ? (
+          <Box sx={{ mb: 3 }}>
+            <Warning 
+              sx={{ 
+                fontSize: 60,
+                color: 'white',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+                mb: 2
+              }} 
+            />
+          </Box>
+        ) : (
+          <Box sx={{ mb: 3 }}>
+            <CircularProgress 
+              size={60} 
+              sx={{ 
+                color: 'white',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+              }} 
+            />
+          </Box>
+        )}
         
         <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-          {title}
+          {error ? 'Something went wrong' : title}
         </Typography>
         
         <Typography 
           variant="body2" 
           sx={{ 
-            mb: 3, 
+            mb: error ? 3 : (progress > 0 ? 3 : 0), 
             opacity: 0.9,
             fontSize: '0.875rem'
           }}
@@ -76,7 +98,23 @@ const LoadingOverlayComponent: React.FC<LoadingOverlayComponentProps> = ({
           {getDescription()}
         </Typography>
         
-        {progress > 0 && (
+        {error && showRetry && onRetry && (
+          <Button
+            variant="contained"
+            onClick={onRetry}
+            startIcon={<Refresh />}
+            sx={{
+              bgcolor: 'rgba(255, 255, 255, 0.2)',
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.3)',
+              }
+            }}
+          >
+            Try Again
+          </Button>
+        )}
+        
+        {!error && progress > 0 && (
           <Box sx={{ width: '100%' }}>
             <LinearProgress 
               variant="determinate" 

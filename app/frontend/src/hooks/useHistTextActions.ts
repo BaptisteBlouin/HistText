@@ -135,6 +135,7 @@ export const useHistTextActions = ({
     }
   }, [selectedSolrDatabase, authAxios, showNotification, setLoading, setSelectedAlias, setFormData, setDateRange, setStats, setSelectedStat, setNERData, setActiveTab, setIsNERVisible, setViewNER, setPartialResults, setAllResults, setWordFrequency, setStatsReady, setNerReady, setMetadata]);
 
+  // hooks/useHistTextActions.ts (corrected fetchAllDocuments function)
   const fetchAllDocuments = useCallback(async (
     onlyComputeStats: boolean,
     wantNER: boolean,
@@ -142,8 +143,24 @@ export const useHistTextActions = ({
     selectedStatsLevel: string = config.statsLevelOptions[0],
     selectedDocLevel: string = config.docLevelOptions[0],
   ) => {
-    if (!selectedAlias || !selectedSolrDatabase) return;
+    // Basic validation first
+    if (!selectedAlias || !selectedSolrDatabase) {
+      showNotification('Please select a database and collection first', 'warning');
+      return;
+    }
 
+    // Check if user has entered at least one search term (excluding dates)
+    const hasSearchTerms = Object.entries(formData).some(([key, entries]) => {
+      if (key === 'min_date' || key === 'max_date') return false;
+      return entries.some(entry => entry.value && entry.value.trim() !== '');
+    });
+
+    if (!hasSearchTerms) {
+      showNotification('Please enter search criteria in at least one field', 'warning');
+      return;
+    }
+
+    // Initialize loading states
     setLoading(true);
     setIsStatsLoading(true);
     setStatsReady(false);
@@ -155,15 +172,13 @@ export const useHistTextActions = ({
       setIsNERVisible(false);
     }
 
+    // Add timeout for stats and NER to prevent stuck loading states
+    const TIMEOUT_MS = 30000; // 30 seconds timeout
+    let statsTimeoutId: NodeJS.Timeout | null = null;
+    let nerTimeoutId: NodeJS.Timeout | null = null;
+
     try {
       const queryString = buildQueryString(formData, dateRange);
-      if (!queryString) {
-        console.error('Query string is empty.');
-        setLoading(false);
-        showNotification('Query string is empty', 'warning');
-        return;
-      }
-
       const batchSize = config.batch_size;
       const maxDocuments = Number(selectedDocLevel);
       let start = 0;
@@ -171,11 +186,11 @@ export const useHistTextActions = ({
       setProgress(0);
       const solrDatabaseId = selectedSolrDatabase.id;
 
-      const is_first = true;
+      // First request
       const firstResponse = await authAxios.get(
         `/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(
           queryString,
-        )}&start=${start}&rows=${batchSize}&get_ner=${wantNER}&download_only=${wantDownload}&stats_level=${selectedStatsLevel}&solr_database_id=${solrDatabaseId}&is_first=${is_first}`,
+        )}&start=${start}&rows=${batchSize}&get_ner=${wantNER}&download_only=${wantDownload}&stats_level=${selectedStatsLevel}&solr_database_id=${solrDatabaseId}&is_first=true`,
       );
 
       const firstSolrResponse = firstResponse.data.solr_response;
@@ -186,12 +201,21 @@ export const useHistTextActions = ({
         totalResults = maxDocuments;
       }
 
-      setPartialResults([...firstDocs]);
-      setActiveTab(1); // TABS.PARTIAL_RESULTS
-      setLoading(false);
-      start += batchSize;
-      setProgress((start / totalResults) * 100);
+      if (totalResults === 0) {
+        showNotification('No documents found matching your search criteria', 'info');
+        setPartialResults([]);
+        setAllResults([]);
+        setActiveTab(1);
+      } else {
+        setPartialResults([...firstDocs]);
+        setActiveTab(1);
+        showNotification(`Found ${totalResults} documents`, 'success');
+      }
 
+      start += batchSize;
+      setProgress((start / Math.max(totalResults, 1)) * 100);
+
+      // Continue with full results if needed
       if (totalResults > batchSize) {
         const allResponse = await authAxios.get(
           `/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(
@@ -202,82 +226,212 @@ export const useHistTextActions = ({
         const docsAll = solrResponseAll.response.docs;
         setAllResults([...docsAll]);
         setProgress(100);
-        setIsDataLoading(false);
 
-        if (wantDownload) {
-          const csvPath = solrResponseAll.csv_path;
-          if (csvPath) {
-            const filename = csvPath.split('/').pop();
-            const downloadUrl = `/api/solr/download_csv/${filename}`;
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.setAttribute('download', filename || 'data.csv');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showNotification('Download started', 'success');
-          }
+        if (wantDownload && solrResponseAll.csv_path) {
+          const filename = solrResponseAll.csv_path.split('/').pop();
+          const downloadUrl = `/api/solr/download_csv/${filename}`;
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.setAttribute('download', filename || 'data.csv');
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showNotification('Download started', 'success');
         }
       } else {
         setAllResults([...firstDocs]);
-        setIsDataLoading(false);
-        setLoading(false);
-
-        if (wantDownload) {
-          const csvPath = firstSolrResponse.csv_path;
-          if (csvPath) {
-            const filename = csvPath.split('/').pop();
-            const downloadUrl = `/api/solr/download_csv/${filename}`;
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.setAttribute('download', filename || 'data.csv');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showNotification('Download started', 'success');
-          }
+        
+        if (wantDownload && firstSolrResponse.csv_path) {
+          const filename = firstSolrResponse.csv_path.split('/').pop();
+          const downloadUrl = `/api/solr/download_csv/${filename}`;
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.setAttribute('download', filename || 'data.csv');
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showNotification('Download started', 'success');
         }
       }
 
-      authAxios
-        .get(
-          `/api/solr/stats?path=${encodeURIComponent(firstSolrResponse.stats_path)}&solr_database_id=${solrDatabaseId}`,
-        )
-        .then(response_stats => {
-          setStats(response_stats.data);
+      // Handle statistics with timeout and proper error handling
+      if (firstSolrResponse.stats_path) {
+        // Set timeout for stats
+        statsTimeoutId = setTimeout(() => {
           setIsStatsLoading(false);
-          setStatsReady(true);
-        })
-        .catch(error => {
-          console.error('Error fetching stats:', error);
-          setIsStatsLoading(false);
-          showNotification('Failed to load statistics', 'error');
-        });
+          setStatsReady(false);
+          setStats(null);
+          showNotification('Statistics generation timed out', 'warning');
+        }, TIMEOUT_MS);
 
-      if (wantNER) {
         authAxios
-          .get(
-            `/api/solr/ner?path=${encodeURIComponent(firstSolrResponse.ner_path)}&solr_database_id=${solrDatabaseId}`,
-          )
-          .then(response_ner => {
-            setNERData(response_ner.data);
-            setIsNERLoading(false);
-            setIsNERVisible(true);
-            setNerReady(true);
+          .get(`/api/solr/stats?path=${encodeURIComponent(firstSolrResponse.stats_path)}&solr_database_id=${solrDatabaseId}`)
+          .then(response_stats => {
+            if (statsTimeoutId) {
+              clearTimeout(statsTimeoutId);
+              statsTimeoutId = null;
+            }
+            setStats(response_stats.data);
+            setStatsReady(true);
           })
           .catch(error => {
-            console.error('Error fetching NER:', error);
-            setIsNERLoading(false);
-            showNotification('Failed to load NER data', 'error');
+            if (statsTimeoutId) {
+              clearTimeout(statsTimeoutId);
+              statsTimeoutId = null;
+            }
+            console.error('Error fetching stats:', error);
+            setStats(null);
+            setStatsReady(false);
+            
+            // More specific error handling for stats
+            if (error.response?.status === 404) {
+              showNotification('Statistics file not found - it may have expired', 'warning');
+            } else if (error.response?.status >= 500) {
+              showNotification('Server error while generating statistics', 'warning');
+            } else {
+              showNotification('Statistics are not available for this query', 'info');
+            }
+          })
+          .finally(() => {
+            if (statsTimeoutId) {
+              clearTimeout(statsTimeoutId);
+              statsTimeoutId = null;
+            }
+            setIsStatsLoading(false);
           });
+      } else {
+        setStats(null);
+        setStatsReady(false);
+        setIsStatsLoading(false);
+        showNotification('Statistics are not available for this collection', 'info');
       }
 
-      showNotification(`Found ${totalResults} documents`, 'success');
+      // Handle NER with timeout and proper error handling
+      if (wantNER) {
+        if (firstSolrResponse.ner_path) {
+          // Set timeout for NER
+          nerTimeoutId = setTimeout(() => {
+            setIsNERLoading(false);
+            setNerReady(false);
+            setNERData(null);
+            setIsNERVisible(false);
+            showNotification('Named entity recognition timed out', 'warning');
+          }, TIMEOUT_MS);
+
+          authAxios
+            .get(`/api/solr/ner?path=${encodeURIComponent(firstSolrResponse.ner_path)}&solr_database_id=${solrDatabaseId}`)
+            .then(response_ner => {
+              if (nerTimeoutId) {
+                clearTimeout(nerTimeoutId);
+                nerTimeoutId = null;
+              }
+              
+              if (response_ner.data && Object.keys(response_ner.data).length > 0) {
+                setNERData(response_ner.data);
+                setIsNERVisible(true);
+                setNerReady(true);
+                showNotification('Named entities extracted successfully', 'success');
+              } else {
+                setNERData(null);
+                setIsNERVisible(false);
+                setNerReady(false);
+                showNotification('No named entities found in the results', 'info');
+              }
+            })
+            .catch(error => {
+              if (nerTimeoutId) {
+                clearTimeout(nerTimeoutId);
+                nerTimeoutId = null;
+              }
+              
+              console.error('Error fetching NER:', error);
+              setNERData(null);
+              setIsNERVisible(false);
+              setNerReady(false);
+              
+              // More specific error handling for NER
+              if (error.response?.status === 404) {
+                showNotification('NER data file not found - it may have expired', 'info');
+              } else if (error.response?.status >= 500) {
+                showNotification('Named entity recognition is not available for this collection', 'info');
+              } else if (error.response?.status === 400) {
+                showNotification('Named entity recognition is not supported for this content', 'info');
+              } else {
+                showNotification('Named entity recognition is not available for this collection', 'info');
+              }
+            })
+            .finally(() => {
+              if (nerTimeoutId) {
+                clearTimeout(nerTimeoutId);
+                nerTimeoutId = null;
+              }
+              setIsNERLoading(false);
+            });
+        } else {
+          setNERData(null);
+          setIsNERVisible(false);
+          setNerReady(false);
+          setIsNERLoading(false);
+          showNotification('Named entity recognition is not available for this collection', 'info');
+        }
+      }
 
     } catch (error) {
       console.error('Error querying alias:', error);
+      
+      // Clean up timeouts on main error
+      if (statsTimeoutId) {
+        clearTimeout(statsTimeoutId);
+        statsTimeoutId = null;
+      }
+      if (nerTimeoutId) {
+        clearTimeout(nerTimeoutId);
+        nerTimeoutId = null;
+      }
+      
+      // Reset all data states on error
+      setPartialResults([]);
+      setAllResults([]);
+      setStats(null);
+      setNERData(null);
+      setStatsReady(false);
+      setNerReady(false);
+      setIsNERVisible(false);
+      
+      // Provide specific error messages
+      if (error.response?.status === 400) {
+        showNotification('Invalid search query. Please check your search criteria.', 'error');
+      } else if (error.response?.status === 404) {
+        showNotification('Collection not found. It may have been removed or renamed.', 'error');
+      } else if (error.response?.status >= 500) {
+        showNotification('Server error. Please try again later.', 'error');
+      } else if (error.code === 'NETWORK_ERROR' || !error.response) {
+        showNotification('Network error. Please check your connection and try again.', 'error');
+      } else {
+        showNotification('Query failed. Please try again.', 'error');
+      }
+    } finally {
+      // CRITICAL: Always reset main loading states and clean up timeouts
       setLoading(false);
-      showNotification('Query failed', 'error');
+      setIsDataLoading(false);
+      setProgress(0);
+      
+      // Clean up any remaining timeouts
+      if (statsTimeoutId) {
+        clearTimeout(statsTimeoutId);
+      }
+      if (nerTimeoutId) {
+        clearTimeout(nerTimeoutId);
+      }
+      
+      // Force reset loading states if they're still loading (fallback safety)
+      // This ensures no loading state gets permanently stuck
+      setTimeout(() => {
+        setIsStatsLoading(false);
+        if (wantNER) {
+          setIsNERLoading(false);
+        }
+      }, 100);
     }
   }, [selectedAlias, selectedSolrDatabase, formData, dateRange, authAxios, showNotification, setLoading, setIsStatsLoading, setStatsReady, setNerReady, setIsDataLoading, setIsNERLoading, setIsNERVisible, setProgress, setPartialResults, setActiveTab, setAllResults, setStats, setNERData]);
 

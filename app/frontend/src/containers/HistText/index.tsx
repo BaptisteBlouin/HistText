@@ -6,6 +6,7 @@ import { useWordCloudProcessor } from '../../hooks/useWordCloudProcessor';
 import HistTextLayout from '../components/HistTextLayout';
 import AuthenticationRequired from './components/AuthenticationRequired';
 import { useHistTextState } from './hooks/useHistTextState';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const HistText: React.FC = React.memo(() => {
   const { isAuthenticated } = useAuth();
@@ -131,20 +132,22 @@ const HistText: React.FC = React.memo(() => {
   }
 
   return (
-    <HistTextLayout
-      data={data}
-      actions={actions}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      fullscreenMode={fullscreenMode}
-      setFullscreenMode={setFullscreenMode}
-      quickActions={quickActions}
-      setQuickActions={setQuickActions}
-      notification={notification}
-      setNotification={setNotification}
-      onSolrDatabaseChange={handleSolrDatabaseChange}
-      showNotification={showNotification}
-    />
+    <ErrorBoundary>
+      <HistTextLayout
+        data={data}
+        actions={actions}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        fullscreenMode={fullscreenMode}
+        setFullscreenMode={setFullscreenMode}
+        quickActions={quickActions}
+        setQuickActions={setQuickActions}
+        notification={notification}
+        setNotification={setNotification}
+        onSolrDatabaseChange={handleSolrDatabaseChange}
+        showNotification={showNotification}
+      />
+    </ErrorBoundary>
   );
 });
 

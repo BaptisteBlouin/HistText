@@ -22,9 +22,10 @@ export const buildQueryString = (
   const parts: string[] = [];
 
   for (const [key, entries] of Object.entries(formData)) {
-    // Filter out empty values
+    // Filter out empty values and date fields
     if (key === 'min_date' || key === 'max_date') continue;
-    const cleaned = entries.filter(e => e.value.trim() !== '');
+    
+    const cleaned = entries.filter(e => e.value && e.value.trim() !== '');
     if (!cleaned.length) continue;
 
     const encKey = encodeURIComponent(key);
