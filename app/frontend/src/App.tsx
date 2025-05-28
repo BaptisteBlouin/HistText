@@ -43,7 +43,8 @@ import {
   Menu as MenuIcon,
   Close as CloseIcon,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  GitHub
 } from '@mui/icons-material';
 import HistLogo from './images/HistTextLogoC.png';
 
@@ -263,8 +264,59 @@ const AppContent = () => {
 
       <Divider />
 
-      {/* User Section */}
       <Box sx={{ p: collapsed ? 1 : 2 }}>
+        <Box sx={{ mb: 2 }}>
+          {collapsed ? (
+            <Tooltip title="View on GitHub" placement="right">
+              <IconButton
+                onClick={() => window.open('https://github.com/BaptisteBlouin/HistText', '_blank')}
+                sx={{
+                  width: '100%',
+                  height: 48,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  mb: 1,
+                  '&:hover': {
+                    backgroundColor: 'secondary.light',
+                    borderColor: 'secondary.main',
+                    color: 'white'
+                  }
+                }}
+              >
+                <GitHub sx={{ color: 'secondary.main' }} />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <ListItem 
+              button
+              onClick={() => window.open('https://github.com/BaptisteBlouin/HistText', '_blank')}
+              sx={{
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                mb: 1,
+                '&:hover': {
+                  backgroundColor: 'secondary.light',
+                  borderColor: 'secondary.main',
+                  color: 'white',
+                  '& .MuiListItemIcon-root': {
+                    color: 'white',
+                  }
+                }
+              }}
+            >
+              <ListItemIcon>
+                <GitHub sx={{ color: 'secondary.main' }} />
+              </ListItemIcon>
+              <ListItemText 
+                primary="View on GitHub"
+                secondary="Source code"
+                secondaryTypographyProps={{ fontSize: '0.75rem' }}
+              />
+            </ListItem>
+          )}
+        </Box>
         {auth.isAuthenticated ? (
           <Box>
             {collapsed ? (
