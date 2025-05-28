@@ -1,11 +1,22 @@
+// app/frontend/src/containers/components/MetadataForm.tsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, Button, Card, CardContent, Typography, Grid } from '@mui/material';
-import { PlayArrow, QueryStats } from '@mui/icons-material';
+import { 
+  Box, 
+  Button, 
+  Card, 
+  CardContent, 
+  Typography, 
+  Grid,
+  Alert,
+  Chip
+} from '@mui/material';
+import { PlayArrow, QueryStats, CheckCircle } from '@mui/icons-material';
 import axios from 'axios';
 import config from '../../../config.json';
 import { buildQueryString } from './buildQueryString';
 import { useAuth } from '../../hooks/useAuth';
 import { useEmbeddings } from './MetadataForm/hooks/useEmbeddings';
+import { useSmartValidation } from '../../hooks/useSmartValidation';
 import { shouldExcludeField, isTextField, sortFieldsByPriority } from './MetadataForm/utils/fieldUtils';
 import FormHeader from './MetadataForm/components/FormHeader';
 import FormField from './MetadataForm/components/FormField';
@@ -96,6 +107,9 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     setAnalogyResult
   } = useEmbeddings(solrDatabaseId, selectedAlias, accessToken, hasEmbeddings);
 
+  // Smart validation hook
+  const { validateField, formValidation } = useSmartValidation(formData, metadata, collectionInfo);
+
   // Fetch collection info
   useEffect(() => {
     if (solrDatabaseId && selectedAlias) {
@@ -178,8 +192,10 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    handleQuery(e, false, getNER, downloadOnly, statsLevel, docLevel);
-  }, [handleQuery, getNER, downloadOnly, statsLevel, docLevel]);
+    if (formValidation.canSubmit) {
+      handleQuery(e, false, getNER, downloadOnly, statsLevel, docLevel);
+    }
+  }, [handleQuery, getNER, downloadOnly, statsLevel, docLevel, formValidation.canSubmit]);
 
   const handleOpenEmbeddingModal = useCallback(() => {
     setEmbeddingModalOpen(true);
@@ -221,6 +237,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                     hasEmbeddings={hasEmbeddings}
                     neighbors={neighbors}
                     loadingNeighbors={loadingNeighbors}
+                    metadata={metadata}
                     onFormChange={handleFormChange}
                     onSelectChange={handleSelectChange}
                     onToggleNot={toggleNotCondition}
@@ -252,6 +269,24 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
               setShowAdvanced={setShowAdvanced}
             />
 
+            {/* Form Validation Summary */}
+            <Box sx={{ mb: 3 }}>
+              <Alert 
+                severity={
+                  formValidation.overallStatus === 'error' ? 'error' :
+                  formValidation.overallStatus === 'ready' ? 'success' : 'info'
+                }
+                sx={{ mb: 2 }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">
+                    {formValidation.summary}
+                  </Typography>
+
+                </Box>
+              </Alert>
+            </Box>
+
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Button 
                 variant="contained" 
@@ -259,7 +294,12 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                 type="submit"
                 size="large"
                 startIcon={<PlayArrow />}
-                sx={{ minWidth: 120 }}
+                disabled={!formValidation.canSubmit}
+                sx={{ 
+                  minWidth: 120,
+                  opacity: formValidation.canSubmit ? 1 : 0.6,
+                  cursor: formValidation.canSubmit ? 'pointer' : 'not-allowed'
+                }}
               >
                 Execute Query
               </Button>

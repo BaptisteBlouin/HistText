@@ -1,3 +1,4 @@
+// app/frontend/src/containers/components/MetadataForm/components/FormField.tsx
 import React from 'react';
 import {
   Paper,
@@ -10,9 +11,22 @@ import {
   Tooltip,
   CircularProgress,
   Chip,
-  Box
+  Box,
+  Alert,
+  Collapse
 } from '@mui/material';
-import { Star, Remove, Add } from '@mui/icons-material';
+import { 
+  Star, 
+  Remove, 
+  Add, 
+  CheckCircle, 
+  Warning, 
+  Error as ErrorIcon,
+  Info,
+  Lightbulb
+} from '@mui/icons-material';
+import ContextHelp from '../../../../components/ui/ContextHelp';
+import { useSmartValidation } from '../../../../hooks/useSmartValidation';
 
 interface FormFieldProps {
   field: any;
@@ -21,6 +35,7 @@ interface FormFieldProps {
   hasEmbeddings: boolean;
   neighbors: { [key: string]: string[] };
   loadingNeighbors: { [key: string]: boolean };
+  metadata: any[];
   onFormChange: (event: any, index: number) => void;
   onSelectChange: (fieldName: string, newValue: string | null, index: number) => void;
   onToggleNot: (name: string, index: number) => void;
@@ -37,6 +52,7 @@ const FormField: React.FC<FormFieldProps> = ({
   hasEmbeddings,
   neighbors,
   loadingNeighbors,
+  metadata,
   onFormChange,
   onSelectChange,
   onToggleNot,
@@ -45,40 +61,94 @@ const FormField: React.FC<FormFieldProps> = ({
   onFetchNeighbors,
   onRemoveNeighborDropdown
 }) => {
+  const { validateField } = useSmartValidation(formData, metadata, collectionInfo);
   const isTextField = collectionInfo?.text_field === field.name;
+  
+  // Get validation for this field
+  const validation = validateField(field.name, formData[field.name] || []);
 
-  // Helper function to get border styles based on operator and not condition
-  const getInputStyles = (entry: any) => {
+  // Get appropriate help topic based on field type
+  const getFieldHelpTopic = () => {
+    if (field.name.toLowerCase().includes('date')) return 'date_range';
+    if (field.possible_values?.length > 0) return 'field_selection';
+    return 'search_terms'; // Default for text fields
+  };
+
+  // Helper function to get validation icon and color
+  const getValidationIcon = () => {
+    switch (validation.status) {
+      case 'valid':
+        return { icon: <CheckCircle />, color: 'success.main' };
+      case 'warning':
+        return { icon: <Warning />, color: 'warning.main' };
+      case 'error':
+        return { icon: <ErrorIcon />, color: 'error.main' };
+      default:
+        return null;
+    }
+  };
+
+  // Helper function to get border styles based on validation
+  const getInputStyles = (entry: any, index: number) => {
     let borderColor = 'inherit';
     let borderWidth = 1;
+    let backgroundColor = 'transparent';
 
+    // First, apply boolean operator styling (base layer)
     if (entry.not) {
       borderColor = 'error.main';
       borderWidth = 2;
+      backgroundColor = 'rgba(244, 67, 54, 0.05)'; // Light red background for NOT
     } else if (entry.operator === 'AND') {
       borderColor = 'success.main';
       borderWidth = 2;
+      backgroundColor = 'rgba(76, 175, 80, 0.05)'; // Light green background for AND
     } else if (entry.operator === 'OR') {
       borderColor = 'info.main';
       borderWidth = 2;
+      backgroundColor = 'rgba(33, 150, 243, 0.05)'; // Light blue background for OR
+    }
+
+    // Then, apply validation styling (only if it's an error - warnings don't override operator styling)
+    if (validation.status === 'error') {
+      borderColor = 'error.main';
+      borderWidth = 2;
+      backgroundColor = 'rgba(244, 67, 54, 0.08)'; // Slightly stronger red for errors
+    } else if (validation.status === 'valid' && validation.hasValue && !entry.operator && !entry.not) {
+      // Only show green validation border if no operator is set
+      borderColor = 'success.light';
+      borderWidth = 1;
+    }
+
+    // Primary text field gets special treatment
+    if (isTextField && !validation.status === 'error') {
+      borderWidth = Math.max(borderWidth, 1);
     }
 
     return {
       '& .MuiOutlinedInput-root': {
         borderColor,
         borderWidth,
+        backgroundColor,
         fontWeight: isTextField ? 600 : 'inherit',
+        transition: 'all 0.2s ease',
         '&:hover .MuiOutlinedInput-notchedOutline': {
           borderColor,
-          borderWidth,
+          borderWidth: borderWidth + 1,
         },
         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
           borderColor,
           borderWidth: borderWidth + 1,
+          boxShadow: `0 0 0 2px ${borderColor === 'error.main' ? 'rgba(244, 67, 54, 0.2)' : 
+                                    borderColor === 'success.main' ? 'rgba(76, 175, 80, 0.2)' : 
+                                    borderColor === 'info.main' ? 'rgba(33, 150, 243, 0.2)' : 
+                                    'rgba(102, 126, 234, 0.2)'}`,
         }
       }
     };
   };
+
+  const validationIcon = getValidationIcon();
 
   return (
     <Paper 
@@ -87,23 +157,78 @@ const FormField: React.FC<FormFieldProps> = ({
         p: 2, 
         height: '100%',
         border: isTextField ? '2px solid' : '1px solid',
-        borderColor: isTextField ? 'primary.main' : 'divider',
-        position: 'relative'
+        borderColor: isTextField ? 'primary.main' : 
+                     validation.status === 'error' ? 'error.main' :
+                     validation.status === 'warning' ? 'warning.main' :
+                     validation.status === 'valid' ? 'success.light' : 'divider',
+        position: 'relative',
+        transition: 'all 0.2s ease'
       }}
     >
-      {isTextField && (
-        <Chip 
-          label="Primary Text Field" 
-          size="small" 
-          color="primary" 
-          sx={{ position: 'absolute', top: -10, left: 8, bgcolor: 'background.paper' }}
-        />
-      )}
-      
-      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-        {field.name}
-      </Typography>
+      {/* Field Header with Help */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            {field.name}
+          </Typography>
+          <ContextHelp topic={getFieldHelpTopic()} size="small" />
+          {validationIcon && (
+            <Box sx={{ color: validationIcon.color, display: 'flex', alignItems: 'center' }}>
+              {validationIcon.icon}
+            </Box>
+          )}
+        </Box>
+        
+        {/* Field Status Indicators */}
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          {isTextField && (
+            <Chip 
+              label="Primary Text Field" 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+            />
+          )}
+          {hasEmbeddings && isTextField && (
+            <Tooltip title="Find words with similar meanings using AI. Click ⭐ to get suggestions.">
+              <Chip 
+                label="AI Search" 
+                size="small" 
+                color="secondary" 
+                variant="outlined"
+                icon={<Star />}
+              />
+            </Tooltip>
+          )}
+        </Box>
+      </Box>
 
+      {/* Validation Message */}
+      <Collapse in={validation.status !== 'empty' && validation.status !== 'valid'}>
+        <Alert 
+          severity={validation.status as any} 
+          sx={{ mb: 2, fontSize: '0.875rem' }}
+          icon={false}
+        >
+          {validation.message}
+        </Alert>
+      </Collapse>
+
+      {/* Suggestions */}
+      <Collapse in={validation.suggestions && validation.suggestions.length > 0}>
+        <Box sx={{ mb: 2 }}>
+          {validation.suggestions?.map((suggestion, index) => (
+            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Lightbulb sx={{ fontSize: 16, color: 'info.main' }} />
+              <Typography variant="caption" color="info.main">
+                {suggestion}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Collapse>
+
+      {/* Form Fields */}
       {field.possible_values?.length > 0 ? (
         <Box>
           {formData[field.name]?.map((entry: any, idx: number) => (
@@ -118,7 +243,18 @@ const FormField: React.FC<FormFieldProps> = ({
                     sx={{ 
                       minWidth: 60,
                       fontWeight: 600,
-                      boxShadow: entry.not ? 2 : 0
+                      boxShadow: entry.not ? 2 : 0,
+                      backgroundColor: entry.not ? 'error.main' : 'transparent',
+                      borderColor: entry.not ? 'error.main' : 'grey.400',
+                      color: entry.not ? 'white' : 'text.primary',
+                      '&:hover': {
+                        backgroundColor: entry.not ? 'error.dark' : 'error.light',
+                        borderColor: 'error.main',
+                        color: entry.not ? 'white' : 'error.main',
+                        transform: 'translateY(-1px)',
+                        boxShadow: entry.not ? 3 : 1
+                      },
+                      transition: 'all 0.2s ease'
                     }}
                   >
                     NOT
@@ -135,7 +271,7 @@ const FormField: React.FC<FormFieldProps> = ({
                         {...params}
                         size="small"
                         placeholder={`Select ${field.name}...`}
-                        sx={getInputStyles(entry)}
+                        sx={getInputStyles(entry, idx)}
                       />
                     )}
                   />
@@ -171,6 +307,7 @@ const FormField: React.FC<FormFieldProps> = ({
                     }}
                   >
                     AND
+                    <ContextHelp topic="and_operator" variant="inline" size="small" />
                   </Button>
                   <Button
                     onClick={() => onAddBooleanField(field.name, 'OR')}
@@ -185,6 +322,7 @@ const FormField: React.FC<FormFieldProps> = ({
                     }}
                   >
                     OR
+                    <ContextHelp topic="or_operator" variant="inline" size="small" />
                   </Button>
                 </ButtonGroup>
               )}
@@ -205,7 +343,18 @@ const FormField: React.FC<FormFieldProps> = ({
                     sx={{ 
                       minWidth: 60,
                       fontWeight: 600,
-                      boxShadow: entry.not ? 2 : 0
+                      boxShadow: entry.not ? 2 : 0,
+                      backgroundColor: entry.not ? 'error.main' : 'transparent',
+                      borderColor: entry.not ? 'error.main' : 'grey.400',
+                      color: entry.not ? 'white' : 'text.primary',
+                      '&:hover': {
+                        backgroundColor: entry.not ? 'error.dark' : 'error.light',
+                        borderColor: 'error.main',
+                        color: entry.not ? 'white' : 'error.main',
+                        transform: 'translateY(-1px)',
+                        boxShadow: entry.not ? 3 : 1
+                      },
+                      transition: 'all 0.2s ease'
                     }}
                   >
                     NOT
@@ -221,7 +370,7 @@ const FormField: React.FC<FormFieldProps> = ({
                     fullWidth
                     placeholder={`Enter ${field.name}...`}
                     InputProps={{
-                      endAdornment: idx === 0 && hasEmbeddings && (
+                      endAdornment: idx === 0 && hasEmbeddings && isTextField && (
                         <Tooltip title="Find similar words using AI embeddings">
                           <IconButton
                             onClick={() => onFetchNeighbors(entry.value, field.name)}
@@ -244,7 +393,7 @@ const FormField: React.FC<FormFieldProps> = ({
                         </Tooltip>
                       ),
                     }}
-                    sx={getInputStyles(entry)}
+                    sx={getInputStyles(entry, idx)}
                   />
                 </Box>
 
@@ -265,9 +414,12 @@ const FormField: React.FC<FormFieldProps> = ({
 
               {neighbors[field.name] && idx === 0 && (
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-                    Similar words:
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Star sx={{ fontSize: 16, color: 'primary.main' }} />
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      AI Suggestions:
+                    </Typography>
+                  </Box>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
                     {neighbors[field.name].map((neighbor: string, index: number) => (
                       <Chip
@@ -275,7 +427,7 @@ const FormField: React.FC<FormFieldProps> = ({
                         label={neighbor}
                         size="small"
                         clickable
-                        onClick={() => onSelectChange(field.name, neighbor)}
+                        onClick={() => onSelectChange(field.name, neighbor, idx)}
                         sx={{ 
                           fontSize: '0.75rem',
                           '&:hover': {
@@ -313,6 +465,7 @@ const FormField: React.FC<FormFieldProps> = ({
                     }}
                   >
                     AND
+                    <ContextHelp topic="and_operator" variant="inline" size="small" />
                   </Button>
                   <Button
                     onClick={() => onAddBooleanField(field.name, 'OR')}
@@ -327,6 +480,7 @@ const FormField: React.FC<FormFieldProps> = ({
                     }}
                   >
                     OR
+                    <ContextHelp topic="or_operator" variant="inline" size="small" />
                   </Button>
                 </ButtonGroup>
               )}
