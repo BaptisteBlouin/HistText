@@ -17,8 +17,8 @@ interface EntityCooccurrence {
   count: number;
   documents: string[];
   strength: number;
-  avgDistance?: number; // NEW: Average distance between entities
-  proximityScore?: number; // NEW: Proximity-weighted strength
+  avgDistance?: number;
+  proximityScore?: number;
 }
 
 interface DocumentEntityStats {
@@ -35,11 +35,11 @@ interface EntityPattern {
   count: number;
   documents: string[];
   pattern: string;
-  type: 'bigram' | 'trigram' | 'quadrigram'; // NEW: Pattern type
+  type: 'bigram' | 'trigram' | 'quadrigram';
 }
 
 interface NERAdvancedStats {
-  // Basic stats (existing)
+  // Basic stats
   totalEntities: number;
   totalDocuments: number;
   averageEntitiesPerDocument: number;
@@ -63,7 +63,7 @@ interface NERAdvancedStats {
   commonPatterns: EntityPattern[];
   bigramPatterns: EntityPattern[];
   trigramPatterns: EntityPattern[];
-  quadrigramPatterns: EntityPattern[]; // NEW
+  quadrigramPatterns: EntityPattern[];
   
   // Distribution analysis
   confidenceDistribution: Array<{ range: string; count: number; percentage: number }>;
@@ -71,19 +71,25 @@ interface NERAdvancedStats {
   
   // Network analysis
   centralityScores: Array<{ entity: string; score: number; connections: number }>;
+  clusterAnalysis: Array<{ cluster: number; entities: string[]; theme?: string }>;
   
   // Advanced insights
   uniqueEntitiesRatio: number;
   anomalyScores: Array<{ documentId: string; score: number; reason: string }>;
+  
+  // Limiting metadata
+  isLimited?: boolean;
+  totalEntitiesBeforeLimit?: number;
+  processedEntities?: number;
 }
 
-export const useNERStatistics = (nerData: Record<string, any>) => {
+export const useNERStatistics = (nerData: Record<string, any>, maxEntities?: number) => {
   const advancedStats = useMemo(() => {
     if (!nerData || Object.keys(nerData).length === 0) {
       return null;
     }
 
-    const entities: EntityOccurrence[] = [];
+    const allEntities: EntityOccurrence[] = [];
     const documentStats: DocumentEntityStats[] = [];
     
     // Extract all entities with their context
@@ -101,16 +107,16 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
           labelFull: config.NERLABELS2FULL[data.l[idx]] || data.l[idx],
           documentId: docId,
           confidence: data.c[idx],
-          position: data.s[idx] // Start position for distance calculation
+          position: data.s[idx]
         };
         
-        entities.push(entity);
+        allEntities.push(entity);
         docEntities.push(entity);
         docEntityTypes[entity.labelFull] = (docEntityTypes[entity.labelFull] || 0) + 1;
         docEntityCounts[entity.text] = (docEntityCounts[entity.text] || 0) + 1;
       });
       
-      // Calculate document-level stats
+      // Calculate document-level stats (keep all for document analysis)
       const uniqueEntities = new Set(docEntities.map(e => e.text)).size;
       const avgConfidence = docEntities.length > 0 ? 
         docEntities.reduce((sum, e) => sum + e.confidence, 0) / docEntities.length : 0;
@@ -129,6 +135,14 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
       });
     });
     
+    // Apply entity limit if specified
+    const entities = maxEntities && allEntities.length > maxEntities 
+      ? allEntities.slice(0, maxEntities)
+      : allEntities;
+    
+    const isLimited = maxEntities && allEntities.length > maxEntities;
+    const totalEntitiesBeforeLimit = allEntities.length;
+    
     // Calculate basic stats
     const totalEntities = entities.length;
     const totalDocuments = Object.keys(nerData).length;
@@ -136,7 +150,7 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
     const uniqueEntities = new Set(entities.map(e => e.text)).size;
     const uniqueEntitiesRatio = uniqueEntities / totalEntities;
     
-    // Top entities analysis - FIXED
+    // Top entities analysis
     const entityCounts = new Map<string, { count: number; documents: Set<string> }>();
     entities.forEach(entity => {
       const key = entity.text;
@@ -158,7 +172,7 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 50);
     
-    // Top entities by type - FIXED
+    // Top entities by type
     const topEntitiesByType: Record<string, Array<{ text: string; count: number; documents: number }>> = {};
     
     // Group entities by label first
@@ -275,15 +289,16 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
     
     const strongestPairs = entityCooccurrences.slice(0, 20);
     
+    // Enhanced Pattern analysis - EXCLUDE REPEATED ENTITIES
     const bigramPatterns = new Map<string, EntityPattern>();
     const trigramPatterns = new Map<string, EntityPattern>();
     const quadrigramPatterns = new Map<string, EntityPattern>();
-
-    docEntityMap.forEach((docEntities, docId) => {
-    const entityTexts = docEntities.sort((a, b) => a.position - b.position).map(e => e.text);
     
-    // Bigrams - EXCLUDE REPEATED ENTITIES
-    for (let i = 0; i < entityTexts.length - 1; i++) {
+    docEntityMap.forEach((docEntities, docId) => {
+      const entityTexts = docEntities.sort((a, b) => a.position - b.position).map(e => e.text);
+      
+      // Bigrams - EXCLUDE REPEATED ENTITIES
+      for (let i = 0; i < entityTexts.length - 1; i++) {
         // Skip if entities are the same
         if (entityTexts[i] === entityTexts[i + 1]) continue;
         
@@ -291,24 +306,24 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
         const key = [entityTexts[i], entityTexts[i + 1]].sort().join('|||'); // Sort for deduplication
         
         if (!bigramPatterns.has(key)) {
-        bigramPatterns.set(key, {
+          bigramPatterns.set(key, {
             entities: [entityTexts[i], entityTexts[i + 1]],
             count: 0,
             documents: [],
             pattern,
             type: 'bigram'
-        });
+          });
         }
         
         const bigramPattern = bigramPatterns.get(key)!;
         bigramPattern.count++;
         if (!bigramPattern.documents.includes(docId)) {
-        bigramPattern.documents.push(docId);
+          bigramPattern.documents.push(docId);
         }
-    }
-    
-    // Trigrams - EXCLUDE REPEATED ENTITIES
-    for (let i = 0; i < entityTexts.length - 2; i++) {
+      }
+      
+      // Trigrams - EXCLUDE REPEATED ENTITIES
+      for (let i = 0; i < entityTexts.length - 2; i++) {
         const entities = [entityTexts[i], entityTexts[i + 1], entityTexts[i + 2]];
         
         // Skip if any entities are repeated
@@ -318,24 +333,24 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
         const key = entities.sort().join('|||'); // Sort for deduplication
         
         if (!trigramPatterns.has(key)) {
-        trigramPatterns.set(key, {
+          trigramPatterns.set(key, {
             entities: [entityTexts[i], entityTexts[i + 1], entityTexts[i + 2]],
             count: 0,
             documents: [],
             pattern,
             type: 'trigram'
-        });
+          });
         }
         
         const trigramPattern = trigramPatterns.get(key)!;
         trigramPattern.count++;
         if (!trigramPattern.documents.includes(docId)) {
-        trigramPattern.documents.push(docId);
+          trigramPattern.documents.push(docId);
         }
-    }
-    
-    // Quadrigrams - EXCLUDE REPEATED ENTITIES
-    for (let i = 0; i < entityTexts.length - 3; i++) {
+      }
+      
+      // Quadrigrams - EXCLUDE REPEATED ENTITIES
+      for (let i = 0; i < entityTexts.length - 3; i++) {
         const entities = [entityTexts[i], entityTexts[i + 1], entityTexts[i + 2], entityTexts[i + 3]];
         
         // Skip if any entities are repeated
@@ -345,23 +360,23 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
         const key = entities.sort().join('|||'); // Sort for deduplication
         
         if (!quadrigramPatterns.has(key)) {
-        quadrigramPatterns.set(key, {
+          quadrigramPatterns.set(key, {
             entities: [entityTexts[i], entityTexts[i + 1], entityTexts[i + 2], entityTexts[i + 3]],
             count: 0,  
             documents: [],
             pattern,
             type: 'quadrigram'
-        });
+          });
         }
         
         const quadrigramPattern = quadrigramPatterns.get(key)!;
         quadrigramPattern.count++;
         if (!quadrigramPattern.documents.includes(docId)) {
-        quadrigramPattern.documents.push(docId);
+          quadrigramPattern.documents.push(docId);
         }
-    }
+      }
     });
-        
+    
     // Confidence distribution
     const confidenceRanges = [
       { min: 0.9, max: 1.0, label: '90-100%' },
@@ -458,7 +473,8 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
       documentStats,
       documentsWithMostEntities: documentStats.slice().sort((a, b) => b.entityCount - a.entityCount).slice(0, 10),
       documentsWithHighestDiversity: documentStats.slice().sort((a, b) => b.uniqueEntityCount - a.uniqueEntityCount).slice(0, 10),
-      commonPatterns: Array.from(bigramPatterns.values()).concat(Array.from(trigramPatterns.values())).sort((a, b) => b.count - a.count).slice(0, 20),
+      commonPatterns: Array.from(bigramPatterns.values()).concat(Array.from(trigramPatterns.values()))
+        .sort((a, b) => b.count - a.count).slice(0, 20),
       bigramPatterns: Array.from(bigramPatterns.values()).sort((a, b) => b.count - a.count).slice(0, 15),
       trigramPatterns: Array.from(trigramPatterns.values()).sort((a, b) => b.count - a.count).slice(0, 10),
       quadrigramPatterns: Array.from(quadrigramPatterns.values()).sort((a, b) => b.count - a.count).slice(0, 8),
@@ -467,11 +483,16 @@ export const useNERStatistics = (nerData: Record<string, any>) => {
       centralityScores,
       clusterAnalysis: [],
       uniqueEntitiesRatio,
-      anomalyScores
+      anomalyScores,
+      
+      // Limiting metadata
+      isLimited,
+      totalEntitiesBeforeLimit,
+      processedEntities: totalEntities
     };
     
     return stats;
-  }, [nerData]);
+  }, [nerData, maxEntities]);
   
   return advancedStats;
 };

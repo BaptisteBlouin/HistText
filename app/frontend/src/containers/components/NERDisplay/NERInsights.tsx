@@ -66,7 +66,8 @@ const COLORS = [
 interface NERInsightsProps {
   nerData: Record<string, any>;
   selectedAlias: string;
-  onDocumentClick?: (documentId: string) => void; // NEW: For document modal
+  onDocumentClick?: (documentId: string) => void;
+  entityLimit?: number;
 }
 
 interface TabPanelProps {
@@ -84,13 +85,29 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
 const NERInsights: React.FC<NERInsightsProps> = ({ 
   nerData, 
   selectedAlias, 
-  onDocumentClick 
+  onDocumentClick,
+  entityLimit
 }) => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview']));
-  const stats = useNERStatistics(nerData);
+  const stats = useNERStatistics(nerData, entityLimit);
 
+
+  const renderLimitBanner = () => {
+    if (stats?.isLimited) {
+      return (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="body2">
+            <strong>Analyzing subset:</strong> Showing insights from {stats.processedEntities.toLocaleString()}&nbsp;
+            of {stats.totalEntitiesBeforeLimit.toLocaleString()} total entities 
+            ({((stats.processedEntities / stats.totalEntitiesBeforeLimit) * 100).toFixed(1)}% of your data).
+          </Typography>
+        </Alert>
+      );
+    }
+    return null;
+  };
   const toggleSection = (section: string) => {
     setExpandedSections(prev => {
       const newSet = new Set(prev);
@@ -221,6 +238,7 @@ const NERInsights: React.FC<NERInsightsProps> = ({
         </Typography>
       </Box>
 
+      {renderLimitBanner()}
       {/* Key Metrics Overview */}
       <Card sx={{ mb: 4, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
         <CardContent>
