@@ -214,7 +214,7 @@ export const useHistTextActions = ({
 
       start += batchSize;
       setProgress((start / Math.max(totalResults, 1)) * 100);
-
+      setLoading(false);
       // Continue with full results if needed
       if (totalResults > batchSize) {
         const allResponse = await authAxios.get(
