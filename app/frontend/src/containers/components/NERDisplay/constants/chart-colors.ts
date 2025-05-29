@@ -1,0 +1,6 @@
+// app/frontend/src/containers/components/NERDisplay/constants/chart-colors.ts
+export const COLORS = [
+    '#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00',
+    '#0088fe', '#00c49f', '#ffbb28', '#ff8042', '#8dd1e1',
+    '#d084d0', '#87d068', '#ffb347', '#deb887', '#5f9ea0'
+  ];

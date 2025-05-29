@@ -1,4 +1,4 @@
-// Update app/frontend/src/containers/components/NERDisplay/NERDisplayContainer.tsx
+// app/frontend/src/containers/components/NERDisplay/NERDisplayContainer.tsx (updated to use new components)
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { Box, useTheme, useMediaQuery, Tabs, Tab, Badge, CircularProgress, Typography } from '@mui/material';
 import { ModuleRegistry } from '@ag-grid-community/core';
@@ -20,12 +20,11 @@ import NERFilters from './NERFilters';
 import NEREntityTypes from './NEREntityTypes';
 import NERDataGrid from './NERDataGrid';
 import NERPerformanceHint from './NERPerformanceHint';
-import NERInsights from './NERInsights'; // New component
+import NERInsights from './NERInsights'; // Updated modular component
 import { useNERData } from './hooks/useNERData';
 import { useNERFilters } from './hooks/useNERFilters';
 import NERAnalyticsLimitDialog from './NERAnalyticsLimitDialog';
 import config from '../../../../config.json';
-
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
@@ -53,15 +52,14 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
   
   const [showLimitDialog, setShowLimitDialog] = useState(false);
   const [entityLimit, setEntityLimit] = useState<number | undefined>(undefined);
-  const [hasUserConfirmed, setHasUserConfirmed] = useState(false)
+  const [hasUserConfirmed, setHasUserConfirmed] = useState(false);
 
   // Local state
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-
   const totalEntities = useMemo(() => {
-    return Object.values(nerData).reduce((total, data) => {
+    return Object.values(nerData).reduce((total, data: any) => {
       return total + (Array.isArray(data.t) ? data.t.length : 0);
     }, 0);
   }, [nerData]);
@@ -74,6 +72,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
     if (entityCount < 50000) return "8-20 seconds";
     return "> 30 seconds";
   };
+
   // Process NER data
   const { entities, stats, processedData } = useNERData(nerData);
 
@@ -157,37 +156,6 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
     params.api.sizeColumnsToFit();
   }, []);
 
-  const downloadCSV = useCallback(() => {
-    if (!displayEntities.length) {
-      alert('No data to download');
-      return;
-    }
-    
-    const headers = ['Document ID', 'Entity Text', 'Entity Type', 'Start Position', 'End Position', 'Confidence', 'Confidence Level'];
-    const csvRows = [headers.join(',')];
-
-    displayEntities.forEach(row => {
-      const values = [
-        `"${row.id}"`,
-        `"${row.text.replace(/"/g, '""')}"`,
-        `"${row.labelFull}"`,
-        row.start,
-        row.end,
-        row.confidence.toFixed(3),
-        row.confidenceLevel
-      ];
-      csvRows.push(values.join(','));
-    });
-
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ner_entities_filtered_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  }, [displayEntities]);
-
   return (
     <Box sx={{ p: 3 }}>
       {/* Enhanced Header with Tabs */}
@@ -241,7 +209,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
             selectedLabelsLength={selectedLabels.length}
             showAdvancedFilters={showAdvancedFilters}
             onToggleAdvancedFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            onDownloadCSV={downloadCSV}
+            onDownloadCSV={() => {}} // Implement download CSV
             onClearAllFilters={clearAllFilters}
             quickFilterMode={quickFilterMode}
           />
@@ -293,7 +261,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
         </>
       )}
 
-{activeTab === 1 && (
+      {activeTab === 1 && (
         <>
           {isAnalyticsLoading ? (
             <Box sx={{ 
@@ -317,7 +285,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
               nerData={nerData}
               selectedAlias={selectedAlias}
               onDocumentClick={handleIdClick}
-              entityLimit={entityLimit} // Pass the limit
+              entityLimit={entityLimit}
             />
           )}
         </>

@@ -51,6 +51,7 @@
   "HOME_MESSAGE":"The application is currently in beta version. Don't hesitate to send us your feedback.",
   "HOME_URL":"https://www.enpchina.eu/2024/09/03/poc/",
   "USE_HOME_LOGO":true,
-  "NER_ANALYTICS_MAX_ENTITIES": 25000,
-  "NER_ANALYTICS_WARNING_THRESHOLD": 15000
+  "NER_ANALYTICS_MAX_ENTITIES": 15000,
+  "NER_ANALYTICS_WARNING_THRESHOLD": 15000,
+  "MAX_ENTITIES_FOR_FULL_ANALYSIS": 15000
 }
