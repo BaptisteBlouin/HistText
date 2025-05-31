@@ -1,3 +1,4 @@
+// app/frontend/src/containers/components/MetadataForm/components/CodeGeneration.tsx
 import React, { useState } from 'react';
 import {
   ButtonGroup,
@@ -28,6 +29,7 @@ import {
   Language
 } from '@mui/icons-material';
 import { generateCurlCommand, generatePythonScript, generateRScript } from '../utils/codeGenerator';
+import { buildQueryString } from '../../buildQueryString';
 
 interface CodeGenerationProps {
   formData: any;
@@ -38,6 +40,8 @@ interface CodeGenerationProps {
   downloadOnly: boolean;
   statsLevel: string;
   accessToken: string;
+  rawQuery?: string;
+  queryMode: 'simple' | 'advanced' | 'raw';
 }
 
 interface CodeExample {
@@ -57,12 +61,18 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
   getNER,
   downloadOnly,
   statsLevel,
-  accessToken
+  accessToken,
+  rawQuery,
+  queryMode
 }) => {
   const theme = useTheme();
   const [codeModalOpen, setCodeModalOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
+
+  const getQueryString = () => {
+    return queryMode === 'raw' && rawQuery ? rawQuery : buildQueryString(formData, dateRange);
+  };
 
   const codeExamples: CodeExample[] = [
     {
@@ -72,8 +82,15 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
       language: 'bash',
       color: '#4CAF50',
       generator: () => generateCurlCommand(
-        formData, dateRange, selectedAlias, solrDatabaseId!, 
-        getNER, downloadOnly, statsLevel, accessToken
+        queryMode === 'raw' ? { custom_query: rawQuery } : formData, 
+        dateRange, 
+        selectedAlias, 
+        solrDatabaseId!, 
+        getNER, 
+        downloadOnly, 
+        statsLevel, 
+        accessToken,
+        queryMode === 'raw' ? rawQuery : undefined
       )
     },
     {
@@ -83,8 +100,15 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
       language: 'python',
       color: '#3776ab',
       generator: () => generatePythonScript(
-        formData, dateRange, selectedAlias, solrDatabaseId!, 
-        getNER, downloadOnly, statsLevel, accessToken
+        queryMode === 'raw' ? { custom_query: rawQuery } : formData, 
+        dateRange, 
+        selectedAlias, 
+        solrDatabaseId!, 
+        getNER, 
+        downloadOnly, 
+        statsLevel, 
+        accessToken,
+        queryMode === 'raw' ? rawQuery : undefined
       )
     },
     {
@@ -94,8 +118,15 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
       language: 'r',
       color: '#276DC3',
       generator: () => generateRScript(
-        formData, dateRange, selectedAlias, solrDatabaseId!, 
-        getNER, downloadOnly, statsLevel, accessToken
+        queryMode === 'raw' ? { custom_query: rawQuery } : formData, 
+        dateRange, 
+        selectedAlias, 
+        solrDatabaseId!, 
+        getNER, 
+        downloadOnly, 
+        statsLevel, 
+        accessToken,
+        queryMode === 'raw' ? rawQuery : undefined
       )
     }
   ];
@@ -193,6 +224,11 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
               variant="outlined"
               color="primary"
             />
+            <Chip 
+              label={queryMode.toUpperCase()} 
+              size="small" 
+              color={queryMode === 'raw' ? 'warning' : queryMode === 'advanced' ? 'secondary' : 'primary'}
+            />
           </Box>
           <IconButton onClick={() => setCodeModalOpen(false)} size="small">
             <Close />
@@ -252,6 +288,14 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
                             fontWeight: 600
                           }}
                         />
+                        {queryMode === 'raw' && (
+                          <Chip 
+                            label="Raw Query Mode" 
+                            size="small" 
+                            color="warning"
+                            variant="outlined"
+                          />
+                        )}
                       </Box>
                       
                       <Box sx={{ display: 'flex', gap: 1 }}>
@@ -327,6 +371,11 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
                         {example.id === 'python' && 'Save as a .py file and run with Python. Requires requests and pandas libraries.'}
                         {example.id === 'r' && 'Save as a .R file and run with R. Requires httr and jsonlite packages.'}
                       </Typography>
+                      {queryMode === 'raw' && (
+                        <Typography variant="body2" color="warning.main" sx={{ mt: 1, fontWeight: 600 }}>
+                          Note: This code uses your custom raw query directly.
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
                 </Fade>
@@ -341,7 +390,7 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
           justifyContent: 'space-between'
         }}>
           <Typography variant="caption" color="text.secondary">
-            Select a tab above to view different implementation examples
+            Generated from {queryMode} query mode
           </Typography>
           <Button onClick={() => setCodeModalOpen(false)} variant="outlined">
             Close

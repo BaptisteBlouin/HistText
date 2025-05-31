@@ -2,27 +2,42 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Box, 
-  Button, 
   Card, 
   CardContent, 
   Typography, 
   Grid,
   Alert,
-  Chip
+  Chip,
+  ToggleButtonGroup,
+  ToggleButton,
+  Divider,
+  Button
 } from '@mui/material';
-import { PlayArrow, QueryStats, CheckCircle } from '@mui/icons-material';
+import { 
+  PlayArrow, 
+  QueryStats, 
+  CheckCircle, 
+  Build, 
+  Code, 
+  AutoFixHigh 
+} from '@mui/icons-material';
 import axios from 'axios';
 import config from '../../../config.json';
-import { buildQueryString } from './buildQueryString';
+import { buildQueryString, buildEncodedQueryString } from './buildQueryString';
 import { useAuth } from '../../hooks/useAuth';
 import { useEmbeddings } from './MetadataForm/hooks/useEmbeddings';
 import { useSmartValidation } from '../../hooks/useSmartValidation';
 import { useSearchHistory, SavedSearch } from '../../hooks/useSearchHistory';
 import { shouldExcludeField, isTextField, sortFieldsByPriority } from './MetadataForm/utils/fieldUtils';
+
+// Enhanced components
 import FormHeader from './MetadataForm/components/FormHeader';
-import FormField from './MetadataForm/components/FormField';
+import SimpleQueryBuilder from './MetadataForm/components/SimpleQueryBuilder';
+import AdvancedQueryBuilder from './MetadataForm/components/AdvancedQueryBuilder';
+import RawQueryEditor from './MetadataForm/components/RawQueryEditor';
 import DateRangeField from './MetadataForm/components/DateRangeField';
 import QueryOptions from './MetadataForm/components/QueryOptions';
+import QueryPreview from './MetadataForm/components/QueryPreview';
 import CodeGeneration from './MetadataForm/components/CodeGeneration';
 import EmbeddingTools from './MetadataForm/components/EmbeddingTools';
 import SearchHistoryIntegration from './MetadataForm/components/SearchHistoryIntegration';
@@ -30,6 +45,7 @@ import SearchHistoryPanel from './SearchHistory/SearchHistoryPanel';
 
 type StatsLevel = (typeof config.statsLevelOptions)[number];
 type DocLevel = (typeof config.docLevelOptions)[number];
+type QueryMode = 'simple' | 'advanced' | 'raw';
 
 interface CollectionInfo {
   solr_database_id: number;
@@ -107,6 +123,11 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   const [showEmbeddingAlert, setShowEmbeddingAlert] = useState(false);
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
+  
+  // Enhanced query mode state
+  const [queryMode, setQueryMode] = useState<QueryMode>('simple');
+  const [rawQuery, setRawQuery] = useState('');
+  const [queryPreviewExpanded, setQueryPreviewExpanded] = useState(false);
 
   // Search history hook
   const { addToHistory } = useSearchHistory();
@@ -163,6 +184,16 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     setFormData((prevData: any) => ({ ...prevData, ...initializedFormData }));
   }, [metadata, setFormData, formData]);
 
+  // Sync raw query with form data when switching modes
+  useEffect(() => {
+    if (queryMode === 'raw') {
+      const generatedQuery = buildQueryString(formData, dateRange, { mode: 'advanced' });
+      if (generatedQuery && generatedQuery !== rawQuery) {
+        setRawQuery(generatedQuery);
+      }
+    }
+  }, [queryMode, formData, dateRange]);
+
   const handleSwitchAndApply = useCallback(async (search: SavedSearch) => {
     try {
       // Check if handlers are available
@@ -193,11 +224,9 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       // Apply the form data
       setFormData(search.formData);
       
-      // Note: You might also want to handle dateRange if it's managed at this level
-      
     } catch (error) {
       console.error('Error switching collection and applying search:', error);
-      throw error; // Re-throw to let the panel handle the error
+      throw error;
     }
   }, [
     solrDatabaseId, 
@@ -207,6 +236,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     onAliasChange, 
     setFormData
   ]);
+
   // Auto-save searches to history when query is executed
   const handleSubmitWithHistory = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -214,7 +244,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     if (formValidation.canSubmit) {
       // Save to history before executing query
       if (selectedAlias && solrDatabaseId) {
-        const queryString = buildQueryString(formData, dateRange);
+        const queryString = queryMode === 'raw' ? rawQuery : buildQueryString(formData, dateRange, { mode: queryMode });
         
         // Generate a default name for the search
         const keyTerms: string[] = [];
@@ -239,7 +269,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
             name: collectionInfo?.collection_name || 'Unknown'
           },
           isBookmarked: false,
-          tags: [],
+          tags: [queryMode],
           queryString,
           resultsCount: allResults.length || undefined
         };
@@ -256,6 +286,8 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     solrDatabaseId,
     formData,
     dateRange,
+    queryMode,
+    rawQuery,
     collectionInfo,
     allResults.length,
     addToHistory,
@@ -286,36 +318,30 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
         return;
       }
       
-      // Only apply the form data if the collections match exactly
+      // Apply the form data
       setFormData(search.formData);
       
-      // Note: dateRange changes would need to be handled by parent component
-      // since it's typically managed at a higher level
+      // If search was saved with raw query mode, switch to it
+      if (search.tags?.includes('raw')) {
+        setQueryMode('raw');
+        setRawQuery(search.queryString);
+      }
       
     } catch (error) {
       console.error('Error applying saved search:', error);
     }
   }, [solrDatabaseId, selectedAlias, setFormData]);
 
-    // Handle saving current search manually
-  const handleSaveCurrentSearch = useCallback(() => {
-    setHistoryPanelOpen(false);
-    // Add a small delay to allow the panel to close, then trigger save
-    setTimeout(() => {
-      // This will be handled by the SearchHistoryIntegration component
-      // We can trigger it by setting a flag or calling a function
-    }, 300);
-  }, []);
-
-  // Handlers
+  // Enhanced event handlers for form interaction
   const handleFormChange = useCallback((
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | { name?: string; value: unknown }>,
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    fieldName: string,
     index: number,
   ) => {
-    const { name, value } = event.target;
+    const { value } = event.target;
     setFormData(prev => ({
       ...prev,
-      [name!]: (prev[name!] || []).map((entry, i) =>
+      [fieldName]: (prev[fieldName] || []).map((entry, i) =>
         i === index ? { ...entry, value: value.toString() } : entry,
       ),
     }));
@@ -369,7 +395,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   // Check if we have any search content
   const hasSearchContent = Object.values(formData).some((entries: any) =>
     entries.some((entry: any) => entry.value && entry.value.trim())
-  );
+  ) || (queryMode === 'raw' && rawQuery.trim());
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -383,11 +409,35 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box component="form" onSubmit={handleSubmitWithHistory}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <QueryStats />
-              Search Fields
-            </Typography>
-                        {/* Search History Integration */}
+            {/* Query Mode Toggle */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <QueryStats />
+                Query Builder
+              </Typography>
+              
+              <ToggleButtonGroup
+                value={queryMode}
+                exclusive
+                onChange={(e, newMode) => newMode && setQueryMode(newMode)}
+                size="small"
+              >
+                <ToggleButton value="simple" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AutoFixHigh fontSize="small" />
+                  Simple
+                </ToggleButton>
+                <ToggleButton value="advanced" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Build fontSize="small" />
+                  Advanced
+                </ToggleButton>
+                <ToggleButton value="raw" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Code fontSize="small" />
+                  Raw Query
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            {/* Search History Integration */}
             <Box sx={{ mb: 3 }}>
               <SearchHistoryIntegration
                 formData={formData}
@@ -401,33 +451,81 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                 onShowHistory={() => setHistoryPanelOpen(true)}
               />
             </Box>
-            <Grid container spacing={3} sx={{ mb: 3 }}>
-              {visibleFields.map(field => (
-                <Grid item xs={12} md={6} lg={4} key={field.name}>
-                  <FormField
-                    field={field}
-                    formData={formData}
-                    collectionInfo={collectionInfo}
-                    hasEmbeddings={hasEmbeddings}
-                    neighbors={neighbors}
-                    loadingNeighbors={loadingNeighbors}
-                    metadata={metadata}
-                    onFormChange={handleFormChange}
-                    onSelectChange={handleSelectChange}
-                    onToggleNot={toggleNotCondition}
-                    onAddBooleanField={addBooleanField}
-                    onRemoveBooleanField={removeBooleanField}
-                    onFetchNeighbors={getNeighbors}
-                    onRemoveNeighborDropdown={removeNeighborDropdown}
-                  />
-                </Grid>
-              ))}
-            </Grid>
+
+            <Divider sx={{ mb: 3 }} />
+
+            {/* Query Builder Modes */}
+            {queryMode === 'simple' && (
+              <SimpleQueryBuilder
+                fields={visibleFields}
+                formData={formData}
+                collectionInfo={collectionInfo}
+                hasEmbeddings={hasEmbeddings}
+                neighbors={neighbors}
+                loadingNeighbors={loadingNeighbors}
+                metadata={metadata}
+                onFormChange={handleFormChange}
+                onSelectChange={handleSelectChange}
+                onFetchNeighbors={getNeighbors}
+                onRemoveNeighborDropdown={removeNeighborDropdown}
+              />
+            )}
+
+            {queryMode === 'advanced' && (
+              <AdvancedQueryBuilder
+                fields={visibleFields}
+                formData={formData}
+                collectionInfo={collectionInfo}
+                hasEmbeddings={hasEmbeddings}
+                neighbors={neighbors}
+                loadingNeighbors={loadingNeighbors}
+                metadata={metadata}
+                onFormChange={handleFormChange}
+                onSelectChange={handleSelectChange}
+                onToggleNot={toggleNotCondition}
+                onAddBooleanField={addBooleanField}
+                onRemoveBooleanField={removeBooleanField}
+                onFetchNeighbors={getNeighbors}
+                onRemoveNeighborDropdown={removeNeighborDropdown}
+              />
+            )}
+
+            {queryMode === 'raw' && (
+              <RawQueryEditor
+                query={rawQuery}
+                onQueryChange={setRawQuery}
+                metadata={metadata}
+                collectionInfo={collectionInfo}
+                onApplyToForm={(newFormData) => {
+                  setFormData(newFormData);
+                  setQueryMode('advanced');
+                }}
+              />
+            )}
 
             <DateRangeField
               dateRange={dateRange}
               formData={formData}
-              onFormChange={handleFormChange}
+              onFormChange={(event, index) => {
+                const { name, value } = event.target;
+                setFormData(prev => ({
+                  ...prev,
+                  [name]: (prev[name] || []).map((entry, i) =>
+                    i === index ? { ...entry, value: value.toString() } : entry,
+                  ),
+                }));
+              }}
+            />
+
+            {/* Query Preview */}
+            <QueryPreview
+              formData={formData}
+              dateRange={dateRange}
+              rawQuery={rawQuery}
+              queryMode={queryMode}
+              expanded={queryPreviewExpanded}
+              onToggle={() => setQueryPreviewExpanded(!queryPreviewExpanded)}
+              validation={formValidation}
             />
 
             <QueryOptions
@@ -460,37 +558,89 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
               </Alert>
             </Box>
 
-
-
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                type="submit"
-                size="large"
-                startIcon={<PlayArrow />}
-                disabled={!formValidation.canSubmit}
-                sx={{ 
-                  minWidth: 120,
-                  opacity: formValidation.canSubmit ? 1 : 0.6,
-                  cursor: formValidation.canSubmit ? 'pointer' : 'not-allowed'
-                }}
-              >
-                Execute Query
-              </Button>
-              
-              {solrDatabaseId && (
-                <CodeGeneration
-                  formData={formData}
-                  dateRange={dateRange}
-                  selectedAlias={selectedAlias}
-                  solrDatabaseId={solrDatabaseId}
-                  getNER={getNER}
-                  downloadOnly={downloadOnly}
-                  statsLevel={statsLevel}
-                  accessToken={accessToken}
-                />
-              )}
+            {/* Submit Actions */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap', mt: 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                gap: 1 
+              }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 2 
+                }}>
+                  <Box sx={{ 
+                    minWidth: 200, 
+                    textAlign: 'center',
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: formValidation.overallStatus === 'ready' ? 'success.light' : 
+                             formValidation.overallStatus === 'error' ? 'error.light' : 'grey.100'
+                  }}>
+                    <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+                      Query Status
+                    </Typography>
+                    <Chip 
+                      icon={formValidation.overallStatus === 'ready' ? <CheckCircle /> : undefined}
+                      label={formValidation.summary}
+                      color={
+                        formValidation.overallStatus === 'ready' ? 'success' :
+                        formValidation.overallStatus === 'error' ? 'error' : 'default'
+                      }
+                      variant="filled"
+                    />
+                  </Box>
+                  
+                  <Box>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: 1, 
+                      alignItems: 'center' 
+                    }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        gap: 1, 
+                        alignItems: 'center' 
+                      }}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          type="submit"
+                          size="large"
+                          startIcon={<PlayArrow />}
+                          disabled={!formValidation.canSubmit}
+                          sx={{ 
+                            minWidth: 180,
+                            minHeight: 48,
+                            opacity: formValidation.canSubmit ? 1 : 0.6,
+                            cursor: formValidation.canSubmit ? 'pointer' : 'not-allowed'
+                          }}
+                        >
+                          Execute Query
+                        </Button>
+                        
+                        {solrDatabaseId && (
+                          <CodeGeneration
+                            formData={formData}
+                            dateRange={dateRange}
+                            selectedAlias={selectedAlias}
+                            solrDatabaseId={solrDatabaseId}
+                            getNER={getNER}
+                            downloadOnly={downloadOnly}
+                            statsLevel={statsLevel}
+                            accessToken={accessToken}
+                            rawQuery={queryMode === 'raw' ? rawQuery : undefined}
+                            queryMode={queryMode}
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
             </Box>
           </Box>
         </CardContent>
@@ -508,7 +658,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
           id: solrDatabaseId, 
           name: collectionInfo?.collection_name || 'Database' 
         } : undefined}
-        onSaveCurrentSearch={handleSaveCurrentSearch}
+        onSaveCurrentSearch={() => setHistoryPanelOpen(false)}
         availableDatabases={availableDatabases}
         availableCollections={availableCollections}
         onSwitchAndApply={handleSwitchAndApply}

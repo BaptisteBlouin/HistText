@@ -36,11 +36,11 @@ interface FormFieldProps {
   neighbors: { [key: string]: string[] };
   loadingNeighbors: { [key: string]: boolean };
   metadata: any[];
-  onFormChange: (event: any, index: number) => void;
+  onFormChange: (event: any, fieldName: string, index: number) => void;
   onSelectChange: (fieldName: string, newValue: string | null, index: number) => void;
-  onToggleNot: (name: string, index: number) => void;
-  onAddBooleanField: (name: string, operator: string) => void;
-  onRemoveBooleanField: (name: string, index: number) => void;
+  onToggleNot: (fieldName: string, index: number) => void;
+  onAddBooleanField: (fieldName: string, operator: string) => void;
+  onRemoveBooleanField: (fieldName: string, index: number) => void;
   onFetchNeighbors: (inputValue: string, fieldName: string) => void;
   onRemoveNeighborDropdown: (fieldName: string) => void;
 }
@@ -71,7 +71,7 @@ const FormField: React.FC<FormFieldProps> = ({
   const getFieldHelpTopic = () => {
     if (field.name.toLowerCase().includes('date')) return 'date_range';
     if (field.possible_values?.length > 0) return 'field_selection';
-    return 'search_terms'; // Default for text fields
+    return 'search_terms';
   };
 
   // Helper function to get validation icon and color
@@ -98,30 +98,29 @@ const FormField: React.FC<FormFieldProps> = ({
     if (entry.not) {
       borderColor = 'error.main';
       borderWidth = 2;
-      backgroundColor = 'rgba(244, 67, 54, 0.05)'; // Light red background for NOT
+      backgroundColor = 'rgba(244, 67, 54, 0.05)';
     } else if (entry.operator === 'AND') {
       borderColor = 'success.main';
       borderWidth = 2;
-      backgroundColor = 'rgba(76, 175, 80, 0.05)'; // Light green background for AND
+      backgroundColor = 'rgba(76, 175, 80, 0.05)';
     } else if (entry.operator === 'OR') {
       borderColor = 'info.main';
       borderWidth = 2;
-      backgroundColor = 'rgba(33, 150, 243, 0.05)'; // Light blue background for OR
+      backgroundColor = 'rgba(33, 150, 243, 0.05)';
     }
 
-    // Then, apply validation styling (only if it's an error - warnings don't override operator styling)
+    // Then, apply validation styling (only if it's an error)
     if (validation.status === 'error') {
       borderColor = 'error.main';
       borderWidth = 2;
-      backgroundColor = 'rgba(244, 67, 54, 0.08)'; // Slightly stronger red for errors
+      backgroundColor = 'rgba(244, 67, 54, 0.08)';
     } else if (validation.status === 'valid' && validation.hasValue && !entry.operator && !entry.not) {
-      // Only show green validation border if no operator is set
       borderColor = 'success.light';
       borderWidth = 1;
     }
 
     // Primary text field gets special treatment
-    if (isTextField && !validation.status === 'error') {
+    if (isTextField && validation.status !== 'error') {
       borderWidth = Math.max(borderWidth, 1);
     }
 
@@ -364,8 +363,8 @@ const FormField: React.FC<FormFieldProps> = ({
                 <Box sx={{ flexGrow: 1 }}>
                   <TextField
                     name={field.name}
-                    value={entry.value}
-                    onChange={e => onFormChange(e, idx)}
+                    value={entry.value || ''}
+                    onChange={e => onFormChange(e, field.name, idx)}
                     size="small"
                     fullWidth
                     placeholder={`Enter ${field.name}...`}
