@@ -1,13 +1,14 @@
 // app/frontend/src/containers/components/NERDisplay/NERDisplayContainer.tsx (updated to use new components)
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { Box, useTheme, useMediaQuery, Tabs, Tab, Badge, CircularProgress, Typography } from '@mui/material';
+import { Box, useTheme, useMediaQuery, Tabs, Tab, Badge, CircularProgress, Typography, Alert, Chip, Button } from '@mui/material';
 import { ModuleRegistry } from '@ag-grid-community/core';
 import { ClientSideRowModelModule } from '@ag-grid-community/client-side-row-model';
 import { 
   TableChart, 
   Insights, 
   Analytics, 
-  TrendingUp
+  TrendingUp,
+  Clear
 } from '@mui/icons-material';
 import '@ag-grid-community/styles/ag-grid.css';
 import '@ag-grid-community/styles/ag-theme-quartz.css';
@@ -52,6 +53,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
   
   const [showLimitDialog, setShowLimitDialog] = useState(false);
   const [entityLimit, setEntityLimit] = useState<number | undefined>(undefined);
+  const [selectedEntityTypes, setSelectedEntityTypes] = useState<string[] | undefined>(undefined);
   const [hasUserConfirmed, setHasUserConfirmed] = useState(false);
 
   // Local state
@@ -64,6 +66,30 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
     }, 0);
   }, [nerData]);
 
+  // Process NER data to get entity type statistics
+  const entityTypeStats = useMemo(() => {
+    const typeStats: Record<string, { count: number; percentage: number }> = {};
+    let totalCount = 0;
+
+    Object.values(nerData).forEach((data: any) => {
+      if (Array.isArray(data.l)) {
+        data.l.forEach((label: string) => {
+          const labelFull = config.NERLABELS2FULL[label] || label;
+          typeStats[labelFull] = typeStats[labelFull] || { count: 0, percentage: 0 };
+          typeStats[labelFull].count++;
+          totalCount++;
+        });
+      }
+    });
+
+    // Calculate percentages
+    Object.keys(typeStats).forEach(type => {
+      typeStats[type].percentage = (typeStats[type].count / totalCount) * 100;
+    });
+
+    return typeStats;
+  }, [nerData]);
+
   // Estimate processing time based on entity count
   const getEstimatedTime = (entityCount: number): string => {
     if (entityCount < 5000) return "< 1 second";
@@ -73,8 +99,43 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
     return "> 30 seconds";
   };
 
+  // Process NER data with potential filtering
+  const filteredNerData = useMemo(() => {
+    if (!selectedEntityTypes || selectedEntityTypes.length === 0) {
+      return nerData;
+    }
+
+    // Filter nerData to only include selected entity types
+    const filtered: Record<string, any> = {};
+    
+    Object.entries(nerData).forEach(([docId, data]) => {
+      if (Array.isArray(data.t) && Array.isArray(data.l)) {
+        const filteredIndices: number[] = [];
+        
+        data.l.forEach((label: string, index: number) => {
+          const labelFull = config.NERLABELS2FULL[label] || label;
+          if (selectedEntityTypes.includes(labelFull)) {
+            filteredIndices.push(index);
+          }
+        });
+        
+        if (filteredIndices.length > 0) {
+          filtered[docId] = {
+            t: filteredIndices.map(i => data.t[i]),
+            l: filteredIndices.map(i => data.l[i]),
+            s: filteredIndices.map(i => data.s[i]),
+            e: filteredIndices.map(i => data.e[i]),
+            c: filteredIndices.map(i => data.c[i])
+          };
+        }
+      }
+    });
+    
+    return filtered;
+  }, [nerData, selectedEntityTypes]);
+
   // Process NER data
-  const { entities, stats, processedData } = useNERData(nerData);
+  const { entities, stats, processedData } = useNERData(filteredNerData);
 
   // Filter state and logic
   const {
@@ -125,16 +186,24 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
     }
   }, [activeTab, totalEntities, hasUserConfirmed]);
 
-  const handleLimitDialogResponse = useCallback((useLimited: boolean) => {
+  const handleLimitDialogResponse = useCallback((useLimited: boolean, entityTypes?: string[]) => {
     const maxEntities = config.NER_ANALYTICS_MAX_ENTITIES || 25000;
     
     setShowLimitDialog(false);
     setHasUserConfirmed(true);
     
-    if (useLimited) {
+    if (entityTypes && entityTypes.length > 0) {
+      // User selected specific entity types
+      setSelectedEntityTypes(entityTypes);
+      setEntityLimit(undefined); // Don't limit by number when filtering by type
+    } else if (useLimited) {
+      // User selected subset option
       setEntityLimit(maxEntities);
+      setSelectedEntityTypes(undefined);
     } else {
-      setEntityLimit(undefined); // Process all
+      // User selected process all
+      setEntityLimit(undefined);
+      setSelectedEntityTypes(undefined);
     }
     
     // Now proceed to analytics tab
@@ -155,6 +224,20 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
   const onGridReady = useCallback((params: any) => {
     params.api.sizeColumnsToFit();
   }, []);
+
+  // Calculate current dataset info for display
+  const currentDatasetInfo = useMemo(() => {
+    const currentTotal = Object.values(filteredNerData).reduce((total, data: any) => {
+      return total + (Array.isArray(data.t) ? data.t.length : 0);
+    }, 0);
+
+    return {
+      totalEntities: currentTotal,
+      isFiltered: selectedEntityTypes && selectedEntityTypes.length > 0,
+      selectedTypes: selectedEntityTypes,
+      reductionPercentage: selectedEntityTypes ? ((totalEntities - currentTotal) / totalEntities * 100) : 0
+    };
+  }, [filteredNerData, totalEntities, selectedEntityTypes]);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -197,6 +280,40 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
           />
         </Tabs>
       </Box>
+
+      
+      {/* Dataset Filter Info */}
+      {currentDatasetInfo.isFiltered && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Typography variant="body2">
+              <strong>Filtered Dataset:</strong> Showing {currentDatasetInfo.totalEntities.toLocaleString()} entities 
+              ({currentDatasetInfo.reductionPercentage.toFixed(1)}% reduction) from selected types:
+            </Typography>
+            {currentDatasetInfo.selectedTypes?.map(type => (
+              <Chip 
+                key={type}
+                label={type}
+                size="small"
+                style={{
+                  backgroundColor: config.NER_LABELS_COLORS[type] || '#757575',
+                  color: 'white'
+                }}
+              />
+            ))}
+            <Button 
+              size="small" 
+              onClick={() => {
+                setSelectedEntityTypes(undefined);
+                setHasUserConfirmed(false);
+              }}
+              startIcon={<Clear />}
+            >
+              Clear Filter
+            </Button>
+          </Box>
+        </Alert>
+      )}
 
       {/* Tab Content */}
       {activeTab === 0 && (
@@ -277,12 +394,14 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
                 Computing Advanced Analytics...
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Analyzing {entityLimit ? `${entityLimit.toLocaleString()} of ${totalEntities.toLocaleString()}` : totalEntities.toLocaleString()} entities
+                Analyzing {entityLimit ? `${entityLimit.toLocaleString()} of ${totalEntities.toLocaleString()}` : 
+                         currentDatasetInfo.isFiltered ? `${currentDatasetInfo.totalEntities.toLocaleString()} filtered` :
+                         totalEntities.toLocaleString()} entities
               </Typography>
             </Box>
           ) : (
             <NERInsights 
-              nerData={nerData}
+              nerData={filteredNerData}
               selectedAlias={selectedAlias}
               onDocumentClick={handleIdClick}
               entityLimit={entityLimit}
@@ -299,7 +418,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
         collectionName={selectedAlias}
         solrDatabaseId={selectedSolrDatabase?.id || null}
         authAxios={authAxios}
-        nerData={nerData}
+        nerData={filteredNerData}
         viewNER={viewNER}
       />
 
@@ -310,6 +429,8 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
         totalEntities={totalEntities}
         maxEntities={config.NER_ANALYTICS_MAX_ENTITIES || 25000}
         estimatedTime={getEstimatedTime(totalEntities)}
+        entityTypeStats={entityTypeStats}
+        entities={entities}
       />
     </Box>
   );

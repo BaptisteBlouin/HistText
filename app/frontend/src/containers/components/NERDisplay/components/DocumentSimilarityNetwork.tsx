@@ -73,7 +73,7 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<DocumentNode, DocumentLink> | null>(null);
   
-  const [similarityThreshold, setSimilarityThreshold] = useState(0.1);
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.3);
   const [layoutType, setLayoutType] = useState<'force' | 'cluster' | 'circular'>('force');
   const [showLabels, setShowLabels] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
@@ -83,11 +83,11 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   
   // User-controlled node limit
-  const [maxNodes, setMaxNodes] = useState(30);
-  const [customMaxNodes, setCustomMaxNodes] = useState('30');
+  const [maxNodes, setMaxNodes] = useState(50);
+  const [customMaxNodes, setCustomMaxNodes] = useState('50');
   
   // New cluster size filter
-  const [minClusterSize, setMinClusterSize] = useState(1);
+  const [minClusterSize, setMinClusterSize] = useState(2);
 
   // Get the maximum available documents for the slider
   const maxAvailableDocuments = useMemo(() => {
@@ -701,18 +701,17 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
             {/* Minimum Cluster Size */}
             <Grid item xs={12} md={4}>
               <Typography variant="caption" gutterBottom>
-                Min Cluster Size: {minClusterSize} document{minClusterSize !== 1 ? 's' : ''}
+                Min Cluster Size: {minClusterSize} document{minClusterSize !== 2 ? 's' : ''}
               </Typography>
               <Slider
                 value={minClusterSize}
-                min={1}
+                min={2}
                 max={10}
                 step={1}
                 onChange={handleMinClusterSizeChange}
                 valueLabelDisplay="auto"
                 size="small"
                 marks={[
-                  { value: 1, label: '1' },
                   { value: 2, label: '2' },
                   { value: 5, label: '5' },
                   { value: 10, label: '10' }
