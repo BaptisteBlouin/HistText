@@ -8,7 +8,7 @@ import {
   Assessment, 
   Analytics, 
   Psychology,
-  CircularProgress
+  Science
 } from '@mui/icons-material';
 import { useNERStatistics } from './hooks/useNERStatistics';
 import ProcessingBanner from './components/ProcessingBanner';
@@ -20,6 +20,7 @@ import RelationshipsTab from './components/tabs/RelationshipsTab';
 import DistributionTab from './components/tabs/DistributionTab';
 import DocumentAnalysisTab from './components/tabs/DocumentAnalysisTab';
 import PatternsTab from './components/tabs/PatternsTab';
+import AdvancedAnalyticsTab from './components/tabs/AdvancedAnalyticsTab';
 import { NERInsightsProps, TabPanelProps } from './types/ner-insights-types';
 
 const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
@@ -32,7 +33,8 @@ const NERInsights: React.FC<NERInsightsProps> = ({
   nerData, 
   selectedAlias, 
   onDocumentClick,
-  entityLimit
+  entityLimit,
+  entities = []
 }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview']));
@@ -124,6 +126,15 @@ const NERInsights: React.FC<NERInsightsProps> = ({
             label="Patterns" 
             iconPosition="start"
           />
+          <Tab 
+            icon={
+              <Badge badgeContent="NEW" color="success" variant="dot">
+                <Science />
+              </Badge>
+            } 
+            label="Deep Analytics" 
+            iconPosition="start"
+          />
         </Tabs>
       </Box>
 
@@ -160,6 +171,14 @@ const NERInsights: React.FC<NERInsightsProps> = ({
 
       <TabPanel value={activeTab} index={4}>
         <PatternsTab stats={stats} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={5}>
+        <AdvancedAnalyticsTab 
+          stats={stats}
+          entities={entities}
+          onDocumentClick={handleDocumentClick}
+        />
       </TabPanel>
     </Box>
   );

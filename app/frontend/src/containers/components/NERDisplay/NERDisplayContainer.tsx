@@ -286,6 +286,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
               selectedAlias={selectedAlias}
               onDocumentClick={handleIdClick}
               entityLimit={entityLimit}
+              entities={entities}
             />
           )}
         </>
