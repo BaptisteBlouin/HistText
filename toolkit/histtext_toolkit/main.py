@@ -134,6 +134,10 @@ def parse_args() -> argparse.Namespace:
     ner_parser.add_argument("--force-chunking", action="store_true", help="Force chunking for all texts")
     ner_parser.add_argument("--debug-entities", action="store_true", help="Debug entity extraction")
 
+    ner_parser.add_argument("--compact-labels", action="store_true", default=True, help="Use compact labels (default: True)")
+    ner_parser.add_argument("--full-labels", action="store_true", help="Use full labels instead of compact")
+    ner_parser.add_argument("--label-stats", action="store_true", help="Show label distribution statistics")
+
 
     # Test NER command
     test_parser = subparsers.add_parser("test-ner", help="Test NER with sample text")
@@ -458,6 +462,8 @@ async def main():
                 additional_params=additional_params if additional_params else None,
             )
 
+            use_compact_labels = args.compact_labels and not args.full_labels
+    
             await precompute_ner(
                 solr_client,
                 args.collection,
@@ -473,6 +479,8 @@ async def main():
                 args.jsonl_prefix,
                 args.decimal_precision,
                 args.format,
+                use_compact_labels=use_compact_labels,
+                include_label_stats=args.label_stats,
             )
 
         elif args.command == "test-ner":

@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 import time
 import logging
+from .ner_labels import get_compact_label, get_full_label
+
 
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class EntitySpan:
@@ -31,15 +32,37 @@ class EntitySpan:
             "metadata": self.metadata or {}
         }
 
-    def to_flat_dict(self) -> Dict[str, Any]:
-        """Convert to flat format for Solr."""
+    def to_flat_dict(self, use_compact_labels: bool = True) -> Dict[str, Any]:
+        """Convert to flat format for Solr with optional compact labels."""
+        label = self.labels[0] if self.labels else "MISC"
+        
+        if use_compact_labels:
+            label = get_compact_label(label)
+        
         return {
             "t": self.text,
-            "l": self.labels[0] if self.labels else "UNK",
+            "l": label,
             "s": self.start_pos,
             "e": self.end_pos,
             "c": self.confidence
         }
+
+    def to_compact_dict(self) -> Dict[str, Any]:
+        """Convert to compact format."""
+        return self.to_flat_dict(use_compact_labels=True)
+
+    @classmethod
+    def from_compact_dict(cls, data: Dict[str, Any]) -> 'EntitySpan':
+        """Create EntitySpan from compact dictionary."""
+        full_label = get_full_label(data.get('l', 'MI'))
+        
+        return cls(
+            text=data.get('t', ''),
+            labels=[full_label],
+            start_pos=data.get('s', 0),
+            end_pos=data.get('e', 0),
+            confidence=data.get('c', 0.0)
+        )
 
 
 @dataclass

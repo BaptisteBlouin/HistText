@@ -1,6 +1,8 @@
 # Update toolkit/histtext_toolkit/models/ner_registry.py
 
 from typing import Dict, Type, Optional
+
+from toolkit.histtext_toolkit.models.transformers_ner import HistoricalTransformersModel, MultilingualTransformersModel
 from ..core.config import ModelConfig
 from ..core.logging import get_logger
 from .ner_base import BaseNERModel
@@ -56,6 +58,7 @@ def create_ner_model(config: ModelConfig) -> Optional[BaseNERModel]:
         return None
 
 
+
 def _load_model_classes():
     """Load and register all available model classes."""
     
@@ -64,7 +67,7 @@ def _load_model_classes():
         from .gliner_ner import GLiNERModel
         register_model("gliner", GLiNERModel)
         register_model("gliner_enhanced", GLiNERModel)
-        register_model("nunerzero", GLiNERModel)  # NuNer Zero is GLiNER
+        register_model("nunerzero", GLiNERModel)
         logger.debug("Registered GLiNER models")
     except ImportError:
         logger.debug("GLiNER not available")
@@ -85,6 +88,10 @@ def _load_model_classes():
         from .transformers_ner import TransformersNERModel
         register_model("transformers", TransformersNERModel)
         register_model("nuner", TransformersNERModel)
+        register_model("multilingual", MultilingualTransformersModel)
+        register_model("historical", HistoricalTransformersModel)
+        register_model("xlm-roberta", TransformersNERModel)
+        register_model("mbert", TransformersNERModel)
         logger.debug("Registered Transformers models")
     except ImportError:
         logger.debug("Transformers models not available")
@@ -104,6 +111,55 @@ def _load_model_classes():
         logger.debug("Registered spaCy models")
     except ImportError:
         logger.debug("spaCy models not available")
+    
+    # Stanza models
+    try:
+        from .stanza_ner import StanzaNERModel, ChineseStanzaNERModel
+        register_model("stanza", StanzaNERModel)
+        register_model("stanza_zh", ChineseStanzaNERModel)
+        logger.debug("Registered Stanza models")
+    except ImportError:
+        logger.debug("Stanza models not available")
+    
+    # AllenNLP models
+    try:
+        from .allennlp_ner import AllenNLPNERModel
+        register_model("allennlp", AllenNLPNERModel)
+        logger.debug("Registered AllenNLP models")
+    except ImportError:
+        logger.debug("AllenNLP models not available")
+    
+    # Chinese specialized models
+    try:
+        from .chinese_ner import LAC_NERModel, HanLP_NERModel, PKUSEG_NERModel
+        register_model("lac", LAC_NERModel)
+        register_model("hanlp", HanLP_NERModel)
+        register_model("pkuseg", PKUSEG_NERModel)
+        logger.debug("Registered Chinese NER models")
+    except ImportError:
+        logger.debug("Chinese NER models not available")
+    
+    try:
+        from .fastnlp_ner import FastNLPNERModel, ChineseFastNLPModel
+        register_model("fastnlp", FastNLPNERModel)
+        register_model("fastnlp_zh", ChineseFastNLPModel)
+        logger.debug("Registered FastNLP models")
+    except ImportError:
+        logger.debug("FastNLP models not available")
+    
+    # FastHan models  
+    try:
+        from .fasthan_ner import (
+            FastHanNERModel, FastHanBaseModel, 
+            FastHanLargeModel, FastHanSmallModel
+        )
+        register_model("fasthan", FastHanNERModel)
+        register_model("fasthan_base", FastHanBaseModel)
+        register_model("fasthan_large", FastHanLargeModel)
+        register_model("fasthan_small", FastHanSmallModel)
+        logger.debug("Registered FastHan models")
+    except ImportError:
+        logger.debug("FastHan models not available")
 
 
 def get_available_model_types() -> Dict[str, str]:
