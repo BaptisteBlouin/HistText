@@ -1,122 +1,114 @@
-"""NER operations module.
-
-This module provides functionality for Named Entity Recognition operations,
-including precomputing and caching annotations.
-"""
+"""Unified NER operations module."""
 
 import os
-from typing import Any, Optional
+import time
+import json
+from typing import Any, Optional, List, Dict
+from pathlib import Path
 
 from ..cache.manager import get_cache_manager
 from ..core.config import ModelConfig
 from ..core.logging import get_logger
-from ..models.base import Entity, NERModel
+from ..models.base import EntitySpan, NERModel, ProcessingStats, GPUMemoryManager
 from ..models.registry import create_ner_model
 from ..solr.client import SolrClient
 
 logger = get_logger(__name__)
 
 
-def split_long_document(doc: str, max_length: int = 30_000) -> list[str]:
-    """Split a long document into smaller chunks.
-
-    Splits text at natural boundaries (newlines) while respecting the
-    maximum chunk length.
-
-    Args:
-        doc: Document text to split
-        max_length: Maximum length of each chunk
-
-    Returns:
-        List[str]: List of document chunks
-
-    """
-    splits = doc.split("\n")
-    doc_splits: list[str] = []
-    cur = ""
-
-    for split in splits:
-        if len(cur) + len(split) + 1 <= max_length:
-            cur += "\n" + split
-        else:
-            doc_splits.append(cur)
-            cur = "\n" + split
-
-    if cur:
-        doc_splits.append(cur)
-
-    return doc_splits
-
-
-class NERProcessor:
-    """Processor for Named Entity Recognition operations.
-
-    Provides methods for extracting entities from text and processing documents
-    in various formats.
-    """
+class UnifiedNERProcessor:
+    """Unified processor for all NER model types."""
 
     def __init__(self, model: NERModel, cache_root: Optional[str] = None):
-        """Initialize the NER processor.
-
-        Args:
-            model: NER model to use for entity extraction
-            cache_root: Optional root directory for caches
-
-        """
+        """Initialize the unified NER processor."""
         self.model = model
         self.cache_root = cache_root
+        self._stats = ProcessingStats()
+        self._entity_cache = {}
 
-    def extract_entities(self, text: str) -> list[Entity]:
-        """Extract entities from text.
-
-        Handles empty text and long documents by splitting them into
-        manageable chunks.
-
-        Args:
-            text: Input text
-
-        Returns:
-            List[Entity]: Extracted entities
-
-        """
-        # Handle empty text
-        if not text:
+    def extract_entities(self, text: str, entity_types: Optional[List[str]] = None) -> List[EntitySpan]:
+        """Extract entities with unified interface."""
+        if not text or not text.strip():
             return []
 
-        # Handle long documents by splitting
-        if len(text) > 30_000:
-            entities = []
-            splits = split_long_document(text)
-
-            offset = 0
-            for split in splits:
-                split_entities = self.model.extract_entities(split)
-
-                # Adjust offsets
-                for entity in split_entities:
-                    entity.start_pos += offset
-                    entity.end_pos += offset
-
-                entities.extend(split_entities)
-                offset += len(split)
-
-            return entities
+        # Handle long documents
+        if len(text) > 30000:
+            return self._extract_entities_chunked(text, entity_types)
         else:
-            return self.model.extract_entities(text)
+            return self.model.extract_entities(text, entity_types)
 
-    def process_documents(self, documents: dict[str, str]) -> dict[str, list[dict[str, Any]]]:
-        """Process a batch of documents.
+    def _extract_entities_chunked(self, text: str, entity_types: Optional[List[str]]) -> List[EntitySpan]:
+        """Handle long documents by chunking."""
+        chunk_size = 25000
+        overlap = 500
+        chunks = []
+        
+        start = 0
+        while start < len(text):
+            end = min(start + chunk_size, len(text))
+            
+            # Try to break at sentence boundary
+            if end < len(text):
+                for i in range(end - overlap, end):
+                    if i > start and text[i] in '.!?\n':
+                        end = i + 1
+                        break
+            
+            chunk = text[start:end]
+            chunks.append((chunk, start))
+            
+            if end >= len(text):
+                break
+            start = end - overlap
 
-        Extracts entities from multiple documents with progress tracking
-        and error handling.
+        # Process chunks
+        all_entities = []
+        for chunk_text, offset in chunks:
+            chunk_entities = self.model.extract_entities(chunk_text, entity_types)
+            
+            # Adjust positions
+            for entity in chunk_entities:
+                entity.start_pos += offset
+                entity.end_pos += offset
+                all_entities.append(entity)
 
-        Args:
-            documents: Dictionary mapping document IDs to text
+        # Remove duplicates
+        return self._deduplicate_entities(all_entities)
 
-        Returns:
-            Dict[str, List[Dict[str, Any]]]: Dictionary mapping document IDs to entities
+    def _deduplicate_entities(self, entities: List[EntitySpan]) -> List[EntitySpan]:
+        """Remove duplicate entities from overlapping chunks."""
+        if not entities:
+            return []
 
-        """
+        entities.sort(key=lambda x: x.start_pos)
+        deduplicated = []
+
+        for entity in entities:
+            is_duplicate = False
+            
+            for existing in deduplicated:
+                # Check for overlap
+                overlap_start = max(entity.start_pos, existing.start_pos)
+                overlap_end = min(entity.end_pos, existing.end_pos)
+                overlap_length = max(0, overlap_end - overlap_start)
+                
+                entity_length = entity.end_pos - entity.start_pos
+                
+                if overlap_length > 0.7 * entity_length:
+                    if entity.confidence <= existing.confidence:
+                        is_duplicate = True
+                        break
+                    else:
+                        deduplicated.remove(existing)
+                        break
+            
+            if not is_duplicate:
+                deduplicated.append(entity)
+
+        return deduplicated
+
+    def process_documents(self, documents: dict[str, str], entity_types: Optional[List[str]] = None) -> dict[str, list[dict[str, Any]]]:
+        """Process a batch of documents."""
         results = {}
         errors = {}
 
@@ -125,13 +117,12 @@ class NERProcessor:
         for doc_id, text in tqdm(documents.items(), desc="Extracting entities", leave=False):
             try:
                 if not text or text.isspace():
-                    # Skip empty documents
                     logger.debug(f"Skipping empty document: {doc_id}")
                     continue
 
-                entities = self.extract_entities(text)
+                entities = self.extract_entities(text, entity_types)
 
-                if entities:  # Only include documents with entities
+                if entities:
                     results[doc_id] = [
                         {
                             "text": entity.text,
@@ -151,25 +142,38 @@ class NERProcessor:
 
         return results
 
-    def process_documents_short_format(self, documents: dict[str, str]) -> dict[str, list[dict[str, Any]]]:
-        """Process a batch of documents and return entities in short format.
+    def process_documents_flat_format(self, documents: dict[str, str], entity_types: Optional[List[str]] = None) -> List[dict[str, Any]]:
+        """Process documents and return in flat format optimized for Solr."""
+        flat_docs = []
+        total_entities = 0  # Add counter
+        
+        from tqdm import tqdm
 
-        Uses more compact field names suitable for storage in Solr.
+        for doc_id, text in tqdm(documents.items(), desc="Processing flat format", leave=False):
+            try:
+                if not text or text.isspace():
+                    continue
 
-        Args:
-            documents: Dictionary mapping document IDs to text
+                entities = self.extract_entities(text, entity_types)
 
-        Returns:
-            Dict[str, List[Dict[str, Any]]]: Dictionary mapping document IDs to entities in short format
+                if entities:
+                    total_entities += len(entities)  # Count entities properly
+                    # Create flat document
+                    flat_doc = {
+                        "doc_id": [doc_id] * len(entities),
+                        "t": [entity.text for entity in entities],
+                        "l": [entity.labels[0] if entity.labels else "UNK" for entity in entities],
+                        "s": [entity.start_pos for entity in entities],
+                        "e": [entity.end_pos for entity in entities],
+                        "c": [entity.confidence for entity in entities]
+                    }
+                    flat_docs.append(flat_doc)
 
-        """
-        results = {}
+            except Exception as e:
+                logger.error(f"Error processing document {doc_id}: {e}")
 
-        for doc_id, text in documents.items():
-            entities = self.extract_entities(text)
-            results[doc_id] = self.model.short_format(entities)
-
-        return results
+        logger.info(f"Processed {len(documents)} documents, found {total_entities} entities")
+        return flat_docs
 
     async def process_and_cache(
         self,
@@ -177,65 +181,77 @@ class NERProcessor:
         model_name: str,
         collection: str,
         field: str,
-        shorten: bool = False,
+        entity_types: Optional[List[str]] = None,
         decimal_precision: Optional[int] = None,
         jsonl_prefix: Optional[str] = None,
         start: int = 0,
-        format_type: str = "default",
+        format_type: str = "flat",
     ) -> list[str]:
-        """Process documents and cache the results.
-
-        Extracts entities from documents and saves them to the cache
-        with the specified formatting options.
-
-        Args:
-            documents: Dictionary mapping document IDs to text
-            model_name: Name of the model
-            collection: Name of the collection
-            field: Field name
-            shorten: Whether to use shortened field names
-            decimal_precision: Number of decimal places for confidence values
-            jsonl_prefix: Prefix for the JSONL file name
-            start: Start index
-            format_type: Format type ('default' or 'flat')
-
-        Returns:
-            List[str]: List of processed document IDs
-
-        """
+        """Process documents and cache the results."""
         if not self.cache_root:
             logger.warning("Cache root not specified, results will not be cached")
             return []
 
-        # Process documents
-        if shorten:
-            entities = self.process_documents_short_format(documents)
-        else:
-            entities = self.process_documents(documents)
+        # Process documents based on format
+        if format_type == "flat":
+            processed_docs = self.process_documents_flat_format(documents, entity_types)
+            
+            # Count total entities properly
+            total_entities = sum(len(doc.get("t", [])) for doc in processed_docs)
+            
+            # Apply decimal precision if specified
+            if decimal_precision is not None:
+                for doc in processed_docs:
+                    if "c" in doc:
+                        doc["c"] = [round(c, decimal_precision) if c >= 0 else c for c in doc["c"]]
+            
+            # Cache flat format results
+            if processed_docs:
+                cache_manager = get_cache_manager(self.cache_root)
+                
+                # Save as JSONL
+                cache_dir = Path(self.cache_root) / model_name / collection / field
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                
+                jsonl_filename = f"batch_{start:08d}.jsonl"
+                if jsonl_prefix:
+                    jsonl_filename = f"{jsonl_prefix}_{jsonl_filename}"
+                
+                jsonl_path = cache_dir / jsonl_filename
+                
+                with open(jsonl_path, 'w', encoding='utf-8') as f:
+                    for doc in processed_docs:
+                        f.write(json.dumps(doc, ensure_ascii=False) + '\n')
+                
+                logger.debug(f"Saved {len(processed_docs)} flat documents with {total_entities} entities to {jsonl_path}")
+                
+                return [str(total_entities)]  # Return entity count
+        
+        
+            else:
+                # Standard format
+                entities = self.process_documents(documents, entity_types)
+                
+                # Apply decimal precision if specified
+                if decimal_precision is not None:
+                    for _doc_id, doc_entities in entities.items():
+                        for entity in doc_entities:
+                            if "confidence" in entity and entity["confidence"] >= 0:
+                                entity["confidence"] = round(entity["confidence"], decimal_precision)
 
-        # Apply decimal precision if specified
-        if decimal_precision is not None:
-            for _doc_id, doc_entities in entities.items():
-                for entity in doc_entities:
-                    if "confidence" in entity and entity["confidence"] >= 0:
-                        entity["confidence"] = round(entity["confidence"], decimal_precision)
-                    elif "c" in entity and entity["c"] >= 0:
-                        entity["c"] = round(entity["c"], decimal_precision)
+                # Cache results
+                cache_manager = get_cache_manager(self.cache_root)
+                cache_manager.save_annotations(
+                    model_name,
+                    collection,
+                    field,
+                    entities,
+                    jsonl_prefix,
+                    start,
+                    format_type,
+                )
 
-        # Cache results
-        cache_manager = get_cache_manager(self.cache_root)
-        cache_manager.save_annotations(
-            model_name,
-            collection,
-            field,
-            entities,
-            jsonl_prefix,
-            start,
-            format_type,
-            shorten,
-        )
-
-        return list(entities.keys())
+                return list(entities.keys())
 
 
 async def precompute_ner(
@@ -246,248 +262,272 @@ async def precompute_ner(
     cache_root: str,
     model_name: str,
     start: int = 0,
-    batch_size: int = 10_000,
+    batch_size: int = 10000,
     num_batches: Optional[int] = None,
     filter_query: Optional[str] = None,
+    entity_types: Optional[List[str]] = None,
     jsonl_prefix: Optional[str] = None,
-    shorten: bool = False,
     decimal_precision: Optional[int] = None,
     format_type: str = "flat",
 ) -> int:
-    """Precompute NER annotations for a collection.
+    """Unified NER precomputation for all model types."""
+    
+    logger.info(f"Starting unified NER precomputation...")
+    logger.info(f"Model: {model_config.name} ({model_config.type})")
+    logger.info(f"Collection: {collection}")
+    logger.info(f"Text Field: {text_field}")
+    logger.info(f"Format: {format_type}")
+    
+    if entity_types:
+        logger.info(f"Entity Types: {entity_types}")
 
-    Processes documents from a Solr collection in batches, extracting entities
-    and caching the results for later use.
-
-    Args:
-        solr_client: Solr client instance
-        collection: Name of the collection
-        text_field: Field containing the text
-        model_config: Model configuration
-        cache_root: Root directory for caches
-        model_name: Name to use for the model in the cache hierarchy
-        start: Start index
-        batch_size: Number of documents per batch
-        num_batches: Maximum number of batches to process
-        filter_query: Optional filter query
-        jsonl_prefix: Prefix for the JSONL file name
-        shorten: Whether to use shortened field names
-        decimal_precision: Number of decimal places for confidence values
-        format_type: Format type ('default' or 'flat')
-
-    Returns:
-        int: Number of documents processed
-
-    """
-    from tqdm import tqdm
-
-    # Create model
+    # Create unified model
     model = create_ner_model(model_config)
     if not model.load():
         logger.error(f"Failed to load model {model_config.name}")
         return 0
 
     # Create processor
-    processor = NERProcessor(model, cache_root)
+    processor = UnifiedNERProcessor(model, cache_root)
 
-    # Calculate and display cache directory path
-    cache_dir = os.path.join(cache_root, model_name, collection, text_field)
-    os.makedirs(cache_dir, exist_ok=True)
+    # Setup cache directory and schema
+    cache_dir = Path(cache_root) / model_name / collection / text_field
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # If format is 'flat', create schema YAML file
+    # Create schema for flat format
     schema_path = ""
     if format_type == "flat":
-        schema_path = os.path.join(cache_root, f"{collection}.yaml")
-        os.makedirs(
-            os.path.dirname(schema_path) if os.path.dirname(schema_path) else ".",
-            exist_ok=True,
-        )
+        schema_path = str(Path(cache_root) / f"{collection}_ner.yaml")
+        _create_flat_schema(schema_path)
+        logger.info(f"Schema file: {schema_path}")
 
-        if not os.path.exists(schema_path):
-            from ..solr.schema import create_schema_dict, write_schema_to_file
-
-            fields = {
-                "c": {"type": "pdoubles", "multivalued": True},
-                "doc_id": {"type": "text_general", "multivalued": True},
-                "e": {"type": "plongs", "multivalued": True},
-                "l": {"type": "text_general", "multivalued": True},
-                "s": {"type": "plongs", "multivalued": True},
-                "t": {"type": "text_general", "multivalued": True},
-            }
-
-            schema_dict = create_schema_dict(fields)
-            try:
-                write_schema_to_file(schema_dict, schema_path)
-                logger.info(f"Created schema file {schema_path}")
-                logger.info(f"Cache directory: {cache_dir}")
-            except Exception as e:
-                logger.error(f"Error writing schema file: {e}")
+    logger.info(f"Cache directory: {cache_dir}")
 
     # Process batches
     current_start = start
     current_batch = 0
     total_docs = 0
-    skipped_docs = 0
-    error_docs = 0
+    total_entities = 0
+    session_start_time = time.time()
 
-    logger.info(f"Starting precomputation ({format_type} mode)...")
+    from tqdm import tqdm
 
-    # Determine total number of documents for progress bar
-    total_count = float("inf")
-    if num_batches is not None:
-        total_count = num_batches * batch_size
+    try:
+        with tqdm(desc="Processing batches", unit="batch") as pbar:
+            while num_batches is None or current_batch < num_batches:
+                logger.debug(f"Processing batch {current_batch + 1} "
+                           f"(docs {current_start}-{current_start + batch_size - 1})")
 
-    with tqdm(total=total_count, desc="Processing documents", unit="docs") as pbar:
-        while num_batches is None or current_batch < num_batches:
-            # Break long line into multiple lines
-            logger.debug(f"Processing batch {current_batch + 1} " f"(docs {current_start} - {current_start + batch_size - 1})")
+                # Get documents from Solr
+                documents = await solr_client.get_document_batch(
+                    collection, text_field, current_start, batch_size, filter_query
+                )
 
-            # Get documents from Solr
-            documents = await solr_client.get_document_batch(collection, text_field, current_start, batch_size, filter_query)
+                if not documents:
+                    logger.info("No more documents found")
+                    break
 
-            if not documents:
-                logger.info("No more documents found")
-                break
+                # Process documents
+                batch_start_time = time.time()
+                
+                doc_ids = await processor.process_and_cache(
+                    documents,
+                    model_name,
+                    collection,
+                    text_field,
+                    entity_types,
+                    decimal_precision,
+                    jsonl_prefix,
+                    current_start,
+                    format_type,
+                )
 
-            # Update progress bar total if needed
-            if pbar.total == float("inf") and documents:
-                # Try to get total document count for more accurate progress
-                try:
-                    count_response = await solr_client.collection_select(collection, {"q": "*:*", "rows": 0})
-                    if count_response and "response" in count_response:
-                        total_doc_count = count_response["response"].get("numFound", float("inf"))
-                        if total_doc_count != float("inf"):
-                            pbar.total = total_doc_count
-                except Exception as e:
-                    logger.debug(f"Could not determine total document count: {e}")
+                batch_time = time.time() - batch_start_time
+                batch_docs = len(documents)
+                
+                # For flat format, doc_ids contains count
+                if format_type == "flat" and doc_ids:
+                    batch_entities = int(doc_ids[0]) if doc_ids[0].isdigit() else 0
+                else:
+                    batch_entities = len(doc_ids)
 
-            # Process documents
-            pbar.set_description(f"Processing batch {current_batch + 1}")
-            doc_ids = await processor.process_and_cache(
-                documents,
-                model_name,
-                collection,
-                text_field,
-                shorten,
-                decimal_precision,
-                jsonl_prefix,
-                current_start,
-                format_type,
-            )
+                total_docs += batch_docs
+                total_entities += batch_entities
 
-            total_docs += len(doc_ids)
-            skipped_docs += len(documents) - len(doc_ids)
+                # Update progress
+                pbar.update(1)
+                pbar.set_postfix({
+                    'docs': total_docs,
+                    'entities': total_entities,
+                    'batch_time': f'{batch_time:.2f}s'
+                })
 
-            # Update progress bar
-            pbar.update(len(documents))
-            pbar.set_postfix(total=total_docs, skipped=skipped_docs, batch=current_batch + 1)
+                logger.info(f"Batch {current_batch + 1}: {batch_docs} docs, "
+                           f"{batch_entities} entities, {batch_time:.2f}s")
 
-            if len(doc_ids) < batch_size:
-                logger.info("Completed collection - no more docs")
-                break
+                # Memory management
+                if current_batch % 5 == 0:
+                    GPUMemoryManager.clear_cache()
 
-            current_batch += 1
-            current_start += batch_size
+                # Check for completion
+                if len(documents) < batch_size:
+                    logger.info("Completed collection - no more documents")
+                    break
 
-    # Unload model
-    model.unload()
+                current_batch += 1
+                current_start += batch_size
 
-    # Generate upload command for user's convenience
-    upload_collection = f"{collection}-ner"
-    jsonl_path = os.path.join(cache_dir, "*.jsonl")
+    except KeyboardInterrupt:
+        logger.info("Processing interrupted by user")
+    except Exception as e:
+        logger.error(f"Error during NER processing: {e}")
 
-    # Create a command that includes the connection parameters
-    upload_command = "python -m histtext_toolkit.main"
+    finally:
+        # Unload model
+        model.unload()
 
-    # Add connection parameters
-    if hasattr(solr_client, "host") and hasattr(solr_client, "port"):
-        upload_command += f" --solr-host {solr_client.host} --solr-port {solr_client.port}"
+        # Final statistics
+        session_time = time.time() - session_start_time
+        
+        logger.info(f"\n{'='*60}")
+        logger.info(f"Unified NER Processing Complete")
+        logger.info(f"{'='*60}")
+        logger.info(f"Model: {model_config.name} ({model_config.type})")
+        logger.info(f"Documents processed: {total_docs}")
+        logger.info(f"Total entities found: {total_entities}")
+        logger.info(f"Processing time: {session_time:.2f}s")
+        
+        if total_docs > 0:
+            logger.info(f"Average entities per document: {total_entities/total_docs:.2f}")
+            logger.info(f"Throughput: {total_docs/session_time:.1f} docs/s")
+        
+        logger.info(f"Results cached in: {cache_dir}")
+        logger.info(f"Format: {format_type}")
 
-    # Add the upload command with schema
-    upload_command += f" upload {upload_collection} {jsonl_path}"
-    if schema_path:
-        upload_command += f" --schema {schema_path}"
-        # Add a note about the importance of the schema
-        schema_note = "# The schema file is required for proper field definitions"
-    else:
-        schema_note = "# No schema file was generated - you may need to create the " "collection manually"
-
-    # Split long log messages into multiple lines
-    logger.info(f"Processed {total_docs} documents, skipped {skipped_docs}, " f"encountered errors in {error_docs}")
-    logger.info("\n" + "-" * 80)
-    logger.info(f"Annotations cached in: {cache_dir}")
-    logger.info("To upload these annotations to Solr, run:")
-    logger.info(f"> {upload_command}  {schema_note}")
-    logger.info("-" * 80)
+        # Generate upload command
+        upload_collection = f"{collection}_ner"
+        jsonl_pattern = str(cache_dir / "*.jsonl")
+        
+        upload_command = f"python -m histtext_toolkit.main upload {upload_collection} \"{jsonl_pattern}\""
+        if schema_path:
+            upload_command += f" --schema {schema_path}"
+        
+        logger.info(f"\nTo upload to Solr:")
+        logger.info(f"  {upload_command}")
+        logger.info(f"{'='*60}")
 
     return total_docs
 
 
+def _create_flat_schema(schema_path: str) -> None:
+    """Create schema for flat NER format."""
+    schema_content = {
+        "add-field": [
+            {
+                "name": "doc_id",
+                "type": "strings",
+                "stored": True,
+                "indexed": True,
+                "multiValued": True
+            },
+            {
+                "name": "t", 
+                "type": "text_general",
+                "stored": True,
+                "indexed": True,
+                "multiValued": True
+            },
+            {
+                "name": "l",
+                "type": "string", 
+                "stored": True,
+                "indexed": True,
+                "multiValued": True
+            },
+            {
+                "name": "s",
+                "type": "plongs",
+                "stored": True, 
+               "indexed": True,
+               "multiValued": True
+           },
+           {
+               "name": "e",
+               "type": "plongs",
+               "stored": True,
+               "indexed": True, 
+               "multiValued": True
+           },
+           {
+               "name": "c",
+               "type": "pdoubles",
+               "stored": True,
+               "indexed": True,
+               "multiValued": True
+           }
+       ]
+   }
+   
+    import yaml
+    os.makedirs(os.path.dirname(schema_path) or ".", exist_ok=True)
+
+    with open(schema_path, 'w') as f:
+        yaml.dump(schema_content, f, default_flow_style=False)
+
+
 async def extract_entities_from_solr(
-    solr_client: SolrClient,
-    collection: str,
-    doc_id: str,
-    text_field: str,
-    model_config: ModelConfig,
-    cache_root: Optional[str] = None,
+   solr_client: SolrClient,
+   collection: str,
+   doc_id: str,
+   text_field: str,
+   model_config: ModelConfig,
+   cache_root: Optional[str] = None,
+   entity_types: Optional[List[str]] = None,
 ) -> Optional[list[dict[str, Any]]]:
-    """Extract entities from a document in Solr.
+   """Extract entities from a document in Solr using unified interface."""
+   
+   # Check cache first
+   if cache_root:
+       cache_manager = get_cache_manager(cache_root)
+       cached = cache_manager.get_annotation(model_config.name, collection, text_field, doc_id)
+       if cached:
+           return cached
 
-    First checks the cache, then falls back to extracting entities from the
-    document text if not cached.
+   # Get document from Solr
+   doc = await solr_client.get_document(collection, doc_id)
+   if not doc:
+       logger.error(f"Document not found: {doc_id}")
+       return None
 
-    Args:
-        solr_client: Solr client instance
-        collection: Name of the collection
-        doc_id: Document ID
-        text_field: Field containing the text
-        model_config: Model configuration
-        cache_root: Optional root directory for caches
+   # Create unified model
+   model = create_ner_model(model_config)
+   if not model.load():
+       logger.error(f"Failed to load model {model_config.name}")
+       return None
 
-    Returns:
-        Optional[List[Dict[str, Any]]]: Extracted entities if successful, None otherwise
+   # Create processor
+   processor = UnifiedNERProcessor(model, cache_root)
 
-    """
-    # Check cache first
-    if cache_root:
-        cache_manager = get_cache_manager(cache_root)
-        cached = cache_manager.get_annotation(model_config.name, collection, text_field, doc_id)
-        if cached:
-            return cached
+   # Extract entities
+   text = doc.get(text_field, "")
+   if not text:
+       logger.warning(f"Empty text field '{text_field}' for document {doc_id}")
+       return []
 
-    # Get document from Solr
-    doc = await solr_client.get_document(collection, doc_id)
-    if not doc:
-        logger.error(f"Document not found: {doc_id}")
-        return None
-
-    # Create model
-    model = create_ner_model(model_config)
-    if not model.load():
-        logger.error(f"Failed to load model {model_config.name}")
-        return None
-
-    # Create processor
-    processor = NERProcessor(model, cache_root)
-
-    # Extract entities
-    text = doc.get(text_field, "")
-    if not text:
-        logger.warning(f"Empty text field '{text_field}' for document {doc_id}")
-        return []
-
-    entities = processor.extract_entities(text)
-
-    # Unload model
-    model.unload()
-
-    return [
-        {
-            "text": entity.text,
-            "labels": entity.labels,
-            "start_pos": entity.start_pos,
-            "end_pos": entity.end_pos,
-            "confidence": entity.confidence,
-        }
-        for entity in entities
-    ]
+   try:
+       entities = processor.extract_entities(text, entity_types)
+       
+       return [
+           {
+               "text": entity.text,
+               "labels": entity.labels,
+               "start_pos": entity.start_pos,
+               "end_pos": entity.end_pos,
+               "confidence": entity.confidence,
+           }
+           for entity in entities
+       ]
+   
+   finally:
+       # Unload model
+       model.unload()

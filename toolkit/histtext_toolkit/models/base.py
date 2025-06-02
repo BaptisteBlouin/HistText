@@ -1,5 +1,4 @@
-# toolkit/histtext_toolkit/models/base.py (Complete fixed version)
-"""Enhanced base model classes for NER, tokenization, and embeddings with modern capabilities."""
+"""Unified base model classes for NER, tokenization, and embeddings."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -9,9 +8,9 @@ import numpy as np
 
 
 class ModelType(Enum):
-    """Enumeration of supported model types with modern additions."""
+    """Enumeration of supported model types."""
     
-    # Traditional models
+    # Core model types
     SPACY = "spacy"
     TRANSFORMERS = "transformers"
     GLINER = "gliner"
@@ -19,29 +18,26 @@ class ModelType(Enum):
     FASTTEXT = "fasttext"
     WORD2VEC = "word2vec"
     SENTENCE_TRANSFORMERS = "sentence_transformers"
-    COLLECTION_ALIGNED = "collection_aligned"
     WORD_EMBEDDINGS = "word_embeddings"
     
-    # Modern NER models
+    # Modern NER models - all treated equally
     NUNER = "nuner"
-    GLINER_SPACY = "gliner_spacy"
     FLAIR = "flair"
     STANZA = "stanza"
     ALLENNLP = "allennlp"
     UNIVERSAL_TRANSFORMERS = "universal_transformers"
     
-    # State-of-the-art models
+    # LLM-based models
+    LLM_NER = "llm_ner"
     LLAMA_NER = "llama_ner"
     MISTRAL_NER = "mistral_ner"
     QWEN_NER = "qwen_ner"
-    LLM_NER = "llm_ner"
     
-    # Enhanced versions
+    # Specialized variants
     GLINER_ENHANCED = "gliner_enhanced"
-    
-    # Multi-modal models
-    LAYOUTLM = "layoutlm"
-    VISUAL_NER = "visual_ner"
+    GLINER_BIO = "gliner_bio"
+    GLINER_NEWS = "gliner_news"
+    GLINER_MULTI = "gliner_multi"
 
 
 class ProcessingMode(Enum):
@@ -57,28 +53,27 @@ class ProcessingMode(Enum):
 class AggregationStrategy(Enum):
     """Aggregation strategies for subword tokens."""
     
-    NONE = "NONE"
-    SIMPLE = "SIMPLE"
-    FIRST = "FIRST"
-    AVERAGE = "AVERAGE"
-    MAX = "MAX"
+    NONE = "none"
+    SIMPLE = "simple"
+    FIRST = "first"
+    AVERAGE = "average"
+    MAX = "max"
 
 
 @dataclass
 class EntitySpan:
-    """Enhanced entity representation with additional metadata."""
+    """Unified entity representation."""
     
     text: str
     labels: List[str]
     start_pos: int
     end_pos: int
-    confidence: float = -1.0
+    confidence: float = 0.0
     
-    # Enhanced fields
+    # Optional metadata
     probability_distribution: Optional[Dict[str, float]] = None
     entity_id: Optional[str] = None
     normalized_text: Optional[str] = None
-    linking_candidates: Optional[List[Dict[str, Any]]] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
@@ -89,7 +84,7 @@ class Token:
     text: str
     start_pos: int
     end_pos: int
-    confidence: float = -1.0
+    confidence: float = 1.0
     
     # Additional metadata
     token_type: Optional[str] = None
@@ -105,10 +100,10 @@ class ProcessingStats:
     processing_time: float = 0.0
     memory_usage: Optional[float] = None
     gpu_utilization: Optional[float] = None
-    throughput: Optional[float] = None  # entities per second
+    throughput: Optional[float] = None
 
 
-# Backward compatibility aliases
+# Backward compatibility
 Entity = EntitySpan
 
 
@@ -133,12 +128,33 @@ class BaseModel(ABC):
 
 
 class NERModel(BaseModel):
-    """Base class for Named Entity Recognition models."""
+    """Unified base class for Named Entity Recognition models."""
     
     @abstractmethod
-    def extract_entities(self, text: str) -> List[EntitySpan]:
-        """Extract named entities from text."""
+    def extract_entities(self, text: str, entity_types: Optional[List[str]] = None) -> List[EntitySpan]:
+        """Extract named entities from text with optional type filtering."""
         pass
+    
+    def extract_entities_batch(self, texts: List[str], entity_types: Optional[List[str]] = None) -> List[List[EntitySpan]]:
+        """Batch entity extraction - default implementation."""
+        results = []
+        for text in texts:
+            entities = self.extract_entities(text, entity_types)
+            results.append(entities)
+        return results
+    
+    def get_supported_entity_types(self) -> List[str]:
+        """Get list of supported entity types - override if known."""
+        return ["PER", "ORG", "LOC", "MISC"]  # Common default
+    
+    def extract_entities_streaming(self, texts: Iterator[str], **kwargs) -> Iterator[List[EntitySpan]]:
+        """Stream processing for large datasets."""
+        for text in texts:
+            yield self.extract_entities(text, **kwargs)
+    
+    def get_processing_stats(self) -> ProcessingStats:
+        """Get processing statistics."""
+        return ProcessingStats()
     
     def short_format(self, entities: List[EntitySpan]) -> List[Dict[str, Any]]:
         """Convert entities to short format."""
@@ -183,41 +199,6 @@ class EmbeddingsModel(BaseModel):
     @abstractmethod
     def get_dimension(self) -> int:
         """Get the dimensionality of embeddings."""
-        pass
-
-
-class EnhancedNERModel(BaseModel):
-    """Enhanced base class for Named Entity Recognition models with modern features."""
-
-    @abstractmethod
-    def extract_entities(self, text: str, entity_types: Optional[List[str]] = None) -> List[EntitySpan]:
-        """Extract named entities with optional type filtering."""
-        pass
-
-    def extract_entities_batch(self, texts: List[str], entity_types: Optional[List[str]] = None) -> List[List[EntitySpan]]:
-        """Batch entity extraction for improved efficiency."""
-        results = []
-        for text in texts:
-            entities = self.extract_entities(text, entity_types)
-            results.append(entities)
-        return results
-    
-    @abstractmethod
-    def get_supported_entity_types(self) -> List[str]:
-        """Get list of supported entity types."""
-        pass
-    
-    def extract_entities_streaming(self, texts: Iterator[str], **kwargs) -> Iterator[List[EntitySpan]]:
-        """Stream processing for large datasets."""
-        for text in texts:
-            yield self.extract_entities(text, **kwargs)
-    
-    def get_processing_stats(self) -> ProcessingStats:
-        """Get processing statistics."""
-        return ProcessingStats()
-    
-    def set_processing_mode(self, mode: ProcessingMode) -> None:
-        """Set processing mode for optimization."""
         pass
 
 

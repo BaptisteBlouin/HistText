@@ -1,87 +1,91 @@
-"""Model registry for easy access to all supported models.
-
-This module provides a central registry for all model implementations,
-making it easy to instantiate the right model based on configuration.
-"""
-
+"""Unified model registry for all model types."""
 
 from ..core.config import ModelConfig
 from ..core.logging import get_logger
 from .base import EmbeddingsModel, ModelType, NERModel, TokenizationModel
-from .spacy_model import SpacyNERModel, SpacyTokenizationModel
-from .transformers_model import TransformersNERModel, TransformersTokenizationModel
+from .unified_ner import UnifiedNERModel
 
 logger = get_logger(__name__)
 
-# Import GLiNER support if available
+# Import other models with fallbacks
 try:
-    from .gliner_model import GLINER_AVAILABLE, GLiNERModel
+    from .spacy_model import SpacyNERModel, SpacyTokenizationModel
+    SPACY_AVAILABLE = True
 except ImportError:
-    GLINER_AVAILABLE = False
-    logger.warning("GLiNER support not available")
+    SPACY_AVAILABLE = False
+    logger.debug("SpaCy not available")
 
-# Import ChineseWordSegmenter support if available
 try:
-    from .chinese_segmenter import CWSEG_AVAILABLE, ChineseSegmenterModel
+    from .transformers_model import TransformersTokenizationModel
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    logger.debug("Transformers not available")
+
+try:
+    from .chinese_segmenter import ChineseSegmenterModel
+    CWSEG_AVAILABLE = True
 except ImportError:
     CWSEG_AVAILABLE = False
-    logger.warning("ChineseWordSegmenter support not available")
+    logger.debug("Chinese segmenter not available")
 
-# Import embedding models if available
 try:
     from .fasttext_model import (
-        FASTTEXT_AVAILABLE,
         FastTextEmbeddingsModel,
         SentenceTransformersEmbeddingsModel,
         Word2VecEmbeddingsModel,
     )
+    FASTTEXT_AVAILABLE = True
 except ImportError:
     FASTTEXT_AVAILABLE = False
-    logger.warning("FastText support not available")
+    logger.debug("FastText models not available")
 
-# Import word embeddings model if available
 try:
     from .word_embeddings_model import CollectionWordEmbeddingsModel
-
     WORD_EMBEDDINGS_AVAILABLE = True
 except ImportError:
     WORD_EMBEDDINGS_AVAILABLE = False
-    logger.warning("Word embeddings support not available")
+    logger.debug("Word embeddings not available")
 
 
-class ModelRegistry:
-    """Registry for all model implementations.
+class UnifiedModelRegistry:
+    """Unified registry for all model implementations."""
 
-    This class provides a centralized registry of all available model implementations
-    and factory methods to create model instances based on configuration.
-
-    Attributes:
-        NER_IMPLEMENTATIONS: Mapping of model types to NER model implementations
-        TOKENIZATION_IMPLEMENTATIONS: Mapping of model types to tokenization model implementations
-        EMBEDDINGS_IMPLEMENTATIONS: Mapping of model types to embedding model implementations
-
-    """
-
-    # Map of model types to their implementations
+    # NER implementations - UnifiedNERModel handles all types
     NER_IMPLEMENTATIONS = {
-        ModelType.SPACY: SpacyNERModel,
-        ModelType.TRANSFORMERS: TransformersNERModel,
+        # All NER model types use UnifiedNERModel
+        ModelType.TRANSFORMERS: UnifiedNERModel,
+        ModelType.GLINER: UnifiedNERModel,
+        ModelType.NUNER: UnifiedNERModel,
+        ModelType.FLAIR: UnifiedNERModel,
+        ModelType.STANZA: UnifiedNERModel,
+        ModelType.ALLENNLP: UnifiedNERModel,
+        ModelType.UNIVERSAL_TRANSFORMERS: UnifiedNERModel,
+        ModelType.LLM_NER: UnifiedNERModel,
+        ModelType.LLAMA_NER: UnifiedNERModel,
+        ModelType.MISTRAL_NER: UnifiedNERModel,
+        ModelType.QWEN_NER: UnifiedNERModel,
+        ModelType.GLINER_ENHANCED: UnifiedNERModel,
+        ModelType.GLINER_BIO: UnifiedNERModel,
+        ModelType.GLINER_NEWS: UnifiedNERModel,
+        ModelType.GLINER_MULTI: UnifiedNERModel,
     }
 
-    TOKENIZATION_IMPLEMENTATIONS = {
-        ModelType.SPACY: SpacyTokenizationModel,
-        ModelType.TRANSFORMERS: TransformersTokenizationModel,
-    }
-
+    TOKENIZATION_IMPLEMENTATIONS = {}
     EMBEDDINGS_IMPLEMENTATIONS = {}
 
-    # Add ChineseWordSegmenter if available
+    # Add spaCy if available (kept for tokenization)
+    if SPACY_AVAILABLE:
+        NER_IMPLEMENTATIONS[ModelType.SPACY] = SpacyNERModel
+        TOKENIZATION_IMPLEMENTATIONS[ModelType.SPACY] = SpacyTokenizationModel
+
+    # Add transformers tokenization if available
+    if TRANSFORMERS_AVAILABLE:
+        TOKENIZATION_IMPLEMENTATIONS[ModelType.TRANSFORMERS] = TransformersTokenizationModel
+
+    # Add Chinese segmenter if available
     if CWSEG_AVAILABLE:
         TOKENIZATION_IMPLEMENTATIONS[ModelType.CHINESE_SEGMENTER] = ChineseSegmenterModel
-
-    # Add GLiNER if available
-    if GLINER_AVAILABLE:
-        NER_IMPLEMENTATIONS[ModelType.GLINER] = GLiNERModel
 
     # Add embedding models if available
     if FASTTEXT_AVAILABLE:
@@ -89,24 +93,12 @@ class ModelRegistry:
         EMBEDDINGS_IMPLEMENTATIONS[ModelType.WORD2VEC] = Word2VecEmbeddingsModel
         EMBEDDINGS_IMPLEMENTATIONS[ModelType.SENTENCE_TRANSFORMERS] = SentenceTransformersEmbeddingsModel
 
-    # Add word embeddings model if available
     if WORD_EMBEDDINGS_AVAILABLE:
         EMBEDDINGS_IMPLEMENTATIONS[ModelType.WORD_EMBEDDINGS] = CollectionWordEmbeddingsModel
 
     @classmethod
     def create_ner_model(cls, config: ModelConfig) -> NERModel:
-        """Create a NER model based on the provided configuration.
-
-        Args:
-            config: Model configuration with type, path and parameters.
-
-        Returns:
-            NERModel: The instantiated model instance.
-
-        Raises:
-            ValueError: If the model type is not supported or no implementation is available.
-
-        """
+        """Create a unified NER model based on configuration."""
         try:
             model_type = ModelType(config.type.lower())
         except ValueError as e:
@@ -117,37 +109,39 @@ class ModelRegistry:
 
         model_class = cls.NER_IMPLEMENTATIONS[model_type]
 
-        # Build kwargs based on config
-        kwargs = {"model_path": config.path}
+        # Build kwargs for UnifiedNERModel
+        kwargs = {
+            "model_path": config.path,
+            "model_type": config.type
+        }
 
-        # Add optional parameters if they exist in config
-        if config.max_length is not None:
+        # Add optional parameters
+        if hasattr(config, "max_length") and config.max_length is not None:
             kwargs["max_length"] = config.max_length
 
-        if hasattr(model_class, "aggregation_strategy") and config.aggregation_strategy:
+        if hasattr(config, "aggregation_strategy") and config.aggregation_strategy:
             kwargs["aggregation_strategy"] = config.aggregation_strategy
 
         # Add any additional parameters
         if config.additional_params:
-            kwargs.update(config.additional_params)
+            # Filter out problematic parameters
+            filtered_params = {
+                k: v for k, v in config.additional_params.items() 
+                if k not in ['use_enhanced']  # Remove legacy parameters
+            }
+            kwargs.update(filtered_params)
 
-        # Create the model instance
+        # Special handling for legacy spaCy models
+        if model_type == ModelType.SPACY and model_class != UnifiedNERModel:
+            # Use legacy spaCy implementation
+            return model_class(model_path=config.path)
+
+        # Create unified model instance
         return model_class(**kwargs)
 
     @classmethod
     def create_tokenization_model(cls, config: ModelConfig) -> TokenizationModel:
-        """Create a tokenization model based on the provided configuration.
-
-        Args:
-            config: Model configuration with type, path and parameters.
-
-        Returns:
-            TokenizationModel: The instantiated model instance.
-
-        Raises:
-            ValueError: If the model type is not supported or no implementation is available.
-
-        """
+        """Create a tokenization model based on configuration."""
         try:
             model_type = ModelType(config.type.lower())
         except ValueError as e:
@@ -161,7 +155,7 @@ class ModelRegistry:
         # Build kwargs based on config
         kwargs = {"model_path": config.path}
 
-        # Add optional parameters if they exist in config
+        # Add optional parameters
         if config.max_length is not None:
             kwargs["max_length"] = config.max_length
 
@@ -169,23 +163,11 @@ class ModelRegistry:
         if config.additional_params:
             kwargs.update(config.additional_params)
 
-        # Create the model instance
         return model_class(**kwargs)
 
     @classmethod
     def create_embeddings_model(cls, config: ModelConfig) -> EmbeddingsModel:
-        """Create an embeddings model based on the provided configuration.
-
-        Args:
-            config: Model configuration with type, path and parameters.
-
-        Returns:
-            EmbeddingsModel: The instantiated model instance.
-
-        Raises:
-            ValueError: If the model type is not supported or no implementation is available.
-
-        """
+        """Create an embeddings model based on configuration."""
         try:
             model_type = ModelType(config.type.lower())
         except ValueError as e:
@@ -209,7 +191,7 @@ class ModelRegistry:
         # Build kwargs based on config
         kwargs = {"model_path": config.path}
 
-        # Add optional parameters if they exist in config
+        # Add optional parameters
         if config.max_length is not None:
             kwargs["max_length"] = config.max_length
 
@@ -229,19 +211,11 @@ class ModelRegistry:
         if config.additional_params:
             kwargs.update(config.additional_params)
 
-        # Create the model instance
         return model_class(**kwargs)
 
     @classmethod
     def get_available_model_types(cls) -> dict[str, list]:
-        """Get all available model types and their supported tasks.
-
-        Returns:
-            Dict[str, list]: Dictionary mapping model types to supported tasks.
-                             Each value is a list of tasks the model type supports
-                             (e.g., ["ner", "tokenization"]).
-
-        """
+        """Get all available model types and their supported tasks."""
         available = {}
 
         for model_type in ModelType:
@@ -262,68 +236,22 @@ class ModelRegistry:
         return available
 
 
-# Convenience functions
+# Convenience functions for backward compatibility
 def create_ner_model(config: ModelConfig) -> NERModel:
-    """Create a NER model based on the provided configuration.
-
-    This is a convenience function that delegates to :meth:`ModelRegistry.create_ner_model`.
-
-    Args:
-        config: Model configuration.
-
-    Returns:
-        NERModel: The instantiated model.
-
-    Raises:
-        ValueError: If the model type is not supported.
-
-    """
-    return ModelRegistry.create_ner_model(config)
+    """Create a NER model based on configuration."""
+    return UnifiedModelRegistry.create_ner_model(config)
 
 
 def create_tokenization_model(config: ModelConfig) -> TokenizationModel:
-    """Create a tokenization model based on the provided configuration.
-
-    This is a convenience function that delegates to :meth:`ModelRegistry.create_tokenization_model`.
-
-    Args:
-        config: Model configuration.
-
-    Returns:
-        TokenizationModel: The instantiated model.
-
-    Raises:
-        ValueError: If the model type is not supported.
-
-    """
-    return ModelRegistry.create_tokenization_model(config)
+    """Create a tokenization model based on configuration."""
+    return UnifiedModelRegistry.create_tokenization_model(config)
 
 
 def create_embeddings_model(config: ModelConfig) -> EmbeddingsModel:
-    """Create an embeddings model based on the provided configuration.
-
-    This is a convenience function that delegates to :meth:`ModelRegistry.create_embeddings_model`.
-
-    Args:
-        config: Model configuration.
-
-    Returns:
-        EmbeddingsModel: The instantiated model.
-
-    Raises:
-        ValueError: If the model type is not supported.
-
-    """
-    return ModelRegistry.create_embeddings_model(config)
+    """Create an embeddings model based on configuration."""
+    return UnifiedModelRegistry.create_embeddings_model(config)
 
 
 def get_available_model_types() -> dict[str, list]:
-    """Get all available model types and their supported tasks.
-
-    This is a convenience function that delegates to :meth:`ModelRegistry.get_available_model_types`.
-
-    Returns:
-        Dict[str, list]: Dictionary mapping model types to supported tasks.
-
-    """
-    return ModelRegistry.get_available_model_types()
+    """Get all available model types and their supported tasks."""
+    return UnifiedModelRegistry.get_available_model_types()
