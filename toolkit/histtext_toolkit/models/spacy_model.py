@@ -10,7 +10,7 @@ import spacy
 from spacy.language import Language
 
 from ..core.logging import get_logger
-from .base import Entity, NERModel, Token, TokenizationModel
+from .ner_base import Entity, NERModel, Token, TokenizationModel
 
 logger = get_logger(__name__)
 

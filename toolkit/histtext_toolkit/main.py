@@ -87,7 +87,6 @@ def parse_args() -> argparse.Namespace:
                             choices=[
                                 "transformers", "gliner", "spacy", "flair", "nuner", 
                                 "llm_ner", "llama_ner", "mistral_ner", "qwen_ner",
-                                "universal_transformers", "stanza", "allennlp"
                             ],
                             default="transformers",
                             help="Type of model")
@@ -430,9 +429,11 @@ async def main():
             if not config.cache or not config.cache.enabled:
                 logger.error("Cache is not enabled in the configuration")
                 return
+            
             if args.disable_warnings:
                 import warnings
                 warnings.filterwarnings("ignore")
+            
             # Create model config
             additional_params = {}
             if args.threshold != 0.5:
