@@ -5,7 +5,7 @@ settings for the toolkit with support for Solr, caching, and model configuration
 """
 
 import os
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 

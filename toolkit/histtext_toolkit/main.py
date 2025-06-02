@@ -8,7 +8,7 @@ import asyncio
 import glob
 import sys
 
-from toolkit.histtext_toolkit.models.base import ProcessingMode
+from histtext_toolkit.models.base import ProcessingMode
 
 from .core.config import (
     CacheConfig,
@@ -123,6 +123,43 @@ def parse_args() -> argparse.Namespace:
         choices=["default", "flat"],
         help="Format type ('default' or 'flat')",
     )
+
+    # Enhanced NER command - NEW!
+    enhanced_ner_parser = subparsers.add_parser(
+        "enhanced-ner", 
+        help="Enhanced NER with modern state-of-the-art models"
+    )
+    enhanced_ner_parser.add_argument("collection", help="Name of the collection")
+    enhanced_ner_parser.add_argument("--model-name", help="Name or path of the model")
+    enhanced_ner_parser.add_argument("--model-type", 
+                                    choices=["nuner", "flair", "gliner_enhanced", "llm_ner", "gliner_bio", "gliner_news", "gliner_multi"],
+                                    default="gliner_enhanced",
+                                    help="Type of enhanced model")
+    enhanced_ner_parser.add_argument("--text-field", default="text", help="Field containing the text")
+    enhanced_ner_parser.add_argument("--entity-types", nargs="+", 
+                                    help="Entity types to extract (e.g., Person Organization Location)")
+    enhanced_ner_parser.add_argument("--processing-mode", 
+                                    choices=["batch", "streaming", "memory_efficient","high_throughput"],
+                                    default="batch",
+                                    help="Processing optimization mode")
+    enhanced_ner_parser.add_argument("--optimization-level", type=int, 
+                                    choices=[0, 1, 2], default=1,
+                                    help="Optimization level (0=basic, 1=optimized, 2=maximum)")
+    enhanced_ner_parser.add_argument("--batch-size", type=int, default=16,
+                                    help="Number of documents per batch")
+    enhanced_ner_parser.add_argument("--enable-streaming", action="store_true",
+                                    help="Enable streaming processing for large batches")
+    enhanced_ner_parser.add_argument("--start", type=int, default=0, help="Start index")
+    enhanced_ner_parser.add_argument("-n", "--num-batches", type=int, help="Maximum number of batches to process")
+    enhanced_ner_parser.add_argument("-f", "--filter-query", help="Filter query")
+    enhanced_ner_parser.add_argument("--format-type", 
+                                    choices=["enhanced", "standard", "compact"],
+                                    default="enhanced",
+                                    help="Output format type")
+    enhanced_ner_parser.add_argument("--no-resume", action="store_true",
+                                    help="Don't resume from previous session")
+    enhanced_ner_parser.add_argument("--save-interval", type=int, default=10,
+                                    help="Save progress every N batches")
 
     # Tokenize CSV command
     tokenize_csv_parser = subparsers.add_parser("tokenize-csv", help="Tokenize text in a CSV file")
@@ -278,28 +315,8 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Exclude the vocabulary size and dimension header from text output formats",
     )
-    
-    enhanced_ner_parser = subparsers.add_parser(
-        "enhanced-ner", 
-        help="Enhanced NER with modern models"
-    )
-    enhanced_ner_parser.add_argument("collection", help="Name of the collection")
-    enhanced_ner_parser.add_argument("--model-name", help="Name or path of the model")
-    enhanced_ner_parser.add_argument("--model-type", 
-                                    choices=["nuner", "flair", "gliner_enhanced", "llm_ner"],
-                                    default="gliner_enhanced")
-    enhanced_ner_parser.add_argument("--text-field", default="text")
-    enhanced_ner_parser.add_argument("--entity-types", nargs="+", 
-                                    help="Entity types to extract")
-    enhanced_ner_parser.add_argument("--processing-mode", 
-                                    choices=["batch", "streaming", "memory_efficient"],
-                                    default="batch")
-    enhanced_ner_parser.add_argument("--optimization-level", type=int, 
-                                    choices=[0, 1, 2], default=1)
-    enhanced_ner_parser.add_argument("--batch-size", type=int, default=1000)
-    enhanced_ner_parser.add_argument("--enable-streaming", action="store_true")
 
-    # Store list_models_parser but don't use it (fixing the F841 warning)
+    # List models command
     subparsers.add_parser("list-models", help="List available model types and tasks")
 
     args = parser.parse_args()
@@ -463,24 +480,126 @@ async def main():
             cache_model_name = args.cache_model_name or model_name
 
             # Import and call precompute_ner
-            from .operations.ner import precompute_ner
+            
+            use_enhanced = (
+                args.model_type.lower() in [
+                    "nuner", "flair", "gliner_enhanced", "llm_ner", 
+                    "universal_transformers", "gliner"
+                ] or
+                (hasattr(args, "use_enhanced") and args.use_enhanced)
+            )
+            
+            if use_enhanced:
+                logger.info("Using enhanced NER processing")
+                # Convert to enhanced model config
+                if args.model_name and args.model_name not in config.models:
+                    enhanced_config = ModelConfig(
+                        name=args.model_name,
+                        path=args.model_name,
+                        type=args.model_type,
+                        max_length=args.max_length,
+                        aggregation_strategy=args.aggregation_strategy,
+                        additional_params={"use_enhanced": True}
+                    )
+                    config.models[args.model_name] = enhanced_config
+                
+                from .operations.enhanced_ner import enhanced_precompute_ner
+                
+                await enhanced_precompute_ner(
+                    solr_client,
+                    args.collection,
+                    args.text_field,
+                    config.models[model_name],
+                    config.cache.root_dir,
+                    cache_model_name,
+                    args.start,
+                    args.batch_size,
+                    args.num_batches,
+                    args.filter_query,
+                    format_type="flat",  # Always use flat format
+                    jsonl_prefix=args.jsonl_prefix,
+                    decimal_precision=args.decimal_precision
+                )
+            else:
+            
+                from .operations.ner import precompute_ner
 
-            await precompute_ner(
+                await precompute_ner(
+                    solr_client,
+                    args.collection,
+                    args.text_field,
+                    config.models[model_name],
+                    config.cache.root_dir,
+                    cache_model_name,
+                    args.start,
+                    args.batch_size,
+                    args.num_batches,
+                    args.filter_query,
+                    args.jsonl_prefix,
+                    args.shorten,
+                    args.decimal_precision,
+                    args.format,
+                )
+
+        elif args.command == "enhanced-ner":
+            # Create and start Solr client
+            from .solr.client import SolrClient
+
+            solr_client = SolrClient(
+                config.solr.host,
+                config.solr.port,
+                config.solr.username,
+                config.solr.password,
+            )
+            await solr_client.start_session()
+
+            # Create enhanced model config
+            if hasattr(config, 'EnhancedModelConfig'):
+                model_config = config.EnhancedModelConfig(
+                    name=args.model_name or "default",
+                    path=args.model_name or "urchade/gliner_mediumv2.1",
+                    type=args.model_type,
+                    processing_mode=args.processing_mode,
+                    optimization_level=args.optimization_level,
+                    entity_types=args.entity_types,
+                    additional_params={
+                        "batch_size": args.batch_size,
+                        "use_enhanced": True
+                    }
+                )
+            else:
+                # Fallback to regular ModelConfig
+                model_config = ModelConfig(
+                    name=args.model_name or "default",
+                    path=args.model_name or "urchade/gliner_mediumv2.1", 
+                    type=args.model_type,
+                    additional_params={
+                        "batch_size": args.batch_size,
+                        "use_enhanced": True,
+                        "entity_types": args.entity_types,
+                        "processing_mode": args.processing_mode,
+                        "optimization_level": args.optimization_level
+                    }
+                )
+            
+            # Run enhanced NER with flat format
+            from .operations.enhanced_ner import enhanced_precompute_ner
+            
+            await enhanced_precompute_ner(
                 solr_client,
                 args.collection,
                 args.text_field,
-                config.models[model_name],
+                model_config,
                 config.cache.root_dir,
-                cache_model_name,
-                args.start,
-                args.batch_size,
-                args.num_batches,
-                args.filter_query,
-                args.jsonl_prefix,
-                args.shorten,
-                args.decimal_precision,
-                args.format,
+                args.model_name or "enhanced_ner",
+                batch_size=args.batch_size,
+                entity_types=args.entity_types,
+                processing_mode=ProcessingMode(args.processing_mode),
+                optimization_level=args.optimization_level,
+                enable_streaming=args.enable_streaming,
+                format_type="flat"  # Always use flat format
             )
+
         elif args.command == "compute-word-embeddings":
             # Create and start Solr client
             from .solr.client import SolrClient
@@ -593,37 +712,6 @@ async def main():
                 (config.cache.root_dir if config.cache and config.cache.enabled else None),
             )
 
-        elif args.command == "enhanced-ner":
-        # Create enhanced model config
-            model_config = EnhancedModelConfig(
-                name=args.model_name or "default",
-                path=args.model_name or "urchade/gliner_mediumv2.1",
-                type=args.model_type,
-                processing_mode=args.processing_mode,
-                optimization_level=args.optimization_level,
-                entity_types=args.entity_types,
-                additional_params={
-                    "batch_size": args.batch_size,
-                    "use_enhanced": True
-                }
-            )
-            
-            # Run enhanced NER
-            from .operations.enhanced_ner import enhanced_precompute_ner
-            
-            await enhanced_precompute_ner(
-                solr_client,
-                args.collection,
-                args.text_field,
-                model_config,
-                config.cache.root_dir,
-                args.model_name or "enhanced_ner",
-                batch_size=args.batch_size,
-                entity_types=args.entity_types,
-                processing_mode=ProcessingMode(args.processing_mode),
-                optimization_level=args.optimization_level,
-                enable_streaming=args.enable_streaming
-            )
         elif args.command == "semantic-search":
             # Create and start Solr client
             from .solr.client import SolrClient
@@ -716,6 +804,7 @@ async def main():
                                     logger.info(f"  Field '{field}': MISSING")
                 except Exception as e:
                     logger.error(f"Error examining file: {e}")
+
         elif args.command == "tokenize-csv":
             # Check if model exists in config
             if args.model_name not in config.models:
@@ -818,6 +907,42 @@ async def main():
             for model_name, model_config in config.models.items():
                 print(f"  {model_name} ({model_config.type}): {model_config.path}")
 
+            # List enhanced models
+            try:
+                from .models.enhanced_registry import get_available_enhanced_models
+                enhanced_models = get_available_enhanced_models()
+                
+                print("\nAvailable enhanced NER models:")
+                for model_type, info in enhanced_models.items():
+                    capabilities = []
+                    if info.get("supports_batch"):
+                        capabilities.append("batch")
+                    if info.get("supports_streaming"):
+                        capabilities.append("streaming")
+                    if info.get("multilingual"):
+                        capabilities.append("multilingual")
+                    
+                    specializations = []
+                    if info.get("specialized", {}).get("biomedical"):
+                        specializations.append("biomedical")
+                    if info.get("specialized", {}).get("news"):
+                        specializations.append("news")
+                    
+                    desc = f"  {model_type} ({info.get('class', 'Unknown')})"
+                    if capabilities:
+                        desc += f" - Supports: {', '.join(capabilities)}"
+                    if specializations:
+                        desc += f" - Specialized for: {', '.join(specializations)}"
+                    
+                    print(desc)
+                    
+                    if info.get("default_config"):
+                        default_model = info["default_config"].get("model_name", "N/A")
+                        print(f"    Default model: {default_model}")
+                
+            except ImportError:
+                print("\nEnhanced models not available (missing dependencies)")
+
         else:
             logger.error(f"Unknown command: {args.command}")
 
@@ -833,17 +958,17 @@ async def main():
 
 
 def main_cli():
-    """Entry point for the command-line interface.
+   """Entry point for the command-line interface.
 
-    This function is called when using the console script defined in setup.py.
-    It handles platform-specific asyncio setup and runs the main async function.
-    """
-    if sys.platform == "win32":
-        # Set up asyncio policy for Windows
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+   This function is called when using the console script defined in setup.py.
+   It handles platform-specific asyncio setup and runs the main async function.
+   """
+   if sys.platform == "win32":
+       # Set up asyncio policy for Windows
+       asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    asyncio.run(main())
+   asyncio.run(main())
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+   asyncio.run(main())

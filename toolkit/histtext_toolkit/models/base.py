@@ -1,10 +1,10 @@
-# toolkit/histtext_toolkit/models/base.py (enhanced version)
+# toolkit/histtext_toolkit/models/base.py (Complete fixed version)
 """Enhanced base model classes for NER, tokenization, and embeddings with modern capabilities."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional, Union, List, Dict, Tuple
+from typing import Any, Optional, Union, List, Dict, Tuple, Iterator
 import numpy as np
 
 
@@ -28,11 +28,16 @@ class ModelType(Enum):
     FLAIR = "flair"
     STANZA = "stanza"
     ALLENNLP = "allennlp"
+    UNIVERSAL_TRANSFORMERS = "universal_transformers"
     
     # State-of-the-art models
     LLAMA_NER = "llama_ner"
     MISTRAL_NER = "mistral_ner"
     QWEN_NER = "qwen_ner"
+    LLM_NER = "llm_ner"
+    
+    # Enhanced versions
+    GLINER_ENHANCED = "gliner_enhanced"
     
     # Multi-modal models
     LAYOUTLM = "layoutlm"
@@ -47,6 +52,16 @@ class ProcessingMode(Enum):
     MEMORY_EFFICIENT = "memory_efficient"
     HIGH_THROUGHPUT = "high_throughput"
     LOW_LATENCY = "low_latency"
+
+
+class AggregationStrategy(Enum):
+    """Aggregation strategies for subword tokens."""
+    
+    NONE = "NONE"
+    SIMPLE = "SIMPLE"
+    FIRST = "FIRST"
+    AVERAGE = "AVERAGE"
+    MAX = "MAX"
 
 
 @dataclass
@@ -68,6 +83,21 @@ class EntitySpan:
 
 
 @dataclass
+class Token:
+    """Token representation with position and confidence."""
+    
+    text: str
+    start_pos: int
+    end_pos: int
+    confidence: float = -1.0
+    
+    # Additional metadata
+    token_type: Optional[str] = None
+    normalized_text: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+@dataclass
 class ProcessingStats:
     """Statistics for model performance monitoring."""
     
@@ -76,9 +106,87 @@ class ProcessingStats:
     memory_usage: Optional[float] = None
     gpu_utilization: Optional[float] = None
     throughput: Optional[float] = None  # entities per second
+
+
+# Backward compatibility aliases
+Entity = EntitySpan
+
+
+class BaseModel(ABC):
+    """Base class for all models."""
     
+    @abstractmethod
+    def load(self) -> bool:
+        """Load the model."""
+        pass
     
-class EnhancedNERModel(ABC):
+    @abstractmethod
+    def unload(self) -> bool:
+        """Unload the model."""
+        pass
+    
+    @property
+    @abstractmethod
+    def is_loaded(self) -> bool:
+        """Check if model is loaded."""
+        pass
+
+
+class NERModel(BaseModel):
+    """Base class for Named Entity Recognition models."""
+    
+    @abstractmethod
+    def extract_entities(self, text: str) -> List[EntitySpan]:
+        """Extract named entities from text."""
+        pass
+    
+    def short_format(self, entities: List[EntitySpan]) -> List[Dict[str, Any]]:
+        """Convert entities to short format."""
+        return [
+            {
+                "t": entity.text,
+                "l": entity.labels[0] if entity.labels else "UNK",
+                "s": entity.start_pos,
+                "e": entity.end_pos,
+                "c": entity.confidence
+            }
+            for entity in entities
+        ]
+
+
+class TokenizationModel(BaseModel):
+    """Base class for tokenization models."""
+    
+    @abstractmethod
+    def tokenize(self, text: str) -> List[Token]:
+        """Tokenize text into tokens."""
+        pass
+    
+    def tokenize_batch(self, texts: List[str]) -> List[List[Token]]:
+        """Tokenize a batch of texts."""
+        return [self.tokenize(text) for text in texts]
+
+
+class EmbeddingsModel(BaseModel):
+    """Base class for text embedding models."""
+    
+    @abstractmethod
+    def embed_text(self, text: str) -> Optional[np.ndarray]:
+        """Generate embeddings for a single text."""
+        pass
+    
+    @abstractmethod
+    def embed_batch(self, texts: List[str]) -> List[Optional[np.ndarray]]:
+        """Generate embeddings for a batch of texts."""
+        pass
+    
+    @abstractmethod
+    def get_dimension(self) -> int:
+        """Get the dimensionality of embeddings."""
+        pass
+
+
+class EnhancedNERModel(BaseModel):
     """Enhanced base class for Named Entity Recognition models with modern features."""
 
     @abstractmethod
@@ -86,10 +194,13 @@ class EnhancedNERModel(ABC):
         """Extract named entities with optional type filtering."""
         pass
 
-    @abstractmethod
     def extract_entities_batch(self, texts: List[str], entity_types: Optional[List[str]] = None) -> List[List[EntitySpan]]:
         """Batch entity extraction for improved efficiency."""
-        pass
+        results = []
+        for text in texts:
+            entities = self.extract_entities(text, entity_types)
+            results.append(entities)
+        return results
     
     @abstractmethod
     def get_supported_entity_types(self) -> List[str]:
@@ -108,10 +219,6 @@ class EnhancedNERModel(ABC):
     def set_processing_mode(self, mode: ProcessingMode) -> None:
         """Set processing mode for optimization."""
         pass
-
-
-# Keep existing Entity and Token classes for backward compatibility
-Entity = EntitySpan  # Alias for backward compatibility
 
 
 class GPUMemoryManager:
