@@ -29,6 +29,9 @@ import { toast } from 'react-toastify';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
+/**
+ * Hook that returns an axios instance with the current user's access token attached as a Bearer header.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -46,11 +49,19 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * Displays and allows editing of the authenticated user's basic information (name, email, etc.).
+ * Fetches details from the backend and updates via API.
+ *
+ * @param auth - Auth context, provides session and token info
+ */
 export const UserDetails = ({ auth }: { auth: any }) => {
   const authAxios = useAuthAxios();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingUserData, setLoadingUserData] = useState(true);
+
+  // Main profile state
   const [userDetails, setUserDetails] = useState({
     id: null as number | null,
     firstname: '',
@@ -58,26 +69,27 @@ export const UserDetails = ({ auth }: { auth: any }) => {
     email: '',
     activated: false,
   });
-  
+
+  // Form state for editing
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
     email: '',
   });
 
-  // Load current user details from the API
+  /**
+   * Loads user details from the API on mount.
+   * Falls back to basic session/JWT info if fetch fails.
+   */
   useEffect(() => {
     const loadUserDetails = async () => {
       if (!auth.session?.userId) {
         setLoadingUserData(false);
         return;
       }
-
       try {
         setLoadingUserData(true);
-        // Fetch the current user's details using their ID
         const response = await authAxios.get(`/api/users/${auth.session.userId}`);
-        
         if (response.data) {
           const userData = response.data;
           const details = {
@@ -87,7 +99,6 @@ export const UserDetails = ({ auth }: { auth: any }) => {
             email: userData.email || '',
             activated: userData.activated || false,
           };
-          
           setUserDetails(details);
           setFormData({
             firstname: details.firstname,
@@ -97,74 +108,73 @@ export const UserDetails = ({ auth }: { auth: any }) => {
         }
       } catch (error) {
         console.error('Error loading user details:', error);
-        // If API call fails, try to use JWT claims data as fallback
         const details = {
           id: auth.session.userId,
           firstname: '',
           lastname: '',
-          email: '', // JWT might not have email in the token
-          activated: true, // Assume activated if they can login
+          email: '',
+          activated: true,
         };
-        
         setUserDetails(details);
         setFormData({
           firstname: details.firstname,
           lastname: details.lastname,
           email: details.email,
         });
-        
         toast.error('Could not load user details from server');
       } finally {
         setLoadingUserData(false);
       }
     };
-
     loadUserDetails();
   }, [auth.session?.userId, authAxios]);
 
+  /** Start editing the profile. */
   const handleEdit = useCallback(() => {
     setIsEditing(true);
   }, []);
 
+  /**
+   * Save changes to the backend and update local state.
+   * Shows a toast for feedback.
+   */
   const handleSave = useCallback(async () => {
     if (!formData.firstname.trim() || !formData.lastname.trim()) {
       toast.error('First name and last name are required');
       return;
     }
-
     if (!userDetails.id) {
       toast.error('User ID not found');
       return;
     }
-
     setIsLoading(true);
     try {
-      // Use the same API structure as the admin user management
       const updateData = {
         firstname: formData.firstname,
         lastname: formData.lastname,
-        email: formData.email, // Keep existing email
-        activated: userDetails.activated, // Keep existing activation status
-        // Don't send password unless it's being changed
+        email: formData.email,
+        activated: userDetails.activated,
       };
-
       await authAxios.put(`/api/users/${userDetails.id}`, updateData);
-      
-      // Update local state
       setUserDetails(prev => ({
         ...prev,
         firstname: formData.firstname,
         lastname: formData.lastname,
       }));
-      
       setIsEditing(false);
       toast.success('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
-      if (error.response?.status === 404) {
-        toast.error('User not found');
-      } else if (error.response?.status === 403) {
-        toast.error('You do not have permission to update this profile');
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          toast.error('User not found');
+        } else if (error.response?.status === 403) {
+          toast.error('You do not have permission to update this profile');
+        } else {
+          toast.error('Failed to update profile');
+        }
+      } else if (error instanceof Error) {
+        toast.error(error.message);
       } else {
         toast.error('Failed to update profile');
       }
@@ -173,8 +183,10 @@ export const UserDetails = ({ auth }: { auth: any }) => {
     }
   }, [formData, userDetails.id, userDetails.activated, authAxios]);
 
+  /**
+   * Cancel editing and revert form state to the last saved user details.
+   */
   const handleCancel = useCallback(() => {
-    // Reset to original values
     setFormData({
       firstname: userDetails.firstname,
       lastname: userDetails.lastname,
@@ -183,21 +195,29 @@ export const UserDetails = ({ auth }: { auth: any }) => {
     setIsEditing(false);
   }, [userDetails]);
 
+  /**
+   * Handles input changes for the editable form.
+   * @param field - Name of the field being edited
+   * @param value - New value for the field
+   */
   const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
+  /** Returns initials for avatar from first and last name, or from email if blank. */
   const getInitials = () => {
     const first = userDetails.firstname?.charAt(0) || '';
     const last = userDetails.lastname?.charAt(0) || '';
     return (first + last).toUpperCase() || userDetails.email?.charAt(0).toUpperCase() || 'U';
   };
 
+  /** Returns display name (full name if possible, or email, or "User"). */
   const getDisplayName = () => {
     const fullName = `${userDetails.firstname} ${userDetails.lastname}`.trim();
     return fullName || userDetails.email || 'User';
   };
 
+  /** Returns the roles for the current session. */
   const getRoles = () => {
     return auth.session?.roles || ['User'];
   };
@@ -215,7 +235,6 @@ export const UserDetails = ({ auth }: { auth: any }) => {
     <Box sx={{ p: 4 }}>
       <Fade in={true} timeout={600}>
         <Box>
-          {/* Header */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
             <Box>
               <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
@@ -268,7 +287,6 @@ export const UserDetails = ({ auth }: { auth: any }) => {
           </Box>
 
           <Grid container spacing={4}>
-            {/* Profile Card */}
             <Grid item xs={12} md={4}>
               <Zoom in={true} timeout={800}>
                 <Card sx={{ textAlign: 'center', p: 3 }}>
@@ -317,7 +335,6 @@ export const UserDetails = ({ auth }: { auth: any }) => {
               </Zoom>
             </Grid>
 
-            {/* Details Form */}
             <Grid item xs={12} md={8}>
               <Card>
                 <CardContent sx={{ p: 4 }}>
@@ -336,7 +353,6 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                         }}
                       />
                     </Grid>
-                    
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth
@@ -351,7 +367,6 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                         }}
                       />
                     </Grid>
-
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
@@ -367,7 +382,6 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                     </Grid>
                   </Grid>
 
-                  {/* Account Information */}
                   <Box sx={{ mt: 4 }}>
                     <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                       Account Information
@@ -407,7 +421,6 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                     </Grid>
                   </Box>
 
-                  {/* Session Information */}
                   <Box sx={{ mt: 4 }}>
                     <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                       Current Session

@@ -32,6 +32,9 @@ import { toast } from 'react-toastify';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
+/**
+ * Returns an Axios instance with the current access token in the Authorization header.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -49,6 +52,12 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * A form for authenticated users to change their password, including password strength feedback
+ * and best-practice requirements UI.
+ *
+ * @param auth - The authentication context object.
+ */
 export const ChangePasswordForm = ({ auth }: { auth: any }) => {
   const authAxios = useAuthAxios();
   const [formData, setFormData] = useState({
@@ -57,15 +66,19 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
     confirmPassword: '',
   });
   
-  const [showPasswords, setShowPasswords] = useState({
+  type PasswordField = 'current' | 'new' | 'confirm';
+  const [showPasswords, setShowPasswords] = useState<{ [K in PasswordField]: boolean }>({
     current: false,
     new: false,
     confirm: false,
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
+  /**
+   * Calculates password strength based on presence of length, case, number, special character.
+   */
   const calculatePasswordStrength = useCallback((password: string) => {
     let strength = 0;
     if (password.length >= 8) strength += 25;
@@ -75,6 +88,9 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
     return strength;
   }, []);
 
+  /**
+   * Handles updates to input fields, updates password strength meter.
+   */
   const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (field === 'newPassword') {
@@ -82,10 +98,16 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
     }
   }, [calculatePasswordStrength]);
 
-  const togglePasswordVisibility = useCallback((field: string) => {
+  /**
+   * Toggles the visibility of a password field.
+   */
+  const togglePasswordVisibility = useCallback((field: PasswordField) => {
     setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
   }, []);
 
+  /**
+   * Submits the change password form after validation, updating user password via API.
+   */
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -112,11 +134,11 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
 
     setIsLoading(true);
     try {
-      // First, get the current user data to preserve other fields
+      // Fetch current user fields to preserve other data
       const userResponse = await authAxios.get(`/api/users/${userId}`);
       const currentUserData = userResponse.data;
 
-      // Update only the password field, keeping everything else the same
+      // Send only changed password and current data
       const updateData = {
         firstname: currentUserData.firstname,
         lastname: currentUserData.lastname,
@@ -132,12 +154,18 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
       toast.success('Password changed successfully!');
     } catch (error) {
       console.error('Error changing password:', error);
-      if (error.response?.status === 401) {
-        toast.error('Authentication failed. Please log in again.');
-      } else if (error.response?.status === 404) {
-        toast.error('User not found');
-      } else if (error.response?.status === 403) {
-        toast.error('You do not have permission to change this password');
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          toast.error('Authentication failed. Please log in again.');
+        } else if (error.response?.status === 404) {
+          toast.error('User not found');
+        } else if (error.response?.status === 403) {
+          toast.error('You do not have permission to change this password');
+        } else {
+          toast.error('Failed to change password. Please try again.');
+        }
+      } else if (error instanceof Error) {
+        toast.error(error.message);
       } else {
         toast.error('Failed to change password. Please try again.');
       }
@@ -146,11 +174,17 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
     }
   }, [formData, passwordStrength, auth.session?.userId, authAxios]);
 
+  /**
+   * Resets the form fields and password strength meter.
+   */
   const handleReset = useCallback(() => {
     setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     setPasswordStrength(0);
   }, []);
 
+  /**
+   * Returns a color name for password strength LinearProgress.
+   */
   const getPasswordStrengthColor = (strength: number) => {
     if (strength < 25) return 'error';
     if (strength < 50) return 'warning';
@@ -158,6 +192,9 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
     return 'success';
   };
 
+  /**
+   * Returns a text label for password strength.
+   */
   const getPasswordStrengthText = (strength: number) => {
     if (strength < 25) return 'Very Weak';
     if (strength < 50) return 'Weak';
@@ -165,6 +202,7 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
     return 'Strong';
   };
 
+  // Password requirements for user feedback UI
   const passwordRequirements = [
     { text: 'At least 8 characters', met: formData.newPassword.length >= 8 },
     { text: 'Contains uppercase letter', met: /[A-Z]/.test(formData.newPassword) },

@@ -9,6 +9,15 @@ import {
 import { Search, Close } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 
+/**
+ * Props for the SearchHeader component.
+ * 
+ * @property searchTerm - The current value of the search input.
+ * @property onSearchChange - Handler called on search input change.
+ * @property onClearSearch - Handler called when the clear ("X") button is pressed.
+ * @property resultsCount - Number of results to display.
+ * @property searchInputRef - Ref for focusing or controlling the search input externally.
+ */
 interface SearchHeaderProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
@@ -17,6 +26,10 @@ interface SearchHeaderProps {
   searchInputRef: React.RefObject<HTMLInputElement>;
 }
 
+/**
+ * SearchHeader is a search bar with a search icon, clear button, and live results count.
+ * Used above collection lists and similar views.
+ */
 const SearchHeader: React.FC<SearchHeaderProps> = React.memo(({
   searchTerm,
   onSearchChange,
@@ -63,6 +76,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = React.memo(({
         }}
       />
       
+      {/* Results count is shown only when searching */}
       {searchTerm && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
           {resultsCount} result{resultsCount !== 1 ? 's' : ''} found

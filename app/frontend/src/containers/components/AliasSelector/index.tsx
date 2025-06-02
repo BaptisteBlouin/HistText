@@ -22,6 +22,15 @@ interface AliasSelectorProps {
   descriptions: Record<string, string>;
 }
 
+/**
+ * AliasSelector component for selecting a Solr collection alias.
+ * Includes dropdown, search, and selection features.
+ *
+ * @param aliases - Array of available alias strings.
+ * @param selectedAlias - Currently selected alias.
+ * @param onAliasChange - Callback when alias changes.
+ * @param descriptions - Mapping from alias to description.
+ */
 const AliasSelector: React.FC<AliasSelectorProps> = React.memo(({
   aliases,
   selectedAlias,
@@ -36,6 +45,7 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // State and handlers for dropdown, search, and loading
   const {
     isOpen,
     searchTerm,
@@ -47,6 +57,7 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(({
     clearSearch
   } = useAliasSelectorState();
 
+  // Get processed collection objects and selected collection details
   const { processedCollections, selectedCollection } = useProcessedCollections(
     aliases,
     descriptions,
@@ -54,21 +65,26 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(({
     searchTerm
   );
 
-  // Custom hooks for behavior
+  // Close dropdown on outside click, and handle ESC key & search input focus
   useClickOutside(dropdownRef, closeDropdown);
   useAliasSelectorKeyboard(isOpen, closeDropdown, searchInputRef);
 
+  /**
+   * Handle selecting a collection from the list.
+   * Triggers parent onAliasChange and closes dropdown with simulated loading.
+   */
   const handleCollectionSelect = useCallback((alias: string) => {
     setIsLoading(true);
     onAliasChange(alias);
     closeDropdown();
-    
-    // Simulate loading state
     setTimeout(() => {
       setIsLoading(false);
     }, 500);
   }, [onAliasChange, closeDropdown, setIsLoading]);
 
+  /**
+   * Handle clearing the current selection.
+   */
   const handleClearSelection = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onAliasChange('');
@@ -80,7 +96,6 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(({
 
   return (
     <Box ref={containerRef} sx={{ position: 'relative', minWidth: isMobile ? '100%' : 300 }}>
-      {/* Main Selector Button */}
       <SelectorButton
         selectedCollection={selectedCollection}
         selectedAlias={selectedAlias}
@@ -91,7 +106,6 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(({
         onClear={handleClearSelection}
       />
 
-      {/* Dropdown */}
       <Fade in={isOpen} timeout={300}>
         <Paper
           ref={dropdownRef}
@@ -112,7 +126,6 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(({
           }}
           style={{ display: isOpen ? 'block' : 'none' }}
         >
-          {/* Search Header */}
           <SearchHeader
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
@@ -120,8 +133,6 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(({
             resultsCount={processedCollections.length}
             searchInputRef={searchInputRef}
           />
-
-          {/* Collections List */}
           <CollectionsList
             processedCollections={processedCollections}
             selectedAlias={selectedAlias}
@@ -131,7 +142,7 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(({
         </Paper>
       </Fade>
 
-      {/* Add keyframe animation for loading spinner */}
+      {/* Keyframe animation for loading spinner */}
       <style>
         {`
           @keyframes spin {

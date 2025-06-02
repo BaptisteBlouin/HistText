@@ -25,13 +25,21 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 
+/**
+ * Shows the user's current authentication token (JWT or session).
+ * Allows masking/unmasking, copying, and (simulated) refreshing.
+ * Shows basic decoded JWT details if available.
+ */
 export const UserToken = ({ auth }: { auth: any }) => {
   const [showToken, setShowToken] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Get the actual token from the auth session
+  // The access token from session or auth context
   const currentToken = auth.session?.accessToken || auth.accessToken || '';
 
+  /**
+   * Copies the current token to the clipboard.
+   */
   const handleCopyToken = useCallback(() => {
     if (currentToken) {
       navigator.clipboard.writeText(currentToken);
@@ -41,14 +49,20 @@ export const UserToken = ({ auth }: { auth: any }) => {
     }
   }, [currentToken]);
 
+  /**
+   * Toggles between masked and full token display.
+   */
   const toggleTokenVisibility = useCallback(() => {
     setShowToken(prev => !prev);
   }, []);
 
+  /**
+   * Simulates refreshing the token.
+   * (TODO: this should call your refresh endpoint.)
+   */
   const handleRefreshToken = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      // Simulate token refresh (in real app, this would call auth.refreshToken())
       await new Promise(resolve => setTimeout(resolve, 1000));
       toast.success('Token refreshed successfully!');
     } catch (error) {
@@ -58,12 +72,18 @@ export const UserToken = ({ auth }: { auth: any }) => {
     }
   }, []);
 
+  /**
+   * Masks the token for display (shows only part, replaces the middle).
+   */
   const maskToken = (token: string) => {
     if (!token) return 'No token available';
     if (token.length <= 8) return token;
     return token.substring(0, 8) + '•'.repeat(20) + token.substring(token.length - 4);
   };
 
+  /**
+   * Decodes JWT and returns info for display, or fallback for session tokens.
+   */
   const getTokenInfo = () => {
     if (!currentToken) {
       return {
@@ -72,14 +92,11 @@ export const UserToken = ({ auth }: { auth: any }) => {
         expires: 'N/A'
       };
     }
-
-    // Try to decode JWT token info (basic parsing)
     try {
       const parts = currentToken.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(atob(parts[1]));
         const expDate = payload.exp ? new Date(payload.exp * 1000) : null;
-        
         return {
           status: expDate && expDate > new Date() ? 'Active' : 'Expired',
           type: 'JWT',
@@ -89,9 +106,8 @@ export const UserToken = ({ auth }: { auth: any }) => {
         };
       }
     } catch (e) {
-      // If not JWT or parsing fails, return basic info
+      // Not JWT or decode failed
     }
-
     return {
       status: 'Active',
       type: 'Bearer Token',
@@ -105,7 +121,6 @@ export const UserToken = ({ auth }: { auth: any }) => {
     <Box sx={{ p: 4 }}>
       <Fade in={true} timeout={600}>
         <Box>
-          {/* Header */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
             <Box>
               <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
@@ -125,7 +140,6 @@ export const UserToken = ({ auth }: { auth: any }) => {
             </Button>
           </Box>
 
-          {/* Security Warning */}
           <Alert severity="warning" sx={{ mb: 4 }}>
             <Typography variant="body2">
               <strong>Important:</strong> Keep your token secure and never share it publicly. 
@@ -134,7 +148,6 @@ export const UserToken = ({ auth }: { auth: any }) => {
           </Alert>
 
           <Box sx={{ display: 'flex', gap: 4, flexDirection: { xs: 'column', lg: 'row' } }}>
-            {/* Token Display */}
             <Box sx={{ flex: 1 }}>
               <Card>
                 <CardContent sx={{ p: 4 }}>
@@ -149,7 +162,6 @@ export const UserToken = ({ auth }: { auth: any }) => {
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       Current token:
                     </Typography>
-                    
                     <Paper 
                       sx={{ 
                         p: 2, 
@@ -198,7 +210,6 @@ export const UserToken = ({ auth }: { auth: any }) => {
                     </Paper>
                   </Box>
 
-                  {/* Token Status */}
                   <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
                     <Chip
                       label={tokenInfo.status}
@@ -213,7 +224,6 @@ export const UserToken = ({ auth }: { auth: any }) => {
                     />
                   </Box>
 
-                  {/* Token Details */}
                   <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                       Token Details:
@@ -251,10 +261,8 @@ export const UserToken = ({ auth }: { auth: any }) => {
               </Card>
             </Box>
 
-            {/* Usage Information */}
             <Box sx={{ flex: 1 }}>
               <Stack spacing={3}>
-                {/* How to Use */}
                 <Card>
                   <CardContent sx={{ p: 3 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -275,7 +283,6 @@ export const UserToken = ({ auth }: { auth: any }) => {
                   </CardContent>
                 </Card>
 
-                {/* Security Tips */}
                 <Card>
                   <CardContent sx={{ p: 3 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>

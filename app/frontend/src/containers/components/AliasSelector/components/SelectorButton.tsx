@@ -17,6 +17,17 @@ import { useTheme } from '@mui/material/styles';
 import config from '../../../../../config.json';
 import { getCollectionInitials, truncateDescription } from '../utils/collectionUtils';
 
+/**
+ * Props for SelectorButton component.
+ * 
+ * @property selectedCollection - The currently selected collection object.
+ * @property selectedAlias - The alias (name) of the currently selected collection.
+ * @property aliasesLength - The total number of collections available.
+ * @property isOpen - Whether the selector dropdown is open.
+ * @property isLoading - Whether the collection data is currently loading.
+ * @property onToggle - Function to open/close the dropdown.
+ * @property onClear - Function to clear the current selection.
+ */
 interface SelectorButtonProps {
   selectedCollection: any;
   selectedAlias: string;
@@ -27,6 +38,10 @@ interface SelectorButtonProps {
   onClear: (e: React.MouseEvent) => void;
 }
 
+/**
+ * SelectorButton provides a clickable, stylized button for selecting collections.
+ * Shows the current selection, a clear button, a dropdown arrow, and a count badge.
+ */
 const SelectorButton: React.FC<SelectorButtonProps> = React.memo(({
   selectedCollection,
   selectedAlias,
@@ -60,7 +75,7 @@ const SelectorButton: React.FC<SelectorButtonProps> = React.memo(({
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        {/* Collection Icon/Avatar */}
+        {/* Avatar representing either a collection or the default state */}
         {selectedAlias ? (
           <Avatar
             sx={{
@@ -87,7 +102,7 @@ const SelectorButton: React.FC<SelectorButtonProps> = React.memo(({
           </Avatar>
         )}
 
-        {/* Collection Info */}
+        {/* Main label and collection info */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           {selectedAlias ? (
             <>
@@ -135,10 +150,11 @@ const SelectorButton: React.FC<SelectorButtonProps> = React.memo(({
           )}
         </Box>
 
-        {/* Action Icons */}
+        {/* Action Icons: loading spinner, clear button, and dropdown arrow */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {isLoading && (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {/* Simple CSS spinner for loading state */}
               <div style={{
                 width: 20,
                 height: 20,
@@ -166,6 +182,7 @@ const SelectorButton: React.FC<SelectorButtonProps> = React.memo(({
             </Tooltip>
           )}
           
+          {/* The expand/collapse dropdown arrow */}
           <IconButton
             size="small"
             sx={{
@@ -181,7 +198,7 @@ const SelectorButton: React.FC<SelectorButtonProps> = React.memo(({
         </Box>
       </Box>
 
-      {/* Collection Count Badge */}
+      {/* Badge showing total number of available collections */}
       {aliasesLength > 0 && (
         <Chip
           label={`${aliasesLength} collection${aliasesLength !== 1 ? 's' : ''} available`}

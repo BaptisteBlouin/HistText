@@ -25,38 +25,47 @@ import {
   Shield,
 } from '@mui/icons-material';
 
+/**
+ * Displays user roles, permissions, and inferred capabilities based on the current authentication session.
+ * Provides a breakdown of access, a capabilities list, and a security summary.
+ *
+ * @param auth - Auth context with session info
+ */
 export const Permissions = ({ auth }: { auth: any }) => {
+  /**
+   * Returns the list of roles from the current session.
+   */
   const getUserRoles = () => {
     return auth.session?.roles || [];
   };
 
+  /**
+   * Returns the list of permissions from the current session.
+   */
   const getUserPermissions = () => {
     return auth.session?.permissions || [];
   };
 
+  /**
+   * Derives user capabilities based on assigned roles and permissions.
+   * Returns a human-readable set of capabilities.
+   */
   const getCapabilities = () => {
     const roles = getUserRoles();
     const permissions = getUserPermissions();
-    
-    // Mock capabilities based on roles/permissions
     const capabilities = [];
-    
     if (roles.includes('Admin')) {
       capabilities.push('Full system access', 'User management', 'Database administration');
     }
-    
     if (permissions.includes('read')) {
       capabilities.push('View content', 'Search data');
     }
-    
     if (permissions.includes('write')) {
       capabilities.push('Create content', 'Edit data');
     }
-    
     if (permissions.includes('delete')) {
       capabilities.push('Delete content');
     }
-
     return capabilities.length > 0 ? capabilities : ['Standard user access'];
   };
 
@@ -64,7 +73,7 @@ export const Permissions = ({ auth }: { auth: any }) => {
     <Box sx={{ p: 4 }}>
       <Fade in={true} timeout={600}>
         <Box>
-          {/* Header */}
+          {/* Header Section */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
               Permissions & Roles
@@ -85,7 +94,6 @@ export const Permissions = ({ auth }: { auth: any }) => {
                       Your Roles
                     </Typography>
                   </Box>
-
                   {getUserRoles().length > 0 ? (
                     <Stack spacing={2}>
                       {getUserRoles().map((role: string, index: number) => (
@@ -125,7 +133,6 @@ export const Permissions = ({ auth }: { auth: any }) => {
                       Your Permissions
                     </Typography>
                   </Box>
-
                   {getUserPermissions().length > 0 ? (
                     <Stack spacing={1}>
                       {getUserPermissions().map((permission: string, index: number) => (
@@ -158,11 +165,9 @@ export const Permissions = ({ auth }: { auth: any }) => {
                       What You Can Do
                     </Typography>
                   </Box>
-
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     Based on your roles and permissions, here's what you can access:
                   </Typography>
-
                   <List>
                     {getCapabilities().map((capability, index) => (
                       <ListItem key={index} sx={{ py: 1 }}>
@@ -173,9 +178,7 @@ export const Permissions = ({ auth }: { auth: any }) => {
                       </ListItem>
                     ))}
                   </List>
-
                   <Divider sx={{ my: 3 }} />
-
                   <Alert severity="info" icon={<Info />}>
                     <Typography variant="body2">
                       Need additional permissions? Contact your system administrator to request access to specific features or data.
@@ -195,7 +198,6 @@ export const Permissions = ({ auth }: { auth: any }) => {
                       Account Security Summary
                     </Typography>
                   </Box>
-
                   <Grid container spacing={3}>
                     <Grid item xs={12} sm={4}>
                       <Box sx={{ textAlign: 'center' }}>
@@ -228,7 +230,6 @@ export const Permissions = ({ auth }: { auth: any }) => {
                       </Box>
                     </Grid>
                   </Grid>
-
                   <Box sx={{ mt: 3 }}>
                     <Chip
                       icon={<CheckCircle />}

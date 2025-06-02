@@ -20,12 +20,20 @@ import config from '../../../../../config.json';
 import { getCollectionInitials } from '../utils/collectionUtils';
 
 interface CollectionsListProps {
+  /** The processed array of collections to display. */
   processedCollections: any[];
+  /** The currently selected collection alias (empty string means "default"). */
   selectedAlias: string;
+  /** The search term (used for empty/search state and match highlighting). */
   searchTerm: string;
+  /** Handler called when a collection is selected. */
   onCollectionSelect: (alias: string) => void;
 }
 
+/**
+ * Lists available collections, supporting search highlighting and selection.
+ * Shows a default "select" card and collection cards with basic info.
+ */
 const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
   processedCollections,
   selectedAlias,
@@ -35,6 +43,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
   const theme = useTheme();
 
   if (processedCollections.length === 0) {
+    // No collections: Show an empty/search state.
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <CollectionsBookmark sx={{ fontSize: 48, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
@@ -50,7 +59,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
 
   return (
     <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
-      {/* Default Option */}
+      {/* Default Option ("select a collection...") */}
       <Card
         variant="outlined"
         onClick={() => onCollectionSelect('')}
@@ -89,7 +98,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
         </CardContent>
       </Card>
 
-      {/* Collection Options */}
+      {/* Render each collection as a card with transition */}
       {processedCollections.map((collection, index) => (
         <Zoom
           key={collection.name}
@@ -117,6 +126,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
           >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                {/* Collection initials avatar */}
                 <Avatar
                   sx={{
                     bgcolor: collection.isSelected ? 'primary.main' : 'secondary.main',
@@ -129,6 +139,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
                 </Avatar>
                 
                 <Box sx={{ flex: 1, minWidth: 0 }}>
+                  {/* Name */}
                   <Typography
                     variant="subtitle1"
                     sx={{
@@ -142,6 +153,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
                     {collection.name}
                   </Typography>
                   
+                  {/* Description (if available) */}
                   {collection.description && (
                     <Typography
                       variant="body2"
@@ -160,7 +172,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
                     </Typography>
                   )}
                   
-                  {/* Highlight search matches */}
+                  {/* Chip for search matches */}
                   {searchTerm && collection.matchesSearch && (
                     <Chip
                       label="Match"
@@ -176,7 +188,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
                     <Check color="primary" />
                   )}
                   
-                  {/* Info Icon with Full Description Tooltip */}
+                  {/* Tooltip with info icon for full description */}
                   {collection.description && (
                     <Tooltip
                       title={
@@ -191,7 +203,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
                       }
                       placement="left"
                       arrow
-                      onClick={(e) => e.stopPropagation()} // Prevent card click when clicking info icon
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <IconButton 
                         size="small" 
@@ -202,7 +214,7 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(({
                             backgroundColor: 'primary.light'
                           }
                         }}
-                        onClick={(e) => e.stopPropagation()} // Prevent card click
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Info fontSize="small" />
                       </IconButton>

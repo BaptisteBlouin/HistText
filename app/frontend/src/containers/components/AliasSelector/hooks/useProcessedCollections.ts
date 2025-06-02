@@ -7,6 +7,18 @@ interface CollectionInfo {
   matchesSearch: boolean;
 }
 
+/**
+ * Custom hook for processing collection alias data for selector UIs.
+ *
+ * Returns a filtered and annotated list of collections based on the search term,
+ * along with the currently selected collection object (if any).
+ *
+ * @param aliases - Array of collection aliases.
+ * @param descriptions - Map of alias to description.
+ * @param selectedAlias - The currently selected alias.
+ * @param searchTerm - Search term for filtering collections.
+ * @returns An object with processedCollections (filtered, annotated) and selectedCollection.
+ */
 export const useProcessedCollections = (
   aliases: string[],
   descriptions: Record<string, string>,
