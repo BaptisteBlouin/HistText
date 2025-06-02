@@ -1,3 +1,6 @@
+# HistText Toolkit Configuration - Complete Model Examples
+# ========================================================
+
 # Solr connection settings
 solr:
   host: localhost
@@ -13,37 +16,396 @@ cache:
   root_dir: ./cache
   enabled: true
 
-# Model configurations
+# Model configurations - All supported types
 models:
-  # spaCy models
-  spacy_en:
-    name: en_core_web_sm
+  # ================================
+  # spaCy Models
+  # ================================
+  spacy_en_sm:
     type: spacy
     path: en_core_web_sm
   
+  spacy_en_lg:
+    type: spacy
+    path: en_core_web_lg
+  
   spacy_zh:
-    name: zh_core_web_sm
     type: spacy
     path: zh_core_web_sm
   
-  # Transformers models
-  bert_ner:
-    name: dbmdz/bert-large-cased-finetuned-conll03-english
-    type: transformers
-    path: dbmdz/bert-large-cased-finetuned-conll03-english
-    max_length: 512
-    aggregation_strategy: FIRST
+  spacy_multilingual:
+    type: spacy
+    path: xx_core_web_sm
   
-  bert_tokenizer:
-    name: bert-base-multilingual-cased
+  # ================================
+  # Transformers Models (HuggingFace)
+  # ================================
+  xlm_roberta_large:
     type: transformers
-    path: bert-base-multilingual-cased
+    path: xlm-roberta-large-finetuned-conll03-english
     max_length: 512
+    aggregation_strategy: simple
   
-  # GLiNER model
+  xlm_roberta_base:
+    type: transformers
+    path: xlm-roberta-base-finetuned-conll03-english
+    max_length: 512
+    aggregation_strategy: simple
+  
+  bert_historic:
+    type: transformers
+    path: dbmdz/bert-base-historic-multilingual-cased
+    max_length: 512
+    aggregation_strategy: simple
+  
+  bert_chinese:
+    type: transformers
+    path: ckiplab/bert-base-chinese-ner
+    max_length: 512
+    aggregation_strategy: simple
+  
+  bert_japanese:
+    type: transformers
+    path: cl-tohoku/bert-base-japanese-char-whole-word-masking
+    max_length: 512
+    aggregation_strategy: simple
+  
+  bert_korean:
+    type: transformers
+    path: klue/bert-base
+    max_length: 512
+    aggregation_strategy: simple
+  
+  bert_arabic:
+    type: transformers
+    path: aubmindlab/bert-base-arabertv2
+    max_length: 512
+    aggregation_strategy: simple
+  
+  # ================================
+  # GLiNER Models (Zero-shot)
+  # ================================
   gliner_medium:
-    name: urchade/gliner_medium-v2.1
     type: gliner
-    path: urchade/gliner_medium-v2.1
-    max_chunk_size: 296
-    threshold: 0.5
+    path: urchade/gliner_mediumv2.1
+    processing_mode: batch
+    optimization_level: 1
+    entity_types:
+      - Person
+      - Organization
+      - Location
+    additional_params:
+      threshold: 0.5
+      max_chunk_size: 296
+  
+  gliner_large:
+    type: gliner
+    path: urchade/gliner_largev2.1
+    processing_mode: batch
+    optimization_level: 2
+    entity_types:
+      - Person
+      - Organization
+      - Location
+      - Product
+      - Event
+    additional_params:
+      threshold: 0.3
+      max_chunk_size: 384
+  
+  gliner_small:
+    type: gliner
+    path: urchade/gliner_small-v2.1
+    processing_mode: batch
+    optimization_level: 1
+    additional_params:
+      threshold: 0.6
+  
+  nuner_zero:
+    type: gliner  # NuNER is GLiNER-based
+    path: numind/NuNerZero
+    processing_mode: batch
+    optimization_level: 1
+    additional_params:
+      threshold: 0.4
+  
+  # ================================
+  # Stanza Models (Multilingual)
+  # ================================
+  stanza_en:
+    type: stanza
+    path: en
+  
+  stanza_zh:
+    type: stanza
+    path: zh-hans
+  
+  stanza_ja:
+    type: stanza
+    path: ja
+  
+  stanza_ko:
+    type: stanza
+    path: ko
+  
+  stanza_de:
+    type: stanza
+    path: de
+  
+  stanza_fr:
+    type: stanza
+    path: fr
+  
+  stanza_es:
+    type: stanza
+    path: es
+  
+  stanza_ru:
+    type: stanza
+    path: ru
+  
+  stanza_ar:
+    type: stanza
+    path: ar
+  
+  stanza_hi:
+    type: stanza
+    path: hi
+  
+  # ================================
+  # Flair Models
+  # ================================
+  flair_ner:
+    type: flair
+    path: ner
+  
+  flair_ner_large:
+    type: flair
+    path: ner-large
+  
+  flair_ontonotes:
+    type: flair
+    path: ner-ontonotes
+  
+  flair_ontonotes_large:
+    type: flair
+    path: ner-ontonotes-large
+  
+  flair_multi:
+    type: flair
+    path: ner-multi
+  
+  flair_multi_fast:
+    type: flair
+    path: ner-multi-fast
+  
+  flair_german:
+    type: flair
+    path: ner-german
+  
+  flair_german_large:
+    type: flair
+    path: ner-german-large
+  
+  # ================================
+  # LLM NER Models
+  # ================================
+  deepseek_r1:
+    type: llm_ner
+    path: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+    max_length: 2048
+    processing_mode: batch
+    optimization_level: 1
+    additional_params:
+      temperature: 0.01
+      max_text_length: 1500
+  
+  phi3_mini:
+    type: llm_ner
+    path: microsoft/Phi-3-mini-4k-instruct
+    max_length: 4096
+    processing_mode: batch
+    optimization_level: 1
+    additional_params:
+      temperature: 0.01
+  
+  qwen_chat:
+    type: qwen_ner
+    path: Qwen/Qwen-7B-Chat
+    max_length: 2048
+    processing_mode: batch
+    optimization_level: 1
+    additional_params:
+      temperature: 0.01
+  
+  mistral_instruct:
+    type: mistral_ner
+    path: mistralai/Mistral-7B-Instruct-v0.3
+    max_length: 2048
+    processing_mode: batch
+    optimization_level: 1
+    additional_params:
+      temperature: 0.01
+  
+  # ================================
+  # Auto Multilingual Models
+  # ================================
+  auto_multilingual:
+    type: multilingual
+    path: auto
+    processing_mode: batch
+    optimization_level: 1
+    enable_caching: true
+    additional_params:
+      auto_detect_language: true
+      enable_pattern_enhancement: true
+  
+  multilingual_best:
+    type: multilingual
+    path: multilingual
+    processing_mode: batch
+    optimization_level: 2
+  
+  historical_multilingual:
+    type: multilingual
+    path: historical
+    processing_mode: batch
+    optimization_level: 1
+    additional_params:
+      enable_historical_processing: true
+  
+  # ================================
+  # Chinese NLP Models
+  # ================================
+  
+  # FastNLP Models
+  fastnlp_msra:
+    type: fastnlp
+    path: ner-msra
+    additional_params:
+      model_type: ner
+  
+  fastnlp_ontonotes:
+    type: fastnlp
+    path: ner-ontonotes
+    additional_params:
+      model_type: ner
+  
+  fastnlp_weibo:
+    type: fastnlp
+    path: ner-weibo
+    additional_params:
+      model_type: ner
+  
+  fastnlp_cws_pku:
+    type: fastnlp
+    path: cws-pku
+    additional_params:
+      model_type: cws
+  
+  fastnlp_en_conll:
+    type: fastnlp
+    path: en-ner-conll
+    additional_params:
+      model_type: ner
+  
+  # FastHan Models
+  fasthan_base:
+    type: fasthan
+    path: base
+    processing_mode: batch
+    optimization_level: 1
+  
+  fasthan_large:
+    type: fasthan
+    path: large
+    processing_mode: batch
+    optimization_level: 2
+  
+  fasthan_small:
+    type: fasthan
+    path: small
+    processing_mode: batch
+    optimization_level: 1
+  
+  # Baidu LAC
+  lac_chinese:
+    type: lac
+    path: lac
+    additional_params:
+      mode: ner
+  
+  # ================================
+  # Chinese Word Segmentation
+  # ================================
+  chinese_segmenter:
+    type: chinese_segmenter
+    path: ""  # Uses built-in models
+    processing_mode: batch
+    optimization_level: 1
+    additional_params:
+      auto_configure: true
+  
+  # ================================
+  # Embedding Models
+  # ================================
+  fasttext_en:
+    type: fasttext
+    path: ./models/cc.en.300.vec
+    dim: 300
+    use_precomputed: true
+  
+  fasttext_multilingual:
+    type: fasttext
+    path: ./models/cc.multi.300.vec
+    dim: 300
+    use_precomputed: true
+  
+  sentence_transformers_mini:
+    type: sentence_transformers
+    path: sentence-transformers/all-MiniLM-L6-v2
+    max_length: 512
+  
+  sentence_transformers_multilingual:
+    type: sentence_transformers
+    path: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+    max_length: 512
+  
+  word2vec:
+    type: word2vec
+    path: ./models/word2vec.bin
+    dim: 300
+    binary: true
+
+# Extended configuration options
+logging:
+  level: INFO
+  format: "[%(asctime)s] %(levelname)s: %(message)s"
+
+# Performance settings
+performance:
+  batch_size_default: 1000
+  max_workers: 4
+  gpu_memory_fraction: 0.8
+  enable_model_caching: true
+
+# Domain-specific settings
+domains:
+  historical:
+    enable_preprocessing: true
+    normalize_spelling: true
+    
+  multilingual:
+    auto_detect_language: true
+    enable_pattern_enhancement: true
+    
+  chinese:
+    enable_traditional_to_simplified: true
+    default_segmenter: jieba
+
+# Output settings
+output:
+  compact_labels: true
+  decimal_precision: 3
+  include_confidence: true
+  include_positions: true

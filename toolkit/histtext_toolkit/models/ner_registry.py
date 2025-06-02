@@ -2,7 +2,6 @@
 
 from typing import Dict, Type, Optional
 
-from toolkit.histtext_toolkit.models.transformers_ner import HistoricalTransformersModel, MultilingualTransformersModel
 from ..core.config import ModelConfig
 from ..core.logging import get_logger
 from .ner_base import BaseNERModel
@@ -58,9 +57,17 @@ def create_ner_model(config: ModelConfig) -> Optional[BaseNERModel]:
         return None
 
 
-
 def _load_model_classes():
     """Load and register all available model classes."""
+    
+    # Transformers models - IMPORTANT: Load this first!
+    try:
+        from .transformers_ner import TransformersNERModel
+        register_model("transformers", TransformersNERModel)
+        register_model("nuner", TransformersNERModel)
+        logger.debug("Registered Transformers models")
+    except ImportError:
+        logger.debug("Transformers models not available")
     
     # GLiNER models
     try:
@@ -82,19 +89,6 @@ def _load_model_classes():
         logger.debug("Registered LLM models")
     except ImportError:
         logger.debug("LLM models not available")
-    
-    # Transformers models
-    try:
-        from .transformers_ner import TransformersNERModel
-        register_model("transformers", TransformersNERModel)
-        register_model("nuner", TransformersNERModel)
-        register_model("multilingual", MultilingualTransformersModel)
-        register_model("historical", HistoricalTransformersModel)
-        register_model("xlm-roberta", TransformersNERModel)
-        register_model("mbert", TransformersNERModel)
-        logger.debug("Registered Transformers models")
-    except ImportError:
-        logger.debug("Transformers models not available")
     
     # Flair models
     try:
@@ -160,6 +154,15 @@ def _load_model_classes():
         logger.debug("Registered FastHan models")
     except ImportError:
         logger.debug("FastHan models not available")
+    
+    # Multilingual and enhanced models
+    try:
+        from .transformers_ner import MultilingualTransformersModel, HistoricalTransformersModel
+        register_model("multilingual", MultilingualTransformersModel)
+        register_model("historical", HistoricalTransformersModel)
+        logger.debug("Registered enhanced Transformers models")
+    except ImportError:
+        logger.debug("Enhanced Transformers models not available")
 
 
 def get_available_model_types() -> Dict[str, str]:
