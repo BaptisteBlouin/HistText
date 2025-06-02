@@ -48,6 +48,8 @@ class SolrConfig:
         self.port = port
         self.username = username
         self.password = password
+        
+
 
 
 class CacheConfig:
@@ -128,6 +130,41 @@ class ModelConfig:
         self.use_precomputed = use_precomputed
         self.additional_params = additional_params or {}
 
+class EnhancedModelConfig(ModelConfig):
+    """Enhanced model configuration with modern features."""
+    
+    def __init__(
+        self,
+        name: str,
+        path: str,
+        type: str = "transformers",
+        max_length: Optional[int] = None,
+        aggregation_strategy: Optional[str] = None,
+        dim: Optional[int] = None,
+        binary: Optional[bool] = None,
+        use_precomputed: Optional[bool] = None,
+        additional_params: Optional[Dict[str, Any]] = None,
+        # Enhanced parameters
+        processing_mode: str = "batch",
+        optimization_level: int = 1,
+        entity_types: Optional[List[str]] = None,
+        enable_caching: bool = True,
+        gpu_memory_fraction: float = 0.8,
+        use_fp16: bool = True,
+        enable_compilation: bool = True
+    ):
+        super().__init__(
+            name, path, type, max_length, aggregation_strategy,
+            dim, binary, use_precomputed, additional_params
+        )
+        
+        self.processing_mode = processing_mode
+        self.optimization_level = optimization_level
+        self.entity_types = entity_types
+        self.enable_caching = enable_caching
+        self.gpu_memory_fraction = gpu_memory_fraction
+        self.use_fp16 = use_fp16
+        self.enable_compilation = enable_compilation
 
 class Config:
     """Main configuration for the toolkit.

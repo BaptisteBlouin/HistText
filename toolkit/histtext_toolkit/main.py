@@ -8,9 +8,12 @@ import asyncio
 import glob
 import sys
 
+from toolkit.histtext_toolkit.models.base import ProcessingMode
+
 from .core.config import (
     CacheConfig,
     Config,
+    EnhancedModelConfig,
     ModelConfig,
     SolrConfig,
     get_config,
@@ -275,6 +278,26 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Exclude the vocabulary size and dimension header from text output formats",
     )
+    
+    enhanced_ner_parser = subparsers.add_parser(
+        "enhanced-ner", 
+        help="Enhanced NER with modern models"
+    )
+    enhanced_ner_parser.add_argument("collection", help="Name of the collection")
+    enhanced_ner_parser.add_argument("--model-name", help="Name or path of the model")
+    enhanced_ner_parser.add_argument("--model-type", 
+                                    choices=["nuner", "flair", "gliner_enhanced", "llm_ner"],
+                                    default="gliner_enhanced")
+    enhanced_ner_parser.add_argument("--text-field", default="text")
+    enhanced_ner_parser.add_argument("--entity-types", nargs="+", 
+                                    help="Entity types to extract")
+    enhanced_ner_parser.add_argument("--processing-mode", 
+                                    choices=["batch", "streaming", "memory_efficient"],
+                                    default="batch")
+    enhanced_ner_parser.add_argument("--optimization-level", type=int, 
+                                    choices=[0, 1, 2], default=1)
+    enhanced_ner_parser.add_argument("--batch-size", type=int, default=1000)
+    enhanced_ner_parser.add_argument("--enable-streaming", action="store_true")
 
     # Store list_models_parser but don't use it (fixing the F841 warning)
     subparsers.add_parser("list-models", help="List available model types and tasks")
@@ -570,6 +593,37 @@ async def main():
                 (config.cache.root_dir if config.cache and config.cache.enabled else None),
             )
 
+        elif args.command == "enhanced-ner":
+        # Create enhanced model config
+            model_config = EnhancedModelConfig(
+                name=args.model_name or "default",
+                path=args.model_name or "urchade/gliner_mediumv2.1",
+                type=args.model_type,
+                processing_mode=args.processing_mode,
+                optimization_level=args.optimization_level,
+                entity_types=args.entity_types,
+                additional_params={
+                    "batch_size": args.batch_size,
+                    "use_enhanced": True
+                }
+            )
+            
+            # Run enhanced NER
+            from .operations.enhanced_ner import enhanced_precompute_ner
+            
+            await enhanced_precompute_ner(
+                solr_client,
+                args.collection,
+                args.text_field,
+                model_config,
+                config.cache.root_dir,
+                args.model_name or "enhanced_ner",
+                batch_size=args.batch_size,
+                entity_types=args.entity_types,
+                processing_mode=ProcessingMode(args.processing_mode),
+                optimization_level=args.optimization_level,
+                enable_streaming=args.enable_streaming
+            )
         elif args.command == "semantic-search":
             # Create and start Solr client
             from .solr.client import SolrClient

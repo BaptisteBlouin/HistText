@@ -1,24 +1,17 @@
-"""Base model classes for NER, tokenization, and embeddings.
-
-This module defines abstract base classes that all model implementations
-must inherit from, ensuring a consistent interface across different backends.
-"""
+# toolkit/histtext_toolkit/models/base.py (enhanced version)
+"""Enhanced base model classes for NER, tokenization, and embeddings with modern capabilities."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
-
+from typing import Any, Optional, Union, List, Dict, Tuple
 import numpy as np
 
 
 class ModelType(Enum):
-    """Enumeration of supported model types.
-
-    Defines all the possible model types that can be used within the system.
-    These values are used for model configuration and instantiation.
-    """
-
+    """Enumeration of supported model types with modern additions."""
+    
+    # Traditional models
     SPACY = "spacy"
     TRANSFORMERS = "transformers"
     GLINER = "gliner"
@@ -28,304 +21,141 @@ class ModelType(Enum):
     SENTENCE_TRANSFORMERS = "sentence_transformers"
     COLLECTION_ALIGNED = "collection_aligned"
     WORD_EMBEDDINGS = "word_embeddings"
+    
+    # Modern NER models
+    NUNER = "nuner"
+    GLINER_SPACY = "gliner_spacy"
+    FLAIR = "flair"
+    STANZA = "stanza"
+    ALLENNLP = "allennlp"
+    
+    # State-of-the-art models
+    LLAMA_NER = "llama_ner"
+    MISTRAL_NER = "mistral_ner"
+    QWEN_NER = "qwen_ner"
+    
+    # Multi-modal models
+    LAYOUTLM = "layoutlm"
+    VISUAL_NER = "visual_ner"
 
 
-class AggregationStrategy(Enum):
-    """Enumeration of supported token aggregation strategies.
-
-    Defines strategies for combining token-level information into entity-level
-    information, particularly for transformer-based models.
-    """
-
-    NONE = "none"  # No aggregation
-    SIMPLE = "simple"  # Simple concatenation
-    FIRST = "first"  # Use first token
-    MAX = "max"  # Use maximum value
-    AVERAGE = "average"  # Use average value
+class ProcessingMode(Enum):
+    """Processing modes for different optimization strategies."""
+    
+    BATCH = "batch"
+    STREAMING = "streaming"
+    MEMORY_EFFICIENT = "memory_efficient"
+    HIGH_THROUGHPUT = "high_throughput"
+    LOW_LATENCY = "low_latency"
 
 
 @dataclass
-class Entity:
-    """Representation of a named entity.
-
-    Stores information about an entity extracted from text, including its
-    position, type, and confidence score.
-
-    Attributes:
-        text: The entity text
-        labels: List of entity type labels
-        start_pos: Starting character position in the original text
-        end_pos: Ending character position in the original text
-        confidence: Confidence score (-1.0 if not available)
-
-    """
-
+class EntitySpan:
+    """Enhanced entity representation with additional metadata."""
+    
     text: str
-    labels: list[str]
+    labels: List[str]
     start_pos: int
     end_pos: int
     confidence: float = -1.0
+    
+    # Enhanced fields
+    probability_distribution: Optional[Dict[str, float]] = None
+    entity_id: Optional[str] = None
+    normalized_text: Optional[str] = None
+    linking_candidates: Optional[List[Dict[str, Any]]] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 @dataclass
-class Token:
-    """Representation of a token.
-
-    Stores information about a token extracted from text during tokenization,
-    including its position and confidence score.
-
-    Attributes:
-        text: The token text
-        start_pos: Starting character position in the original text
-        end_pos: Ending character position in the original text
-        confidence: Confidence score (-1.0 if not available)
-
-    """
-
-    text: str
-    start_pos: int
-    end_pos: int
-    confidence: float = -1.0
-
-
-@dataclass
-class Embedding:
-    """Representation of a word or text embedding.
-
-    Stores a vector representation of text along with the original text
-    and optional metadata.
-
-    Attributes:
-        text: The original text
-        vector: The embedding vector as a numpy array
-        metadata: Optional dictionary of additional information
-
-    """
-
-    text: str
-    vector: np.ndarray
-    metadata: Optional[dict[str, Any]] = None
-
-
-class BaseModel(ABC):
-    """Base class for all models.
-
-    Defines the common interface that all model implementations must follow,
-    including methods for loading and unloading the model.
-    """
+class ProcessingStats:
+    """Statistics for model performance monitoring."""
+    
+    total_entities: int = 0
+    processing_time: float = 0.0
+    memory_usage: Optional[float] = None
+    gpu_utilization: Optional[float] = None
+    throughput: Optional[float] = None  # entities per second
+    
+    
+class EnhancedNERModel(ABC):
+    """Enhanced base class for Named Entity Recognition models with modern features."""
 
     @abstractmethod
-    def load(self) -> bool:
-        """Load the model into memory.
-
-        Implementations should handle all resource allocation and initialization.
-
-        Returns:
-            bool: True if successful, False otherwise
-
-        """
+    def extract_entities(self, text: str, entity_types: Optional[List[str]] = None) -> List[EntitySpan]:
+        """Extract named entities with optional type filtering."""
         pass
 
     @abstractmethod
-    def unload(self) -> bool:
-        """Unload the model from memory.
-
-        Implementations should properly release all resources to prevent memory leaks.
-
-        Returns:
-            bool: True if successful, False otherwise
-
-        """
+    def extract_entities_batch(self, texts: List[str], entity_types: Optional[List[str]] = None) -> List[List[EntitySpan]]:
+        """Batch entity extraction for improved efficiency."""
         pass
-
-    @property
+    
     @abstractmethod
-    def is_loaded(self) -> bool:
-        """Check if the model is loaded.
-
-        Returns:
-            bool: True if the model is loaded, False otherwise
-
-        """
+    def get_supported_entity_types(self) -> List[str]:
+        """Get list of supported entity types."""
+        pass
+    
+    def extract_entities_streaming(self, texts: Iterator[str], **kwargs) -> Iterator[List[EntitySpan]]:
+        """Stream processing for large datasets."""
+        for text in texts:
+            yield self.extract_entities(text, **kwargs)
+    
+    def get_processing_stats(self) -> ProcessingStats:
+        """Get processing statistics."""
+        return ProcessingStats()
+    
+    def set_processing_mode(self, mode: ProcessingMode) -> None:
+        """Set processing mode for optimization."""
         pass
 
 
-class NERModel(BaseModel):
-    """Base class for Named Entity Recognition models.
-
-    Extends the BaseModel with methods specific to named entity recognition,
-    including entity extraction and formatting.
-    """
-
-    @abstractmethod
-    def extract_entities(self, text: str) -> list[Entity]:
-        """Extract named entities from text.
-
-        Implementations should process the input text and identify entities
-        with their positions, types, and confidence scores.
-
-        Args:
-            text: Input text to analyze
-
-        Returns:
-            List[Entity]: List of extracted entities
-
-        """
-        pass
-
-    def short_format(self, entities: list[Entity]) -> list[dict[str, Any]]:
-        """Convert entities to a shortened format.
-
-        Transforms Entity objects into dictionaries with short field names,
-        suitable for efficient storage and transmission.
-
-        Args:
-            entities: List of Entity objects
-
-        Returns:
-            List[Dict[str, Any]]: Entities with fields renamed to:
-                t (text), l (labels), s (start), e (end), c (confidence)
-
-        """
-        return [
-            {
-                "t": entity.text,
-                "l": entity.labels,
-                "s": entity.start_pos,
-                "e": entity.end_pos,
-                "c": entity.confidence,
-            }
-            for entity in entities
-        ]
+# Keep existing Entity and Token classes for backward compatibility
+Entity = EntitySpan  # Alias for backward compatibility
 
 
-class TokenizationModel(BaseModel):
-    """Base class for tokenization models.
-
-    Extends the BaseModel with methods specific to text tokenization,
-    defining the interface for breaking text into tokens.
-    """
-
-    @abstractmethod
-    def tokenize(self, text: str) -> list[Token]:
-        """Tokenize text.
-
-        Implementations should process the input text and break it into tokens
-        with their positions and optional confidence scores.
-
-        Args:
-            text: Input text to tokenize
-
-        Returns:
-            List[Token]: List of extracted tokens
-
-        """
-        pass
-
-
-class EmbeddingsModel(BaseModel):
-    """Base class for text embedding models.
-
-    Extends the BaseModel with methods for generating vector representations
-    of text, including single and batch processing capabilities.
-    """
-
-    @abstractmethod
-    def embed_text(self, text: str) -> Optional[np.ndarray]:
-        """Generate embeddings for a single text.
-
-        Implementations should convert the input text into a numerical vector
-        representation using the underlying embedding model.
-
-        Args:
-            text: Input text to embed
-
-        Returns:
-            Optional[np.ndarray]: Embedding vector or None if failed
-
-        """
-        pass
-
-    @abstractmethod
-    def embed_batch(self, texts: list[str]) -> list[Optional[np.ndarray]]:
-        """Generate embeddings for a batch of texts.
-
-        Implementations should efficiently process multiple texts at once,
-        taking advantage of batching optimizations when available.
-
-        Args:
-            texts: List of texts to embed
-
-        Returns:
-            List[Optional[np.ndarray]]: List of embedding vectors, with None for any failures
-
-        """
-        pass
-
-    @abstractmethod
-    def get_dimension(self) -> int:
-        """Get the dimensionality of the embedding vectors.
-
-        Returns:
-            int: Dimension of embedding vectors
-
-        """
-        pass
-
-    def save_embeddings(
-        self,
-        embeddings: list[tuple[str, np.ndarray]],
-        output_path: str,
-        format: str = "vec",
-    ) -> bool:
-        """Save embeddings to a file.
-
-        Writes embedding vectors to a file in the specified format,
-        supporting common embedding formats.
-
-        Args:
-            embeddings: List of (text, vector) tuples
-            output_path: Path to save the embeddings
-            format: Format to save in ('vec', 'txt', 'binary')
-
-        Returns:
-            bool: True if successful, False otherwise
-
-        Raises:
-            ValueError: If an unsupported format is specified
-
-        """
-        if not embeddings:
-            return False
-
+class GPUMemoryManager:
+    """GPU memory management utilities."""
+    
+    @staticmethod
+    def clear_cache():
+        """Clear GPU cache."""
         try:
-            if format.lower() == "vec":
-                # FastText .vec format
-                with open(output_path, "w", encoding="utf-8") as f:
-                    f.write(f"{len(embeddings)} {self.get_dimension()}\n")
-                    for text, vector in embeddings:
-                        vector_str = " ".join(map(str, vector.tolist()))
-                        f.write(f"{text} {vector_str}\n")
-            elif format.lower() == "txt":
-                # Word2Vec text format
-                with open(output_path, "w", encoding="utf-8") as f:
-                    f.write(f"{len(embeddings)} {self.get_dimension()}\n")
-                    for text, vector in embeddings:
-                        vector_str = " ".join(map(str, vector.tolist()))
-                        f.write(f"{text} {vector_str}\n")
-            elif format.lower() == "binary":
-                # Numpy binary format
-                texts = [text for text, _ in embeddings]
-                vectors = np.array([vector for _, vector in embeddings])
-                np.savez(output_path, texts=texts, vectors=vectors)
-            else:
-                raise ValueError(f"Unsupported format: {format}")
-
-            return True
-        except Exception as e:
-            # Use logger instead of print for consistency
-            from ..core.logging import get_logger
-
-            logger = get_logger(__name__)
-            logger.error(f"Error saving embeddings: {e}")
-            return False
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
+    
+    @staticmethod
+    def get_memory_info() -> Dict[str, float]:
+        """Get GPU memory information."""
+        try:
+            import torch
+            if torch.cuda.is_available():
+                device = torch.cuda.current_device()
+                total = torch.cuda.get_device_properties(device).total_memory / (1024**3)
+                reserved = torch.cuda.memory_reserved(device) / (1024**3)
+                allocated = torch.cuda.memory_allocated(device) / (1024**3)
+                free = total - allocated
+                return {
+                    "total": total,
+                    "reserved": reserved,
+                    "allocated": allocated,
+                    "free": free
+                }
+        except ImportError:
+            pass
+        return {}
+    
+    @staticmethod
+    def optimize_batch_size(base_batch_size: int, memory_threshold: float = 0.8) -> int:
+        """Optimize batch size based on available memory."""
+        memory_info = GPUMemoryManager.get_memory_info()
+        if memory_info:
+            utilization = memory_info["allocated"] / memory_info["total"]
+            if utilization > memory_threshold:
+                return max(1, base_batch_size // 2)
+            elif utilization < 0.5:
+                return min(base_batch_size * 2, 128)
+        return base_batch_size
