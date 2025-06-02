@@ -29,13 +29,24 @@ import {
 import { ComprehensiveStats } from '../types';
 import { formatNumber } from '../utils/formatters';
 
+/**
+ * Props for SolrDatabaseStatus component.
+ * - `comprehensiveStats`: Complete status information for all Solr databases and collections.
+ */
 interface SolrDatabaseStatusProps {
   comprehensiveStats: ComprehensiveStats;
 }
 
+/**
+ * Displays status, metrics, and collection details for all Solr databases.
+ * Collapsible for showing/hiding collection details.
+ */
 export const SolrDatabaseStatus: React.FC<SolrDatabaseStatusProps> = ({ comprehensiveStats }) => {
   const [showSolrDetails, setShowSolrDetails] = useState<boolean>(false);
 
+  /**
+   * Returns an icon based on Solr database status.
+   */
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'online':
@@ -49,6 +60,9 @@ export const SolrDatabaseStatus: React.FC<SolrDatabaseStatusProps> = ({ comprehe
     }
   };
 
+  /**
+   * Returns a color name for MUI Chip based on status.
+   */
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'online':

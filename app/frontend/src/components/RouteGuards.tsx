@@ -1,10 +1,22 @@
-// app/frontend/src/components/RouteGuards.tsx
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { CircularProgress, Box, Typography } from '@mui/material';
 
-export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+/**
+ * Props for ProtectedRoute and PublicRoute components.
+ * - `children`: Content to render if access is allowed.
+ */
+interface RouteGuardProps {
+  children: React.ReactNode;
+}
+
+/**
+ * Protects a route by requiring authentication.
+ * - Shows a loading spinner while auth status is pending.
+ * - Redirects to /login if not authenticated, preserving the attempted location.
+ */
+export const ProtectedRoute = ({ children }: RouteGuardProps) => {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
@@ -37,8 +49,12 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Remove the automatic redirect for public routes - let individual pages handle it
-export const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+/**
+ * Allows public (unauthenticated) access.
+ * - Shows a loading spinner while auth status is pending.
+ * - Never redirects; public pages are responsible for handling their own auth logic.
+ */
+export const PublicRoute = ({ children }: RouteGuardProps) => {
   const { isLoading } = useAuth();
 
   // Show loading while checking authentication

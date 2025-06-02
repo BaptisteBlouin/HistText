@@ -1,6 +1,9 @@
-// app/frontend/src/containers/admin/components/dashboard/hooks/useComponentRefresh.tsx
 import { useState, useCallback, useRef } from 'react';
 
+/**
+ * Represents the refresh/loading/error state for a set of components.
+ * Keys are component IDs.
+ */
 interface RefreshState {
   [componentId: string]: {
     loading: boolean;
@@ -9,10 +12,25 @@ interface RefreshState {
   };
 }
 
+/**
+ * useComponentRefresh
+ * Custom hook to manage refresh and loading state for multiple dashboard components.
+ * Provides abort support and per-component tracking.
+ *
+ * @returns {
+ *   refreshComponent: Triggers refresh for a component with loading/error tracking,
+ *   cancelRefresh: Cancels refresh for a component,
+ *   getRefreshState: Gets state for a component,
+ *   refreshStates: All refresh states.
+ * }
+ */
 export const useComponentRefresh = () => {
   const [refreshStates, setRefreshStates] = useState<RefreshState>({});
   const abortControllersRef = useRef<{ [key: string]: AbortController }>({});
 
+  /**
+   * Updates the refresh state for a single component.
+   */
   const updateRefreshState = useCallback((componentId: string, updates: Partial<RefreshState[string]>) => {
     setRefreshStates(prev => ({
       ...prev,
@@ -23,6 +41,10 @@ export const useComponentRefresh = () => {
     }));
   }, []);
 
+  /**
+   * Triggers a refresh for the specified component.
+   * Handles aborting any previous refresh and updates loading/error state.
+   */
   const refreshComponent = useCallback(async (
     componentId: string,
     refreshFn: () => Promise<void>
@@ -66,6 +88,9 @@ export const useComponentRefresh = () => {
     }
   }, [updateRefreshState]);
 
+  /**
+   * Cancels the refresh process for a given component.
+   */
   const cancelRefresh = useCallback((componentId: string) => {
     if (abortControllersRef.current[componentId]) {
       abortControllersRef.current[componentId].abort();
@@ -75,6 +100,9 @@ export const useComponentRefresh = () => {
     updateRefreshState(componentId, { loading: false });
   }, [updateRefreshState]);
 
+  /**
+   * Returns the refresh state for a given component.
+   */
   const getRefreshState = useCallback((componentId: string) => {
     return refreshStates[componentId] || {
       loading: false,

@@ -1,4 +1,3 @@
-// app/frontend/src/containers/admin/components/dashboard/components/PerformanceMonitor.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Card,
@@ -17,6 +16,14 @@ import {
   Timer,
 } from '@mui/icons-material';
 
+/**
+ * Metrics tracked by the PerformanceMonitor.
+ * - `renderTime`: Time to render a frame, ms.
+ * - `memoryUsage`: JS heap used (MB).
+ * - `networkLatency`: Ping to /api/health (ms).
+ * - `componentCount`: DOM elements (approx. React components).
+ * - `lastUpdate`: Time metrics were last updated.
+ */
 interface PerformanceMetrics {
   renderTime: number;
   memoryUsage: number;
@@ -25,6 +32,11 @@ interface PerformanceMetrics {
   lastUpdate: Date;
 }
 
+/**
+ * Displays live UI performance metrics for dashboard health monitoring.
+ * Tracks render time, memory usage, network latency, and DOM size.
+ * Shows warnings if thresholds are exceeded.
+ */
 export const PerformanceMonitor: React.FC = () => {
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
     renderTime: 0,
@@ -83,6 +95,9 @@ export const PerformanceMonitor: React.FC = () => {
     };
   }, []);
 
+  /**
+   * Returns a color name based on value thresholds for display on chips.
+   */
   const getPerformanceColor = (value: number, thresholds: { good: number; warning: number }) => {
     if (value <= thresholds.good) return 'success';
     if (value <= thresholds.warning) return 'warning';

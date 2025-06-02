@@ -44,12 +44,18 @@ import Autocomplete from '@mui/material/Autocomplete';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
+/**
+ * User-permission assignment record.
+ */
 interface UserPermission {
   user_id: number;
   permission: string;
   created_at: string;
 }
 
+/**
+ * Minimal user profile for permission assignment.
+ */
 interface User {
   id: number;
   email: string;
@@ -57,12 +63,18 @@ interface User {
   lastname?: string;
 }
 
+/**
+ * Notification state for feedback banners.
+ */
 interface NotificationState {
   open: boolean;
   message: string;
   severity: 'success' | 'error' | 'warning' | 'info';
 }
 
+/**
+ * Axios instance factory with automatic Authorization header from useAuth.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -80,6 +92,10 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * User permission management panel. 
+ * Lists, assigns, and removes user-permission links.
+ */
 const UserPermissions: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
@@ -104,11 +120,17 @@ const UserPermissions: React.FC = () => {
     fetchUsers();
   }, []);
 
+  /**
+   * Utility to show a feedback message.
+   */
   const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
     setNotification({ open: true, message, severity });
     setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
   };
 
+  /**
+   * Loads user-permission assignments from the API.
+   */
   const fetchPermissions = async () => {
     try {
       setLoading(true);
@@ -117,7 +139,8 @@ const UserPermissions: React.FC = () => {
         (item: UserPermission) => item.user_id !== undefined && item.permission,
       );
       setPermissions(valid);
-      const perms = Array.from(new Set(valid.map(item => item.permission)));
+      const perms = Array.from(new Set(valid.map((item: UserPermission) => item.permission)))
+        .filter((p): p is string => typeof p === 'string');
       setAvailablePermissions(perms);
     } catch (err) {
       console.error('Fetch permissions failed:', err);
@@ -128,6 +151,9 @@ const UserPermissions: React.FC = () => {
     }
   };
 
+  /**
+   * Loads user list from the API.
+   */
   const fetchUsers = async () => {
     try {
       const { data } = await authAxios.get('/api/users');
@@ -139,6 +165,9 @@ const UserPermissions: React.FC = () => {
     }
   };
 
+  /**
+   * Adds a new user-permission link via API.
+   */
   const handleAdd = async () => {
     if (!formState.user_id || !formState.permission) {
       showNotification('User and permission are required', 'warning');
@@ -155,6 +184,9 @@ const UserPermissions: React.FC = () => {
     }
   };
 
+  /**
+   * Deletes a user-permission link.
+   */
   const handleDelete = async (userId: number, permission: string) => {
     try {
       await authAxios.delete(`/api/user_permissions/${userId}/${encodeURIComponent(permission)}`);
@@ -168,6 +200,9 @@ const UserPermissions: React.FC = () => {
     }
   };
 
+  /**
+   * Formats a user's display name for grid or dialog use.
+   */
   const getUserDisplayName = (userId: number) => {
     const user = users.find(u => u.id === userId);
     if (!user) return `User ${userId}`;
@@ -175,6 +210,9 @@ const UserPermissions: React.FC = () => {
     return fullName || user.email;
   };
 
+  /**
+   * Generates avatar initials for a user.
+   */
   const getUserInitials = (userId: number) => {
     const user = users.find(u => u.id === userId);
     if (!user) return '?';
@@ -184,6 +222,9 @@ const UserPermissions: React.FC = () => {
     return user.email.charAt(0).toUpperCase();
   };
 
+  /**
+   * Chooses a MUI color for a permission string.
+   */
   const getPermissionColor = (permission: string) => {
     if (permission.includes('read') || permission.includes('view')) return 'info';
     if (permission.includes('write') || permission.includes('create')) return 'success';

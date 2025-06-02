@@ -1,4 +1,3 @@
-// app/frontend/src/containers/admin/components/dashboard/components/ApiAnalytics.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Card,
@@ -35,6 +34,13 @@ import { RequestAnalytics } from '../types';
 import { formatNumber } from '../utils/formatters';
 import { useAnalytics } from '../hooks/useAnalytics';
 
+/**
+ * Props for ApiAnalytics component.
+ * - `autoRefresh`: If true, periodically refreshes analytics data.
+ * - `refreshInterval`: Refresh period in ms (default: 60000).
+ * - `onToggle`: Callback when user toggles analytics visibility.
+ * - `isVisible`: Controlled visibility (overrides internal state).
+ */
 interface ApiAnalyticsProps {
   autoRefresh?: boolean;
   refreshInterval?: number;
@@ -42,6 +48,14 @@ interface ApiAnalyticsProps {
   isVisible?: boolean;
 }
 
+/**
+ * Analytics dashboard card for API usage and health.
+ * Displays key stats, endpoint tables, trends, and handles auto-refresh.
+ * @param autoRefresh If true, analytics auto-refreshes every `refreshInterval` ms.
+ * @param refreshInterval Interval for auto-refresh in ms.
+ * @param onToggle Callback for visibility toggle.
+ * @param isVisible Controlled visibility (overrides internal state).
+ */
 export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
   autoRefresh = false,
   refreshInterval = 60000,
@@ -60,9 +74,9 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
     analytics,
     analyticsLoading,
     fetchAnalytics,
-  } = useAnalytics(accessToken || null, isVisible); // Fixed: provide both arguments
+  } = useAnalytics(accessToken || null, isVisible);
 
-  // Auto-refresh logic
+  // Auto-refresh logic for analytics polling
   useEffect(() => {
     if (autoRefresh && isVisible && !analyticsLoading) {
       intervalRef.current = setInterval(() => {
@@ -77,22 +91,24 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
     }
   }, [autoRefresh, isVisible, analyticsLoading, refreshInterval, fetchAnalytics]);
 
-  // Track changes for trend indicators
+  // Track analytics for trend comparisons
   useEffect(() => {
     if (analytics && previousData) {
-      // You can add notification logic here for significant changes
+      // Custom notification or side effects could go here
     }
     if (analytics) {
       setPreviousData(analytics);
     }
   }, [analytics, previousData]);
 
+  /**
+   * Returns a trend Chip for percentage change, if above threshold.
+   */
   const getTrendIndicator = (current: number, previous: number) => {
     if (!previous) return null;
     const change = ((current - previous) / previous) * 100;
-    
     if (Math.abs(change) < 5) return null; // No significant change
-    
+
     return (
       <Chip
         icon={change > 0 ? <TrendingUp /> : <TrendingDown />}
@@ -104,13 +120,17 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
     );
   };
 
+  /**
+   * Handles toggling analytics visibility.
+   * If becoming visible for first time, triggers a fetch.
+   */
   const handleToggle = () => {
     if (onToggle) {
       onToggle();
     } else {
       const newVisible = !internalIsVisible;
       setInternalIsVisible(newVisible);
-      
+
       if (newVisible && !analytics) {
         fetchAnalytics();
       }

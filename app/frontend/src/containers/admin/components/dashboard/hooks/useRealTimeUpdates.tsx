@@ -1,6 +1,9 @@
-// app/frontend/src/containers/admin/components/dashboard/hooks/useRealTimeUpdates.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 
+/**
+ * Configuration for useRealTimeUpdates.
+ * Each handler is called when the corresponding real-time event occurs.
+ */
 interface RealTimeConfig {
   onStatsUpdate?: () => void;
   onEmbeddingUpdate?: () => void;
@@ -8,6 +11,24 @@ interface RealTimeConfig {
   onUserActivityUpdate?: () => void;
 }
 
+/**
+ * useRealTimeUpdates
+ *
+ * Establishes a WebSocket connection to receive live dashboard updates.
+ * Handles reconnection, heartbeat/ping, and triggers callback handlers on update events.
+ *
+ * @param accessToken  The JWT/authorization token.
+ * @param enabled      If true, will connect and listen.
+ * @param config       Handlers for each event type.
+ *
+ * @returns {
+ *   isConnected: boolean,
+ *   lastUpdate: Date | null,
+ *   error: string | null,
+ *   connect: Function to manually connect,
+ *   disconnect: Function to manually disconnect
+ * }
+ */
 export const useRealTimeUpdates = (
   accessToken: string | null,
   enabled: boolean,
@@ -20,6 +41,9 @@ export const useRealTimeUpdates = (
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  /**
+   * Initiates or re-establishes a WebSocket connection.
+   */
   const connect = useCallback(() => {
     if (!accessToken || wsRef.current?.readyState === WebSocket.OPEN) {
       return;
@@ -102,6 +126,9 @@ export const useRealTimeUpdates = (
     }
   }, [accessToken, enabled, config]);
 
+  /**
+   * Disconnects and cleans up the WebSocket and timers.
+   */
   const disconnect = useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close();

@@ -51,6 +51,9 @@ interface SolrDatabase {
   name: string;
 }
 
+/**
+ * Maps argument names to help descriptions for CLI generation.
+ */
 const ARG_DESCRIPTIONS: Record<string, string> = {
   'solr-host': 'Solr host (default: localhost)',
   'solr-port': 'Solr port (default: 8983)',
@@ -62,6 +65,11 @@ const ARG_DESCRIPTIONS: Record<string, string> = {
   'no-header': 'Skip header in output file',
 };
 
+/**
+ * useAuthAxios
+ * 
+ * Returns an Axios instance with the correct Authorization header.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -79,6 +87,15 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * ComputeWordEmbeddings
+ * 
+ * UI for generating a command-line call to compute word embeddings from a Solr collection.
+ * 
+ * - Loads databases and collections from API.
+ * - Allows configuration of all options.
+ * - Generates and displays the full CLI command for the user.
+ */
 const ComputeWordEmbeddings: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
@@ -103,6 +120,7 @@ const ComputeWordEmbeddings: React.FC = () => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Load available Solr databases from API
   useEffect(() => {
     authAxios
       .get('/api/solr_databases')
@@ -110,6 +128,7 @@ const ComputeWordEmbeddings: React.FC = () => {
       .catch(() => setSolrDatabases([]));
   }, [authAxios]);
 
+  // Load collection aliases when a database is selected
   useEffect(() => {
     if (!selectedSolrDb) {
       setAliases([]);
@@ -126,6 +145,7 @@ const ComputeWordEmbeddings: React.FC = () => {
     setOutputName('');
   }, [selectedSolrDb, authAxios]);
 
+  // Load available fields when a collection is chosen
   useEffect(() => {
     if (!collectionName) {
       setAvailableFields([]);
@@ -170,6 +190,9 @@ const ComputeWordEmbeddings: React.FC = () => {
       .finally(() => setLoading(false));
   }, [selectedSolrDb, collectionName, authAxios, textField]);
 
+  /**
+   * Form is valid if all required fields are set.
+   */
   const isFormValid = useMemo(() => {
     return (
       !!collectionName &&
@@ -181,6 +204,9 @@ const ComputeWordEmbeddings: React.FC = () => {
     );
   }, [collectionName, textField, outputDir, outputName, solrHost, solrPort]);
 
+  /**
+   * Generates the embeddings command and stores it in state.
+   */
   const handleGenerate = () => {
     let embeddingsCmd = `python -m histtext_toolkit.main --solr-host ${solrHost} --solr-port ${solrPort} compute-word-embeddings "${collectionName}" "${outputDir}/${outputName}" --text-field "${textField}"`;
 
@@ -193,6 +219,7 @@ const ComputeWordEmbeddings: React.FC = () => {
   return (
     <Fade in={true} timeout={600}>
       <Box>
+        {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -210,6 +237,7 @@ const ComputeWordEmbeddings: React.FC = () => {
           </Tooltip>
         </Box>
 
+        {/* Main Configuration Form */}
         <Card sx={{ mb: 4 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -218,6 +246,7 @@ const ComputeWordEmbeddings: React.FC = () => {
             </Typography>
             {loading && <LinearProgress sx={{ mb: 2 }} />}
             <Grid container spacing={3}>
+              {/* Solr Database Selection */}
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required error={!selectedSolrDb}>
                   <InputLabel>Solr Database</InputLabel>
@@ -243,6 +272,7 @@ const ComputeWordEmbeddings: React.FC = () => {
                 </FormControl>
               </Grid>
 
+              {/* Collection Name (alias) Selection */}
               <Grid item xs={12} md={6}>
                 <Autocomplete
                   freeSolo
@@ -263,6 +293,7 @@ const ComputeWordEmbeddings: React.FC = () => {
                 />
               </Grid>
 
+              {/* Solr Host */}
               <Grid item xs={12} md={3}>
                 <TextField
                   label="Solr Host"
@@ -275,6 +306,7 @@ const ComputeWordEmbeddings: React.FC = () => {
                 />
               </Grid>
 
+              {/* Solr Port */}
               <Grid item xs={12} md={3}>
                 <TextField
                   label="Solr Port"
@@ -288,6 +320,7 @@ const ComputeWordEmbeddings: React.FC = () => {
                 />
               </Grid>
 
+              {/* Output Directory */}
               <Grid item xs={12} md={3}>
                 <TextField
                   label="Output Directory"
@@ -300,6 +333,7 @@ const ComputeWordEmbeddings: React.FC = () => {
                 />
               </Grid>
 
+              {/* Output Name */}
               <Grid item xs={12} md={3}>
                 <TextField
                   label="Output Name"
@@ -312,6 +346,7 @@ const ComputeWordEmbeddings: React.FC = () => {
                 />
               </Grid>
 
+              {/* Text Field (from Solr collection metadata) */}
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
                   <InputLabel>Text Field</InputLabel>
@@ -335,6 +370,7 @@ const ComputeWordEmbeddings: React.FC = () => {
                 </FormControl>
               </Grid>
 
+              {/* Extra options */}
               <Grid item xs={12} md={6}>
                 <Stack spacing={2}>
                   <FormControlLabel
@@ -350,6 +386,7 @@ const ComputeWordEmbeddings: React.FC = () => {
                 </Stack>
               </Grid>
 
+              {/* Generate Command Button */}
               <Grid item xs={12}>
                 <Button
                   variant="contained"
@@ -372,6 +409,7 @@ const ComputeWordEmbeddings: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* CLI Help Dialog */}
         <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="md" fullWidth>
           <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Help />
@@ -401,6 +439,7 @@ const ComputeWordEmbeddings: React.FC = () => {
           </DialogActions>
         </Dialog>
 
+        {/* Generated Command Output */}
         {embeddingsCommand && (
           <Card>
             <CardContent>

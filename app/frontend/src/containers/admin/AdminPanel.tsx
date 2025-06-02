@@ -50,6 +50,9 @@ const PrecomputeNER = React.lazy(() => import('./components/PrecomputedNER'));
 const TokenizeSolr = React.lazy(() => import('./components/TokenizeSolr'));
 const ComputeWordEmbeddings = React.lazy(() => import('./components/ComputeWordEmbeddings'));
 
+/**
+ * Component displaying the Markdown-based system documentation.
+ */
 const ReadMeTab: React.FC = () => {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -205,7 +208,13 @@ const ReadMeTab: React.FC = () => {
   );
 };
 
+/**
+ * Component for linking to Swagger/OpenAPI API documentation.
+ */
 const ApiDocumentation: React.FC = () => {
+  /**
+   * Opens Swagger UI in a new tab.
+   */
   const handleOpenApiDocs = () => {
     window.open('/swagger-ui/', '_blank');
   };
@@ -257,6 +266,10 @@ const ApiDocumentation: React.FC = () => {
   );
 };
 
+/**
+ * Main admin panel component for the application.
+ * Handles tab selection, sidebar layout, and content rendering.
+ */
 const AdminPanel: React.FC = () => {
   useAuthCheck();
   const auth = useAuth();
@@ -264,6 +277,7 @@ const AdminPanel: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isAdmin = auth.session?.hasRole('Admin');
 
+  // State for tab selections and mobile drawer.
   const [mainTab, setMainTab] = useState<number>(() => {
     const storedTab = localStorage.getItem('adminMainTab');
     return storedTab ? parseInt(storedTab, 10) : 0;
@@ -271,6 +285,9 @@ const AdminPanel: React.FC = () => {
   const [subTab, setSubTab] = useState<number>(0);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+  /**
+   * Handle selection of main navigation tab.
+   */
   const handleMainTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setMainTab(newValue);
     localStorage.setItem('adminMainTab', newValue.toString());
@@ -278,10 +295,14 @@ const AdminPanel: React.FC = () => {
     if (isMobile) setMobileDrawerOpen(false);
   };
 
+  /**
+   * Handle selection of subtabs within a section.
+   */
   const handleSubTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setSubTab(newValue);
   };
 
+  // Tab definitions for main navigation and subtabs.
   const mainTabs = [
     { label: 'Dashboard', icon: <DashboardIcon />, color: 'primary' },
     { label: 'User Management', icon: <People />, color: 'secondary' },
@@ -309,6 +330,7 @@ const AdminPanel: React.FC = () => {
     { label: 'Word Embeddings', component: ComputeWordEmbeddings },
   ];
 
+  // Authentication checks
   if (!auth.session) {
     return (
       <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
@@ -337,6 +359,9 @@ const AdminPanel: React.FC = () => {
     );
   }
 
+  /**
+   * Renders the main panel content depending on the current tab.
+   */
   const renderContent = () => {
     switch (mainTab) {
       case 0:
@@ -432,6 +457,7 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  // Sidebar (drawer or permanent) navigation content
   const sidebarContent = (
     <Box sx={{ width: 280, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider' }}>

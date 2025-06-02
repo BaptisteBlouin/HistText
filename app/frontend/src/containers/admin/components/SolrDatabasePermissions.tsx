@@ -39,7 +39,6 @@ import {
   Storage,
   VpnKey,
   Refresh,
-  SelectAll,
   CheckBox,
   CheckBoxOutlineBlank
 } from '@mui/icons-material';
@@ -47,6 +46,7 @@ import Autocomplete from '@mui/material/Autocomplete';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
+/** Represents a collection permission entry. */
 interface SolrDatabasePermission {
   solr_database_id: number;
   collection_name: string;
@@ -54,17 +54,22 @@ interface SolrDatabasePermission {
   created_at: string;
 }
 
+/** Represents a Solr database object. */
 interface SolrDatabase {
   id: number;
   name: string;
 }
 
+/** Snackbar notification state. */
 interface NotificationState {
   open: boolean;
   message: string;
   severity: 'success' | 'error' | 'warning' | 'info';
 }
 
+/**
+ * Custom axios instance with auth header.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -82,11 +87,18 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * SolrDatabasePermissions:
+ * Admin UI to assign or revoke permissions for collections in Solr databases.
+ */
 const SolrDatabasePermissions: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // ----------------
+  // State management
+  // ----------------
   const [permissions, setPermissions] = useState<SolrDatabasePermission[]>([]);
   const [databases, setDatabases] = useState<SolrDatabase[]>([]);
   const [selectedDatabase, setSelectedDatabase] = useState<SolrDatabase | null>(null);
@@ -104,11 +116,17 @@ const SolrDatabasePermissions: React.FC = () => {
     severity: 'info'
   });
 
+  // --------
+  // Effects
+  // --------
+
+  /** Initial load of all permissions and database options. */
   useEffect(() => {
     fetchPermissions();
     fetchDatabases();
   }, []);
 
+  /** When DB changes, load collections (aliases) for that DB. */
   useEffect(() => {
     if (selectedDatabase) {
       authAxios
@@ -121,19 +139,29 @@ const SolrDatabasePermissions: React.FC = () => {
     setSelectedCollections([]);
   }, [selectedDatabase]);
 
+  // -----------
+  // Functions
+  // -----------
+
+  /**
+   * Snackbar notification helper.
+   */
   const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
     setNotification({ open: true, message, severity });
     setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
   };
 
+  /**
+   * Fetch all permission assignments.
+   */
   const fetchPermissions = async () => {
     try {
       setLoading(true);
       const { data } = await authAxios.get('/api/solr_database_permissions');
       setPermissions(data);
       const perms = Array.from(
-        new Set(data.map((item: SolrDatabasePermission) => item.permission)),
-      );
+        new Set((data as SolrDatabasePermission[]).map((item) => item.permission))
+      ) as string[];
       setAvailablePermissions(perms);
     } catch (error) {
       console.error('Failed to fetch permissions:', error);
@@ -144,6 +172,9 @@ const SolrDatabasePermissions: React.FC = () => {
     }
   };
 
+  /**
+   * Fetch all databases for selection.
+   */
   const fetchDatabases = async () => {
     try {
       const { data } = await authAxios.get('/api/solr_databases');
@@ -155,10 +186,16 @@ const SolrDatabasePermissions: React.FC = () => {
     }
   };
 
+  /**
+   * Select/deselect all collections for the selected DB.
+   */
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedCollections(e.target.checked ? aliases : []);
   };
 
+  /**
+   * Assign the selected permission to all chosen collections.
+   */
   const handleAdd = async () => {
     if (!selectedDatabase || !newPermission.trim() || selectedCollections.length === 0) {
       showNotification('All fields are required', 'warning');
@@ -184,6 +221,9 @@ const SolrDatabasePermissions: React.FC = () => {
     }
   };
 
+  /**
+   * Delete a permission assignment for a collection.
+   */
   const handleDelete = async (id: number, collection: string, permission: string) => {
     try {
       await authAxios.delete(
@@ -199,15 +239,18 @@ const SolrDatabasePermissions: React.FC = () => {
     }
   };
 
+  /** Filter permissions by search term. */
   const filteredPermissions = permissions.filter(p =>
     `${p.collection_name} ${p.permission}`.toLowerCase().includes(search.toLowerCase()),
   );
 
+  /** Helper: get DB name by ID. */
   const getDatabaseName = (id: number) => {
     const db = databases.find(d => d.id === id);
     return db ? db.name : `Database ${id}`;
   };
 
+  /** Helper: choose a Chip color for permission. */
   const getPermissionColor = (permission: string) => {
     if (permission.includes('read') || permission.includes('view')) return 'info';
     if (permission.includes('write') || permission.includes('create')) return 'success';
@@ -216,6 +259,9 @@ const SolrDatabasePermissions: React.FC = () => {
     return 'default';
   };
 
+  // -------------------
+  // DataGrid columns
+  // -------------------
   const columns: GridColDef[] = [
     { 
       field: 'solr_database_id', 
@@ -296,9 +342,13 @@ const SolrDatabasePermissions: React.FC = () => {
     },
   ];
 
+  // ------
+  // Render
+  // ------
   return (
     <Fade in={true} timeout={600}>
       <Box>
+        {/* Snackbar notification */}
         {notification.open && (
           <Alert 
             severity={notification.severity} 
@@ -309,6 +359,7 @@ const SolrDatabasePermissions: React.FC = () => {
           </Alert>
         )}
 
+        {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -326,6 +377,7 @@ const SolrDatabasePermissions: React.FC = () => {
           </Tooltip>
         </Box>
 
+        {/* Permission assignment form */}
         <Card sx={{ mb: 4 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -333,6 +385,7 @@ const SolrDatabasePermissions: React.FC = () => {
               Assign Permissions
             </Typography>
             <Grid container spacing={3}>
+              {/* Database selection */}
               <Grid item xs={12} md={4}>
                 <FormControl fullWidth>
                   <InputLabel>Database</InputLabel>
@@ -355,7 +408,7 @@ const SolrDatabasePermissions: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
- 
+              {/* Collections (multi) */}
               <Grid item xs={12} md={4}>
                 <FormControl fullWidth>
                   <InputLabel>Collections</InputLabel>
@@ -396,7 +449,7 @@ const SolrDatabasePermissions: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
- 
+              {/* Permission name */}
               <Grid item xs={12} md={4}>
                 <Autocomplete
                   freeSolo
@@ -412,7 +465,7 @@ const SolrDatabasePermissions: React.FC = () => {
                   )}
                 />
               </Grid>
- 
+              {/* Add button */}
               <Grid item xs={12}>
                 <Button 
                   variant="contained" 
@@ -433,7 +486,8 @@ const SolrDatabasePermissions: React.FC = () => {
             </Grid>
           </CardContent>
         </Card>
- 
+
+        {/* Search */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <TextField
@@ -451,7 +505,8 @@ const SolrDatabasePermissions: React.FC = () => {
             />
           </CardContent>
         </Card>
- 
+
+        {/* Permissions table */}
         <Paper sx={{ height: 600, borderRadius: 3, overflow: 'hidden' }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -475,7 +530,8 @@ const SolrDatabasePermissions: React.FC = () => {
             />
           )}
         </Paper>
- 
+
+        {/* Confirm delete dialog */}
         <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
           <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
             <Delete />
@@ -507,6 +563,6 @@ const SolrDatabasePermissions: React.FC = () => {
       </Box>
     </Fade>
   );
- };
- 
- export default SolrDatabasePermissions;
+};
+
+export default SolrDatabasePermissions;

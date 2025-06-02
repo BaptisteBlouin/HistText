@@ -23,6 +23,19 @@ import {
 import { DetailedEmbeddingStats, AdvancedCacheStats } from '../types';
 import { formatBytes, formatPercentage, formatNumber } from '../utils/formatters';
 
+/**
+ * Props for EmbeddingCacheManagement component.
+ * - `embeddingDetails`: Basic embedding cache stats.
+ * - `advancedStats`: Advanced system/cache stats.
+ * - `detailsLoading`: True while loading embedding details.
+ * - `advancedLoading`: True while loading advanced stats.
+ * - `showEmbeddingDetails`: Toggle for showing embedding details.
+ * - `showAdvancedStats`: Toggle for showing advanced stats.
+ * - `onToggleEmbeddingDetails`: Handler for toggling embedding details.
+ * - `onToggleAdvancedStats`: Handler for toggling advanced stats.
+ * - `onClearCache`: Handler for clearing cache.
+ * - `onResetMetrics`: Handler for resetting metrics.
+ */
 interface EmbeddingCacheManagementProps {
   embeddingDetails: DetailedEmbeddingStats | null;
   advancedStats: AdvancedCacheStats | null;
@@ -36,6 +49,11 @@ interface EmbeddingCacheManagementProps {
   onResetMetrics: () => void;
 }
 
+/**
+ * Renders UI for inspecting and managing the embedding cache and related system stats.
+ * Includes actions for clearing cache and resetting metrics.
+ * Supports basic and advanced stats sections, each collapsible.
+ */
 export const EmbeddingCacheManagement: React.FC<EmbeddingCacheManagementProps> = ({
   embeddingDetails,
   advancedStats,

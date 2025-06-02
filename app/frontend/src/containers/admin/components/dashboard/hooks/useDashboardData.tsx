@@ -1,14 +1,20 @@
-// app/frontend/src/containers/admin/components/dashboard/hooks/useDashboardData.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { ComprehensiveStats, LegacyStats, DetailedEmbeddingStats, AdvancedCacheStats } from '../types';
 
+/**
+ * Internal cache entry for dashboard API responses.
+ */
 interface CacheEntry {
   data: any;
   timestamp: number;
   expiresAt: number;
 }
 
+/**
+ * Return value of useDashboardData hook.
+ * - Includes all API-provided stats and utility flags/functions for loading/error/caching/refresh.
+ */
 interface UseDashboardDataReturn {
   comprehensiveStats: ComprehensiveStats | null;
   legacyStats: LegacyStats | null;
@@ -35,6 +41,16 @@ const CACHE_KEYS = {
   ADVANCED: 'dashboard_advanced',
 } as const;
 
+/**
+ * useDashboardData
+ * 
+ * Provides comprehensive dashboard data with automatic caching, stale-checking, 
+ * fallback to legacy endpoints, and utility methods for refreshing and clearing state.
+ * Caches responses in-memory and in localStorage for 5 minutes.
+ * 
+ * @param accessToken The user access token for API authorization.
+ * @returns See UseDashboardDataReturn.
+ */
 export const useDashboardData = (accessToken: string | null): UseDashboardDataReturn => {
   // State variables
   const [comprehensiveStats, setComprehensiveStats] = useState<ComprehensiveStats | null>(null);
@@ -51,13 +67,18 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
   const cacheRef = useRef<{ [key: string]: CacheEntry }>({});
   const isMountedRef = useRef<boolean>(true);
 
-  // Helper functions
+  /**
+   * Returns true if a given cache entry is still valid.
+   */
   const isDataFresh = useCallback((key: string): boolean => {
     const cached = cacheRef.current[key];
     if (!cached) return false;
     return Date.now() < cached.expiresAt;
   }, []);
 
+  /**
+   * Gets a cached value by key, only if not expired.
+   */
   const getCachedData = useCallback((key: string): any => {
     const cached = cacheRef.current[key];
     if (!cached || Date.now() >= cached.expiresAt) {
@@ -66,6 +87,9 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     return cached.data;
   }, []);
 
+  /**
+   * Stores a value in the cache and updates lastUpdated.
+   */
   const setCachedData = useCallback((key: string, data: any): void => {
     const now = Date.now();
     cacheRef.current[key] = {
@@ -76,6 +100,9 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     setLastUpdated(new Date(now));
   }, []);
 
+  /**
+   * Should fetch if force is set, if not using cache, or if data is stale.
+   */
   const shouldFetch = useCallback((key: string, force: boolean = false, useCache: boolean = true): boolean => {
     if (force) return true;
     if (!useCache) return true;
@@ -132,7 +159,9 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     }
   }, [comprehensiveStats, legacyStats, embeddingDetails, advancedStats]);
 
-  // Fetch comprehensive stats
+  /**
+   * Fetches comprehensive stats (prefers cache, falls back to legacy on error).
+   */
   const fetchComprehensiveStats = useCallback(async (options: { useCache?: boolean; force?: boolean } = {}): Promise<void> => {
     const { useCache = true, force = false } = options;
     
@@ -187,7 +216,9 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     }
   }, [accessToken, shouldFetch, getCachedData, setCachedData]);
 
-  // Fetch embedding details
+  /**
+   * Fetches embedding detail stats, uses cache if possible.
+   */
   const fetchEmbeddingDetails = useCallback(async (options: { useCache?: boolean; force?: boolean } = {}): Promise<void> => {
     const { useCache = true, force = false } = options;
     
@@ -222,7 +253,9 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     }
   }, [accessToken, shouldFetch, getCachedData, setCachedData]);
 
-  // Fetch advanced stats
+  /**
+   * Fetches advanced cache stats, uses cache if possible.
+   */
   const fetchAdvancedStats = useCallback(async (options: { useCache?: boolean; force?: boolean } = {}): Promise<void> => {
     const { useCache = true, force = false } = options;
     
@@ -257,7 +290,9 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     }
   }, [accessToken, shouldFetch, getCachedData, setCachedData]);
 
-  // Clear embedding cache
+  /**
+   * Clears the embedding cache and refreshes related stats.
+   */
   const clearEmbeddingCache = useCallback(async (): Promise<void> => {
     if (!accessToken) {
       throw new Error('No access token available');
@@ -288,7 +323,9 @@ export const useDashboardData = (accessToken: string | null): UseDashboardDataRe
     }
   }, [accessToken, fetchComprehensiveStats, fetchEmbeddingDetails]);
 
-  // Reset metrics
+  /**
+   * Resets embedding metrics and refreshes advanced stats.
+   */
   const resetMetrics = useCallback(async (): Promise<void> => {
     if (!accessToken) {
       throw new Error('No access token available');

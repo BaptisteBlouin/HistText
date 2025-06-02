@@ -43,6 +43,9 @@ import {
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
+/**
+ * Represents a user account in the system.
+ */
 interface User {
   id: number;
   email: string;
@@ -54,12 +57,18 @@ interface User {
   updated_at: string;
 }
 
+/**
+ * Notification banner state.
+ */
 interface NotificationState {
   open: boolean;
   message: string;
   severity: 'success' | 'error' | 'warning' | 'info';
 }
 
+/**
+ * Returns an Axios instance with Bearer token from context.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -77,6 +86,9 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * Main component for managing users. Provides CRUD operations for user accounts.
+ */
 const Users: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
@@ -97,10 +109,16 @@ const Users: React.FC = () => {
     severity: 'info'
   });
 
+  /**
+   * Fetch users on component mount.
+   */
   useEffect(() => {
     fetchUsers();
   }, []);
 
+  /**
+   * Loads all users from the API.
+   */
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -114,11 +132,17 @@ const Users: React.FC = () => {
     }
   };
 
+  /**
+   * Show a temporary notification banner.
+   */
   const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
     setNotification({ open: true, message, severity });
     setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
   };
 
+  /**
+   * Add a new user.
+   */
   const handleAdd = async () => {
     try {
       await authAxios.post('/api/users', newUser);
@@ -132,6 +156,9 @@ const Users: React.FC = () => {
     }
   };
 
+  /**
+   * Update an existing user by id.
+   */
   const handleUpdate = async (id: number) => {
     try {
       await authAxios.put(`/api/users/${id}`, editingUser);
@@ -145,6 +172,9 @@ const Users: React.FC = () => {
     }
   };
 
+  /**
+   * Delete a user by id.
+   */
   const handleDelete = async (id: number) => {
     try {
       await authAxios.delete(`/api/users/${id}`);
@@ -158,11 +188,17 @@ const Users: React.FC = () => {
     }
   };
 
+  /**
+   * Open the dialog to confirm user deletion.
+   */
   const handleDeleteDialogOpen = (user: User) => {
     setUserToDelete(user);
     setOpenDeleteDialog(true);
   };
 
+  /**
+   * Open the edit dialog for a specific user.
+   */
   const handleEditOpen = (user: User) => {
     setEditingUserId(user.id);
     setEditingUser({
@@ -173,6 +209,9 @@ const Users: React.FC = () => {
     });
   };
 
+  /**
+   * Close the edit dialog.
+   */
   const handleEditClose = () => {
     setEditingUserId(null);
     setEditingUser({});
@@ -182,6 +221,9 @@ const Users: React.FC = () => {
     `${u.firstname} ${u.lastname} ${u.email}`.toLowerCase().includes(search.toLowerCase()),
   );
 
+  /**
+   * Table columns for user data.
+   */
   const columns: GridColDef[] = [
     {
       field: 'avatar',

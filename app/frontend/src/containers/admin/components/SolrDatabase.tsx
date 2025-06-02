@@ -41,6 +41,7 @@ import {
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
+/** Represents a Solr Database connection entry. */
 interface SolrDatabase {
   id: number;
   name: string;
@@ -51,12 +52,16 @@ interface SolrDatabase {
   updated_at: string;
 }
 
+/** For feedback/snackbar notification state */
 interface NotificationState {
   open: boolean;
   message: string;
   severity: 'success' | 'error' | 'warning' | 'info';
 }
 
+/**
+ * Returns an Axios instance with Authorization header set for the current user session.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -74,11 +79,18 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * SolrDatabaseComponent
+ *
+ * Admin panel for managing Solr database connections, ports, and SSH tunnels.
+ * Allows add/edit/delete, SSH connect, and search.
+ */
 const SolrDatabaseComponent: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // ------------- State variables -------------
   const [solrDatabases, setSolrDatabases] = useState<SolrDatabase[]>([]);
   const [newDatabase, setNewDatabase] = useState<Partial<SolrDatabase>>({});
   const [editingDatabase, setEditingDatabase] = useState<SolrDatabase | null>(null);
@@ -94,15 +106,22 @@ const SolrDatabaseComponent: React.FC = () => {
     severity: 'info'
   });
 
+  // ------------- Data loading -------------
   useEffect(() => {
     fetchSolrDatabases();
   }, []);
 
+  /**
+   * Displays a notification (snackbar/alert).
+   */
   const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
     setNotification({ open: true, message, severity });
     setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
   };
 
+  /**
+   * Loads all Solr databases from the backend.
+   */
   const fetchSolrDatabases = async () => {
     setLoading(true);
     try {
@@ -118,12 +137,18 @@ const SolrDatabaseComponent: React.FC = () => {
     }
   };
 
+  /**
+   * Resets the add/edit form and closes dialog.
+   */
   const resetForm = () => {
     setEditingDatabase(null);
     setNewDatabase({});
     setOpenAddDialog(false);
   };
 
+  /**
+   * Handles form submit for adding or updating a database.
+   */
   const handleAddOrUpdate = async () => {
     if (
       !newDatabase.name ||
@@ -151,6 +176,9 @@ const SolrDatabaseComponent: React.FC = () => {
     }
   };
 
+  /**
+   * Loads a database into edit form.
+   */
   const handleEdit = (db: SolrDatabase) => {
     setEditingDatabase(db);
     setNewDatabase({
@@ -162,6 +190,9 @@ const SolrDatabaseComponent: React.FC = () => {
     setOpenAddDialog(true);
   };
 
+  /**
+   * Calls API to delete a database by ID.
+   */
   const handleDelete = async (id: number) => {
     try {
       await authAxios.delete(`/api/solr_databases/${id}`);
@@ -176,6 +207,9 @@ const SolrDatabaseComponent: React.FC = () => {
     }
   };
 
+  /**
+   * Calls API to open an SSH tunnel for a Solr database.
+   */
   const handleConnectSSH = async (id: number) => {
     setConnectingSSH(id);
     try {
@@ -183,16 +217,28 @@ const SolrDatabaseComponent: React.FC = () => {
       showNotification('SSH connection established successfully', 'success');
     } catch (err) {
       console.error('SSH connection failed:', err);
-      showNotification(`Failed to establish SSH connection: ${err.response?.data || err.message || 'Unknown error'}`, 'error');
+      let msg = 'Unknown error';
+      if (axios.isAxiosError(err)) {
+        msg = err.response?.data
+          ? (typeof err.response.data === 'string'
+              ? err.response.data
+              : JSON.stringify(err.response.data))
+          : err.message;
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      showNotification(`Failed to establish SSH connection: ${msg}`, 'error');
     } finally {
       setConnectingSSH(null);
     }
   };
 
+  // ------------- Filtering for search -------------
   const filteredDatabases = solrDatabases.filter(db =>
     `${db.name} ${db.url}`.toLowerCase().includes(search.toLowerCase()),
   );
 
+  // ------------- DataGrid columns -------------
   const columns: GridColDef[] = [
     { 
       field: 'id', 
@@ -297,9 +343,11 @@ const SolrDatabaseComponent: React.FC = () => {
     },
   ];
 
+  // ------------- Render main UI -------------
   return (
     <Fade in={true} timeout={600}>
       <Box>
+        {/* Feedback / notification snackbar */}
         {notification.open && (
           <Alert 
             severity={notification.severity} 
@@ -310,6 +358,7 @@ const SolrDatabaseComponent: React.FC = () => {
           </Alert>
         )}
 
+        {/* Page header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -342,6 +391,7 @@ const SolrDatabaseComponent: React.FC = () => {
           </Stack>
         </Box>
 
+        {/* SSH help info */}
         <Card sx={{ mb: 4 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -360,6 +410,7 @@ const SolrDatabaseComponent: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Search input */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <TextField
@@ -378,6 +429,7 @@ const SolrDatabaseComponent: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Data table */}
         <Paper sx={{ height: 600, borderRadius: 3, overflow: 'hidden' }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -402,6 +454,7 @@ const SolrDatabaseComponent: React.FC = () => {
           )}
         </Paper>
 
+        {/* Add/edit dialog */}
         <Dialog open={openAddDialog} onClose={() => setOpenAddDialog(false)} maxWidth="sm" fullWidth>
           <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {editingDatabase ? <Edit /> : <Add />}
@@ -468,6 +521,7 @@ const SolrDatabaseComponent: React.FC = () => {
           </DialogActions>
         </Dialog>
 
+        {/* Delete confirm dialog */}
         <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
           <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
             <ErrorIcon />

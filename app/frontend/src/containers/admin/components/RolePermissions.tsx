@@ -37,18 +37,23 @@ import Autocomplete from '@mui/material/Autocomplete';
 import axios, { AxiosHeaders } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
+/** Role-permission mapping record */
 interface RolePermission {
   role: string;
   permission: string;
   created_at: string;
 }
 
+/** Snackbar/alert notification state */
 interface NotificationState {
   open: boolean;
   message: string;
   severity: 'success' | 'error' | 'warning' | 'info';
 }
 
+/**
+ * Returns an Axios instance with Authorization header set.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -66,11 +71,20 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * RolePermissions
+ *
+ * Admin UI for managing role-permission assignments.
+ * - Lists all role-permission pairs.
+ * - Lets admins add and remove permissions for roles.
+ * - Inline search/filter.
+ */
 const RolePermissions: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Main data and UI state
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
   const [availablePermissions, setAvailablePermissions] = useState<string[]>([]);
@@ -83,17 +97,20 @@ const RolePermissions: React.FC = () => {
     severity: 'info'
   });
 
+  // On mount, fetch all required data for dropdowns and grid
   useEffect(() => {
     fetchPermissions();
     fetchRoles();
     fetchAvailablePermissions();
   }, []);
 
+  /** Show a notification/alert (auto-hides after 5s) */
   const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
     setNotification({ open: true, message, severity });
     setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
   };
 
+  /** Fetch all role-permission pairs */
   const fetchPermissions = async () => {
     try {
       setLoading(true);
@@ -107,10 +124,11 @@ const RolePermissions: React.FC = () => {
     }
   };
 
+  /** Fetch all unique roles in the system */
   const fetchRoles = async () => {
     try {
       const { data } = await authAxios.get('/api/user_roles');
-      const roleList = [...new Set(data.map((item: any) => item.role))];
+      const roleList = [...new Set((data as {role: string}[]).map(item => item.role))];
       setRoles(roleList);
       if (!formState.role && roleList.length > 0) {
         setFormState(prev => ({ ...prev, role: roleList[0] }));
@@ -121,10 +139,11 @@ const RolePermissions: React.FC = () => {
     }
   };
 
+  /** Fetch all unique permissions in the system */
   const fetchAvailablePermissions = async () => {
     try {
       const { data } = await authAxios.get('/api/solr_database_permissions');
-      const perms = [...new Set(data.map((item: any) => item.permission))];
+      const perms = [...new Set((data as {permission: string}[]).map(item => item.permission))];
       setAvailablePermissions(perms);
       if (!formState.permission && perms.length > 0) {
         setFormState(prev => ({ ...prev, permission: perms[0] }));
@@ -135,6 +154,7 @@ const RolePermissions: React.FC = () => {
     }
   };
 
+  /** Assign a permission to a role (calls API, reloads grid) */
   const handleAdd = async () => {
     if (!formState.role || !formState.permission) {
       showNotification('Role and Permission are required', 'warning');
@@ -150,6 +170,7 @@ const RolePermissions: React.FC = () => {
     }
   };
 
+  /** Remove a permission from a role (calls API, reloads grid) */
   const handleDelete = async (role: string, permission: string) => {
     try {
       await authAxios.delete(
@@ -162,16 +183,19 @@ const RolePermissions: React.FC = () => {
     }
   };
 
+  // Filter the table rows according to current search
   const filteredPermissions = permissions.filter(p =>
     `${p.role} ${p.permission}`.toLowerCase().includes(search.toLowerCase()),
   );
 
+  // Utility for consistent coloring of role chips
   const getRoleColor = (role: string) => {
     const colors = ['primary', 'secondary', 'success', 'warning', 'error', 'info'];
     const index = role.length % colors.length;
     return colors[index] as any;
   };
 
+  // Utility for consistent coloring of permission chips
   const getPermissionColor = (permission: string) => {
     if (permission.includes('read') || permission.includes('view')) return 'info';
     if (permission.includes('write') || permission.includes('create')) return 'success';
@@ -180,6 +204,7 @@ const RolePermissions: React.FC = () => {
     return 'default';
   };
 
+  // Table columns for the DataGrid
   const columns: GridColDef[] = [
     { 
       field: 'role', 
@@ -244,6 +269,7 @@ const RolePermissions: React.FC = () => {
   return (
     <Fade in={true} timeout={600}>
       <Box>
+        {/* Inline notification (alert) */}
         {notification.open && (
           <Alert 
             severity={notification.severity} 
@@ -254,6 +280,7 @@ const RolePermissions: React.FC = () => {
           </Alert>
         )}
 
+        {/* Page Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -271,6 +298,7 @@ const RolePermissions: React.FC = () => {
           </Tooltip>
         </Box>
 
+        {/* Assign permission to role */}
         <Card sx={{ mb: 4 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -335,6 +363,7 @@ const RolePermissions: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Search field */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <TextField
@@ -353,6 +382,7 @@ const RolePermissions: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Permissions grid */}
         <Paper sx={{ height: 600, borderRadius: 3, overflow: 'hidden' }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>

@@ -1,4 +1,3 @@
-// app/frontend/src/containers/admin/components/dashboard/components/RefreshController.tsx
 import React, { useState } from 'react';
 import {
   Box,
@@ -25,6 +24,15 @@ import {
   Speed,
 } from '@mui/icons-material';
 
+/**
+ * Props for RefreshController component.
+ * - `onRefreshAll`: Handler to trigger refresh of all dashboard data.
+ * - `autoRefresh`: Current auto-refresh state.
+ * - `onAutoRefreshToggle`: Handler for toggling auto-refresh.
+ * - `refreshInterval`: Auto-refresh interval (ms).
+ * - `onRefreshIntervalChange`: Handler to change interval (ms).
+ * - `isRefreshing`: True if currently refreshing.
+ */
 interface RefreshControllerProps {
   onRefreshAll: () => void;
   autoRefresh: boolean;
@@ -34,6 +42,11 @@ interface RefreshControllerProps {
   isRefreshing: boolean;
 }
 
+/**
+ * Controls manual and auto-refresh of dashboard data.
+ * Offers a menu to toggle auto-refresh and adjust the interval.
+ * Shows visual status and handles all refresh actions.
+ */
 export const RefreshController: React.FC<RefreshControllerProps> = ({
   onRefreshAll,
   autoRefresh,
@@ -53,12 +66,18 @@ export const RefreshController: React.FC<RefreshControllerProps> = ({
     setAnchorEl(null);
   };
 
+  /**
+   * Updates the refresh interval slider and triggers parent callback.
+   */
   const handleIntervalChange = (value: number | number[]) => {
     const newInterval = Array.isArray(value) ? value[0] : value;
     setIntervalSlider(newInterval);
     onRefreshIntervalChange(newInterval * 1000);
   };
 
+  /**
+   * Formats seconds into a human-readable string.
+   */
   const formatInterval = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
     return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;

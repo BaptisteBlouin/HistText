@@ -1,13 +1,29 @@
 import React from 'react';
 import { Box, BoxProps } from '@mui/material';
 
+/**
+ * Fullscreen display mode types:
+ * - 'normal': Standard in-page container.
+ * - 'browser': Fills browser viewport using fixed positioning.
+ * - 'native': Native fullscreen (via browser API, if available).
+ */
 export type FullscreenMode = 'normal' | 'browser' | 'native';
 
+/**
+ * Props for FullscreenContainer.
+ * - `fullscreenMode`: Controls the type of fullscreen effect.
+ * - `isNativeFullscreen`: Indicates if the browser is currently in native fullscreen mode.
+ * - All BoxProps supported.
+ */
 interface FullscreenContainerProps extends BoxProps {
   fullscreenMode: FullscreenMode;
   isNativeFullscreen?: boolean;
 }
 
+/**
+ * A flexible container that adapts to fullscreen scenarios.
+ * Supports "browser" (CSS fullscreen), "native" (browser API), and normal modes.
+ */
 const FullscreenContainer: React.FC<FullscreenContainerProps> = ({
   fullscreenMode,
   isNativeFullscreen = false,
@@ -15,6 +31,9 @@ const FullscreenContainer: React.FC<FullscreenContainerProps> = ({
   sx,
   ...props
 }) => {
+  /**
+   * Returns the container styles depending on fullscreen mode and native fullscreen state.
+   */
   const getContainerStyles = () => {
     const baseStyles = {
       width: '100%',

@@ -1,20 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Box, TextField, Button, Grid } from '@mui/material';
 
-// Mocking config.json file fetch and save
+/**
+ * Fetches the configuration for the update form.
+ * Replace this logic with a real fetch from your backend or config file.
+ */
 const fetchConfig = async () => {
-  // Replace with actual fetch logic if needed
   return {
     statsLevelOptions: ['All', 'Medium', 'None'],
     docLevelOptions: ['100', '500', '5000', '20000'],
   };
 };
 
+/**
+ * Saves the updated configuration.
+ * Replace this logic with a real API call to persist the configuration.
+ */
 const saveConfig = async (updatedConfig: any) => {
   console.log('Saving Config:', updatedConfig);
-  // Replace with actual save logic (e.g., API call)
 };
 
+/**
+ * Simple configuration editor for updating stats and doc level options.
+ * Loads the config, allows user to edit comma-separated values,
+ * and triggers a save (with placeholder logic).
+ */
 const UpdateConfig: React.FC = () => {
   const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);

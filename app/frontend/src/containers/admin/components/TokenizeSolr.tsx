@@ -65,6 +65,9 @@ const ARG_DESCRIPTIONS: Record<string, string> = {
   schema: 'Schema file to use for upload',
 };
 
+/**
+ * Returns an Axios instance with Authorization set from current auth context.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -82,6 +85,11 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * UI for generating Solr text tokenization and upload commands.
+ * Allows admins to select a Solr database, collection, and text field,
+ * then generates shell commands for tokenization and uploading.
+ */
 const TokenizeSolr: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
@@ -170,10 +178,16 @@ const TokenizeSolr: React.FC = () => {
       .finally(() => setLoading(false));
   }, [selectedSolrDb, collectionName, authAxios, textField]);
 
+  /**
+   * Checks that all required form fields are present.
+   */
   const isFormValid = useMemo(() => {
     return !!collectionName && !!textField && !!cacheDir && !!solrHost && solrPort !== '';
   }, [collectionName, textField, cacheDir, solrHost, solrPort]);
 
+  /**
+   * Generates tokenization and upload commands from the form fields.
+   */
   const handleGenerate = () => {
     const tokenizeCmd = `python -m histtext_toolkit.main --solr-host ${solrHost} --solr-port ${solrPort} --cache-dir "${cacheDir}" tokenize-solr "${collectionName}" --model-name "${modelName}" --model-type "${modelType}" --text-field "${textField}"`;
 

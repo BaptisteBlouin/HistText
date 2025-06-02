@@ -1,4 +1,3 @@
-// app/frontend/src/containers/admin/components/dashboard/index.tsx
 import React, { useState, useCallback, useEffect } from 'react';
 import { 
   Box, 
@@ -31,7 +30,7 @@ import {
   PersonAdd,
   Psychology,
   Security,
-  Sync, // Changed from AutoMode to fix spell check
+  Sync,
   Schedule,
   Speed,
   CloudQueue,
@@ -64,6 +63,12 @@ import { useUserActivity } from './hooks/useUserActivity';
 // Utilities
 import { formatNumber } from './utils/formatters';
 
+/**
+ * System Dashboard
+ * 
+ * Main administrative dashboard page with metrics, analytics, cache and security widgets.
+ * Handles loading, auth checks, and refreshing data.
+ */
 const Dashboard: React.FC = () => {
   useAuthCheck();
   const { accessToken, session } = useAuth();
@@ -79,7 +84,7 @@ const Dashboard: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  // Main dashboard data hook - Fixed: handle undefined accessToken
+  // Main dashboard data hook
   const {
     comprehensiveStats,
     legacyStats,
@@ -98,7 +103,7 @@ const Dashboard: React.FC = () => {
     resetMetrics,
   } = useDashboardData(accessToken || null);
 
-  // Other data hooks - Fixed: handle undefined accessToken
+  // Other data hooks
   const {
     analytics,
     analyticsLoading,
@@ -111,7 +116,9 @@ const Dashboard: React.FC = () => {
     fetchUserActivity,
   } = useUserActivity(accessToken || null, showUserActivity);
 
-  // Refresh all data
+  /**
+   * Refresh all dashboard data (optionally force bypassing cache).
+   */
   const refreshAll = useCallback(async (force: boolean = false): Promise<void> => {
     setLastRefresh(new Date());
     const promises: Promise<void>[] = [
@@ -153,12 +160,14 @@ const Dashboard: React.FC = () => {
       if (!isDataFresh) {
         refreshAll(false); // Don't force, respect cache
       }
-    }, 30000); // Check every 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [autoRefresh, isDataFresh, refreshAll]);
 
-  // Calculate additional metrics
+  /**
+   * Computes main system metrics and stats.
+   */
   const getSystemMetrics = () => {
     if (!stats) return {
       dbOnlineCount: 0,
@@ -182,13 +191,11 @@ const Dashboard: React.FC = () => {
     const totalRequests = analytics?.total_requests_24h || 0;
     const activeEndpoints = analytics ? Object.keys(analytics.endpoint_stats).length : 0;
     
-    // Calculate documents per collection correctly using actual collection data
     let totalDocs = 0;
     let totalCollections = 0;
     let docsPerCollection = 0;
     
     if (comprehensiveStats) {
-      // Count all collections across all databases and their documents
       comprehensiveStats.solr_databases.forEach(db => {
         db.collections.forEach(collection => {
           totalCollections++;
@@ -197,17 +204,13 @@ const Dashboard: React.FC = () => {
           }
         });
       });
-      
-      // Calculate average documents per collection
       docsPerCollection = totalCollections > 0 ? Math.round(totalDocs / totalCollections) : 0;
     } else {
-      // Fallback to legacy stats
       totalDocs = (stats as any).total_docs;
       totalCollections = stats.total_collections;
       docsPerCollection = totalCollections > 0 ? Math.round(totalDocs / totalCollections) : 0;
     }
     
-    // Calculate user engagement
     const userEngagement = comprehensiveStats 
       ? (comprehensiveStats.active_sessions / stats.total_users) * 100
       : 0;
@@ -228,7 +231,7 @@ const Dashboard: React.FC = () => {
     };
   };
 
-  // Auth checks
+  // Auth checks and admin gating
   if (!session) {
     return (
       <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
@@ -292,7 +295,7 @@ const Dashboard: React.FC = () => {
                 />
                 {autoRefresh && (
                   <Chip 
-                    icon={<Sync />} // Fixed: changed from AutoMode
+                    icon={<Sync />}
                     label="Live Updates"
                     color="success"
                     size="small"
@@ -496,7 +499,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={12} md={3}>
                       <StatCard
                         icon={<CheckCircle />}
                         title="System Health"
@@ -516,7 +519,6 @@ const Dashboard: React.FC = () => {
                 <SolrDatabaseStatus comprehensiveStats={comprehensiveStats} />
               )}
 
-              {/* Fixed: Use correct ApiAnalytics component props based on your original implementation */}
               <ApiAnalytics
                 autoRefresh={autoRefresh}
                 refreshInterval={60000}

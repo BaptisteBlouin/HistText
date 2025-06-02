@@ -1,4 +1,3 @@
-// app/frontend/src/containers/admin/components/dashboard/components/AsyncComponentWrapper.tsx
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import {
   Card,
@@ -26,6 +25,13 @@ import {
   CheckCircle,
 } from '@mui/icons-material';
 
+/**
+ * Tracks async loading state for a dashboard component.
+ * - `loaded`: True if the component finished loading successfully.
+ * - `loading`: True if currently loading.
+ * - `error`: Error message if load failed.
+ * - `lastUpdated`: Date of last successful load.
+ */
 interface ComponentState {
   loaded: boolean;
   loading: boolean;
@@ -33,6 +39,18 @@ interface ComponentState {
   lastUpdated: Date | null;
 }
 
+/**
+ * Props for AsyncComponentWrapper.
+ * - `componentId`: Unique id for the wrapped component.
+ * - `title`: Title shown at the top of the card.
+ * - `children`: The async-loaded component to render.
+ * - `state`: Loading/error status for the child.
+ * - `onRefresh`: Callback to refresh/load the child.
+ * - `autoRefresh`: If true, refreshes automatically.
+ * - `refreshInterval`: Auto-refresh interval (ms).
+ * - `collapsible`: If true, component can be collapsed/expanded.
+ * - `defaultExpanded`: If true, component starts expanded.
+ */
 interface AsyncComponentWrapperProps {
   componentId: string;
   title: string;
@@ -45,6 +63,10 @@ interface AsyncComponentWrapperProps {
   defaultExpanded?: boolean;
 }
 
+/**
+ * Wraps a dashboard component to provide async loading, error, auto-refresh,
+ * manual refresh, and collapse/expand functionality.
+ */
 export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
   componentId,
   title,
@@ -91,10 +113,14 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
     return () => clearInterval(interval);
   }, [autoRefresh, expanded, state.loading, state.lastUpdated, refreshInterval]);
 
+  /**
+   * Handles expanding/collapsing the card.
+   * Loads the component the first time it is expanded.
+   */
   const handleToggle = useCallback(() => {
     const newExpanded = !expanded;
     setExpanded(newExpanded);
-    
+
     // Load component when first expanded
     if (newExpanded && !shouldLoad) {
       setShouldLoad(true);
@@ -104,10 +130,16 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
     }
   }, [expanded, shouldLoad, state.loaded, state.loading, onRefresh]);
 
+  /**
+   * Manual refresh handler.
+   */
   const handleRefresh = useCallback(() => {
     onRefresh();
   }, [onRefresh]);
 
+  /**
+   * Returns icon representing the current status.
+   */
   const getStatusIcon = () => {
     if (state.loading) return <Schedule color="warning" />;
     if (state.error) return <ErrorIcon color="error" />;
@@ -115,6 +147,9 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
     return <VisibilityOff color="disabled" />;
   };
 
+  /**
+   * Returns status text for the current state.
+   */
   const getStatusText = () => {
     if (state.loading) return 'Loading...';
     if (state.error) return 'Error';

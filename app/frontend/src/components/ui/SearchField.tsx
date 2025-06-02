@@ -7,6 +7,14 @@ import {
 } from '@mui/material';
 import { Search, Close } from '@mui/icons-material';
 
+/**
+ * Props for SearchField component.
+ * - `value`: Current search text.
+ * - `onChange`: Handler for value change, receives new string.
+ * - `onClear`: Optional handler for clear action.
+ * - `placeholder`: Input placeholder text.
+ * - All TextFieldProps (except 'onChange') are supported.
+ */
 interface SearchFieldProps extends Omit<TextFieldProps, 'onChange'> {
   value: string;
   onChange: (value: string) => void;
@@ -14,6 +22,12 @@ interface SearchFieldProps extends Omit<TextFieldProps, 'onChange'> {
   placeholder?: string;
 }
 
+/**
+ * A TextField with a search icon and clear button.
+ * - Shows a start adornment with a search icon.
+ * - Shows a clear button when value is non-empty.
+ * - Calls onChange with updated string on input or clear.
+ */
 const SearchField: React.FC<SearchFieldProps> = ({
   value,
   onChange,

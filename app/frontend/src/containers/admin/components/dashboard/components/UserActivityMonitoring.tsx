@@ -43,6 +43,13 @@ import {
 import { UserActivity } from '../types';
 import { formatNumber } from '../utils/formatters';
 
+/**
+ * Props for UserActivityMonitoring component.
+ * - `userActivity`: Activity and security information to display.
+ * - `loading`: True if data is loading.
+ * - `onToggle`: Callback to toggle visibility.
+ * - `isVisible`: Current expanded/collapsed state.
+ */
 interface UserActivityMonitoringProps {
   userActivity: UserActivity | null;
   loading: boolean;
@@ -50,12 +57,19 @@ interface UserActivityMonitoringProps {
   isVisible: boolean;
 }
 
+/**
+ * Displays real-time user session, login, registration, and security event stats.
+ * Allows toggling visibility and handles loading/error states.
+ */
 export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
   userActivity,
   loading,
   onToggle,
   isVisible,
 }) => {
+  /**
+   * Returns an icon for each security event type.
+   */
   const getSecurityEventIcon = (eventType: string) => {
     switch (eventType) {
       case 'password_change':
@@ -73,6 +87,9 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
     }
   };
 
+  /**
+   * Maps severity string to a color name.
+   */
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'high':
@@ -86,6 +103,9 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
     }
   };
 
+  /**
+   * Formats a timestamp as "just now", "5m ago", etc.
+   */
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
     const time = new Date(timestamp);
@@ -100,6 +120,9 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
     return `${diffDays}d ago`;
   };
 
+  /**
+   * Generates initials from first and last name.
+   */
   const getUserInitials = (firstname: string, lastname: string) => {
     return `${firstname.charAt(0)}${lastname.charAt(0)}`.toUpperCase();
   };

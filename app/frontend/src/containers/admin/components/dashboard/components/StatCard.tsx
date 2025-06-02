@@ -1,7 +1,15 @@
-// app/frontend/src/containers/admin/components/dashboard/components/StatCard.tsx
 import React from 'react';
 import { Card, CardContent, Box, Typography, useTheme } from '@mui/material';
 
+/**
+ * Props for StatCard component.
+ * - `icon`: Main icon displayed on the card.
+ * - `title`: Title for the statistic.
+ * - `value`: Value to display (string or number).
+ * - `subtitle`: Optional subtitle.
+ * - `color`: Theme color for background (default: primary).
+ * - `loading`: If true, shows loading placeholder instead of value.
+ */
 interface StatCardProps {
   icon: React.ReactNode;
   title: string;
@@ -11,6 +19,10 @@ interface StatCardProps {
   loading?: boolean;
 }
 
+/**
+ * Displays a stylized card for a key statistic, with icon, value, and title.
+ * Supports optional subtitle and loading state.
+ */
 export const StatCard: React.FC<StatCardProps> = ({ 
   icon, 
   title, 

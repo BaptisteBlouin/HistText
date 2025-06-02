@@ -4,8 +4,16 @@ import * as React from 'react';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { cn } from '@/lib/utils';
 
+/**
+ * Root Tabs component, as provided by Radix UI.
+ * Use as a controlled or uncontrolled tabs container.
+ */
 const Tabs = TabsPrimitive.Root;
 
+/**
+ * TabsList renders a flex container for tab triggers.
+ * Applies rounded styling and muted background.
+ */
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
@@ -21,6 +29,10 @@ const TabsList = React.forwardRef<
 ));
 TabsList.displayName = TabsPrimitive.List.displayName;
 
+/**
+ * TabsTrigger renders a single tab button.
+ * Includes styles for active state, focus, and disabled state.
+ */
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
@@ -36,6 +48,10 @@ const TabsTrigger = React.forwardRef<
 ));
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
 
+/**
+ * TabsContent renders the content for a given tab.
+ * Handles accessibility and focus styling.
+ */
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>

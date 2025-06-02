@@ -50,6 +50,9 @@ interface SolrDatabase {
   name: string;
 }
 
+/**
+ * Maps CLI arguments to their descriptions for the help dialog.
+ */
 const ARG_DESCRIPTIONS: Record<string, string> = {
   'solr-host': 'Solr host (default: localhost)',
   'solr-port': 'Solr port (default: 8983)',
@@ -67,6 +70,11 @@ const ARG_DESCRIPTIONS: Record<string, string> = {
   schema: 'Schema file to use for upload',
 };
 
+/**
+ * useAuthAxios
+ * 
+ * Returns an Axios instance with Authorization header set.
+ */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -84,6 +92,12 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
+/**
+ * PrecomputeNER
+ * 
+ * UI to generate command lines for precomputing and uploading NER data from a Solr collection.
+ * Allows the user to configure all relevant options, get the full CLI, and download a script.
+ */
 const PrecomputeNER: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
@@ -113,12 +127,14 @@ const PrecomputeNER: React.FC = () => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Sets the cache model name based on modelName when modelName is updated
   useEffect(() => {
     if (modelName && !cacheModelName) {
       setCacheModelName(modelName);
     }
   }, [modelName, cacheModelName]);
 
+  // Load available Solr databases
   useEffect(() => {
     authAxios
       .get('/api/solr_databases')
@@ -126,6 +142,7 @@ const PrecomputeNER: React.FC = () => {
       .catch(() => setSolrDatabases([]));
   }, [authAxios]);
 
+  // Load aliases when a database is selected
   useEffect(() => {
     if (!selectedSolrDb) {
       setAliases([]);
@@ -141,6 +158,7 @@ const PrecomputeNER: React.FC = () => {
     setAvailableFields([]);
   }, [selectedSolrDb, authAxios]);
 
+  // Load available fields when a collection is chosen
   useEffect(() => {
     if (!selectedSolrDb || !collectionName) {
       setAvailableFields([]);
@@ -179,6 +197,9 @@ const PrecomputeNER: React.FC = () => {
       .finally(() => setLoading(false));
   }, [selectedSolrDb, collectionName, authAxios, textField]);
 
+  /**
+   * Returns true if the form is valid and a command can be generated.
+   */
   const isFormValid = useMemo(() => {
     return (
       !!collectionName &&
@@ -201,6 +222,9 @@ const PrecomputeNER: React.FC = () => {
     solrPort,
   ]);
 
+  /**
+   * Generates the NER and upload command lines and saves them in state.
+   */
   const handleGenerate = () => {
     const nerCmd = `python -m histtext_toolkit.main --solr-host ${solrHost} --solr-port ${solrPort} --cache-dir "${cacheDir}" precompute-ner "${collectionName}" --model-name "${modelName}" --cache-model-name "${cacheModelName}" --model-type "${modelType}" --text-field "${textField}"`;
 
@@ -214,6 +238,7 @@ const PrecomputeNER: React.FC = () => {
   return (
     <Fade in={true} timeout={600}>
       <Box>
+        {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -231,6 +256,7 @@ const PrecomputeNER: React.FC = () => {
           </Tooltip>
         </Box>
 
+        {/* Configuration Form */}
         <Card sx={{ mb: 4 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -239,6 +265,7 @@ const PrecomputeNER: React.FC = () => {
             </Typography>
             {loading && <LinearProgress sx={{ mb: 2 }} />}
             <Grid container spacing={3}>
+              {/* Solr Database Selection */}
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required error={!selectedSolrDb}>
                   <InputLabel>Solr Database</InputLabel>
@@ -264,6 +291,7 @@ const PrecomputeNER: React.FC = () => {
                 </FormControl>
               </Grid>
 
+              {/* Collection Name (alias) Selection */}
               <Grid item xs={12} md={6}>
                 <Autocomplete
                   freeSolo
@@ -284,6 +312,7 @@ const PrecomputeNER: React.FC = () => {
                 />
               </Grid>
 
+              {/* Solr Host */}
               <Grid item xs={12} md={3}>
                 <TextField
                   label="Solr Host"
@@ -296,6 +325,7 @@ const PrecomputeNER: React.FC = () => {
                 />
               </Grid>
 
+              {/* Solr Port */}
               <Grid item xs={12} md={3}>
                 <TextField
                   label="Solr Port"
@@ -309,6 +339,7 @@ const PrecomputeNER: React.FC = () => {
                 />
               </Grid>
 
+              {/* Cache Output Directory */}
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Cache Output Directory"
@@ -321,6 +352,7 @@ const PrecomputeNER: React.FC = () => {
                 />
               </Grid>
 
+              {/* Model Name */}
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Model Name"
@@ -338,6 +370,7 @@ const PrecomputeNER: React.FC = () => {
                 />
               </Grid>
 
+              {/* Cache Model Name */}
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Cache Model Name"
@@ -350,6 +383,7 @@ const PrecomputeNER: React.FC = () => {
                 />
               </Grid>
 
+              {/* Model Type Selection */}
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required error={!modelType}>
                   <InputLabel>Model Type</InputLabel>
@@ -378,222 +412,226 @@ const PrecomputeNER: React.FC = () => {
                     </MenuItem>
                     <MenuItem value="stanza">
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <SmartToy fontSize="small" />
-                       Stanza
-                     </Box>
-                   </MenuItem>
-                   <MenuItem value="flair">
-                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                       <SmartToy fontSize="small" />
-                       Flair
-                     </Box>
-                   </MenuItem>
-                 </Select>
-               </FormControl>
-             </Grid>
+                        <SmartToy fontSize="small" />
+                        Stanza
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value="flair">
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <SmartToy fontSize="small" />
+                        Flair
+                      </Box>
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
 
-             <Grid item xs={12} md={6}>
-               <FormControl fullWidth>
-                 <InputLabel>Text Field</InputLabel>
-                 <Select
-                   value={textField || ''}
-                   onChange={e => setTextField(e.target.value)}
-                   label="Text Field"
-                   disabled={availableFields.length === 0}
-                   required
-                   error={!textField}
-                 >
-                   <MenuItem value="">
-                     <em>None</em>
-                   </MenuItem>
-                   {availableFields.map(field => (
-                     <MenuItem key={field} value={field}>
-                       {field}
-                     </MenuItem>
-                   ))}
-                 </Select>
-               </FormControl>
-             </Grid>
+              {/* Text Field Selection */}
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Text Field</InputLabel>
+                  <Select
+                    value={textField || ''}
+                    onChange={e => setTextField(e.target.value)}
+                    label="Text Field"
+                    disabled={availableFields.length === 0}
+                    required
+                    error={!textField}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {availableFields.map(field => (
+                      <MenuItem key={field} value={field}>
+                        {field}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
 
-             <Grid item xs={12}>
-               <Button
-                 variant="contained"
-                 onClick={handleGenerate}
-                 disabled={!isFormValid}
-                 startIcon={<PlayArrow />}
-                 fullWidth
-                 size="large"
-                 sx={{
-                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                   '&:hover': {
-                     background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                   }
-                 }}
-               >
-                 Generate NER Commands
-               </Button>
-             </Grid>
-           </Grid>
-         </CardContent>
-       </Card>
+              {/* Generate Button */}
+              <Grid item xs={12}>
+                <Button
+                  variant="contained"
+                  onClick={handleGenerate}
+                  disabled={!isFormValid}
+                  startIcon={<PlayArrow />}
+                  fullWidth
+                  size="large"
+                  sx={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                    }
+                  }}
+                >
+                  Generate NER Commands
+                </Button>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
 
-       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="md" fullWidth>
-         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-           <Help />
-           histtext_toolkit.main — Command‐Line Arguments
-         </DialogTitle>
-         <DialogContent dividers>
-           <List dense>
-             {Object.entries(ARG_DESCRIPTIONS).map(([arg, desc]) => (
-               <ListItem key={arg} alignItems="flex-start">
-                 <ListItemText 
-                   primary={
-                     <Chip 
-                       label={arg} 
-                       variant="outlined" 
-                       size="small" 
-                       sx={{ fontFamily: 'monospace' }} 
-                     />
-                   } 
-                   secondary={desc} 
-                 />
-               </ListItem>
-             ))}
-           </List>
-         </DialogContent>
-         <DialogActions>
-           <Button onClick={() => setHelpOpen(false)}>Close</Button>
-         </DialogActions>
-       </Dialog>
+        {/* Help Dialog */}
+        <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Help />
+            histtext_toolkit.main — Command‐Line Arguments
+          </DialogTitle>
+          <DialogContent dividers>
+            <List dense>
+              {Object.entries(ARG_DESCRIPTIONS).map(([arg, desc]) => (
+                <ListItem key={arg} alignItems="flex-start">
+                  <ListItemText 
+                    primary={
+                      <Chip 
+                        label={arg} 
+                        variant="outlined" 
+                        size="small" 
+                        sx={{ fontFamily: 'monospace' }} 
+                      />
+                    } 
+                    secondary={desc} 
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setHelpOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
 
-       {nerCommand && (
-         <Stack spacing={3}>
-           <Card>
-             <CardContent>
-               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                 <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                   <Code />
-                   NER Command
-                 </Typography>
-                 <Stack direction="row" spacing={1}>
-                   <Tooltip title="Copy NER Command">
-                     <IconButton onClick={() => navigator.clipboard.writeText(nerCommand)}>
-                       <ContentCopy />
-                     </IconButton>
-                   </Tooltip>
-                   <Tooltip title="Save to File">
-                     <IconButton
-                       onClick={() => {
-                         const blob = new Blob([nerCommand], { type: 'text/plain' });
-                         const url = URL.createObjectURL(blob);
-                         const a = document.createElement('a');
-                         a.href = url;
-                         a.download = `ner_command_${collectionName}.sh`;
-                         document.body.appendChild(a);
-                         a.click();
-                         document.body.removeChild(a);
-                         URL.revokeObjectURL(url);
-                       }}
-                     >
-                       <Download />
-                     </IconButton>
-                   </Tooltip>
-                 </Stack>
-               </Box>
+        {/* NER & Upload Command Output */}
+        {nerCommand && (
+          <Stack spacing={3}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Code />
+                    NER Command
+                  </Typography>
+                  <Stack direction="row" spacing={1}>
+                    <Tooltip title="Copy NER Command">
+                      <IconButton onClick={() => navigator.clipboard.writeText(nerCommand)}>
+                        <ContentCopy />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Save to File">
+                      <IconButton
+                        onClick={() => {
+                          const blob = new Blob([nerCommand], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `ner_command_${collectionName}.sh`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Box>
 
-               <Paper sx={{ p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200' }}>
-                 <TextField
-                   multiline
-                   fullWidth
-                   minRows={3}
-                   value={nerCommand}
-                   InputProps={{ 
-                     readOnly: true,
-                     sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
-                   }}
-                   variant="outlined"
-                 />
-               </Paper>
-             </CardContent>
-           </Card>
+                <Paper sx={{ p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200' }}>
+                  <TextField
+                    multiline
+                    fullWidth
+                    minRows={3}
+                    value={nerCommand}
+                    InputProps={{ 
+                      readOnly: true,
+                      sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                    }}
+                    variant="outlined"
+                  />
+                </Paper>
+              </CardContent>
+            </Card>
 
-           <Card>
-             <CardContent>
-               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                 <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                   <Code />
-                   Upload Command
-                 </Typography>
-                 <Stack direction="row" spacing={1}>
-                   <Tooltip title="Copy Upload Command">
-                     <IconButton onClick={() => navigator.clipboard.writeText(uploadCommand)}>
-                       <ContentCopy />
-                     </IconButton>
-                   </Tooltip>
-                   <Tooltip title="Save to File">
-                     <IconButton
-                       onClick={() => {
-                         const blob = new Blob([uploadCommand], { type: 'text/plain' });
-                         const url = URL.createObjectURL(blob);
-                         const a = document.createElement('a');
-                         a.href = url;
-                         a.download = `upload_command_${collectionName}.sh`;
-                         document.body.appendChild(a);
-                         a.click();
-                         document.body.removeChild(a);
-                         URL.revokeObjectURL(url);
-                       }}
-                     >
-                       <Download />
-                     </IconButton>
-                   </Tooltip>
-                 </Stack>
-               </Box>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Code />
+                    Upload Command
+                  </Typography>
+                  <Stack direction="row" spacing={1}>
+                    <Tooltip title="Copy Upload Command">
+                      <IconButton onClick={() => navigator.clipboard.writeText(uploadCommand)}>
+                        <ContentCopy />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Save to File">
+                      <IconButton
+                        onClick={() => {
+                          const blob = new Blob([uploadCommand], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `upload_command_${collectionName}.sh`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Box>
 
-               <Paper sx={{ p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200' }}>
-                 <TextField
-                   multiline
-                   fullWidth
-                   minRows={3}
-                   value={uploadCommand}
-                   InputProps={{ 
-                     readOnly: true,
-                     sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
-                   }}
-                   variant="outlined"
-                 />
-               </Paper>
-             </CardContent>
-           </Card>
+                <Paper sx={{ p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200' }}>
+                  <TextField
+                    multiline
+                    fullWidth
+                    minRows={3}
+                    value={uploadCommand}
+                    InputProps={{ 
+                      readOnly: true,
+                      sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                    }}
+                    variant="outlined"
+                  />
+                </Paper>
+              </CardContent>
+            </Card>
 
-           <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-             <Button
-               variant="contained"
-               color="secondary"
-               startIcon={<GetApp />}
-               onClick={() => {
-                 const fullScript = `#!/bin/bash\n\n# NER Command\n${nerCommand}\n\n# Check if NER command was successful\nif [ $? -eq 0 ]; then\n  echo "NER processing completed successfully. Starting upload..."\n  # Upload Command\n  ${uploadCommand}\nelse\n  echo "NER processing failed. Upload skipped."\n  exit 1\nfi`;
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<GetApp />}
+                onClick={() => {
+                  const fullScript = `#!/bin/bash\n\n# NER Command\n${nerCommand}\n\n# Check if NER command was successful\nif [ $? -eq 0 ]; then\n  echo "NER processing completed successfully. Starting upload..."\n  # Upload Command\n  ${uploadCommand}\nelse\n  echo "NER processing failed. Upload skipped."\n  exit 1\nfi`;
 
-                 const blob = new Blob([fullScript], { type: 'text/plain' });
-                 const url = URL.createObjectURL(blob);
-                 const a = document.createElement('a');
-                 a.href = url;
-                 a.download = `run_ner_pipeline_${collectionName}.sh`;
-                 document.body.appendChild(a);
-                 a.click();
-                 document.body.removeChild(a);
-                 URL.revokeObjectURL(url);
-               }}
-               size="large"
-             >
-               Download Complete Shell Script
-             </Button>
-           </Box>
-         </Stack>
-       )}
-     </Box>
-   </Fade>
- );
+                  const blob = new Blob([fullScript], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `run_ner_pipeline_${collectionName}.sh`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                size="large"
+              >
+                Download Complete Shell Script
+              </Button>
+            </Box>
+          </Stack>
+        )}
+      </Box>
+    </Fade>
+  );
 };
 
 export default PrecomputeNER;

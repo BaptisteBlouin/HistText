@@ -1,4 +1,3 @@
-// app/frontend/src/components/ui/ContextHelp.tsx
 import React from 'react';
 import {
   Tooltip,
@@ -15,15 +14,57 @@ import {
   Star
 } from '@mui/icons-material';
 
+/**
+ * All valid help topic keys for ContextHelp.
+ */
+type HelpTopic =
+  | 'search_terms'
+  | 'boolean_operators'
+  | 'ai_search'
+  | 'date_range'
+  | 'field_selection'
+  | 'ner_toggle'
+  | 'word_cloud'
+  | 'statistics'
+  | 'collection_selection'
+  | 'field_completeness'
+  | 'query_performance'
+  | 'not_operator'
+  | 'and_operator'
+  | 'or_operator';
+
+/**
+ * Defines a help content entry.
+ * - `title`: Heading text.
+ * - `content`: Main explanation.
+ * - `examples`: Optional examples to show.
+ * - `type`: Icon type and color.
+ */
+interface HelpContentEntry {
+  title: string;
+  content: string;
+  examples?: string[];
+  type: 'info' | 'success' | 'warning';
+}
+
+/**
+ * Props for ContextHelp component.
+ * - `topic`: Help topic key to display.
+ * - `variant`: Renders as an icon button or inline icon.
+ * - `size`: Icon size.
+ * - `placement`: Tooltip placement.
+ */
 interface ContextHelpProps {
-  topic: string;
+  topic: HelpTopic;
   variant?: 'icon' | 'inline';
   size?: 'small' | 'medium';
   placement?: 'top' | 'bottom' | 'left' | 'right';
 }
 
-const HELP_CONTENT = {
-  // Search and Query Help
+/**
+ * Help content mapped by topic key.
+ */
+const HELP_CONTENT: Record<HelpTopic, HelpContentEntry> = {
   'search_terms': {
     title: 'Search Terms',
     content: 'Enter words or phrases to search for. Exact matching is handled automatically.',
@@ -54,8 +95,6 @@ const HELP_CONTENT = {
     examples: ['Select one or more options', 'Use NOT to exclude values'],
     type: 'info'
   },
-  
-  // Analysis Help
   'ner_toggle': {
     title: 'Named Entity Recognition',
     content: 'Automatically identify and highlight people, places, organizations, and other entities in your text.',
@@ -72,8 +111,6 @@ const HELP_CONTENT = {
     content: 'Get insights about your document collection including word counts, languages, and distributions.',
     type: 'info'
   },
-  
-  // Technical Help
   'collection_selection': {
     title: 'Collection Selection',
     content: 'Choose which document collection to search. Each collection may have different fields and content types.',
@@ -89,8 +126,6 @@ const HELP_CONTENT = {
     content: 'More specific searches are faster. Consider adding filters to improve performance on large datasets.',
     type: 'warning'
   },
-  
-  // Form Controls Help
   'not_operator': {
     title: 'NOT Operator',
     content: 'Exclude documents containing this term. Red styling indicates exclusion.',
@@ -111,6 +146,10 @@ const HELP_CONTENT = {
   }
 };
 
+/**
+ * Displays contextual help via a tooltip and icon for various UI features.
+ * Select help topic with `topic` prop, choose inline or icon button style with `variant`.
+ */
 const ContextHelp: React.FC<ContextHelpProps> = ({
   topic,
   variant = 'icon',
@@ -118,21 +157,27 @@ const ContextHelp: React.FC<ContextHelpProps> = ({
   placement = 'top'
 }) => {
   const helpInfo = HELP_CONTENT[topic];
-  
+
   if (!helpInfo) {
     console.warn(`No help content found for topic: ${topic}`);
     return null;
   }
 
+  /**
+   * Chooses an icon based on help type.
+   */
   const getIcon = () => {
     switch (helpInfo.type) {
       case 'success': return <CheckCircle fontSize={size} color="success" />;
       case 'warning': return <Warning fontSize={size} color="warning" />;
-      case 'info': 
+      case 'info':
       default: return <Help fontSize={size} color="action" />;
     }
   };
 
+  /**
+   * Tooltip content: title, explanation, and optional examples.
+   */
   const tooltipContent = (
     <Box sx={{ maxWidth: 300, p: 1 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
@@ -146,9 +191,9 @@ const ContextHelp: React.FC<ContextHelpProps> = ({
           <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
             Examples:
           </Typography>
-          {helpInfo.examples.map((example, index) => (
-            <Typography key={index} variant="caption" sx={{ 
-              display: 'block', 
+          {helpInfo.examples.map((example: string, index: number) => (
+            <Typography key={index} variant="caption" sx={{
+              display: 'block',
               fontFamily: 'monospace',
               backgroundColor: 'rgba(255,255,255,0.1)',
               padding: '2px 4px',
@@ -166,11 +211,11 @@ const ContextHelp: React.FC<ContextHelpProps> = ({
   if (variant === 'inline') {
     return (
       <Tooltip title={tooltipContent} arrow placement={placement}>
-        <Box component="span" sx={{ 
-          display: 'inline-flex', 
-          alignItems: 'center', 
+        <Box component="span" sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
           cursor: 'help',
-          ml: 0.5 
+          ml: 0.5
         }}>
           {getIcon()}
         </Box>
@@ -180,12 +225,12 @@ const ContextHelp: React.FC<ContextHelpProps> = ({
 
   return (
     <Tooltip title={tooltipContent} arrow placement={placement}>
-      <IconButton 
+      <IconButton
         size={size}
-        sx={{ 
+        sx={{
           color: 'text.secondary',
           '&:hover': {
-            color: helpInfo.type === 'success' ? 'success.main' : 
+            color: helpInfo.type === 'success' ? 'success.main' :
                    helpInfo.type === 'warning' ? 'warning.main' : 'primary.main'
           }
         }}
