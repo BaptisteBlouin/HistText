@@ -20,7 +20,8 @@ import {
   Security,
   Speed,
   Language,
-  ArrowForward
+  ArrowForward,
+  Email
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import enp from '../images/logo.png';
@@ -30,6 +31,7 @@ export const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
+  const contactAddress = config.CONTACT_ADDRESS || "feedback@histtext.com";
 
   const homeMessage = config.HOME_MESSAGE ||
     "The application is currently in beta version. Don't hesitate to send us your feedback.";
@@ -174,6 +176,14 @@ export const Home = () => {
            >
              Get Started
            </Button>
+           <Button
+              variant="outlined"
+              startIcon={<Email />}
+              href={`mailto:${contactAddress}?subject=HistText Feedback&body=Hi, I'd like to share feedback about HistText:%0D%0A%0D%0A`}
+              sx={{ ml: 2 }}
+            >
+              Send Feedback
+            </Button>
          </Box>
        </Fade>
 

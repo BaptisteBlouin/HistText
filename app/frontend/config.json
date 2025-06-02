@@ -49,6 +49,7 @@
     "MI": "MISC"
   },
   "HOME_MESSAGE":"The application is currently in beta version. Don't hesitate to send us your feedback.",
+  "CONTACT_ADDRESS": "histtext@gmail.com",
   "HOME_URL":"https://www.enpchina.eu/2024/09/03/poc/",
   "USE_HOME_LOGO":true,
   "NER_ANALYTICS_MAX_ENTITIES": 15000,
