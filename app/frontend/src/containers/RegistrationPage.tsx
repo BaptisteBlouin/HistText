@@ -54,33 +54,41 @@ export const RegistrationPage = () => {
     return re.test(String(email).toLowerCase());
   };
 
-  // Helper function to validate password strength
+  // Helper function to validate password strength - updated to match visual requirements
   const validatePassword = (password: string): boolean => {
-    const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^])[A-Za-z\d@$!%*?&#^]{8,}$/;
-    return re.test(password);
+    const hasMinLength = password.length >= 8;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+    const hasNoSpaces = !/\s/.test(password); // Check for any whitespace
+    
+    return hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar && hasNoSpaces;
   };
 
-  // Calculate password strength
+  // Calculate password strength - updated special char regex
   const calculatePasswordStrength = (password: string) => {
     let strength = 0;
-    if (password.length >= 8) strength += 25;
-    if (/[A-Z]/.test(password)) strength += 25;
-    if (/[0-9]/.test(password)) strength += 25;
-    if (/[^A-Za-z0-9]/.test(password)) strength += 25;
+    if (password.length >= 8) strength += 17;
+    if (/[A-Z]/.test(password)) strength += 17;
+    if (/[a-z]/.test(password)) strength += 17;
+    if (/[0-9]/.test(password)) strength += 17;
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password)) strength += 16;
+    if (!/\s/.test(password)) strength += 16; // No spaces
     return strength;
   };
 
   const getPasswordStrengthColor = (strength: number) => {
-    if (strength < 25) return 'error';
-    if (strength < 50) return 'warning';
-    if (strength < 75) return 'info';
+    if (strength < 40) return 'error';
+    if (strength < 60) return 'warning';
+    if (strength < 80) return 'info';
     return 'success';
   };
 
   const getPasswordStrengthText = (strength: number) => {
-    if (strength < 25) return 'Very Weak';
-    if (strength < 50) return 'Weak';
-    if (strength < 75) return 'Good';
+    if (strength < 40) return 'Very Weak';
+    if (strength < 60) return 'Weak';
+    if (strength < 80) return 'Good';
     return 'Strong';
   };
 
@@ -108,7 +116,7 @@ export const RegistrationPage = () => {
     }
     if (!validatePassword(formData.password)) {
       validationErrors.push(
-        'Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character.',
+        'Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character (spaces not allowed).',
       );
     }
     if (formData.password !== formData.confirmPassword) {
@@ -164,11 +172,14 @@ export const RegistrationPage = () => {
     );
   }
 
+  // Updated password requirements to match validation function
   const passwordRequirements = [
     { text: 'At least 8 characters', met: formData.password.length >= 8 },
     { text: 'Contains uppercase letter', met: /[A-Z]/.test(formData.password) },
+    { text: 'Contains lowercase letter', met: /[a-z]/.test(formData.password) },
     { text: 'Contains number', met: /[0-9]/.test(formData.password) },
-    { text: 'Contains special character', met: /[^A-Za-z0-9]/.test(formData.password) },
+    { text: 'Contains special character', met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(formData.password) },
+    { text: 'No spaces allowed', met: !/\s/.test(formData.password) },
   ];
 
   return (
@@ -375,7 +386,7 @@ export const RegistrationPage = () => {
                   !formData.password || 
                   !formData.confirmPassword ||
                   formData.password !== formData.confirmPassword ||
-                  passwordStrength < 75
+                  passwordStrength < 100  // Updated to require all 5 criteria (20 * 5 = 100)
                 }
                 sx={{
                   py: 1.5,
