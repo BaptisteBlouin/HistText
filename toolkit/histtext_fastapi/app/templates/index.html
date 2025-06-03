@@ -1,3 +1,4 @@
+<!-- toolkit/histtext_fastapi/app/templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,6 +31,9 @@
                 <div class="flex items-center space-x-4">
                     <span class="text-sm text-gray-500">v2.1.0</span>
                     <a href="/docs" class="text-primary hover:text-blue-700 text-sm font-medium">API Docs</a>
+                    <button onclick="showKeyboardShortcuts()" class="text-primary hover:text-blue-700 text-sm font-medium">
+                        Help
+                    </button>
                 </div>
             </div>
         </div>
@@ -38,7 +42,7 @@
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <!-- Dashboard Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             <div class="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow" onclick="showTab('config')">
                 <div class="p-5">
                     <div class="flex items-center">
@@ -52,7 +56,7 @@
                         <div class="ml-5 w-0 flex-1">
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Configuration</dt>
-                                <dd class="text-lg font-medium text-gray-900">Manage Settings</dd>
+                                <dd class="text-lg font-medium text-gray-900">Settings</dd>
                             </dl>
                         </div>
                     </div>
@@ -72,7 +76,7 @@
                         <div class="ml-5 w-0 flex-1">
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Data Upload</dt>
-                                <dd class="text-lg font-medium text-gray-900">Import Files</dd>
+                                <dd class="text-lg font-medium text-gray-900">Import</dd>
                             </dl>
                         </div>
                     </div>
@@ -91,8 +95,48 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">NER Processing</dt>
-                                <dd class="text-lg font-medium text-gray-900">Extract Entities</dd>
+                                <dt class="text-sm font-medium text-gray-500 truncate">NER</dt>
+                                <dd class="text-lg font-medium text-gray-900">Entities</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow" onclick="showTab('tokenize')">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-orange-500 rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Tokenize</dt>
+                                <dd class="text-lg font-medium text-gray-900">Text</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow" onclick="showTab('embeddings')">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Embeddings</dt>
+                                <dd class="text-lg font-medium text-gray-900">Vectors</dd>
                             </dl>
                         </div>
                     </div>
@@ -104,20 +148,20 @@
         <div class="bg-white shadow rounded-lg">
             <div class="border-b border-gray-200">
                 <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
-                    <button onclick="showTab('config')" class="tab-button active border-primary text-primary whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                        Configuration
+                    <button id="tab-config" onclick="showTab('config')" class="tab-button active border-primary text-primary whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        📋 Configuration
                     </button>
-                    <button onclick="showTab('upload')" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                        Upload
+                    <button id="tab-upload" onclick="showTab('upload')" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        📤 Upload
                     </button>
-                    <button onclick="showTab('ner')" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                        NER
+                    <button id="tab-ner" onclick="showTab('ner')" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        🏷️ NER
                     </button>
-                    <button onclick="showTab('tokenize')" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                        Tokenization
+                    <button id="tab-tokenize" onclick="showTab('tokenize')" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        🔤 Tokenization
                     </button>
-                    <button onclick="showTab('embeddings')" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                        Embeddings
+                    <button id="tab-embeddings" onclick="showTab('embeddings')" class="tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        🎯 Embeddings
                     </button>
                 </nav>
             </div>
@@ -135,7 +179,7 @@
                             <form hx-post="/api/config/create" hx-target="#config-result" class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Config Path</label>
-                                    <input name="config_path" type="text" placeholder="/tmp/config.yaml" 
+                                    <input name="config_path" type="text" placeholder="./config.yaml" 
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
                                 </div>
                                 <button type="submit" class="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
@@ -149,9 +193,9 @@
                             <h4 class="font-medium text-gray-900 mb-3">Show Configuration</h4>
                             <form hx-post="/api/config/show" hx-target="#config-result" class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Config Path</label>
-                                    <input name="config_path" type="text" placeholder="/tmp/config.yaml" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Config Path (optional)</label>
+                                    <input name="config_path" type="text" placeholder="Leave empty for current config" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                 </div>
                                 <button type="submit" class="w-full bg-secondary text-white py-2 px-4 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2">
                                     Show Config
@@ -160,15 +204,88 @@
                         </div>
                     </div>
 
+                    <!-- Auto-load current config -->
+                    <div class="mt-6">
+                        <button onclick="loadCurrentConfig()" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">
+                            📋 Load Current Configuration
+                        </button>
+                    </div>
+
                     <!-- Results -->
                     <div id="config-result" class="mt-6"></div>
+                </div>
+
+                <!-- Upload Tab -->
+                <div id="upload-tab" class="tab-content hidden">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Data Upload</h3>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- JSONL Upload -->
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <h4 class="font-medium text-gray-900 mb-4">📄 Upload JSONL Files</h4>
+                            <form hx-post="/api/upload/jsonl" hx-target="#upload-result" hx-encoding="multipart/form-data" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Collection Name *</label>
+                                    <input name="collection" type="text" required placeholder="my_collection"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">JSONL Files *</label>
+                                    <input name="jsonl_files" type="file" accept=".jsonl" multiple required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <p class="text-xs text-gray-500 mt-1">Select one or more .jsonl files</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Batch Size</label>
+                                    <input name="batch_size" type="number" value="1000" min="1" max="10000"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                </div>
+                                <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">
+                                    📤 Upload Files
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- NER Upload -->
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <h4 class="font-medium text-gray-900 mb-4">🏷️ Upload NER Annotations</h4>
+                            <form hx-post="/api/upload/ner" hx-target="#upload-result" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Target Collection *</label>
+                                    <input name="collection" type="text" required placeholder="ner_collection"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Model Name *</label>
+                                    <input name="model_name" type="text" required placeholder="xlm-roberta-base"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Source Collection *</label>
+                                    <input name="solr_collection" type="text" required placeholder="source_collection"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Text Field *</label>
+                                    <input name="field" type="text" required value="text"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                </div>
+                                <button type="submit" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
+                                    🏷️ Upload NER Data
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="upload-result" class="mt-6"></div>
                 </div>
 
                 <!-- NER Tab -->
                 <div id="ner-tab" class="tab-content hidden">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Named Entity Recognition</h3>
+                    
                     <!-- NER Processing Form -->
-                   <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                    <div class="bg-gray-50 rounded-lg p-6 mb-6">
                         <h4 class="font-medium text-gray-900 mb-4">🚀 Process Collection</h4>
                         <form hx-post="/api/ner/process" hx-target="#ner-result" class="space-y-6">
                             
@@ -217,8 +334,6 @@
                                             <option value="spacy">spaCy</option>
                                             <option value="flair">Flair</option>
                                             <option value="stanza">Stanza</option>
-                                            <option value="nuner">NuNER</option>
-                                            <option value="llm_ner">LLM NER</option>
                                             <option value="fastnlp">FastNLP</option>
                                             <option value="fasthan">FastHan</option>
                                             <option value="lac">LAC</option>
@@ -320,230 +435,452 @@
                                             <label class="flex items-center">
                                                 <input name="label_stats" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
                                                 <span class="ml-2 text-sm text-gray-700">Include label statistics</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                           </label>
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
 
-                            <!-- Submit Button -->
-                            <div class="flex gap-4">
-                                <button type="submit" class="bg-primary text-white py-3 px-8 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 font-medium">
-                                    🚀 Start NER Processing
-                                </button>
-                                <button type="button" onclick="clearResults()" class="bg-gray-500 text-white py-3 px-6 rounded-md hover:bg-gray-600 font-medium">
-                                    🧹 Clear Results
-                                </button>
-                                <button type="button" onclick="resetForm()" class="bg-orange-500 text-white py-3 px-6 rounded-md hover:bg-orange-600 font-medium">
-                                    🔄 Reset Form
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
+                           <!-- Submit Button -->
+                           <div class="flex gap-4">
+                               <button type="submit" class="bg-primary text-white py-3 px-8 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 font-medium">
+                                   🚀 Start NER Processing
+                               </button>
+                               <button type="button" onclick="clearResults()" class="bg-gray-500 text-white py-3 px-6 rounded-md hover:bg-gray-600 font-medium">
+                                   🧹 Clear Results
+                               </button>
+                               <button type="button" onclick="resetNerForm()" class="bg-orange-500 text-white py-3 px-6 rounded-md hover:bg-orange-600 font-medium">
+                                   🔄 Reset Form
+                               </button>
+                           </div>
+                       </form>
+                   </div>
 
                    <!-- Results -->
                    <div id="ner-result" class="mt-6"></div>
-               </div>
-               <div id="entity-type-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                    <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Select Entity Types</h3>
-                        <div id="entity-type-lists" class="space-y-4">
-                            <!-- Will be populated by JavaScript -->
-                        </div>
-                        <div class="mt-6 flex gap-2">
-                            <button onclick="applyEntityTypes()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                                Apply Selected
-                            </button>
-                            <button onclick="closeEntityTypePicker()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400">
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-               <!-- Upload Tab -->
-               <div id="upload-tab" class="tab-content hidden">
-                   <h3 class="text-lg font-medium text-gray-900 mb-4">Data Upload</h3>
-                   
-                   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                       <!-- JSONL Upload -->
-                       <div class="border border-gray-200 rounded-lg p-6">
-                           <h4 class="font-medium text-gray-900 mb-4">📄 Upload JSONL Files</h4>
-                           <form hx-post="/api/upload/jsonl" hx-target="#upload-result" hx-encoding="multipart/form-data" class="space-y-4">
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Collection Name *</label>
-                                   <input name="collection" type="text" required placeholder="my_collection"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">JSONL Files *</label>
-                                   <input name="jsonl_files" type="file" accept=".jsonl" multiple required
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                                   <p class="text-xs text-gray-500 mt-1">Select one or more .jsonl files</p>
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Batch Size</label>
-                                   <input name="batch_size" type="number" value="1000" min="1" max="10000"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">
-                                   Upload Files
-                               </button>
-                           </form>
-                       </div>
-
-                       <!-- NER Upload -->
-                       <div class="border border-gray-200 rounded-lg p-6">
-                           <h4 class="font-medium text-gray-900 mb-4">🏷️ Upload NER Annotations</h4>
-                           <form hx-post="/api/upload/ner" hx-target="#upload-result" class="space-y-4">
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Target Collection *</label>
-                                   <input name="collection" type="text" required placeholder="ner_collection"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Model Name *</label>
-                                   <input name="model_name" type="text" required placeholder="xlm-roberta-base"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Source Collection *</label>
-                                   <input name="solr_collection" type="text" required placeholder="source_collection"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Text Field *</label>
-                                   <input name="field" type="text" required value="text"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <button type="submit" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">
-                                   Upload NER Data
-                               </button>
-                           </form>
-                       </div>
-                   </div>
-
-                   <div id="upload-result" class="mt-6"></div>
                </div>
 
                <!-- Tokenization Tab -->
                <div id="tokenize-tab" class="tab-content hidden">
                    <h3 class="text-lg font-medium text-gray-900 mb-4">Tokenization</h3>
                    
-                   <div class="bg-gray-50 rounded-lg p-6">
-                       <form hx-post="/api/tokenize/process" hx-target="#tokenize-result" class="space-y-4">
-                           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Collection *</label>
-                                   <input name="collection" type="text" required
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Model Name *</label>
-                                   <input name="model_name" type="text" required placeholder="bert-base-cased"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Model Type</label>
-                                   <select name="model_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                                       <option value="transformers">Transformers</option>
-                                       <option value="spacy">spaCy</option>
-                                       <option value="chinese_segmenter">Chinese Segmenter</option>
-                                   </select>
-                               </div>
-                           </div>
-
-                           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Text Field</label>
-                                   <input name="text_field" type="text" value="text"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Batch Size</label>
-                                   <input name="batch_size" type="number" value="1000"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div class="flex items-center pt-6">
-                                   <input name="simplify_chinese" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
-                                   <label class="ml-2 block text-sm text-gray-700">Simplify Chinese</label>
+                   <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                       <h4 class="font-medium text-gray-900 mb-4">🔤 Process Collection</h4>
+                       <form hx-post="/api/tokenize/process" hx-target="#tokenize-result" class="space-y-6">
+                           
+                           <!-- Basic Configuration -->
+                           <div class="bg-white rounded-lg p-4 border">
+                               <h5 class="font-medium text-gray-800 mb-3">📊 Basic Configuration</h5>
+                               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                   <div>
+                                       <label class="block text-sm font-medium text-gray-700 mb-1">Collection *</label>
+                                       <select name="collection" id="tokenize-collection-select" required onchange="loadTokenizeCollectionFields()"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                           <option value="">Loading collections...</option>
+                                       </select>
+                                       <p class="text-xs text-gray-500 mt-1">Solr collection to process</p>
+                                   </div>
+                                   <div>
+                                       <label class="block text-sm font-medium text-gray-700 mb-1">Text Field *</label>
+                                       <select name="text_field" id="tokenize-text-field-select" required
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                           <option value="text">text</option>
+                                           <option value="content">content</option>
+                                           <option value="body">body</option>
+                                           <option value="title">title</option>
+                                       </select>
+                                       <p class="text-xs text-gray-500 mt-1">Field containing text to tokenize</p>
+                                   </div>
+                                   <div>
+                                       <label class="block text-sm font-medium text-gray-700 mb-1">Filter Query</label>
+                                       <input name="filter_query" type="text" placeholder="*:* or field:value"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                       <p class="text-xs text-gray-500 mt-1">Optional Solr query filter</p>
+                                   </div>
                                </div>
                            </div>
 
-                           <button type="submit" class="bg-primary text-white py-2 px-6 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
-                               🔤 Start Tokenization
-                           </button>
+                           <!-- Model Configuration -->
+                           <div class="bg-white rounded-lg p-4 border">
+                               <h5 class="font-medium text-gray-800 mb-3">🤖 Model Configuration</h5>
+                               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                   <div>
+                                       <label class="block text-sm font-medium text-gray-700 mb-1">Model Type</label>
+                                       <select name="model_type" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                           <option value="transformers">Transformers</option>
+                                           <option value="spacy">spaCy</option>
+                                           <option value="chinese_segmenter">Chinese Segmenter</option>
+                                       </select>
+                                       <p class="text-xs text-gray-500 mt-1">Type of tokenization model</p>
+                                   </div>
+                                   <div>
+                                       <label class="block text-sm font-medium text-gray-700 mb-1">Model Name *</label>
+                                       <input name="model_name" type="text" required placeholder="bert-base-cased"
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                       <p class="text-xs text-gray-500 mt-1">Model name or path</p>
+                                   </div>
+                                   <div>
+                                       <label class="block text-sm font-medium text-gray-700 mb-1">Max Length</label>
+                                       <input name="max_length" type="number" placeholder="512"
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                       <p class="text-xs text-gray-500 mt-1">Maximum sequence length</p>
+                                   </div>
+                               </div>
+                           </div>
+
+                           <!-- Processing Parameters -->
+                           <div class="bg-white rounded-lg p-4 border">
+                               <h5 class="font-medium text-gray-800 mb-3">⚙️ Processing Parameters</h5>
+                               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                   <div>
+                                       <label class="block text-sm font-medium text-gray-700 mb-1">Start Index</label>
+                                       <input name="start" type="number" value="0" min="0"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                       <p class="text-xs text-gray-500 mt-1">Starting document index</p>
+                                   </div>
+                                   <div>
+                                       <label class="block text-sm font-medium text-gray-700 mb-1">Batch Size</label>
+                                       <input name="batch_size" type="number" value="1000" min="1" max="10000"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                       <p class="text-xs text-gray-500 mt-1">Documents per batch</p>
+                                   </div>
+                                   <div>
+                                       <label class="block text-sm font-medium text-gray-700 mb-1">Max Batches</label>
+                                       <input name="num_batches" type="number" placeholder="All" min="1"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                       <p class="text-xs text-gray-500 mt-1">Limit number of batches</p>
+                                   </div>
+                                   <div class="flex items-center pt-6">
+                                       <input name="simplify_chinese" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                       <label class="ml-2 block text-sm text-gray-700">Simplify Chinese</label>
+                                   </div>
+                               </div>
+                           </div>
+
+                           <!-- Submit Button -->
+                           <div class="flex gap-4">
+                               <button type="submit" class="bg-primary text-white py-3 px-8 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 font-medium">
+                                   🔤 Start Tokenization
+                               </button>
+                               <button type="button" onclick="clearResults()" class="bg-gray-500 text-white py-3 px-6 rounded-md hover:bg-gray-600 font-medium">
+                                   🧹 Clear Results
+                               </button>
+                               <button type="button" onclick="resetTokenizeForm()" class="bg-orange-500 text-white py-3 px-6 rounded-md hover:bg-orange-600 font-medium">
+                                   🔄 Reset Form
+                               </button>
+                           </div>
                        </form>
                    </div>
 
+                   <!-- Results -->
                    <div id="tokenize-result" class="mt-6"></div>
                </div>
 
                <!-- Embeddings Tab -->
-               <div id="embeddings-tab" class="tab-content hidden">
-                   <h3 class="text-lg font-medium text-gray-900 mb-4">Text Embeddings</h3>
-                   
-                   <div class="bg-gray-50 rounded-lg p-6">
-                       <form hx-post="/api/embeddings/compute" hx-target="#embeddings-result" class="space-y-4">
-                           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Collection *</label>
-                                   <input name="collection" type="text" required
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Output Path *</label>
-                                   <input name="output_path" type="text" required placeholder="/path/to/output.vec"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Model Name *</label>
-                                   <input name="model_name" type="text" required placeholder="fasttext-wiki"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                           </div>
+<div id="embeddings-tab" class="tab-content hidden">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">Text Embeddings</h3>
+    
+    <!-- Tab switcher for different embedding types -->
+    <div class="mb-6">
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8" aria-label="Embedding Types">
+                <button onclick="showEmbeddingType('document')" id="doc-embeddings-tab" class="embedding-tab-button active border-blue-500 text-blue-600 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                    🎯 Document Embeddings
+                </button>
+                <button onclick="showEmbeddingType('word')" id="word-embeddings-tab" class="embedding-tab-button border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                    📈 Word Embeddings
+                </button>
+            </nav>
+        </div>
+    </div>
 
-                           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Model Type</label>
-                                   <select name="model_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                                       <option value="fasttext">FastText</option>
-                                       <option value="word2vec">Word2Vec</option>
-                                       <option value="sentence_transformers">Sentence Transformers</option>
-                                   </select>
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Output Format</label>
-                                   <select name="output_format" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                                       <option value="vec">Vec</option>
-                                       <option value="txt">Text</option>
-                                       <option value="binary">Binary</option>
-                                       <option value="json">JSON</option>
-                                   </select>
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Batch Size</label>
-                                   <input name="batch_size" type="number" value="1000"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700 mb-1">Dimensions</label>
-                                   <input name="dim" type="number" placeholder="300"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                               </div>
-                           </div>
+    <!-- Document Embeddings Content -->
+    <div id="document-embeddings-content" class="embedding-type-content">
+        <div class="bg-gray-50 rounded-lg p-6 mb-6">
+            <h4 class="font-medium text-gray-900 mb-4">🎯 Compute Document Embeddings</h4>
+            <form hx-post="/api/embeddings/compute" hx-target="#embeddings-result" class="space-y-6">
+                
+                <!-- Basic Configuration -->
+                <div class="bg-white rounded-lg p-4 border">
+                    <h5 class="font-medium text-gray-800 mb-3">📊 Basic Configuration</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Collection *</label>
+                            <select name="collection" id="embeddings-collection-select" required onchange="loadEmbeddingsCollectionFields()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="">Loading collections...</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Solr collection to process</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Text Field *</label>
+                            <select name="text_field" id="embeddings-text-field-select" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="text">text</option>
+                                <option value="content">content</option>
+                                <option value="body">body</option>
+                                <option value="title">title</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Field containing text to embed</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Output Path *</label>
+                            <input name="output_path" type="text" required placeholder="/path/to/embeddings.vec"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                            <p class="text-xs text-gray-500 mt-1">Where to save embeddings</p>
+                        </div>
+                    </div>
+                </div>
 
-                           <button type="submit" class="bg-primary text-white py-2 px-6 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
-                               🎯 Compute Embeddings
-                           </button>
-                       </form>
-                   </div>
+                <!-- Model Configuration -->
+                <div class="bg-white rounded-lg p-4 border">
+                    <h5 class="font-medium text-gray-800 mb-3">🤖 Model Configuration</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Model Type</label>
+                            <select name="model_type" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="fasttext">FastText</option>
+                                <option value="word2vec">Word2Vec</option>
+                                <option value="sentence_transformers">Sentence Transformers</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Model Name *</label>
+                            <input name="model_name" type="text" required placeholder="fasttext-wiki"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Dimensions</label>
+                            <input name="dim" type="number" placeholder="300"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                    </div>
+                </div>
 
-                   <div id="embeddings-result" class="mt-6"></div>
-               </div>
-           </div>
-       </div>
+                <!-- Processing Parameters -->
+                <div class="bg-white rounded-lg p-4 border">
+                    <h5 class="font-medium text-gray-800 mb-3">⚙️ Processing Parameters</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Index</label>
+                            <input name="start" type="number" value="0" min="0"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Batch Size</label>
+                            <input name="batch_size" type="number" value="1000" min="1" max="10000"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Max Batches</label>
+                            <input name="num_batches" type="number" placeholder="All" min="1"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Output Format</label>
+                            <select name="output_format" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="vec">Vec</option>
+                                <option value="txt">Text</option>
+                                <option value="binary">Binary</option>
+                                <option value="json">JSON</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 space-y-2">
+                        <label class="flex items-center">
+                            <input name="simplify_chinese" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                            <span class="ml-2 text-sm text-gray-700">Simplify Chinese</span>
+                        </label>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Filter Query</label>
+                            <input name="filter_query" type="text" placeholder="*:* or field:value"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                            <p class="text-xs text-gray-500 mt-1">Optional Solr query filter</p>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- Submit Button -->
+                <div class="flex gap-4">
+                    <button type="submit" class="bg-primary text-white py-3 px-8 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 font-medium">
+                        🎯 Compute Document Embeddings
+                    </button>
+                    <button type="button" onclick="clearResults()" class="bg-gray-500 text-white py-3 px-6 rounded-md hover:bg-gray-600 font-medium">
+                        🧹 Clear Results
+                    </button>
+                    <button type="button" onclick="resetDocumentEmbeddingsForm()" class="bg-orange-500 text-white py-3 px-6 rounded-md hover:bg-orange-600 font-medium">
+                        🔄 Reset Form
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Word Embeddings Content -->
+    <div id="word-embeddings-content" class="embedding-type-content hidden">
+        <div class="bg-yellow-50 rounded-lg p-6 mb-6">
+            <h4 class="font-medium text-gray-900 mb-4">📈 Train Word Embeddings</h4>
+            <form hx-post="/api/embeddings/compute-word" hx-target="#embeddings-result" class="space-y-6">
+                
+                <!-- Basic Configuration -->
+                <div class="bg-white rounded-lg p-4 border">
+                    <h5 class="font-medium text-gray-800 mb-3">📊 Basic Configuration</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Collection *</label>
+                            <select name="collection" id="word-embeddings-collection-select" required onchange="loadWordEmbeddingsCollectionFields()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="">Loading collections...</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Solr collection to process</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Text Field *</label>
+                            <select name="text_field" id="word-embeddings-text-field-select" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="text">text</option>
+                                <option value="content">content</option>
+                                <option value="body">body</option>
+                                <option value="title">title</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Field containing text to process</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Output Path *</label>
+                            <input name="output_path" type="text" required placeholder="/path/to/word_embeddings.txt"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                            <p class="text-xs text-gray-500 mt-1">Where to save word embeddings</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Configuration -->
+                <div class="bg-white rounded-lg p-4 border">
+                    <h5 class="font-medium text-gray-800 mb-3">🤖 Model Configuration</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Method</label>
+                            <select name="method" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="word2vec">Word2Vec</option>
+                                <option value="fasttext">FastText</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Word embedding algorithm</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Dimensions</label>
+                            <input name="dim" type="number" value="100" min="50" max="1000" id="word-dim-input"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                            <p class="text-xs text-gray-500 mt-1">Vector dimensions (50-1000)</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Context Window</label>
+                            <input name="window" type="number" value="5" min="1" max="20" id="word-window-input"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                            <p class="text-xs text-gray-500 mt-1">Context window size</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Parameters -->
+                <div class="bg-white rounded-lg p-4 border">
+                    <h5 class="font-medium text-gray-800 mb-3">⚙️ Training Parameters</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Min Count</label>
+                            <input name="min_count" type="number" value="5" min="1" id="word-mincount-input"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                            <p class="text-xs text-gray-500 mt-1">Minimum word frequency</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Workers</label>
+                            <input name="workers" type="number" value="4" min="1" max="16" id="word-workers-input"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                            <p class="text-xs text-gray-500 mt-1">Number of training threads</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Batch Size</label>
+                            <input name="batch_size" type="number" value="1000" min="1" max="10000"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                            <p class="text-xs text-gray-500 mt-1">Documents per batch</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Output Format</label>
+                            <select name="output_format" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="txt">Text</option>
+                                <option value="vec">Vec</option>
+                                <option value="bin">Binary</option>
+                                <option value="gensim">Gensim</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 space-y-3">
+                        <label class="flex items-center">
+                            <input name="auto_configure" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" onchange="toggleAutoConfigureHint()">
+                            <span class="ml-2 text-sm text-gray-700 font-medium">🎯 Auto-Configure Parameters</span>
+                        </label>
+                        <div id="auto-configure-hint" class="hidden bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
+                            <p><strong>Auto-Configure will:</strong></p>
+                            <ul class="list-disc ml-4 mt-1 space-y-1">
+                                <li>Analyze your collection to determine optimal dimensions</li>
+                                <li>Set appropriate window size based on document length</li>
+                                <li>Adjust min_count based on vocabulary size</li>
+                                <li>Optimize worker count for your system</li>
+                                <li>Choose the best method based on data characteristics</li>
+                            </ul>
+                            <p class="mt-2 text-xs text-blue-600"><strong>Note:</strong> Manual parameters will be disabled when auto-configure is enabled.</p>
+                        </div>
+                        
+                        <label class="flex items-center">
+                            <input name="simplify_chinese" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                            <span class="ml-2 text-sm text-gray-700">Simplify Chinese text</span>
+                        </label>
+                        
+                        <label class="flex items-center">
+                            <input name="no_header" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                            <span class="ml-2 text-sm text-gray-700">Exclude header from output file</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Filter Query -->
+                <div class="bg-white rounded-lg p-4 border">
+                    <h5 class="font-medium text-gray-800 mb-3">🔍 Advanced Filtering</h5>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Filter Query</label>
+                        <input name="filter_query" type="text" placeholder="*:* or field:value"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        <p class="text-xs text-gray-500 mt-1">Optional Solr query to filter documents</p>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex gap-4">
+                    <button type="submit" class="bg-yellow-600 text-white py-3 px-8 rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 font-medium">
+                        📈 Train Word Embeddings
+                    </button>
+                    <button type="button" onclick="clearResults()" class="bg-gray-500 text-white py-3 px-6 rounded-md hover:bg-gray-600 font-medium">
+                        🧹 Clear Results
+                    </button>
+                    <button type="button" onclick="resetWordEmbeddingsForm()" class="bg-orange-500 text-white py-3 px-6 rounded-md hover:bg-orange-600 font-medium">
+                        🔄 Reset Form
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results (shared between both types) -->
+    <div id="embeddings-result" class="mt-6"></div>
+</div>
+               
        <!-- Quick Actions -->
        <div class="mt-8 bg-white shadow rounded-lg p-6">
            <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
@@ -564,17 +901,199 @@
                        class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600">
                    🧹 Clear All Results
                </button>
+               <button onclick="loadCurrentConfig()"
+                       class="bg-indigo-500 text-white py-2 px-4 rounded-md hover:bg-indigo-600">
+                   📋 Show Current Config
+               </button>
            </div>
            <div id="quick-result" class="mt-4"></div>
        </div>
    </div>
 
-   <!-- JavaScript for enhanced functionality -->
-   <script>
-       // Available models data
-       let availableModels = {};
+   <!-- Entity Type Modal -->
+   <div id="entity-type-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+       <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+           <h3 class="text-lg font-medium text-gray-900 mb-4">Select Entity Types</h3>
+           <div id="entity-type-lists" class="space-y-4">
+               <!-- Will be populated by JavaScript -->
+           </div>
+           <div class="mt-6 flex gap-2">
+               <button onclick="applyEntityTypes()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                   Apply Selected
+               </button>
+               <button onclick="closeEntityTypePicker()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400">
+                   Cancel
+               </button>
+           </div>
+       </div>
+   </div>
 
-       // Tab functionality
+   <!-- JavaScript -->
+   <script>
+       // Global variables
+       let availableModels = {};
+       let availableEntityTypes = {};
+       let selectedEntityTypes = [];
+
+       function showEmbeddingType(type) {
+        // Hide all embedding type contents
+        document.querySelectorAll('.embedding-type-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        
+        // Remove active class from all embedding tab buttons
+        document.querySelectorAll('.embedding-tab-button').forEach(button => {
+            button.classList.remove('active', 'border-blue-500', 'text-blue-600');
+            button.classList.add('border-transparent', 'text-gray-500');
+        });
+        
+        // Show selected embedding type content
+        const targetContent = document.getElementById(type + '-embeddings-content');
+        if (targetContent) {
+            targetContent.classList.remove('hidden');
+        }
+        
+        // Add active class to selected button
+        const targetButton = document.getElementById(type + '-embeddings-tab');
+        if (targetButton) {
+            targetButton.classList.remove('border-transparent', 'text-gray-500');
+            targetButton.classList.add('active', 'border-blue-500', 'text-blue-600');
+        }
+
+        // Initialize content if needed
+        if (type === 'word') {
+            loadWordEmbeddingsCollections();
+        }
+    }
+
+       async function loadWordEmbeddingsCollections() {
+        try {
+            const response = await fetch('/api/ner/collections'); // Reuse NER endpoint
+            const data = await response.json();
+            const select = document.getElementById('word-embeddings-collection-select');
+            
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Select a collection...</option>';
+            
+            if (data.collections && data.collections.length > 0) {
+                data.collections.forEach(collection => {
+                    const option = document.createElement('option');
+                    option.value = collection;
+                    option.textContent = collection;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">No collections found</option>';
+            }
+        } catch (error) {
+            console.error('Error loading word embeddings collections:', error);
+            const select = document.getElementById('word-embeddings-collection-select');
+            if (select) {
+                select.innerHTML = '<option value="">Error loading collections</option>';
+            }
+        }
+    }
+
+    async function loadWordEmbeddingsCollectionFields() {
+        const collection = document.getElementById('word-embeddings-collection-select')?.value;
+        const fieldSelect = document.getElementById('word-embeddings-text-field-select');
+        
+        if (!fieldSelect || !collection) {
+            if (fieldSelect) fieldSelect.innerHTML = '<option value="text">text</option>';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/ner/collections/${collection}/fields`);
+            const data = await response.json();
+            
+            fieldSelect.innerHTML = '';
+            
+            if (data.fields && data.fields.length > 0) {
+                data.fields.forEach(field => {
+                    const option = document.createElement('option');
+                    option.value = field;
+                    option.textContent = field;
+                    if (field === 'text') option.selected = true;
+                    fieldSelect.appendChild(option);
+                });
+            } else {
+                ['text', 'content', 'body', 'title'].forEach(field => {
+                    const option = document.createElement('option');
+                    option.value = field;
+                    option.textContent = field;
+                    fieldSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading word embeddings fields:', error);
+            fieldSelect.innerHTML = '<option value="text">text</option>';
+        }
+    }
+
+    function toggleAutoConfigureHint() {
+        const checkbox = document.querySelector('input[name="auto_configure"]');
+        const hint = document.getElementById('auto-configure-hint');
+        
+        if (checkbox && hint) {
+            if (checkbox.checked) {
+                hint.classList.remove('hidden');
+                // Disable manual parameter inputs when auto-configure is enabled
+                const manualInputs = ['dim', 'window', 'min_count', 'workers'];
+                manualInputs.forEach(inputName => {
+                    const input = document.querySelector(`input[name="${inputName}"]`);
+                    if (input) {
+                        input.disabled = true;
+                        input.classList.add('bg-gray-100', 'cursor-not-allowed');
+                    }
+                });
+            } else {
+                hint.classList.add('hidden');
+                // Re-enable manual parameter inputs
+                const manualInputs = ['dim', 'window', 'min_count', 'workers'];
+                manualInputs.forEach(inputName => {
+                    const input = document.querySelector(`input[name="${inputName}"]`);
+                    if (input) {
+                        input.disabled = false;
+                        input.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                    }
+                });
+            }
+        }
+    }
+
+    function resetWordEmbeddingsForm() {
+        if (confirm('Reset all word embeddings form fields to default values?')) {
+            const form = document.querySelector('.bg-yellow-50 form');
+            if (form) {
+                form.reset();
+                
+                // Reset to defaults
+                const methodSelect = form.querySelector('select[name="method"]');
+                const textFieldSelect = document.getElementById('word-embeddings-text-field-select');
+                
+                if (methodSelect) methodSelect.value = 'word2vec';
+                if (textFieldSelect) textFieldSelect.value = 'text';
+                
+                // Hide auto-configure hint
+                const hint = document.getElementById('auto-configure-hint');
+                if (hint) hint.classList.add('hidden');
+                
+                // Re-enable all inputs
+                const manualInputs = ['dim', 'window', 'min_count', 'workers'];
+                manualInputs.forEach(inputName => {
+                    const input = form.querySelector(`input[name="${inputName}"]`);
+                    if (input) {
+                        input.disabled = false;
+                        input.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                    }
+                });
+            }
+        }
+    }
+
+       // Fixed tab functionality
        function showTab(tabName) {
            // Hide all tab contents
            document.querySelectorAll('.tab-content').forEach(tab => {
@@ -588,34 +1107,79 @@
            });
            
            // Show selected tab
-           document.getElementById(tabName + '-tab').classList.remove('hidden');
+           const targetTab = document.getElementById(tabName + '-tab');
+           if (targetTab) {
+               targetTab.classList.remove('hidden');
+           }
            
            // Add active class to selected button
-           event.target.classList.remove('border-transparent', 'text-gray-500');
-           event.target.classList.add('active', 'border-primary', 'text-primary');
+           const targetButton = document.getElementById('tab-' + tabName);
+           if (targetButton) {
+               targetButton.classList.remove('border-transparent', 'text-gray-500');
+               targetButton.classList.add('active', 'border-primary', 'text-primary');
+           }
 
-           // Load models when NER tab is shown
+           // Initialize tab-specific data
            if (tabName === 'ner' && Object.keys(availableModels).length === 0) {
-               loadModels();
+               initializeNerTab();
+           } else if (tabName === 'tokenize') {
+               initializeTokenizeTab();
+           } else if (tabName === 'embeddings') {
+               initializeEmbeddingsTab();
            }
        }
 
-       // Load available models
-       async function loadModels() {
+       // Fixed load current config function
+       function loadCurrentConfig() {
+           // Create a proper form and submit it
+           fetch('/api/config/show', {
+               method: 'POST',
+               headers: {
+                   'Content-Type': 'application/x-www-form-urlencoded',
+               },
+               body: 'config_path='
+           })
+           .then(response => response.text())
+           .then(html => {
+               document.getElementById('config-result').innerHTML = html;
+           })
+           .catch(error => {
+               console.error('Error loading config:', error);
+               document.getElementById('config-result').innerHTML = `
+                   <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                       <h4 class="text-sm font-medium text-red-800 mb-2">❌ Error Loading Configuration</h4>
+                       <div class="text-sm text-red-700">Failed to load configuration: ${error.message}</div>
+                   </div>
+               `;
+           });
+       }
+
+       // NER-specific functions
+       function initializeNerTab() {
+           loadNerCollections();
+           loadEntityTypes();
+           loadNerModels();
+       }
+
+       async function loadNerModels() {
            try {
                const response = await fetch('/api/ner/models');
                availableModels = await response.json();
-               updateModelDropdown();
+               updateNerModelDropdown();
            } catch (error) {
-               console.error('Error loading models:', error);
-               document.getElementById('model_name').innerHTML = '<option value="">Error loading models</option>';
+               console.error('Error loading NER models:', error);
+               const modelSelect = document.getElementById('model_name');
+               if (modelSelect) {
+                   modelSelect.innerHTML = '<option value="">Error loading models</option>';
+               }
            }
        }
 
-       // Update model dropdown based on selected type
-       function updateModelDropdown() {
-           const modelType = document.getElementById('model_type').value;
+       function updateNerModelDropdown() {
+           const modelType = document.getElementById('model_type')?.value;
            const modelSelect = document.getElementById('model_name');
+           
+           if (!modelSelect || !modelType) return;
            
            modelSelect.innerHTML = '';
            
@@ -631,577 +1195,702 @@
            }
        }
 
-       // Health check function
-       async function checkHealth() {
+       async function loadNerCollections() {
            try {
-               const response = await fetch('/health');
+               const response = await fetch('/api/ner/collections');
                const data = await response.json();
-               document.getElementById('quick-result').innerHTML = `
-                   <div class="bg-green-50 border border-green-200 rounded-md p-4">
-                       <div class="flex">
-                           <div class="flex-shrink-0">
-                               <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                               </svg>
-                           </div>
-                           <div class="ml-3">
-                               <h3 class="text-sm font-medium text-green-800">✅ System Healthy</h3>
-                               <div class="mt-2 text-sm text-green-700">
-                                   <p><strong>Status:</strong> ${data.status}</p>
-                                   <p><strong>Version:</strong> ${data.version}</p>
-                                   <p><strong>Checked:</strong> ${new Date().toLocaleString()}</p>
-                               </div>
-                           </div>
-                       </div>
-                   </div>
-               `;
+               const select = document.getElementById('collection-select');
+               
+               if (!select) return;
+               
+               select.innerHTML = '<option value="">Select a collection...</option>';
+               
+               if (data.collections && data.collections.length > 0) {
+                   data.collections.forEach(collection => {
+                       const option = document.createElement('option');
+                       option.value = collection;
+                       option.textContent = collection;
+                       select.appendChild(option);
+                   });
+               } else {
+                   select.innerHTML = '<option value="">No collections found</option>';
+                   if (data.error) {
+                       console.warn('Solr connection error:', data.error);
+                   }
+               }
            } catch (error) {
-               document.getElementById('quick-result').innerHTML = `
-                   <div class="bg-red-50 border border-red-200 rounded-md p-4">
-                       <div class="flex">
-                           <div class="flex-shrink-0">
-                               <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                               </svg>
-                           </div>
-                           <div class="ml-3">
-                               <h3 class="text-sm font-medium text-red-800">❌ Health Check Failed</h3>
-                               <div class="mt-2 text-sm text-red-700">
-                                   <p><strong>Error:</strong> ${error.message}</p>
-                               </div>
-                           </div>
-                       </div>
-                   </div>
-               `;
+               console.error('Error loading collections:', error);
+               const select = document.getElementById('collection-select');
+               if (select) {
+                   select.innerHTML = '<option value="">Error loading collections</option>';
+               }
            }
        }
 
-       // Clear specific results
-       function clearResults() {
-           const results = ['#ner-result', '#ner-test-result'];
-           results.forEach(selector => {
-               const element = document.querySelector(selector);
-               if (element) element.innerHTML = '';
-           });
-       }
-
-       // Clear all results
-       function clearAllResults() {
-           const results = ['#config-result', '#upload-result', '#ner-result', '#ner-test-result', '#tokenize-result', '#embeddings-result', '#quick-result'];
-           results.forEach(selector => {
-               const element = document.querySelector(selector);
-               if (element) element.innerHTML = '';
-           });
-       }
-
-       // Enhanced HTMX response formatting
-       document.body.addEventListener('htmx:afterRequest', function(evt) {
-           const target = evt.detail.target;
-           const xhr = evt.detail.xhr;
+       async function loadCollectionFields() {
+           const collection = document.getElementById('collection-select')?.value;
+           const fieldSelect = document.getElementById('text-field-select');
            
-           // Don't format if target is already formatted (like NER processing)
-           if (target.innerHTML.includes('bg-blue-50') || target.innerHTML.includes('bg-green-50')) {
+           if (!fieldSelect || !collection) {
+               if (fieldSelect) fieldSelect.innerHTML = '<option value="text">text</option>';
                return;
            }
            
-           if (xhr.status === 200) {
-               try {
-                   const data = JSON.parse(xhr.responseText);
-                   target.innerHTML = `
-                       <div class="bg-green-50 border border-green-200 rounded-md p-4">
-                           <h4 class="text-sm font-medium text-green-800 mb-2">✅ Success</h4>
-                           <pre class="text-sm text-green-700 whitespace-pre-wrap bg-white p-2 rounded border">${JSON.stringify(data, null, 2)}</pre>
-                       </div>
-                   `;
-               } catch (e) {
-                   // Response is already HTML (like from NER processing)
-                   if (!target.innerHTML.trim()) {
-                       target.innerHTML = `
-                           <div class="bg-green-50 border border-green-200 rounded-md p-4">
-                               <h4 class="text-sm font-medium text-green-800 mb-2">✅ Success</h4>
-                               <div class="text-sm text-green-700">${xhr.responseText}</div>
-                           </div>
-                       `;
-                   }
-               }
-           } else {
-               target.innerHTML = `
-                   <div class="bg-red-50 border border-red-200 rounded-md p-4">
-                       <h4 class="text-sm font-medium text-red-800 mb-2">❌ Error</h4>
-                       <div class="text-sm text-red-700">${xhr.responseText}</div>
-                   </div>
-               `;
-           }
-       });
-
-       // Auto-clear results after 30 seconds (except for processing tasks)
-       document.body.addEventListener('htmx:afterRequest', function(evt) {
-           setTimeout(() => {
-               const target = evt.detail.target;
-               if (target && target.innerHTML.trim() !== '' && !target.innerHTML.includes('animate-spin')) {
-                   const fadeOut = () => {
-                       target.style.opacity = '0.5';
-                       setTimeout(() => {
-                           if (!target.innerHTML.includes('animate-spin')) {
-                               target.innerHTML = '';
-                           }
-                       }, 2000);
-                   };
-                   fadeOut();
-               }
-           }, 30000);
-       });
-
-       // Initialize page
-       document.addEventListener('DOMContentLoaded', function() {
-           // Load models on page load
-           loadModels();
-           
-           // Set up model type change handler
-           document.getElementById('model_type').addEventListener('change', updateModelDropdown);
-       });
-
-       // Progress checking function for background tasks
-       window.checkStatus = function(taskId) {
-            fetch(`/api/ner/status/${taskId}`)
-                .then(response => response.json())
-                .then(data => {
-                    updateProgress(data);
-                    
-                    // Only continue auto-refresh if still processing
-                    if (data.status === 'running' || data.status === 'starting') {
-                        setTimeout(() => window.checkStatus(taskId), 2000);
-                    } else {
-                        // Processing is done (completed or failed)
-                        console.log('NER processing finished with status:', data.status);
-                        
-                        // Update button state
-                        const refreshButton = document.querySelector(`button[onclick="checkStatus('${taskId}')"]`);
-                        if (refreshButton) {
-                            if (data.status === 'completed') {
-                                refreshButton.textContent = '✅ Completed';
-                                refreshButton.className = refreshButton.className.replace('bg-blue-100 hover:bg-blue-200 text-blue-800', 'bg-green-100 hover:bg-green-200 text-green-800');
-                            } else if (data.status === 'failed') {
-                                refreshButton.textContent = '❌ Failed - Click to Retry';
-                                refreshButton.className = refreshButton.className.replace('bg-blue-100 hover:bg-blue-200 text-blue-800', 'bg-red-100 hover:bg-red-200 text-red-800');
-                            }
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking status:', error);
-                    const statusText = document.getElementById('status-text');
-                    if (statusText) {
-                        statusText.textContent = 'Error checking status';
-                        statusText.className = 'text-sm text-red-600 mt-1';
-                    }
-                });
-        };
-
-        // Enhanced progress update with better completion handling
-        window.updateProgress = function(data) {
-            const progressBar = document.querySelector('#progress-bar .bg-blue-600, #progress-bar .bg-green-600');
-            const statusText = document.getElementById('status-text');
-            
-            if (progressBar) {
-                progressBar.style.width = data.progress + '%';
-            }
-            
-            if (statusText) {
-                if (data.status === 'completed') {
-                    statusText.className = 'text-sm text-green-600 mt-1 font-medium';
-                    statusText.innerHTML = `✅ ${data.message}`;
-                    if (data.processed_docs) {
-                        statusText.innerHTML += ` <strong>(${data.processed_docs} documents)</strong>`;
-                    }
-                    if (data.processing_time) {
-                        statusText.innerHTML += `<br><small>Processing time: ${data.processing_time.toFixed(2)}s</small>`;
-                    }
-                    
-                    // Change progress bar to green and stop any animation
-                    if (progressBar) {
-                        progressBar.className = 'bg-green-600 h-2 rounded-full transition-all duration-300';
-                        progressBar.style.width = '100%';
-                    }
-                    
-                    // Remove any loading spinners
-                    const spinner = document.querySelector('.animate-spin');
-                    if (spinner) {
-                        spinner.classList.remove('animate-spin');
-                        spinner.innerHTML = '✅';
-                    }
-                    
-                } else if (data.status === 'failed') {
-                    statusText.className = 'text-sm text-red-600 mt-1 font-medium';
-                    statusText.innerHTML = `❌ ${data.message || data.error}`;
-                    if (data.error_details) {
-                        statusText.innerHTML += `<br><details class="mt-2"><summary class="cursor-pointer text-xs">Show error details</summary><pre class="text-xs mt-1 bg-red-50 p-2 rounded">${data.error_details}</pre></details>`;
-                    }
-                    
-                    // Change progress bar to red
-                    if (progressBar) {
-                        progressBar.className = 'bg-red-600 h-2 rounded-full transition-all duration-300';
-                    }
-                    
-                    // Stop spinner animation
-                    const spinner = document.querySelector('.animate-spin');
-                    if (spinner) {
-                        spinner.classList.remove('animate-spin');
-                        spinner.innerHTML = '❌';
-                    }
-                    
-                } else {
-                    // Still processing
-                    statusText.className = 'text-sm text-blue-600 mt-1';
-                    statusText.textContent = data.message;
-                }
-            }
-        };
-
-       // Prevent form submission on Enter key in input fields (except textareas)
-       document.addEventListener('keydown', function(e) {
-           if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
-               e.preventDefault();
-           }
-       });
-
-       // Add loading state to form submissions
-       document.body.addEventListener('htmx:beforeRequest', function(evt) {
-           const form = evt.detail.elt;
-           const submitButton = form.querySelector('button[type="submit"]');
-           if (submitButton) {
-               submitButton.disabled = true;
-               submitButton.innerHTML = submitButton.innerHTML.replace(/^[🚀🧪🔤🎯📄🏷️]/g, '⏳');
-               submitButton.classList.add('opacity-75');
-           }
-       });
-
-       document.body.addEventListener('htmx:afterRequest', function(evt) {
-           const form = evt.detail.elt;
-           const submitButton = form.querySelector('button[type="submit"]');
-           if (submitButton) {
-               submitButton.disabled = false;
-               submitButton.classList.remove('opacity-75');
+           try {
+               const response = await fetch(`/api/ner/collections/${collection}/fields`);
+               const data = await response.json();
                
-               // Restore original button text based on context
-               if (form.action.includes('/ner/process')) {
-                   submitButton.innerHTML = '🚀 Start NER Processing';
-               } else if (form.action.includes('/ner/test')) {
-                   submitButton.innerHTML = '🧪 Test Model';
-               } else if (form.action.includes('/tokenize')) {
-                   submitButton.innerHTML = '🔤 Start Tokenization';
-               } else if (form.action.includes('/embeddings')) {
-                   submitButton.innerHTML = '🎯 Compute Embeddings';
-               } else if (form.action.includes('/upload/jsonl')) {
-                   submitButton.innerHTML = '📄 Upload Files';
-               } else if (form.action.includes('/upload/ner')) {
-                   submitButton.innerHTML = '🏷️ Upload NER Data';
+               fieldSelect.innerHTML = '';
+               
+               if (data.fields && data.fields.length > 0) {
+                   data.fields.forEach(field => {
+                       const option = document.createElement('option');
+                       option.value = field;
+                       option.textContent = field;
+                       if (field === 'text') option.selected = true;
+                       fieldSelect.appendChild(option);
+                   });
+               } else {
+                   ['text', 'content', 'body', 'title'].forEach(field => {
+                       const option = document.createElement('option');
+                       option.value = field;
+                       option.textContent = field;
+                       fieldSelect.appendChild(option);
+                   });
                }
+           } catch (error) {
+               console.error('Error loading fields:', error);
+               fieldSelect.innerHTML = '<option value="text">text</option>';
            }
-       });
-
-       // Copy task ID to clipboard
-       function copyTaskId(taskId) {
-           navigator.clipboard.writeText(taskId).then(function() {
-               // Show temporary success message
-               const statusDiv = document.querySelector('.bg-blue-50');
-               if (statusDiv) {
-                   const originalContent = statusDiv.innerHTML;
-                   statusDiv.innerHTML = originalContent.replace('Task ID:', 'Task ID (copied!):');
-                   setTimeout(() => {
-                       statusDiv.innerHTML = originalContent;
-                   }, 2000);
-               }
-           });
        }
 
-       // Keyboard shortcuts
-       document.addEventListener('keydown', function(e) {
-           // Ctrl/Cmd + number keys to switch tabs
-           if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '5') {
-               e.preventDefault();
-               const tabs = ['config', 'upload', 'ner', 'tokenize', 'embeddings'];
-               const tabIndex = parseInt(e.key) - 1;
-               if (tabs[tabIndex]) {
-                   showTab(tabs[tabIndex]);
-               }
+       async function loadEntityTypes() {
+           try {
+               const response = await fetch('/api/ner/entity-types');
+               availableEntityTypes = await response.json();
+           } catch (error) {
+               console.error('Error loading entity types:', error);
+               availableEntityTypes = {
+                   common: ["PERSON", "ORGANIZATION", "LOCATION"],
+                   transformers: ["PERSON", "ORG", "LOC", "MISC"]
+               };
            }
-           
-           // Escape key to clear results
-           if (e.key === 'Escape') {
-               clearAllResults();
-           }
-       });
+       }
 
-       // Show keyboard shortcuts tooltip
-       function showKeyboardShortcuts() {
-           alert(`Keyboard Shortcuts:
+       function updateEntityTypes() {
+           const modelType = document.getElementById('model_type')?.value;
+           const input = document.getElementById('entity-types-input');
            
+           if (!input || !modelType) return;
+           
+           if (availableEntityTypes[modelType]) {
+               input.placeholder = availableEntityTypes[modelType].join(', ');
+           } else {
+               input.placeholder = "PERSON,LOCATION,ORGANIZATION";
+           }
+       }
+
+       function showEntityTypePicker() {
+           const modal = document.getElementById('entity-type-modal');
+           const listsContainer = document.getElementById('entity-type-lists');
+           
+           if (!modal || !listsContainer) return;
+           
+           listsContainer.innerHTML = '';
+           selectedEntityTypes = [];
+           
+           // Get current input value
+           const currentInput = document.getElementById('entity-types-input')?.value;
+           if (currentInput) {
+               selectedEntityTypes = currentInput.split(',').map(s => s.trim()).filter(s => s);
+           }
+           
+           // Create checkboxes for each category
+           Object.entries(availableEntityTypes).forEach(([category, types]) => {
+               const categoryDiv = document.createElement('div');
+               categoryDiv.className = 'border rounded-lg p-3';
+               categoryDiv.innerHTML = `
+                   <h4 class="font-medium text-gray-800 mb-2">${category.charAt(0).toUpperCase() + category.slice(1)}</h4>
+                   <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                       ${types.map(type => `
+                           <label class="flex items-center">
+                               <input type="checkbox" value="${type}" ${selectedEntityTypes.includes(type) ? 'checked' : ''} 
+                                   onchange="toggleEntityType('${type}')" class="mr-2">
+                               <span class="text-sm">${type}</span>
+                           </label>
+                       `).join('')}
+                   </div>
+               `;
+               listsContainer.appendChild(categoryDiv);
+           });
+           
+           modal.classList.remove('hidden');
+           modal.classList.add('flex');
+       }
+
+       function toggleEntityType(type) {
+           const index = selectedEntityTypes.indexOf(type);
+           if (index > -1) {
+               selectedEntityTypes.splice(index, 1);
+           } else {
+               selectedEntityTypes.push(type);
+           }
+       }
+
+       function applyEntityTypes() {
+           const input = document.getElementById('entity-types-input');
+           if (input) {
+               input.value = selectedEntityTypes.join(', ');
+           }
+           closeEntityTypePicker();
+       }
+
+       function closeEntityTypePicker() {
+           const modal = document.getElementById('entity-type-modal');
+           if (modal) {
+               modal.classList.add('hidden');
+               modal.classList.remove('flex');
+           }
+       }
+
+       // Model update functions
+       function loadModels() {
+           loadNerModels();
+       }
+
+       // Tokenization functions
+       function initializeTokenizeTab() {
+           loadTokenizeCollections();
+        }
+
+async function loadTokenizeCollections() {
+    try {
+        const response = await fetch('/api/ner/collections'); // Reuse NER endpoint
+        const data = await response.json();
+        const select = document.getElementById('tokenize-collection-select');
+        
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">Select a collection...</option>';
+        
+        if (data.collections && data.collections.length > 0) {
+            data.collections.forEach(collection => {
+                const option = document.createElement('option');
+                option.value = collection;
+                option.textContent = collection;
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = '<option value="">No collections found</option>';
+        }
+    } catch (error) {
+        console.error('Error loading tokenize collections:', error);
+        const select = document.getElementById('tokenize-collection-select');
+        if (select) {
+            select.innerHTML = '<option value="">Error loading collections</option>';
+        }
+    }
+}
+
+async function loadTokenizeCollectionFields() {
+    const collection = document.getElementById('tokenize-collection-select')?.value;
+    const fieldSelect = document.getElementById('tokenize-text-field-select');
+    
+    if (!fieldSelect || !collection) {
+        if (fieldSelect) fieldSelect.innerHTML = '<option value="text">text</option>';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/ner/collections/${collection}/fields`);
+        const data = await response.json();
+        
+        fieldSelect.innerHTML = '';
+        
+        if (data.fields && data.fields.length > 0) {
+            data.fields.forEach(field => {
+                const option = document.createElement('option');
+                option.value = field;
+                option.textContent = field;
+                if (field === 'text') option.selected = true;
+                fieldSelect.appendChild(option);
+            });
+        } else {
+            ['text', 'content', 'body', 'title'].forEach(field => {
+                const option = document.createElement('option');
+                option.value = field;
+                option.textContent = field;
+                fieldSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading tokenize fields:', error);
+        fieldSelect.innerHTML = '<option value="text">text</option>';
+    }
+}
+
+// Embeddings functions
+function initializeEmbeddingsTab() {
+    loadEmbeddingsCollections();
+    loadWordEmbeddingsCollections(); 
+}
+
+async function loadEmbeddingsCollections() {
+    try {
+        const response = await fetch('/api/ner/collections'); // Reuse NER endpoint
+        const data = await response.json();
+        const select = document.getElementById('embeddings-collection-select');
+        
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">Select a collection...</option>';
+        
+        if (data.collections && data.collections.length > 0) {
+            data.collections.forEach(collection => {
+                const option = document.createElement('option');
+                option.value = collection;
+                option.textContent = collection;
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = '<option value="">No collections found</option>';
+        }
+    } catch (error) {
+        console.error('Error loading embeddings collections:', error);
+        const select = document.getElementById('embeddings-collection-select');
+        if (select) {
+            select.innerHTML = '<option value="">Error loading collections</option>';
+        }
+    }
+}
+
+async function loadEmbeddingsCollectionFields() {
+    const collection = document.getElementById('embeddings-collection-select')?.value;
+    const fieldSelect = document.getElementById('embeddings-text-field-select');
+    
+    if (!fieldSelect || !collection) {
+        if (fieldSelect) fieldSelect.innerHTML = '<option value="text">text</option>';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/ner/collections/${collection}/fields`);
+        const data = await response.json();
+        
+        fieldSelect.innerHTML = '';
+        
+        if (data.fields && data.fields.length > 0) {
+            data.fields.forEach(field => {
+                const option = document.createElement('option');
+                option.value = field;
+                option.textContent = field;
+                if (field === 'text') option.selected = true;
+                fieldSelect.appendChild(option);
+            });
+        } else {
+            ['text', 'content', 'body', 'title'].forEach(field => {
+                const option = document.createElement('option');
+                option.value = field;
+                option.textContent = field;
+                fieldSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading embeddings fields:', error);
+        fieldSelect.innerHTML = '<option value="text">text</option>';
+    }
+}
+
+// Reset form functions
+function resetNerForm() {
+    if (confirm('Reset all form fields to default values?')) {
+        const form = document.querySelector('#ner-tab form');
+        if (form) {
+            form.reset();
+            
+            // Reset dropdowns to default values
+            const modelType = document.getElementById('model_type');
+            const textField = document.getElementById('text-field-select');
+            
+            if (modelType) modelType.value = 'transformers';
+            if (textField) textField.value = 'text';
+            
+            // Reload models and update entity types
+            loadNerModels();
+            updateEntityTypes();
+        }
+    }
+}
+
+function resetTokenizeForm() {
+    if (confirm('Reset all form fields to default values?')) {
+        const form = document.querySelector('#tokenize-tab form');
+        if (form) {
+            form.reset();
+            
+            const modelType = document.querySelector('#tokenize-tab select[name="model_type"]');
+            const textField = document.getElementById('tokenize-text-field-select');
+            
+            if (modelType) modelType.value = 'transformers';
+            if (textField) textField.value = 'text';
+        }
+    }
+}
+
+function resetEmbeddingsForm() {
+    if (confirm('Reset all form fields to default values?')) {
+        const form = document.querySelector('#embeddings-tab form');
+        if (form) {
+            form.reset();
+            
+            const modelType = document.querySelector('#embeddings-tab select[name="model_type"]');
+            const textField = document.getElementById('embeddings-text-field-select');
+            
+            if (modelType) modelType.value = 'fasttext';
+            if (textField) textField.value = 'text';
+        }
+    }
+}
+
+// Health check function
+async function checkHealth() {
+    try {
+        const response = await fetch('/health');
+        const data = await response.json();
+        document.getElementById('quick-result').innerHTML = `
+            <div class="bg-green-50 border border-green-200 rounded-md p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-green-800">✅ System Healthy</h3>
+                        <div class="mt-2 text-sm text-green-700">
+                            <p><strong>Status:</strong> ${data.status}</p>
+                            <p><strong>Version:</strong> ${data.version}</p>
+                            <p><strong>Checked:</strong> ${new Date().toLocaleString()}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        document.getElementById('quick-result').innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">❌ Health Check Failed</h3>
+                        <div class="mt-2 text-sm text-red-700">
+                            <p><strong>Error:</strong> ${error.message}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Clear functions
+function clearResults() {
+    const results = ['#ner-result', '#tokenize-result', '#embeddings-result'];
+    results.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) element.innerHTML = '';
+    });
+}
+
+function clearAllResults() {
+    const results = ['#config-result', '#upload-result', '#ner-result', '#tokenize-result', '#embeddings-result', '#quick-result'];
+    results.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) element.innerHTML = '';
+    });
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl/Cmd + number keys to switch tabs
+    if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '5') {
+        e.preventDefault();
+        const tabs = ['config', 'upload', 'ner', 'tokenize', 'embeddings'];
+        const tabIndex = parseInt(e.key) - 1;
+        if (tabs[tabIndex]) {
+            showTab(tabs[tabIndex]);
+        }
+    }
+    
+    // Escape key to clear results
+    if (e.key === 'Escape') {
+        clearAllResults();
+    }
+});
+
+// Show keyboard shortcuts
+function showKeyboardShortcuts() {
+    alert(`Keyboard Shortcuts:
+
 Ctrl/Cmd + 1: Configuration
 Ctrl/Cmd + 2: Upload
 Ctrl/Cmd + 3: NER
 Ctrl/Cmd + 4: Tokenization
 Ctrl/Cmd + 5: Embeddings
 Escape: Clear all results`);
-       }
+}
 
-       // Add help button
-       const helpButton = document.createElement('button');
-       helpButton.innerHTML = '❓ Help';
-       helpButton.className = 'fixed bottom-4 right-4 bg-gray-600 text-white py-2 px-4 rounded-full shadow-lg hover:bg-gray-700 z-50';
-       helpButton.onclick = showKeyboardShortcuts;
-       document.body.appendChild(helpButton);
+// Copy task ID to clipboard
+function copyTaskId(taskId) {
+    navigator.clipboard.writeText(taskId).then(function() {
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = '✅ Copied!';
+        button.className = button.className.replace('bg-gray-100 hover:bg-gray-200 text-gray-800', 'bg-gray-200 text-gray-900');
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.className = button.className.replace('bg-gray-200 text-gray-900', 'bg-gray-100 hover:bg-gray-200 text-gray-800');
+        }, 2000);
+    });
+}
 
-       // Add notification system
-       window.showNotification = function(message, type = 'info') {
-           const notification = document.createElement('div');
-           notification.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 transition-all duration-300 ${
-               type === 'success' ? 'bg-green-500 text-white' :
-               type === 'error' ? 'bg-red-500 text-white' :
-               type === 'warning' ? 'bg-yellow-500 text-black' :
-               'bg-blue-500 text-white'
-           }`;
-           notification.textContent = message;
-           
-           document.body.appendChild(notification);
-           
-           // Auto-remove after 5 seconds
-           setTimeout(() => {
-               notification.style.opacity = '0';
-               notification.style.transform = 'translateX(100%)';
-               setTimeout(() => {
-                   if (notification.parentNode) {
-                       notification.parentNode.removeChild(notification);
-                   }
-               }, 300);
-           }, 5000);
-       };
-
-       // Enhanced error handling
-       document.body.addEventListener('htmx:responseError', function(evt) {
-           window.showNotification('Request failed. Please check your connection.', 'error');
-       });
-
-       document.body.addEventListener('htmx:timeout', function(evt) {
-           window.showNotification('Request timed out. Please try again.', 'warning');
-       });
-
-       // Form validation
-       document.addEventListener('submit', function(e) {
-           const form = e.target;
-           const requiredFields = form.querySelectorAll('[required]');
-           let isValid = true;
-           
-           requiredFields.forEach(field => {
-               if (!field.value.trim()) {
-                   field.classList.add('border-red-500');
-                   isValid = false;
-               } else {
-                   field.classList.remove('border-red-500');
-               }
-           });
-           
-           if (!isValid) {
-               e.preventDefault();
-               window.showNotification('Please fill in all required fields.', 'error');
-           }
-       });
-
-       // Enhanced JavaScript for NER form management
-        let availableEntityTypes = {};
-        let selectedEntityTypes = [];
-
-        // Load Solr collections on page load
-        async function loadSolrCollections() {
-            try {
-                const response = await fetch('/api/ner/collections');
-                const data = await response.json();
-                const select = document.getElementById('collection-select');
-                
-                select.innerHTML = '<option value="">Select a collection...</option>';
-                
-                if (data.collections && data.collections.length > 0) {
-                    data.collections.forEach(collection => {
-                        const option = document.createElement('option');
-                        option.value = collection;
-                        option.textContent = collection;
-                        select.appendChild(option);
-                    });
-                } else {
-                    select.innerHTML = '<option value="">No collections found or Solr not accessible</option>';
-                    if (data.error) {
-                        console.warn('Solr connection error:', data.error);
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading collections:', error);
-                const select = document.getElementById('collection-select');
-                select.innerHTML = '<option value="">Error loading collections</option>';
+// Add notification system
+window.showNotification = function(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 transition-all duration-300 ${
+        type === 'success' ? 'bg-green-500 text-white' :
+        type === 'error' ? 'bg-red-500 text-white' :
+        type === 'warning' ? 'bg-yellow-500 text-black' :
+        'bg-blue-500 text-white'
+    }`;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
             }
-        }
+        }, 300);
+    }, 5000);
+};
 
-        // Load fields for selected collection
-        async function loadCollectionFields() {
-            const collection = document.getElementById('collection-select').value;
-            const fieldSelect = document.getElementById('text-field-select');
-            
-            if (!collection) {
-                fieldSelect.innerHTML = '<option value="text">text</option>';
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/ner/collections/${collection}/fields`);
-                const data = await response.json();
-                
-                fieldSelect.innerHTML = '';
-                
-                if (data.fields && data.fields.length > 0) {
-                    data.fields.forEach(field => {
-                        const option = document.createElement('option');
-                        option.value = field;
-                        option.textContent = field;
-                        if (field === 'text') option.selected = true; // Default to 'text'
-                        fieldSelect.appendChild(option);
-                    });
-                } else {
-                    // Fallback to common field names
-                    ['text', 'content', 'body', 'title'].forEach(field => {
-                        const option = document.createElement('option');
-                        option.value = field;
-                        option.textContent = field;
-                        fieldSelect.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading fields:', error);
-                fieldSelect.innerHTML = '<option value="text">text</option>';
-            }
-        }
-
-        // Load entity types
-        async function loadEntityTypes() {
-            try {
-                const response = await fetch('/api/ner/entity-types');
-                availableEntityTypes = await response.json();
-            } catch (error) {
-                console.error('Error loading entity types:', error);
-                // Fallback
-                availableEntityTypes = {
-                    common: ["PERSON", "ORGANIZATION", "LOCATION"],
-                    transformers: ["PERSON", "ORG", "LOC", "MISC"]
-                };
-            }
-        }
-
-        // Update entity types based on selected model type
-        function updateEntityTypes() {
-            const modelType = document.getElementById('model_type').value;
-            const input = document.getElementById('entity-types-input');
-            
-            if (availableEntityTypes[modelType]) {
-                input.placeholder = availableEntityTypes[modelType].join(', ');
-            } else {
-                input.placeholder = "PERSON,LOCATION,ORGANIZATION";
-            }
-        }
-
-        // Show entity type picker modal
-        function showEntityTypePicker() {
-            const modal = document.getElementById('entity-type-modal');
-            const listsContainer = document.getElementById('entity-type-lists');
-            
-            listsContainer.innerHTML = '';
-            selectedEntityTypes = [];
-            
-            // Get current input value
-            const currentInput = document.getElementById('entity-types-input').value;
-            if (currentInput) {
-                selectedEntityTypes = currentInput.split(',').map(s => s.trim()).filter(s => s);
-            }
-            
-            // Create checkboxes for each category
-            Object.entries(availableEntityTypes).forEach(([category, types]) => {
-                const categoryDiv = document.createElement('div');
-                categoryDiv.className = 'border rounded-lg p-3';
-                categoryDiv.innerHTML = `
-                    <h4 class="font-medium text-gray-800 mb-2">${category.charAt(0).toUpperCase() + category.slice(1)}</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        ${types.map(type => `
-                            <label class="flex items-center">
-                                <input type="checkbox" value="${type}" ${selectedEntityTypes.includes(type) ? 'checked' : ''} 
-                                    onchange="toggleEntityType('${type}')" class="mr-2">
-                                <span class="text-sm">${type}</span>
-                            </label>
-                        `).join('')}
+// Enhanced HTMX response formatting
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    const target = evt.detail.target;
+    const xhr = evt.detail.xhr;
+    
+    // Don't format if target is already formatted (like processing tasks)
+    if (target.innerHTML.includes('bg-blue-50') || target.innerHTML.includes('bg-green-50') || target.innerHTML.includes('bg-purple-50')) {
+        return;
+    }
+    
+    if (xhr.status === 200) {
+        try {
+            const data = JSON.parse(xhr.responseText);
+            target.innerHTML = `
+                <div class="bg-green-50 border border-green-200 rounded-md p-4">
+                    <h4 class="text-sm font-medium text-green-800 mb-2">✅ Success</h4>
+                    <pre class="text-sm text-green-700 whitespace-pre-wrap bg-white p-2 rounded border">${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        } catch (e) {
+            // Response is already HTML (like from processing tasks)
+            if (!target.innerHTML.trim()) {
+                target.innerHTML = `
+                    <div class="bg-green-50 border border-green-200 rounded-md p-4">
+                        <h4 class="text-sm font-medium text-green-800 mb-2">✅ Success</h4>
+                        <div class="text-sm text-green-700">${xhr.responseText}</div>
                     </div>
                 `;
-                listsContainer.appendChild(categoryDiv);
-            });
+            }
+        }
+    } else {
+        target.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                <h4 class="text-sm font-medium text-red-800 mb-2">❌ Error</h4>
+                <div class="text-sm text-red-700">${xhr.responseText}</div>
+            </div>
+        `;
+    }
+});
+
+// Add loading state to form submissions
+document.body.addEventListener('htmx:beforeRequest', function(evt) {
+    const form = evt.detail.elt;
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = submitButton.innerHTML.replace(/^[🚀🧪🔤🎯📄🏷️]/g, '⏳');
+        submitButton.classList.add('opacity-75');
+    }
+});
+
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    const form = evt.detail.elt;
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.classList.remove('opacity-75');
+        
+        // Restore original button text based on context
+        if (form.action?.includes('/ner/process')) {
+            submitButton.innerHTML = '🚀 Start NER Processing';
+        } else if (form.action?.includes('/tokenize/process')) {
+            submitButton.innerHTML = '🔤 Start Tokenization';
+        } else if (form.action?.includes('/embeddings/compute')) {
+            submitButton.innerHTML = '🎯 Compute Embeddings';
+        } else if (form.action?.includes('/upload/jsonl')) {
+            submitButton.innerHTML = '📄 Upload Files';
+        } else if (form.action?.includes('/upload/ner')) {
+            submitButton.innerHTML = '🏷️ Upload NER Data';
+        }
+    }
+});
+
+// Enhanced error handling
+document.body.addEventListener('htmx:responseError', function(evt) {
+    window.showNotification('Request failed. Please check your connection.', 'error');
+});
+
+document.body.addEventListener('htmx:timeout', function(evt) {
+    window.showNotification('Request timed out. Please try again.', 'warning');
+});
+
+// Form validation
+document.addEventListener('submit', function(e) {
+    const form = e.target;
+    const requiredFields = form.querySelectorAll('[required]');
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            field.classList.add('border-red-500');
+            isValid = false;
+        } else {
+            field.classList.remove('border-red-500');
+        }
+    });
+    
+    if (!isValid) {
+        e.preventDefault();
+        window.showNotification('Please fill in all required fields.', 'error');
+    }
+});
+
+// Prevent form submission on Enter key in input fields (except textareas)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+        e.preventDefault();
+    }
+});
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-load current config on page load
+    setTimeout(() => {
+        loadCurrentConfig();
+    }, 1000);
+});
+
+// Progress tracking functions for background tasks
+window.checkStatus = function(taskId) {
+    fetch(`/api/ner/status/${taskId}`)
+        .then(response => response.json())
+        .then(data => {
+            updateProgressWithLogs(taskId, data);
+            if (data.status === 'running' || data.status === 'starting') {
+                setTimeout(() => window.checkStatus(taskId), 2000);
+            }
+        })
+        .catch(error => console.error('Error checking status:', error));
+};
+
+window.updateProgressWithLogs = function(taskId, data) {
+    const progressBar = document.querySelector(`#progress-bar-${taskId} div`);
+    const progressText = document.getElementById(`progress-text-${taskId}`);
+    const statusText = document.getElementById(`status-text-${taskId}`);
+    const spinner = document.getElementById(`spinner-${taskId}`);
+    
+    if (progressBar && progressText) {
+        const progress = Math.max(data.progress || 0, 0);
+        progressBar.style.width = progress + '%';
+        progressText.textContent = Math.round(progress) + '%';
+    }
+    
+    if (statusText) {
+        if (data.status === 'completed') {
+            statusText.className = 'text-sm text-green-600 mt-1 font-medium';
+            statusText.innerHTML = `✅ ${data.message}`;
+            if (data.processing_time) {
+                statusText.innerHTML += `<br><small>⏱️ Total time: ${data.processing_time.toFixed(2)}s</small>`;
+            }
             
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        // Toggle entity type selection
-        function toggleEntityType(type) {
-            const index = selectedEntityTypes.indexOf(type);
-            if (index > -1) {
-                selectedEntityTypes.splice(index, 1);
-            } else {
-                selectedEntityTypes.push(type);
+            if (progressBar) {
+                progressBar.className = 'bg-green-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center text-xs text-white font-medium';
+                progressBar.style.width = '100%';
+                progressText.textContent = '✅ Complete';
             }
-        }
-
-        // Apply selected entity types
-        function applyEntityTypes() {
-            const input = document.getElementById('entity-types-input');
-            input.value = selectedEntityTypes.join(', ');
-            closeEntityTypePicker();
-        }
-
-        // Close entity type picker
-        function closeEntityTypePicker() {
-            const modal = document.getElementById('entity-type-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
-        // Reset form to defaults
-        function resetForm() {
-            if (confirm('Reset all form fields to default values?')) {
-                const form = document.querySelector('#ner-tab form');
-                form.reset();
-                
-                // Reset dropdowns to default values
-                document.getElementById('model_type').value = 'transformers';
-                document.getElementById('text-field-select').value = 'text';
-                
-                // Reload models and update entity types
-                loadModels();
-                updateEntityTypes();
+            
+            if (spinner) {
+                spinner.classList.remove('animate-spin');
+                spinner.innerHTML = '<svg class="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
             }
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Load data when NER tab is first opened
-            const nerTabButton = document.querySelector('button[onclick="showTab(\'ner\')"]');
-            if (nerTabButton) {
-                const originalShowTab = window.showTab;
-                window.showTab = function(tabName) {
-                    originalShowTab(tabName);
-                    if (tabName === 'ner') {
-                        // Initialize NER tab data
-                        setTimeout(() => {
-                            loadSolrCollections();
-                            loadEntityTypes();
-                            loadModels();
-                        }, 100);
-                    }
-                };
+        } else if (data.status === 'failed') {
+            statusText.className = 'text-sm text-red-600 mt-1 font-medium';
+            statusText.innerHTML = `❌ ${data.message || data.error}`;
+            
+            if (progressBar) {
+                progressBar.className = 'bg-red-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center text-xs text-white font-medium';
+                progressText.textContent = '❌ Failed';
             }
-        });
-   </script>
+            
+            if (spinner) {
+                spinner.classList.remove('animate-spin');
+                spinner.innerHTML = '<svg class="h-5 w-5 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+            }
+        } else {
+            statusText.className = 'text-sm text-blue-600 mt-1 font-medium';
+            statusText.textContent = data.message || 'Processing...';
+        }
+    }
+    
+    // Update statistics
+    const batchEl = document.getElementById(`batch-${taskId}`);
+    const docsEl = document.getElementById(`docs-${taskId}`);
+    const entitiesEl = document.getElementById(`entities-${taskId}`);
+    const speedEl = document.getElementById(`speed-${taskId}`);
+    
+    if (batchEl) batchEl.textContent = data.current_batch || '-';
+    if (docsEl) docsEl.textContent = data.total_docs ? data.total_docs.toLocaleString() : '-';
+    if (entitiesEl) entitiesEl.textContent = data.total_entities ? data.total_entities.toLocaleString() : '-';
+    if (speedEl) speedEl.textContent = data.processing_speed ? data.processing_speed.toFixed(1) : '-';
+    
+    // Update logs
+    const logsEl = document.getElementById(`logs-${taskId}`);
+    if (logsEl && data.logs && data.logs.length > 0) {
+        const logsHtml = data.logs.map(log => {
+            if (log.includes('ERROR:')) return `<div class="text-red-400">${log}</div>`;
+            else if (log.includes('WARNING:')) return `<div class="text-yellow-400">${log}</div>`;
+            else if (log.includes('INFO:')) return `<div class="text-green-400">${log}</div>`;
+            else return `<div>${log}</div>`;
+        }).join('');
+        logsEl.innerHTML = logsHtml;
+        
+        const logsContainer = document.getElementById(`logs-container-${taskId}`);
+        if (logsContainer) {
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+    }
+};
+</script>
 </body>
 </html>
