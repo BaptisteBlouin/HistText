@@ -11,6 +11,9 @@ import {
   MenuItem
 } from '@mui/material';
 
+/**
+ * Props for the ExportDialog component.
+ */
 interface ExportDialogProps {
   open: boolean;
   exportFormat: string;
@@ -19,6 +22,13 @@ interface ExportDialogProps {
   onExport: () => void;
 }
 
+/**
+ * Dialog for choosing data export format (CSV or JSON).
+ * Handles confirmation/cancel and invokes export actions.
+ *
+ * @param props - ExportDialogProps
+ * @returns Dialog UI for export options.
+ */
 const ExportDialog: React.FC<ExportDialogProps> = ({
   open,
   exportFormat,

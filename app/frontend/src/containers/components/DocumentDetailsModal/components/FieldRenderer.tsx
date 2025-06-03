@@ -2,6 +2,12 @@ import React from 'react';
 import { Box, Typography, Chip, Tooltip } from '@mui/material';
 import config from '../../../../../config.json';
 
+type NerLabelKey = keyof typeof config.NER_LABELS_COLORS;
+
+/**
+ * Props for FieldRenderer, which renders a document field's value,
+ * with support for NER highlighting and tooltip explanations.
+ */
 interface FieldRendererProps {
   fieldName: string;
   content: string;
@@ -10,6 +16,13 @@ interface FieldRendererProps {
   documentId: string;
 }
 
+/**
+ * Renders a field value with optional NER highlights and tooltips.
+ * If showNER is active and nerData present, spans/chips are rendered for each annotation.
+ *
+ * @param props - FieldRendererProps
+ * @returns React node with formatted field content.
+ */
 const FieldRenderer: React.FC<FieldRendererProps> = React.memo(({
   fieldName,
   content,
@@ -56,7 +69,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = React.memo(({
           </span>
         );
       }
-      const label = l[0];
+      const label = l[0] as NerLabelKey;
       const color = NER_LABELS_COLORS[label] || '#gray';
       const confidence = (c * 100).toFixed(1);
       

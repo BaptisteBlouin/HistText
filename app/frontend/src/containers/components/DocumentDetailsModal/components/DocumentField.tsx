@@ -24,6 +24,10 @@ import { useTheme } from '@mui/material/styles';
 import { getFieldIcon, isLongContent } from '../utils/documentUtils';
 import FieldRenderer from './FieldRenderer';
 
+/**
+ * Props for DocumentField, which renders a single field of a document,
+ * with icon, expand/collapse, copy, and NER support.
+ */
 interface DocumentFieldProps {
   fieldName: string;
   content: string;
@@ -36,6 +40,11 @@ interface DocumentFieldProps {
   onCopyField: (fieldName: string, content: string) => void;
 }
 
+/**
+ * Maps icon name to the corresponding MUI icon component.
+ * @param iconName - Icon name string (from getFieldIcon)
+ * @returns A ReactNode icon component
+ */
 const getFieldIconComponent = (iconName: string) => {
   const iconMap = {
     'Article': Article,
@@ -48,6 +57,13 @@ const getFieldIconComponent = (iconName: string) => {
   return <IconComponent />;
 };
 
+/**
+ * Renders a single document field in a card, with icon, copy, expand/collapse,
+ * and content highlighting/NER support.
+ *
+ * @param props - DocumentFieldProps
+ * @returns Card UI for a document field.
+ */
 const DocumentField: React.FC<DocumentFieldProps> = React.memo(({
   fieldName,
   content,

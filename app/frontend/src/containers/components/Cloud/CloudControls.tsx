@@ -22,6 +22,9 @@ import { Settings, Download, Share, Refresh } from '@mui/icons-material';
 import { SearchField } from '../../../components/ui';
 import CloudSearchResults from './CloudSearchResults';
 
+/**
+ * Predefined color schemes for word cloud appearance options.
+ */
 const COLOR_SCHEMES = {
   default: { name: 'Default', colors: ['#1976d2', '#388e3c', '#f57c00', '#d32f2f', '#7b1fa2', '#0097a7'] },
   warm: { name: 'Warm Sunset', colors: ['#ff5722', '#ff9800', '#ffc107', '#ffeb3b', '#cddc39', '#8bc34a'] },
@@ -32,6 +35,9 @@ const COLOR_SCHEMES = {
   monochrome: { name: 'Monochrome', colors: ['#424242', '#616161', '#757575', '#9e9e9e', '#bdbdbd', '#e0e0e0'] }
 };
 
+/**
+ * Predefined shape patterns for word cloud layouts.
+ */
 const SHAPE_PATTERNS = {
   default: { name: 'Default', spiral: 'archimedean' },
   rectangular: { name: 'Square', spiral: 'rectangular' },
@@ -39,6 +45,10 @@ const SHAPE_PATTERNS = {
   circle: { name: 'Circle', spiral: 'archimedean', shape: 'circle' }
 };
 
+/**
+ * Props for the CloudControls component, which manages and displays
+ * UI controls for word cloud appearance, filtering, and actions.
+ */
 interface CloudControlsProps {
   showControls: boolean;
   searchTerm: string;
@@ -68,6 +78,14 @@ interface CloudControlsProps {
   onShuffle: () => void;
 }
 
+/**
+ * CloudControls component displays and manages UI controls for customizing the word cloud.
+ * Includes search, color and shape selectors, font size sliders, toggles for rotation/animation,
+ * filtering sliders, and export/share/randomize actions.
+ *
+ * @param props - CloudControlsProps
+ * @returns JSX.Element for controls UI
+ */
 const CloudControls: React.FC<CloudControlsProps> = ({
   showControls,
   searchTerm,
@@ -98,7 +116,7 @@ const CloudControls: React.FC<CloudControlsProps> = ({
 }) => {
   return (
     <>
-      {/* Search Bar */}
+      {/* Search Bar and Results */}
       <Fade in={showControls || !!searchTerm}>
         <Card sx={{ mb: 3 }}>
           <CardContent>
@@ -121,7 +139,7 @@ const CloudControls: React.FC<CloudControlsProps> = ({
         </Card>
       </Fade>
 
-      {/* Enhanced Controls */}
+      {/* Advanced/Customization Controls */}
       <Collapse in={showControls}>
         <Card sx={{ mb: 3 }}>
           <CardContent>
@@ -161,8 +179,10 @@ const CloudControls: React.FC<CloudControlsProps> = ({
                   <Slider
                     value={[minFontSize, maxFontSize]}
                     onChange={(_, value) => {
-                      onMinFontSizeChange(value[0]);
-                      onMaxFontSizeChange(value[1]);
+                      if (Array.isArray(value)) {
+                        onMinFontSizeChange(value[0]);
+                        onMaxFontSizeChange(value[1]);
+                      }
                     }}
                     min={8}
                     max={100}

@@ -1,6 +1,9 @@
 import React from 'react';
 import DatabaseSelectorCard from './DatabaseSelectorCard';
 
+/**
+ * Props for the DatabaseSelector component, forwarding to DatabaseSelectorCard.
+ */
 interface DatabaseSelectorProps {
   solrDatabases: any[];
   selectedSolrDatabase: any;
@@ -18,6 +21,13 @@ interface DatabaseSelectorProps {
   totalEntities: number;
 }
 
+/**
+ * DatabaseSelector entry component.
+ * Forwards all props to DatabaseSelectorCard.
+ *
+ * @param props - DatabaseSelectorProps
+ * @returns The database selector UI.
+ */
 const DatabaseSelector: React.FC<DatabaseSelectorProps> = (props) => {
   return <DatabaseSelectorCard {...props} />;
 };

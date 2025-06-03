@@ -2,6 +2,11 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { Description } from '@mui/icons-material';
 
+/**
+ * Displays a centered empty state for when no document information is available.
+ *
+ * @returns Empty state UI with icon and message.
+ */
 const EmptyState: React.FC = React.memo(() => (
   <Box 
     display="flex" 

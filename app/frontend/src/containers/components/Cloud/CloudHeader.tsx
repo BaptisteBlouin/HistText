@@ -3,17 +3,35 @@ import { Box, Typography, IconButton, Tooltip, Badge } from '@mui/material';
 import { CloudQueue, Animation, Search, Palette, Fullscreen, Tune } from '@mui/icons-material';
 import { Zoom } from '@mui/material';
 
+/**
+ * Props for the CloudHeader component.
+ */
 interface CloudHeaderProps {
+  /** Is the cloud currently animating (for animated icon)? */
   isAnimating: boolean;
+  /** Word cloud stats object (see useCloudData stats) */
   stats: any;
+  /** Current search term for highlighting/search badge */
   searchTerm: string;
+  /** Whether controls are visible */
   showControls: boolean;
+  /** Handler to toggle search/controls */
   onToggleControls: () => void;
+  /** Handler to shuffle color scheme */
   onShuffleColors: () => void;
+  /** Handler to toggle fullscreen mode */
   onToggleFullscreen: () => void;
+  /** Handler to open settings */
   onToggleSettings: () => void;
 }
 
+/**
+ * CloudHeader displays the main title, animated state, summary statistics,
+ * and action buttons for searching, color shuffle, fullscreen, and settings.
+ *
+ * @param props - CloudHeaderProps
+ * @returns Header element for the word cloud interface.
+ */
 const CloudHeader: React.FC<CloudHeaderProps> = ({
   isAnimating,
   stats,

@@ -15,6 +15,9 @@ import AliasSelector from '../AliasSelector';
 import SolrDatabaseSelector from '../SolrDatabaseSelector';
 import StatusIndicators from './StatusIndicators';
 
+/**
+ * Info about a collection within a Solr database.
+ */
 interface CollectionInfo {
   collection_name: string;
   description: string;
@@ -25,6 +28,9 @@ interface CollectionInfo {
   to_not_display: string[];
 }
 
+/**
+ * Props for the DatabaseSelectorCard component, managing Solr DB and collection selection.
+ */
 interface DatabaseSelectorCardProps {
   solrDatabases: any[];
   selectedSolrDatabase: any;
@@ -42,6 +48,13 @@ interface DatabaseSelectorCardProps {
   totalEntities: number;
 }
 
+/**
+ * Card UI for selecting Solr database and collection, displaying status,
+ * and fetching/displaying collection descriptions via API.
+ *
+ * @param props - DatabaseSelectorCardProps
+ * @returns Card element with Solr DB/collection controls and status indicators.
+ */
 const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
   solrDatabases,
   selectedSolrDatabase,

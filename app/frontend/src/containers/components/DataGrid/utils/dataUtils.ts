@@ -1,6 +1,9 @@
 const contentCache = new Map();
 const MAX_CACHE_SIZE = 1000;
 
+/**
+ * Maintains the size of the contentCache by trimming to last 500 entries if over MAX_CACHE_SIZE.
+ */
 export const manageCacheSize = () => {
   if (contentCache.size > MAX_CACHE_SIZE) {
     const entries = Array.from(contentCache.entries());
@@ -11,6 +14,14 @@ export const manageCacheSize = () => {
   }
 };
 
+/**
+ * Extracts and concatenates context windows around search terms found in the input text.
+ *
+ * @param text - Source text to search within.
+ * @param searchTerms - Array of terms to match/highlight.
+ * @param contextLength - Number of chars before/after match to keep as context.
+ * @returns Concordance snippet containing search term contexts.
+ */
 export const createConcordance = (text: string, searchTerms: string[], contextLength = 100): string => {
   if (!text || typeof text !== 'string') return text?.toString() || '';
   if (!searchTerms || !Array.isArray(searchTerms) || searchTerms.length === 0) return text;
@@ -65,11 +76,20 @@ export const createConcordance = (text: string, searchTerms: string[], contextLe
   return concordance;
 };
 
+/**
+ * Returns the list of canonical field names considered as ID fields.
+ */
 export const getIdFieldNames = () => [
   'id', 'Id', 'ID', 'docId', 'DocId', 'documentId', 'DocumentId',
   'identifier', 'Identifier', 'doc_id', 'document_id', '_id',
 ];
 
+/**
+ * Checks if a given field name should be treated as an ID field.
+ *
+ * @param field - Field name to check.
+ * @returns True if field is considered an ID field.
+ */
 export const isIdField = (field: string): boolean => {
   const idFieldNames = getIdFieldNames();
   return idFieldNames.some(idName =>

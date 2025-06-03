@@ -1,3 +1,6 @@
+/**
+ * Represents a parsed query term from form data.
+ */
 interface QueryTerm {
   field: string;
   value: string;
@@ -5,6 +8,12 @@ interface QueryTerm {
   not: boolean;
 }
 
+/**
+ * Parses the search form data into a flat array of query terms.
+ *
+ * @param formData - The full form state object.
+ * @returns An array of QueryTerm objects.
+ */
 export const parseFormDataToTerms = (formData: any): QueryTerm[] => {
   const terms: QueryTerm[] = [];
   
@@ -26,7 +35,12 @@ export const parseFormDataToTerms = (formData: any): QueryTerm[] => {
   return terms;
 };
 
-// Helper function to check if a field is a date field
+/**
+ * Determines if a field name likely refers to a date/timestamp field.
+ *
+ * @param fieldName - The field name to check.
+ * @returns True if it matches common date patterns.
+ */
 const isDateField = (fieldName: string): boolean => {
   const dateFieldPatterns = [
     'date',
@@ -47,8 +61,14 @@ const isDateField = (fieldName: string): boolean => {
   );
 };
 
+/**
+ * Returns non-negated search terms for a specific field, skipping date fields.
+ *
+ * @param formData - The form state.
+ * @param fieldName - The field to extract terms for.
+ * @returns Array of terms (strings) for this field.
+ */
 export const getSearchTermsForField = (formData: any, fieldName: string): string[] => {
-  // Don't highlight date fields
   if (isDateField(fieldName)) {
     return [];
   }
@@ -60,43 +80,57 @@ export const getSearchTermsForField = (formData: any, fieldName: string): string
     .filter(value => value && value.length > 0);
 };
 
-// NEW: Get ALL search terms from the entire query for cross-field highlighting
+/**
+ * Gets all search terms in the query (all fields, non-negated, non-date).
+ *
+ * @param formData - The form state.
+ * @returns Array of all unique search terms in the query.
+ */
 export const getAllSearchTermsFromQuery = (formData: any): string[] => {
   const terms = parseFormDataToTerms(formData);
   const allTerms = terms
-    .filter(term => !term.not && !isDateField(term.field)) // Exclude date fields
+    .filter(term => !term.not && !isDateField(term.field))
     .map(term => term.value)
     .filter(value => value && value.length > 0);
-  
-  // Remove duplicates and return
   return [...new Set(allTerms)];
 };
 
-// NEW: Get search terms for a specific field, but also include global terms for highlighting
+/**
+ * Gets highlight terms for a field: field-specific terms and all cross-field terms.
+ * Never returns anything for date fields.
+ *
+ * @param formData - The form state.
+ * @param fieldName - The field to extract highlight terms for.
+ * @returns Array of unique highlight terms for this field.
+ */
 export const getHighlightTermsForField = (formData: any, fieldName: string): string[] => {
-  // Don't highlight date fields at all
   if (isDateField(fieldName)) {
     return [];
   }
   
-  // Get terms specific to this field
   const fieldTerms = getSearchTermsForField(formData, fieldName);
-  
-  // Get ALL terms from the query for cross-field highlighting (excluding date fields)
   const allTerms = getAllSearchTermsFromQuery(formData);
-  
-  // Combine and deduplicate
   const combinedTerms = [...new Set([...fieldTerms, ...allTerms])];
   
   console.log(`Highlight terms for field "${fieldName}":`, combinedTerms);
   return combinedTerms;
 };
 
+/**
+ * Gets all unique search terms in the query.
+ *
+ * @param formData - The form state.
+ * @returns Array of search terms.
+ */
 export const getAllSearchTerms = (formData: any): string[] => {
   return getAllSearchTermsFromQuery(formData);
 };
 
-// NEW: Debug function to see what terms are being extracted
+/**
+ * Debug utility to log parsed terms and highlights for each field.
+ *
+ * @param formData - The form state.
+ */
 export const debugFormData = (formData: any): void => {
   console.log('=== FORM DATA DEBUG ===');
   console.log('Raw formData:', formData);

@@ -9,12 +9,27 @@ import { useCloudState } from './hooks/useCloudState';
 import { useCloudData } from './hooks/useCloudData';
 import { CloudEmptyState, CloudLoadingState } from './CloudStates';
 
+/**
+ * Props for CloudContainer component.
+ */
 interface CloudContainerProps {
+  /** Array of words and their frequencies to visualize */
   wordFrequency: { text: string; value: number }[];
+  /** Show loading state if true */
   isLoading?: boolean;
+  /** Loading progress (0-100), used when isLoading is true */
   progress?: number;
 }
 
+/**
+ * Main container component for the interactive word cloud feature.
+ * Integrates header, controls, visualization, stats, and sharing dialogs.
+ * Handles all state and download/export logic.
+ *
+ * @param wordFrequency - Array of word objects for cloud
+ * @param isLoading - Whether to show a loading state
+ * @param progress - Optional loading progress (if loading)
+ */
 const CloudContainer: React.FC<CloudContainerProps> = ({
   wordFrequency,
   isLoading = false,
@@ -24,7 +39,7 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const cloudRef = useRef<HTMLDivElement>(null);
 
-  // State management
+  // State management for all cloud UI and options
   const {
     minFontSize,
     setMinFontSize,
@@ -62,7 +77,7 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
     setFullscreen
   } = useCloudState();
 
-  // Data processing
+  // Data processing for the cloud, using current filters and settings
   const { processedData, stats, cloudDimensions } = useCloudData({
     wordFrequency,
     filterMinFreq,
@@ -73,12 +88,12 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
     isMobile
   });
 
-  // Loading state
+  // Show loading UI
   if (isLoading) {
     return <CloudLoadingState progress={progress} />;
   }
 
-  // Empty state
+  // Show empty UI if no data
   if (!wordFrequency || wordFrequency.length === 0) {
     return <CloudEmptyState />;
   }
@@ -188,16 +203,20 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
     </Box>
   );
 
-  // Download functionality
+  /**
+   * Export the current word cloud visualization as a PNG or SVG file.
+   *
+   * @param format - Output file format: 'png' (default) or 'svg'
+   */
   function downloadWordCloud(format: 'png' | 'svg' = 'png') {
     const svg = cloudRef.current?.querySelector('svg');
     if (!svg) return;
-    
+
     if (format === 'svg') {
       const svgData = new XMLSerializer().serializeToString(svg);
       const blob = new Blob([svgData], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
-      
+
       const link = document.createElement('a');
       link.download = `wordcloud-${new Date().toISOString().split('T')[0]}.svg`;
       link.href = url;
@@ -208,19 +227,19 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
       const ctx = canvas.getContext('2d')!;
       canvas.width = cloudDimensions.width * 2;
       canvas.height = cloudDimensions.height * 2;
-      
+
       const img = new Image();
       img.onload = () => {
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
+
         const link = document.createElement('a');
         link.download = `wordcloud-${new Date().toISOString().split('T')[0]}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
       };
-      
+
       img.src = 'data:image/svg+xml;base64,' + btoa(new XMLSerializer().serializeToString(svg));
     }
   }

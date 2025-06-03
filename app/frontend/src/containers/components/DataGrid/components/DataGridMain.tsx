@@ -4,6 +4,9 @@ import { Box, Paper, useTheme, useMediaQuery } from '@mui/material';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
+/**
+ * Props for DataGridMain, the main AG Grid table wrapper.
+ */
 interface DataGridMainProps {
   rowData: any[];
   columnDefs: any[];
@@ -14,6 +17,14 @@ interface DataGridMainProps {
   fullscreen: boolean;
 }
 
+/**
+ * Main data grid component using AG Grid and MUI Paper.  
+ * Dynamically applies column highlight styles, handles responsive height,
+ * and sets up side panels and AG Grid options.
+ *
+ * @param props - DataGridMainProps
+ * @returns Main data grid for the application.
+ */
 const DataGridMain: React.FC<DataGridMainProps> = ({
   rowData,
   columnDefs,
@@ -26,7 +37,9 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Add custom styles for main column
+  /**
+   * Injects custom styles for main and ID columns.
+   */
   useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
@@ -92,14 +105,19 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
               {
                 id: 'columns',
                 labelDefault: 'Columns',
+                labelKey: 'columns',
+                iconKey: 'columns',
                 toolPanel: 'agColumnsToolPanel',
               },
               {
                 id: 'filters',
                 labelDefault: 'Filters',
+                labelKey: 'filters',
+                iconKey: 'filter',
                 toolPanel: 'agFiltersToolPanel',
               },
             ],
+            defaultToolPanel: 'columns', 
           }}
         />
       </Box>

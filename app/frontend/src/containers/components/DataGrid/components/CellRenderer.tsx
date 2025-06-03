@@ -2,6 +2,9 @@ import React, { useMemo } from 'react';
 import { Box, Chip } from '@mui/material';
 import { isIdField, processContent } from '../utils';
 
+/**
+ * Props for the CellRenderer component, which renders table/grid cell values.
+ */
 interface CellRendererProps {
   value: any;
   colDef: any;
@@ -14,6 +17,15 @@ interface CellRendererProps {
   mainTextColumn?: string;
 }
 
+/**
+ * Renders a cell value for a table or grid.
+ * - Renders ID fields as clickable, styled boxes.
+ * - Uses processContent for NER/highlight and other formatting.
+ * - Handles text, NER tags, highlights, and plain spans.
+ *
+ * @param props - CellRendererProps
+ * @returns Rendered cell content or null if value is empty.
+ */
 const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
   const {
     value,
@@ -100,14 +112,14 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
               key={element.key || `highlight-${index}`}
               component="span"
               sx={{
-                backgroundColor: '#fbbf24', // Bright yellow/orange highlight
-                color: '#92400e', // Dark brown text for contrast
+                backgroundColor: '#fbbf24',
+                color: '#92400e',
                 padding: '2px 6px',
                 borderRadius: 1,
                 fontWeight: 700,
                 border: '1px solid #f59e0b',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                textShadow: '0 1px 1px rgba(255,255,255,0.5)', // Subtle text shadow for readability
+                textShadow: '0 1px 1px rgba(255,255,255,0.5)',
                 display: 'inline-block',
                 margin: '0 1px'
               }}

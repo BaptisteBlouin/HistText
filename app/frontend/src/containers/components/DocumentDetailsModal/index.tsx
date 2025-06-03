@@ -17,6 +17,18 @@ import ErrorState from './components/ErrorState';
 import DocumentContent from './components/DocumentContent';
 import EmptyState from './components/EmptyState';
 
+import { TransitionProps } from '@mui/material/transitions';
+
+const SlideUpTransition = React.forwardRef(function Transition(
+  props: TransitionProps & { children: React.ReactElement<any, any> },
+  ref: React.Ref<unknown>,
+) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
+
+/**
+ * Props for DocumentDetailsModal, the modal dialog displaying a single document and its NER highlights.
+ */
 interface DocumentDetailsModalProps {
   open: boolean;
   onClose: () => void;
@@ -28,6 +40,12 @@ interface DocumentDetailsModalProps {
   viewNER?: boolean;
 }
 
+/**
+ * Displays a modal dialog with details for a single document, with NER highlighting, loading/error/empty states, and mobile support.
+ *
+ * @param props - DocumentDetailsModalProps
+ * @returns Modal UI for document details and NER entity view.
+ */
 const DocumentDetailsModal: React.FC<DocumentDetailsModalProps> = React.memo(({
   open,
   onClose,
@@ -126,8 +144,7 @@ const DocumentDetailsModal: React.FC<DocumentDetailsModalProps> = React.memo(({
           overflow: 'hidden'
         },
       }}
-      TransitionComponent={isMobile ? Slide : Fade}
-      TransitionProps={isMobile ? { direction: 'up' } : {}}
+      TransitionComponent={isMobile ? SlideUpTransition : Fade}
     >
       <ModalHeader
         documentId={documentId}

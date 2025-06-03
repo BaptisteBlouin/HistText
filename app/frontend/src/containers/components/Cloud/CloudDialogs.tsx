@@ -11,6 +11,9 @@ import {
 } from '@mui/material';
 import { Info } from '@mui/icons-material';
 
+/**
+ * Props for the CloudDialogs component, controlling info and share dialogs.
+ */
 interface CloudDialogsProps {
   showWordInfo: boolean;
   selectedWord: any;
@@ -24,6 +27,9 @@ interface CloudDialogsProps {
   onShare: () => void;
 }
 
+/**
+ * Label mapping for supported color schemes.
+ */
 const COLOR_SCHEMES = {
   default: { name: 'Default' },
   warm: { name: 'Warm Sunset' },
@@ -34,6 +40,13 @@ const COLOR_SCHEMES = {
   monochrome: { name: 'Monochrome' }
 };
 
+/**
+ * CloudDialogs renders modal dialogs for showing selected word info
+ * and for sharing the current word cloud configuration.
+ *
+ * @param props - CloudDialogsProps
+ * @returns React element for dialogs
+ */
 const CloudDialogs: React.FC<CloudDialogsProps> = ({
   showWordInfo,
   selectedWord,
@@ -102,7 +115,7 @@ const CloudDialogs: React.FC<CloudDialogsProps> = ({
           </Typography>
           <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
             <Typography variant="caption" color="text.secondary">
-              Theme: {COLOR_SCHEMES[colorScheme]?.name || colorScheme} • 
+              Theme: {COLOR_SCHEMES[colorScheme as keyof typeof COLOR_SCHEMES]?.name || colorScheme} • 
               Words: {maxWords} • 
               Min Freq: {filterMinFreq}
             </Typography>

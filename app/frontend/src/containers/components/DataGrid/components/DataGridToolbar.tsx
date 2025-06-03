@@ -24,6 +24,9 @@ import {
   MoreVert
 } from '@mui/icons-material';
 
+/**
+ * Props for the DataGridToolbar component.
+ */
 interface DataGridToolbarProps {
   resultsLength: number;
   showConcordance: boolean;
@@ -43,6 +46,13 @@ interface DataGridToolbarProps {
   onClearCache: () => void;
 }
 
+/**
+ * Toolbar for the AG Grid data grid.
+ * Shows info chips, search input, export, filter/clear, fullscreen, and menu actions.
+ *
+ * @param props - DataGridToolbarProps
+ * @returns Toolbar UI element for the data grid.
+ */
 const DataGridToolbar: React.FC<DataGridToolbarProps> = ({
   resultsLength,
   showConcordance,

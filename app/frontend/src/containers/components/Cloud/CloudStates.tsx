@@ -2,10 +2,20 @@ import React from 'react';
 import { Box, Typography, LinearProgress } from '@mui/material';
 import { CloudQueue, AutorenewRounded, Cloud as CloudIcon } from '@mui/icons-material';
 
+/**
+ * Props for the CloudLoadingState component.
+ */
 interface CloudLoadingStateProps {
+  /** Progress value (0-100) for the loading bar. */
   progress: number;
 }
 
+/**
+ * Displays a loading state with animated icon and a progress bar.
+ *
+ * @param props - CloudLoadingStateProps
+ * @returns Loading UI element for word cloud generation.
+ */
 export const CloudLoadingState: React.FC<CloudLoadingStateProps> = ({ progress }) => {
   return (
     <Box sx={{ p: 3 }}>
@@ -34,6 +44,11 @@ export const CloudLoadingState: React.FC<CloudLoadingStateProps> = ({ progress }
   );
 };
 
+/**
+ * Displays an empty state message and icon when there is no word cloud data.
+ *
+ * @returns Empty state UI element for word cloud visualizations.
+ */
 export const CloudEmptyState: React.FC = () => {
   return (
     <Box sx={{ textAlign: 'center', py: 8 }}>

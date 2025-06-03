@@ -2,10 +2,19 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { Description } from '@mui/icons-material';
 
+/**
+ * Props for ErrorState, the error message display component.
+ */
 interface ErrorStateProps {
   error: string;
 }
 
+/**
+ * Displays an error state for failed document loading.
+ *
+ * @param error - The error message to display.
+ * @returns Error state UI with icon and messages.
+ */
 const ErrorState: React.FC<ErrorStateProps> = React.memo(({ error }) => (
   <Box 
     display="flex" 

@@ -4,6 +4,23 @@ import CellRenderer from '../components/CellRenderer';
 
 const CONCORDANCE_THRESHOLD = 100;
 
+/**
+ * Custom hook to configure AG Grid for your data table, including:
+ * - Columns, sizes, and rowData
+ * - Concordance mode auto-detection
+ * - Grid ready callback and component setup
+ *
+ * @param results - Data rows to display
+ * @param nerData - NER data for rendering
+ * @param viewNER - Whether to show NER
+ * @param formData - Additional form data
+ * @param selectedAlias - Selected alias/collection
+ * @param selectedSolrDatabase - Selected Solr database
+ * @param authAxios - Axios instance (if needed for column utils)
+ * @param isAllResultsTab - True if this is the "all results" tab
+ * @param onIdClick - Callback for clicking an ID cell
+ * @returns AG Grid config object with refs, columns, etc.
+ */
 export const useDataGridConfig = (
   results: any[],
   nerData: any,
@@ -13,25 +30,33 @@ export const useDataGridConfig = (
   selectedSolrDatabase: any,
   authAxios: any,
   isAllResultsTab: boolean = false,
-  onIdClick: (id: string) => void // Add this parameter
+  onIdClick: (id: string) => void
 ) => {
   const gridRef = useRef<any>(null);
 
-  // Determine if we should show concordance mode
+  /**
+   * Whether to enable concordance display mode.
+   */
   const showConcordance = isAllResultsTab && results.length > CONCORDANCE_THRESHOLD;
 
-  // Calculate column configuration
+  /**
+   * Calculate main column and column sizes based on data.
+   */
   const { mainTextColumn, columnSizes } = useMemo(() => 
     calculateColumnSizes(results), [results]
   );
 
-  // Row data
+  /**
+   * Process row data and ensure each row has an ID.
+   */
   const rowData = useMemo(() => 
     results.map((row, i) => ({ ...row, id: row.id || i })), 
     [results]
   );
 
-  // Column definitions
+  /**
+   * Generate AG Grid column definitions for current data and state.
+   */
   const columnDefs = useMemo(() => 
     createColumnDefs(
       results,
@@ -41,23 +66,24 @@ export const useDataGridConfig = (
       nerData,
       viewNER,
       formData,
-      onIdClick // Pass onIdClick here
+      onIdClick
     ), [results, columnSizes, mainTextColumn, showConcordance, nerData, viewNER, formData, onIdClick]
   );
 
-  // Grid ready handler with auto-sizing
+  /**
+   * Handler for AG Grid's onGridReady event.
+   * Sets gridRef and refreshes cells.
+   */
   const onGridReady = useCallback((params: any) => {
     gridRef.current = params;
-    
-    // Initial column sizing
     setTimeout(() => {
-      // Don't use sizeColumnsToFit as it overrides our calculated widths
-      // Instead, just ensure the grid is properly displayed
       params.api.refreshCells();
     }, 100);
   }, []);
 
-  // Default column definition
+  /**
+   * Default column options for AG Grid columns.
+   */
   const defaultColDef = useMemo(() => ({
     filter: true,
     resizable: true,
@@ -65,7 +91,9 @@ export const useDataGridConfig = (
     suppressSizeToFit: false,
   }), []);
 
-  // Cell renderer components
+  /**
+   * Map cellRenderer to custom CellRenderer component.
+   */
   const components = useMemo(() => ({
     cellRenderer: CellRenderer,
   }), []);

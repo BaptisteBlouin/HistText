@@ -2,6 +2,9 @@ import React from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import { StatusChip } from '../../../components/ui';
 
+/**
+ * Props for the StatusIndicators component, showing database/collection status and loading.
+ */
 interface StatusIndicatorsProps {
   selectedSolrDatabase: any;
   selectedAlias: string;
@@ -16,6 +19,13 @@ interface StatusIndicatorsProps {
   totalEntities: number;
 }
 
+/**
+ * Displays a row of status chips summarizing selection, loading, and stats status
+ * for Solr database, collection, data results, and various loading stages.
+ *
+ * @param props - StatusIndicatorsProps
+ * @returns Status chip row or null if nothing selected.
+ */
 const StatusIndicators: React.FC<StatusIndicatorsProps> = ({
   selectedSolrDatabase,
   selectedAlias,

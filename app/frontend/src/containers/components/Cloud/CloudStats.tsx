@@ -1,10 +1,21 @@
 import React from 'react';
 import { Grid, Card, CardContent, Typography } from '@mui/material';
 
+/**
+ * Props for CloudStats, displaying a summary of cloud statistics.
+ */
 interface CloudStatsProps {
+  /** Stats object returned from useCloudData (see useCloudData for structure) */
   stats: any;
 }
 
+/**
+ * Displays a grid of summary statistics for the current word cloud:
+ * total words, top frequency, Chinese word count, and English word count.
+ *
+ * @param props - CloudStatsProps
+ * @returns Stats summary cards, or null if no stats provided.
+ */
 const CloudStats: React.FC<CloudStatsProps> = ({ stats }) => {
   if (!stats) return null;
 

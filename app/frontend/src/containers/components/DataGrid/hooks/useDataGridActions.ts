@@ -1,6 +1,14 @@
 import { useCallback, useState } from 'react';
 import { contentCache } from '../utils';
 
+/**
+ * Custom hook providing actions and state for AG Grid data table:
+ * - Handles search/filter, fullscreen, export CSV, selection, and cache control.
+ *
+ * @param results - Array of result objects displayed in the grid.
+ * @param gridRef - Mutable ref to the AG Grid React instance.
+ * @returns Actions and state for toolbar/grid control.
+ */
 export const useDataGridActions = (
   results: any[],
   gridRef: React.MutableRefObject<any>
@@ -9,7 +17,9 @@ export const useDataGridActions = (
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
 
-  // Download CSV
+  /**
+   * Download current results as a CSV file.
+   */
   const downloadCSV = useCallback(() => {
     if (results.length === 0) return;
 
@@ -36,7 +46,9 @@ export const useDataGridActions = (
     URL.revokeObjectURL(url);
   }, [results]);
 
-  // Search handler
+  /**
+   * Set the quick filter (search) in the grid.
+   */
   const handleSearch = useCallback((value: string) => {
     setSearchText(value);
     if (gridRef.current?.api) {
@@ -44,7 +56,9 @@ export const useDataGridActions = (
     }
   }, [gridRef]);
 
-  // Clear filters
+  /**
+   * Clear all filters and search text in the grid.
+   */
   const clearFilters = useCallback(() => {
     setSearchText('');
     if (gridRef.current?.api) {
@@ -54,25 +68,36 @@ export const useDataGridActions = (
     contentCache.clear();
   }, [gridRef]);
 
-  // Grid actions
+  /**
+   * Select all rows in the grid.
+   */
   const selectAll = useCallback(() => {
     if (gridRef.current?.api) {
       gridRef.current.api.selectAll();
     }
   }, [gridRef]);
 
+  /**
+   * Deselect all rows in the grid.
+   */
   const deselectAll = useCallback(() => {
     if (gridRef.current?.api) {
       gridRef.current.api.deselectAll();
     }
   }, [gridRef]);
 
+  /**
+   * Auto-size all columns in the grid.
+   */
   const autoSizeColumns = useCallback(() => {
     if (gridRef.current?.api) {
       gridRef.current.api.autoSizeAllColumns();
     }
   }, [gridRef]);
 
+  /**
+   * Clear the content cache (used for cell rendering).
+   */
   const clearCache = useCallback(() => {
     contentCache.clear();
   }, []);

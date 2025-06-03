@@ -1,5 +1,13 @@
 import { isIdField } from './dataUtils';
 
+/**
+ * Calculates suitable column widths and identifies the "main" text column for a grid of results.
+ * - Considers average/max string length and field type.
+ * - Returns a mapping of field name to width in pixels and the main text column name.
+ *
+ * @param results - Array of data objects representing grid rows.
+ * @returns An object with { mainTextColumn, columnSizes }
+ */
 export const calculateColumnSizes = (results: any[]) => {
   if (results.length === 0) return { mainTextColumn: null, columnSizes: {} };
   
@@ -41,22 +49,16 @@ export const calculateColumnSizes = (results: any[]) => {
 
     let width;
     if (isId) {
-      // ID columns: compact but readable
       width = Math.min(150, Math.max(80, avgLength * 8));
     } else if (isMainColumn) {
-      // Main text column: generous width
       width = Math.min(600, Math.max(300, avgLength * 4));
     } else if (maxLength <= 10) {
-      // Very short content
       width = Math.max(80, Math.min(120, maxLength * 10));
     } else if (avgLength <= 20) {
-      // Short content
       width = Math.max(100, Math.min(180, avgLength * 8));
     } else if (avgLength <= 50) {
-      // Medium content
       width = Math.max(150, Math.min(250, avgLength * 5));
     } else {
-      // Long content (but not the main column)
       width = Math.max(200, Math.min(350, avgLength * 3));
     }
 
@@ -66,6 +68,20 @@ export const calculateColumnSizes = (results: any[]) => {
   return { mainTextColumn, columnSizes: sizes };
 };
 
+/**
+ * Creates AG Grid column definitions based on the data, sizes, and main column.
+ * Includes config for NER/highlight rendering and className for styling.
+ *
+ * @param results - Array of data objects for the grid
+ * @param columnSizes - Mapping of field name to column width in pixels
+ * @param mainTextColumn - Name of the main text column
+ * @param showConcordance - Whether concordance mode is active
+ * @param nerData - NER data (if any)
+ * @param viewNER - Whether to display NER
+ * @param formData - Additional form data
+ * @param onIdClick - Handler for clicking ID field
+ * @returns Array of AG Grid column definition objects
+ */
 export const createColumnDefs = (
   results: any[],
   columnSizes: Record<string, number>,
@@ -104,7 +120,7 @@ export const createColumnDefs = (
           formData,
           showConcordance,
           mainTextColumn,
-          onIdClick, // Pass onIdClick here
+          onIdClick,
         },
         headerClass: isMainColumn ? 'main-column-header' : (isId ? 'id-column-header' : ''),
         cellClass: isMainColumn ? 'main-column-cell' : (isId ? 'id-column-cell' : ''),

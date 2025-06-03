@@ -14,6 +14,9 @@ import {
   VisibilityOff
 } from '@mui/icons-material';
 
+/**
+ * Props for ModalHeader, the top bar for the document modal dialog.
+ */
 interface ModalHeaderProps {
   documentId: string;
   hasNER: boolean;
@@ -22,6 +25,13 @@ interface ModalHeaderProps {
   onClose: () => void;
 }
 
+/**
+ * Modal dialog header displaying document info and controls.
+ * Includes NER highlight toggle and close button.
+ *
+ * @param props - ModalHeaderProps
+ * @returns Modal header UI.
+ */
 const ModalHeader: React.FC<ModalHeaderProps> = React.memo(({
   documentId,
   hasNER,

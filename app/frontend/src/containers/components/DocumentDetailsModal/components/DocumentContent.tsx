@@ -4,6 +4,9 @@ import { processDocumentFields } from '../utils/documentUtils';
 import NERHighlightBanner from './NERHighlightBanner';
 import DocumentField from './DocumentField';
 
+/**
+ * Props for DocumentContent, which renders all fields for a document.
+ */
 interface DocumentContentProps {
   document: any;
   showNER: boolean;
@@ -15,6 +18,13 @@ interface DocumentContentProps {
   onCopyField: (fieldName: string, content: string) => void;
 }
 
+/**
+ * Renders the content of a document as a grid of DocumentField components,
+ * with an NER highlight banner and support for field expand/copy actions.
+ *
+ * @param props - DocumentContentProps
+ * @returns Document content UI for the sidebar or page.
+ */
 const DocumentContent: React.FC<DocumentContentProps> = React.memo(({
   document,
   showNER,
@@ -40,7 +50,7 @@ const DocumentContent: React.FC<DocumentContentProps> = React.memo(({
           <DocumentField
             key={key}
             fieldName={key}
-            content={value}
+            content={String(value)}
             isExpanded={expandedFields.has(key)}
             copiedField={copiedField}
             showNER={showNER}

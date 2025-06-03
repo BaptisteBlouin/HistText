@@ -1,5 +1,17 @@
 import { useEffect } from 'react';
 
+/**
+ * Custom hook to fetch document details from the backend when dialog is open.
+ *
+ * @param open - Whether the document modal/dialog is open.
+ * @param documentId - ID of the document to fetch.
+ * @param collectionName - Name of the Solr collection.
+ * @param solrDatabaseId - Solr database ID.
+ * @param authAxios - Axios instance with authentication.
+ * @param setDocument - Callback to set fetched document.
+ * @param setLoading - Callback to set loading state.
+ * @param setError - Callback to set error message.
+ */
 export const useDocumentFetch = (
   open: boolean,
   documentId: string,

@@ -14,6 +14,17 @@ interface ProcessedElement {
   key?: string;
 }
 
+/**
+ * Splits a string into text and NER (Named Entity Recognition) highlight elements based on provided annotations.
+ *
+ * @param stringValue - The text content to process.
+ * @param documentId - Document ID for looking up NER data.
+ * @param field - Field name for viewNERFields matching.
+ * @param nerData - NER data for the document.
+ * @param viewNER - Whether to show NER highlights.
+ * @param showConcordance - Whether concordance mode is enabled.
+ * @returns Array of ProcessedElement objects.
+ */
 export const processContentWithNER = (
   stringValue: string,
   documentId: string,
@@ -45,12 +56,20 @@ export const processContentWithNER = (
         if (s < stringValue.length) {
           const endPos = Math.min(e, stringValue.length);
           const label = l[0];
-          const color = NER_LABELS_COLORS[label] || '#gray';
+          const color =
+          label in NER_LABELS_COLORS
+            ? NER_LABELS_COLORS[label as keyof typeof NER_LABELS_COLORS]
+            : '#gray';
+          const fullLabel =
+            label in NERLABELS2FULL
+              ? NERLABELS2FULL[label as keyof typeof NERLABELS2FULL]
+              : label;
+
           elements.push({
             type: 'ner',
             content: stringValue.slice(s, endPos),
             color: color,
-            label: NERLABELS2FULL[label] || label,
+            label: fullLabel,
             key: `${s}-${endPos}`
           });
           lastIndex = endPos;
@@ -71,51 +90,48 @@ export const processContentWithNER = (
   return elements;
 };
 
-// ENHANCED: Now supports multiple highlighting passes for better term matching
+/**
+ * Highlights all occurrences of provided search terms in the given elements.
+ * Handles multiple highlight passes to prevent overlap and maximize match length.
+ *
+ * @param elements - Array of ProcessedElement objects.
+ * @param searchTerms - Array of search terms to highlight.
+ * @returns Array of ProcessedElement with highlights inserted.
+ */
 export const processContentWithHighlights = (
   elements: ProcessedElement[],
   searchTerms: string[]
 ): ProcessedElement[] => {
   if (searchTerms.length === 0) return elements;
 
-  console.log('Processing highlights with terms:', searchTerms);
-
   // Sort terms by length (longest first) to avoid partial matches overriding longer matches
   const sortedTerms = [...searchTerms].sort((a, b) => b.length - a.length);
 
   let processedElements = elements;
 
-  // Process each search term
   sortedTerms.forEach(term => {
     if (term && typeof term === 'string' && term.length > 1) {
       processedElements = processedElements.flatMap(element => {
         if (element.type === 'text') {
           let content = element.content;
-          
           if (typeof content !== 'string') {
             content = String(content || '');
           }
-          
           const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const regex = new RegExp(`(${escapedTerm})`, 'gi');
-          
           const parts = content.split(regex);
           const newElements: ProcessedElement[] = [];
-          
           parts.forEach((part, index) => {
             if (index % 2 === 1) {
-              // This is a matched term
               newElements.push({ 
                 type: 'highlight', 
                 content: part, 
                 key: `${term}-${index}-${Math.random()}` 
               });
             } else if (part) {
-              // This is regular text
               newElements.push({ type: 'text', content: part });
             }
           });
-          
           return newElements.length > 0 ? newElements : [{ type: 'text', content: String(content) }];
         }
         return [element];
@@ -126,6 +142,20 @@ export const processContentWithHighlights = (
   return processedElements;
 };
 
+/**
+ * Processes the content for a grid cell, applying NER and/or highlight spans, caching results.
+ * Handles concordance snippets for main text column in concordance mode.
+ *
+ * @param value - Cell value.
+ * @param field - Field name.
+ * @param data - Entire row data object.
+ * @param nerData - NER annotations data.
+ * @param viewNER - Whether to show NER highlights.
+ * @param formData - Search/form data.
+ * @param showConcordance - Whether concordance mode is enabled.
+ * @param mainTextColumn - Main text column name.
+ * @returns Array of ProcessedElement objects for rendering.
+ */
 export const processContent = (
   value: any,
   field: string,
@@ -162,7 +192,7 @@ export const processContent = (
     }
   }
   
-  // ENHANCED: Get ALL highlight terms (field-specific + cross-field)
+  // Get ALL highlight terms (field-specific + cross-field)
   const highlightTerms = getHighlightTermsForField(formData, field);
   
   // Create cache key with all highlight terms
@@ -173,8 +203,8 @@ export const processContent = (
     return contentCache.get(cacheKey);
   }
 
-  // Debug output for the first few cells
-  if (Math.random() < 0.01) { // Only log 1% of the time to avoid spam
+  // Debug output for the first few cells (randomly, to avoid console spam)
+  if (Math.random() < 0.01) {
     debugFormData(formData);
   }
 
