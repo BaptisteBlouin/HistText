@@ -12,8 +12,8 @@ import numpy as np
 from ..cache.manager import get_cache_manager
 from ..core.config import ModelConfig
 from ..core.logging import get_logger
-from ..models.ner_registry import create_ner_model
-from ..models.ner_base import EntitySpan, GPUMemoryManager
+from ..models.registry import create_ner_model
+from ..models.base import EntitySpan, GPUMemoryManager
 from ..solr.client import SolrClient
 from ..models.ner_labels import get_compact_label, get_label_stats
 

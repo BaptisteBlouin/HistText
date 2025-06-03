@@ -38,6 +38,17 @@ class ModelType(Enum):
     GLINER_BIO = "gliner_bio"
     GLINER_NEWS = "gliner_news"
     GLINER_MULTI = "gliner_multi"
+    
+    # Chinese models
+    FASTHAN = "fasthan"
+    FASTNLP = "fastnlp"
+    LAC = "lac"
+    HANLP = "hanlp"
+    PKUSEG = "pkuseg"
+    
+    # Multilingual
+    MULTILINGUAL = "multilingual"
+    HISTORICAL = "historical"
 
 
 class ProcessingMode(Enum):
@@ -76,6 +87,34 @@ class EntitySpan:
     normalized_text: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary format."""
+        return {
+            "text": self.text,
+            "labels": self.labels,
+            "start_pos": self.start_pos,
+            "end_pos": self.end_pos,
+            "confidence": self.confidence,
+            "metadata": self.metadata or {}
+        }
+
+    def to_flat_dict(self, use_compact_labels: bool = True) -> Dict[str, Any]:
+        """Convert to flat format for Solr with optional compact labels."""
+        from .ner_labels import get_compact_label
+        
+        label = self.labels[0] if self.labels else "MISC"
+        
+        if use_compact_labels:
+            label = get_compact_label(label)
+        
+        return {
+            "t": self.text,
+            "l": label,
+            "s": self.start_pos,
+            "e": self.end_pos,
+            "c": self.confidence
+        }
+
 
 @dataclass
 class Token:
@@ -96,11 +135,13 @@ class Token:
 class ProcessingStats:
     """Statistics for model performance monitoring."""
     
+    total_texts: int = 0
     total_entities: int = 0
     processing_time: float = 0.0
     memory_usage: Optional[float] = None
     gpu_utilization: Optional[float] = None
     throughput: Optional[float] = None
+    error_count: int = 0
 
 
 # Backward compatibility
@@ -109,6 +150,12 @@ Entity = EntitySpan
 
 class BaseModel(ABC):
     """Base class for all models."""
+    
+    def __init__(self, model_name: str, **kwargs):
+        self.model_name = model_name
+        self.kwargs = kwargs
+        self._loaded = False
+        self._stats = ProcessingStats()
     
     @abstractmethod
     def load(self) -> bool:
@@ -121,10 +168,9 @@ class BaseModel(ABC):
         pass
     
     @property
-    @abstractmethod
     def is_loaded(self) -> bool:
         """Check if model is loaded."""
-        pass
+        return self._loaded
 
 
 class NERModel(BaseModel):
@@ -154,7 +200,7 @@ class NERModel(BaseModel):
     
     def get_processing_stats(self) -> ProcessingStats:
         """Get processing statistics."""
-        return ProcessingStats()
+        return self._stats
     
     def short_format(self, entities: List[EntitySpan]) -> List[Dict[str, Any]]:
         """Convert entities to short format."""

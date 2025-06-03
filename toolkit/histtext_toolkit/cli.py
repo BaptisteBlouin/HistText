@@ -554,7 +554,7 @@ def semantic_search(config, log_level, solr_host, solr_port, cache_dir, collecti
 def list_models():
     """List available model types."""
     try:
-        from .models.ner_registry import get_available_model_types
+        from .models.registry import get_available_model_types
         
         models = get_available_model_types()
         

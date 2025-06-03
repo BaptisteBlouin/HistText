@@ -7,7 +7,7 @@ from typing import Optional
 
 from .core.config import ModelConfig
 from .core.logging import get_logger
-from .models.ner_registry import create_ner_model
+from .models.registry import create_ner_model
 
 logger = get_logger(__name__)
 
