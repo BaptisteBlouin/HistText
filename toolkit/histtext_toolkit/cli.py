@@ -226,8 +226,10 @@ def ner(config, log_level, solr_host, solr_port, cache_dir, collection, model_na
             click.echo("Cache is not enabled in the configuration", err=True)
             sys.exit(1)
         
-        # Create model config
+        # Create model config - AVOID DUPLICATE PARAMETERS
         additional_params = {}
+        
+        # Only add parameters that aren't already in the ModelConfig constructor
         if threshold != 0.5:
             additional_params["threshold"] = threshold
         if use_gpu:
@@ -235,14 +237,17 @@ def ner(config, log_level, solr_host, solr_port, cache_dir, collection, model_na
         if optimization_level != 1:
             additional_params["optimization_level"] = optimization_level
         
+        # Create model config with explicit parameters
         model_config = ModelConfig(
             name=model_name,
             path=model_name,
             type=model_type,
             max_length=max_length,
-            aggregation_strategy=aggregation_strategy,
-            additional_params=additional_params if additional_params else {}
+            additional_params=additional_params  # Don't include aggregation_strategy here
         )
+        
+        # Fix entity_types - convert empty list to None
+        entity_types_list = list(entity_types) if entity_types else None
         
         solr_client = SolrClient(cfg.solr.host, cfg.solr.port, cfg.solr.username, cfg.solr.password)
         await solr_client.start_session()
@@ -250,13 +255,13 @@ def ner(config, log_level, solr_host, solr_port, cache_dir, collection, model_na
         try:
             total_docs = await precompute_ner(
                 solr_client, collection, text_field, model_config, cfg.cache.root_dir,
-                model_name, start, batch_size, num_batches, filter_query, list(entity_types),
+                model_name, start, batch_size, num_batches, filter_query, entity_types_list,
                 jsonl_prefix, decimal_precision, format, compact_labels, label_stats
             )
             click.echo(f"Processed {total_docs} documents for NER")
         finally:
             await solr_client.close_session()
-    
+        
     asyncio.run(_ner())
 
 

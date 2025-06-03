@@ -70,6 +70,8 @@ class GLiNERModel(BaseNERModel):
         if not text.strip():
             return []
         
+        if entity_types is not None and len(entity_types) == 0:
+            entity_types = None
         if entity_types is None:
             entity_types = ["Person", "Organization", "Location"]
         

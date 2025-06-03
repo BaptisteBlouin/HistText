@@ -9,6 +9,99 @@ from transformers import (
 from .ner_base import BaseNERModel, EntitySpan, logger
 from .domain_utils import DomainUtils, HistoricalTextProcessor, MultilingualProcessor
 
+# Add this at the top of the class or as a module-level constant
+COMPREHENSIVE_ENTITY_MAPPING = {
+    # Standard CoNLL-2003 entities
+    'PER': 'PERSON',
+    'PERSON': 'PERSON',
+    'LOC': 'LOCATION', 
+    'LOCATION': 'LOCATION',
+    'ORG': 'ORGANIZATION',
+    'ORGANIZATION': 'ORGANIZATION',
+    'MISC': 'MISCELLANEOUS',
+    'MISCELLANEOUS': 'MISCELLANEOUS',
+    
+    # OntoNotes 5.0 entities
+    'NORP': 'NORP',  # Nationalities, religious, political groups
+    'FAC': 'FACILITY',
+    'FACILITY': 'FACILITY',
+    'GPE': 'GEOPOLITICAL',  # Countries, cities, states
+    'GEOPOLITICAL': 'GEOPOLITICAL',
+    'PRODUCT': 'PRODUCT',
+    'EVENT': 'EVENT',
+    'WORK_OF_ART': 'WORK_OF_ART',
+    'LAW': 'LAW',
+    'LANGUAGE': 'LANGUAGE',
+    
+    # Temporal entities
+    'DATE': 'DATE',
+    'TIME': 'TIME',
+    
+    # Numeric entities
+    'PERCENT': 'PERCENT',
+    'PERCENTAGE': 'PERCENT',
+    'MONEY': 'MONEY',
+    'QUANTITY': 'QUANTITY',
+    'ORDINAL': 'ORDINAL',
+    'CARDINAL': 'CARDINAL',
+    'NUMBER': 'CARDINAL',
+    
+    # Biomedical entities (for bio models)
+    'CHEMICAL': 'CHEMICAL',
+    'DISEASE': 'DISEASE',
+    'DRUG': 'DRUG',
+    'GENE': 'GENE',
+    'PROTEIN': 'PROTEIN',
+    'CELL_TYPE': 'CELL_TYPE',
+    'CELL_LINE': 'CELL_LINE',
+    'DNA': 'DNA',
+    'RNA': 'RNA',
+    
+    # Financial entities
+    'TICKER': 'TICKER',
+    'STOCK': 'STOCK',
+    'CURRENCY': 'CURRENCY',
+    
+    # Legal entities
+    'COURT': 'COURT',
+    'JUDGE': 'JUDGE',
+    'LAWYER': 'LAWYER',
+    'CASE': 'CASE',
+    
+    # Academic/Scientific
+    'UNIVERSITY': 'UNIVERSITY',
+    'JOURNAL': 'JOURNAL',
+    'CONFERENCE': 'CONFERENCE',
+    
+    # Technology
+    'SOFTWARE': 'SOFTWARE',
+    'ALGORITHM': 'ALGORITHM',
+    'PROGRAMMING_LANGUAGE': 'PROGRAMMING_LANGUAGE',
+    
+    # Geographic
+    'CONTINENT': 'CONTINENT',
+    'COUNTRY': 'COUNTRY',
+    'STATE': 'STATE',
+    'CITY': 'CITY',
+    'RIVER': 'RIVER',
+    'MOUNTAIN': 'MOUNTAIN',
+    
+    # Historical
+    'DYNASTY': 'DYNASTY',
+    'EMPIRE': 'EMPIRE',
+    'TITLE': 'TITLE',
+    'ARTIFACT': 'ARTIFACT',
+    
+    # Default fallback
+    'ENT': 'ENTITY',
+    'ENTITY': 'ENTITY',
+    'UNK': 'UNKNOWN',
+    'UNKNOWN': 'UNKNOWN',
+    'OTHER': 'OTHER',
+}
+
+
+
 
 class TransformersNERModel(BaseNERModel):
     """Enhanced Transformers-based NER model with robust model detection."""
@@ -22,11 +115,19 @@ class TransformersNERModel(BaseNERModel):
         enable_pattern_enhancement: bool = True,
         enable_historical_processing: bool = False,
         auto_detect_language: bool = True,
-        force_pattern_only: bool = False,  # New: fallback to pattern-only
-        **kwargs
+        force_pattern_only: bool = False,
+        **kwargs  # Catch any additional parameters
     ):
-        super().__init__(model_name, **kwargs)
-        self.aggregation_strategy = aggregation_strategy
+        # Filter out any duplicate parameters from kwargs
+        filtered_kwargs = {}
+        for key, value in kwargs.items():
+            if key not in ['model_name', 'aggregation_strategy', 'max_length', 'domain', 
+                          'enable_pattern_enhancement', 'enable_historical_processing', 
+                          'auto_detect_language', 'force_pattern_only']:
+                filtered_kwargs[key] = value
+        
+        super().__init__(model_name, **filtered_kwargs)
+        self.aggregation_strategy = self._get_optimal_aggregation_strategy(model_name)
         self.max_length = max_length
         self.domain = domain
         self.enable_pattern_enhancement = enable_pattern_enhancement
@@ -46,6 +147,95 @@ class TransformersNERModel(BaseNERModel):
         if model_name in ["auto", "multilingual", "historical"]:
             self.model_name = self._get_recommended_model(model_name)
             logger.info(f"Auto-selected model: {self.model_name}")
+    
+    
+    
+    def normalize_entity_type(self, entity_type: str) -> str:
+        """Normalize entity type using comprehensive mapping."""
+        if not entity_type:
+            return 'UNKNOWN'
+        
+        # Remove B-, I-, L-, U- prefixes from BIO tagging
+        clean_type = entity_type
+        if entity_type.startswith(('B-', 'I-', 'L-', 'U-')):
+            clean_type = entity_type[2:]
+        
+        # Convert to uppercase for consistent lookup
+        clean_type = clean_type.upper().strip()
+        
+        # Apply mapping
+        normalized = COMPREHENSIVE_ENTITY_MAPPING.get(clean_type, clean_type)
+        
+        return normalized
+
+    def _get_optimal_aggregation_strategy(self, model_name: str) -> str:
+        """Automatically select the best aggregation strategy based on the model."""
+        model_lower = model_name.lower()
+        
+        # Model-specific optimal strategies based on empirical performance
+        strategy_mapping = {
+            # BERT-based models
+            'bert': 'first',
+            'distilbert': 'first',
+            'roberta': 'first',
+            'xlm-roberta': 'first',
+            
+            # Large language models
+            'gpt': 'first',
+            'llama': 'first', 
+            'mistral': 'first',
+            'qwen': 'first',
+            
+            # Specialized NER models
+            'ner': 'simple',
+            'conll': 'simple',
+            'ontonotes': 'average',
+            
+            # Multilingual models
+            'multilingual': 'simple',
+            'mbert': 'simple',
+            'xlm': 'simple',
+            
+            # Fast/efficient models
+            'distil': 'first',
+            'mobile': 'first',
+            'tiny': 'first',
+            'mini': 'first',
+            
+            # Domain-specific
+            'bio': 'average',
+            'clinical': 'average',
+            'legal': 'simple',
+            'financial': 'simple',
+            'news': 'simple',
+            
+            # Historical/specialized
+            'historic': 'simple',
+            'ancient': 'simple',
+            'medieval': 'simple',
+        }
+        
+        # Check for specific model patterns
+        for pattern, strategy in strategy_mapping.items():
+            if pattern in model_lower:
+                logger.info(f"Auto-selected aggregation strategy '{strategy}' for {pattern} model")
+                return strategy
+        
+        # Check by model size indicators
+        if any(size in model_lower for size in ['large', 'xl', 'xxl']):
+            logger.info("Auto-selected 'average' aggregation for large model")
+            return 'average'
+        elif any(size in model_lower for size in ['small', 'tiny', 'mini']):
+            logger.info("Auto-selected 'first' aggregation for small/fast model")
+            return 'first'
+        elif 'base' in model_lower:
+            logger.info("Auto-selected 'simple' aggregation for base model")
+            return 'simple'
+        
+        # Default fallback
+        logger.info("Using default 'simple' aggregation strategy")
+        return 'simple'
+
     
     def _get_recommended_model(self, model_type: str) -> str:
         """Get recommended model based on type."""
@@ -92,7 +282,7 @@ class TransformersNERModel(BaseNERModel):
             
             # Check model compatibility first
             compat_info = self._check_model_compatibility()
-            logger.debug(f"Model compatibility: {compat_info}")
+            logger.info(f"Model compatibility: {compat_info}")
             
             if self.force_pattern_only:
                 logger.info("Force pattern-only mode enabled")
@@ -112,20 +302,23 @@ class TransformersNERModel(BaseNERModel):
                 # Strategy 1: Try NER pipeline
                 success = self._try_ner_pipeline()
                 if success:
+                    logger.info("✅ Successfully loaded as NER pipeline")
                     return True
                 
                 # Strategy 2: Try manual token classification loading
                 success = self._try_manual_token_classification()
                 if success:
+                    logger.info("✅ Successfully loaded as manual token classification")
                     return True
                 
                 # Strategy 3: Try as base model with pattern extraction
                 success = self._try_base_model_with_patterns()
                 if success:
+                    logger.warning("⚠️ Loaded as base model - using pattern-based NER only")
                     return True
                 
                 # Strategy 4: Pattern-only fallback
-                logger.warning(f"Could not load {self.model_name} as transformer model")
+                logger.error(f"❌ Could not load {self.model_name} as transformer model")
                 logger.info("Falling back to pattern-based NER only")
                 self._model_type = "pattern_only"
                 self._supports_ner = False
@@ -137,28 +330,40 @@ class TransformersNERModel(BaseNERModel):
             return False
     
     def _try_ner_pipeline(self) -> bool:
-        """Try loading as NER pipeline."""
+        """Try loading as NER pipeline with proper aggregation."""
         try:
-            self._pipeline = pipeline(
-                "ner",
-                model=self.model_name,
-                aggregation_strategy=self.aggregation_strategy,
-                device=0 if self.device == "cuda" else -1,
-                trust_remote_code=True,
-                return_all_scores=False
-            )
+            logger.info(f"Attempting to load {self.model_name} as NER pipeline...")
+            
+            # Remove the problematic parameter
+            pipeline_kwargs = {
+                "model": self.model_name,
+                "aggregation_strategy": self.aggregation_strategy,
+                "device": 0 if self.device == "cuda" else -1,
+                "trust_remote_code": True,
+                # "return_all_scores": False,  # Remove this line - it's causing the error
+            }
+            
+            self._pipeline = pipeline("ner", **pipeline_kwargs)
             
             # Test the pipeline with a simple example
-            test_result = self._pipeline("Test sentence with John Smith.")
+            test_text = "John Smith works at Microsoft in Seattle."
+            test_result = self._pipeline(test_text)
+            
+            logger.info(f"Pipeline test successful: found {len(test_result)} entities")
+            if test_result:
+                logger.info(f"Sample entity: {test_result[0]}")
+                # Check if aggregation worked
+                entity_texts = [r.get('word', r.get('entity_group', '')) for r in test_result]
+                logger.info(f"Entity texts: {entity_texts}")
             
             self._model_type = "pipeline"
             self._supports_ner = True
             self._loaded = True
-            logger.info("Successfully loaded as NER pipeline")
+            logger.info("Successfully loaded as NER pipeline with aggregation")
             return True
             
         except Exception as e:
-            logger.debug(f"NER pipeline loading failed: {e}")
+            logger.warning(f"NER pipeline loading failed: {e}")
             return False
     
     def _try_manual_token_classification(self) -> bool:
@@ -301,12 +506,17 @@ class TransformersNERModel(BaseNERModel):
             
             entities = []
             for result in results:
+                # Get the entity label
+                entity_label = result.get("entity_group", result.get("entity", "UNKNOWN"))
+                
+                # Clean the label (remove B-, I- prefixes if present)
+                if entity_label.startswith(('B-', 'I-')):
+                    entity_label = entity_label[2:]
+                
                 # Filter by entity types if specified
                 if entity_types:
-                    entity_label = result.get("entity_group", result.get("entity", ""))
                     # Handle both direct match and BIO tag match
-                    label_base = entity_label.split("-")[-1] if "-" in entity_label else entity_label
-                    if label_base not in entity_types:
+                    if entity_label not in entity_types:
                         continue
                 
                 # Clean up entity text
@@ -315,7 +525,7 @@ class TransformersNERModel(BaseNERModel):
                 if entity_text and len(entity_text) > 0:
                     entities.append(EntitySpan(
                         text=entity_text,
-                        labels=[result.get("entity_group", result.get("entity", "UNK"))],
+                        labels=[entity_label],  # Use the actual NER label
                         start_pos=result["start"],
                         end_pos=result["end"],
                         confidence=result["score"]
@@ -325,7 +535,7 @@ class TransformersNERModel(BaseNERModel):
             
         except Exception as e:
             logger.error(f"Pipeline extraction error: {e}")
-            return []
+        return []
     
     def _extract_with_manual_model(self, text: str, entity_types: Optional[List[str]]) -> List[EntitySpan]:
         """Extract using manual token classification model."""
@@ -360,8 +570,8 @@ class TransformersNERModel(BaseNERModel):
             return []
     
     def _process_token_predictions(self, text: str, inputs: dict, predicted_labels: torch.Tensor, 
-                                 predictions: torch.Tensor, entity_types: Optional[List[str]]) -> List[EntitySpan]:
-        """Process token predictions to extract entities."""
+                             predictions: torch.Tensor, entity_types: Optional[List[str]]) -> List[EntitySpan]:
+        """Process token predictions with proper BIO aggregation."""
         entities = []
         
         try:
@@ -372,19 +582,30 @@ class TransformersNERModel(BaseNERModel):
             if offset_mapping is not None:
                 offset_mapping = offset_mapping[0].cpu().numpy()
             else:
-                offset_mapping = [(0, 0)] * len(tokens)
+                # Create approximate offset mapping
+                offset_mapping = []
+                current_pos = 0
+                for token in tokens:
+                    clean_token = token.replace("##", "").replace("▁", " ").replace("Ġ", " ")
+                    start_pos = text.find(clean_token, current_pos)
+                    if start_pos >= 0:
+                        end_pos = start_pos + len(clean_token)
+                        offset_mapping.append((start_pos, end_pos))
+                        current_pos = end_pos
+                    else:
+                        offset_mapping.append((current_pos, current_pos))
             
             # Get label mapping
             if hasattr(self._model.config, 'id2label'):
                 id2label = self._model.config.id2label
             else:
                 id2label = {i: f"LABEL_{i}" for i in range(self._model.config.num_labels)}
-                id2label[0] = "O"
             
-            # Process tokens
-            current_entity = []
+            # Process tokens with proper BIO aggregation
+            current_entity_tokens = []
             current_entity_type = None
-            current_start = None
+            current_entity_start = None
+            current_entity_end = None
             
             for i, (token, offset) in enumerate(zip(tokens, offset_mapping)):
                 if token in self._tokenizer.all_special_tokens:
@@ -392,42 +613,51 @@ class TransformersNERModel(BaseNERModel):
                 
                 label_id = predicted_labels[i].item()
                 label = id2label.get(label_id, "O")
-                confidence = float(predictions[i].max().item())
                 
-                if label.startswith("B-") or (label != "O" and current_entity_type is None):
+                # Handle BIO tagging properly
+                if label.startswith("B-"):
+                    # Beginning of new entity - save previous entity if exists
+                    if current_entity_tokens and current_entity_type:
+                        entity = self._create_aggregated_entity(
+                            current_entity_tokens, current_entity_type, 
+                            current_entity_start, current_entity_end, text
+                        )
+                        if entity and self._entity_matches_filter(entity, entity_types):
+                            entities.append(entity)
+                    
                     # Start new entity
-                    if current_entity:
-                        entity = self._create_entity_from_tokens(
-                            current_entity_type, current_entity, current_start, text
-                        )
-                        if entity and self._entity_matches_filter(entity, entity_types):
-                            entities.append(entity)
+                    current_entity_type = label[2:]  # Remove B- prefix
+                    current_entity_tokens = [token]
+                    current_entity_start = offset[0] if len(offset) == 2 else None
+                    current_entity_end = offset[1] if len(offset) == 2 else None
                     
-                    current_entity_type = label[2:] if label.startswith("B-") else "ENT"
-                    current_entity = [token]
-                    current_start = offset[0] if len(offset) == 2 and offset[0] != offset[1] else None
-                
                 elif label.startswith("I-") and current_entity_type == label[2:]:
-                    # Continue entity
-                    current_entity.append(token)
-                
+                    # Inside entity - continue current entity
+                    current_entity_tokens.append(token)
+                    if len(offset) == 2:
+                        current_entity_end = offset[1]  # Extend end position
+                        
                 else:
-                    # End entity
-                    if current_entity:
-                        entity = self._create_entity_from_tokens(
-                            current_entity_type, current_entity, current_start, text
+                    # Outside entity or different entity type - save current entity
+                    if current_entity_tokens and current_entity_type:
+                        entity = self._create_aggregated_entity(
+                            current_entity_tokens, current_entity_type,
+                            current_entity_start, current_entity_end, text
                         )
                         if entity and self._entity_matches_filter(entity, entity_types):
                             entities.append(entity)
                     
-                    current_entity = []
+                    # Reset
+                    current_entity_tokens = []
                     current_entity_type = None
-                    current_start = None
+                    current_entity_start = None
+                    current_entity_end = None
             
             # Handle last entity
-            if current_entity:
-                entity = self._create_entity_from_tokens(
-                    current_entity_type, current_entity, current_start, text
+            if current_entity_tokens and current_entity_type:
+                entity = self._create_aggregated_entity(
+                    current_entity_tokens, current_entity_type,
+                    current_entity_start, current_entity_end, text
                 )
                 if entity and self._entity_matches_filter(entity, entity_types):
                     entities.append(entity)
@@ -437,6 +667,62 @@ class TransformersNERModel(BaseNERModel):
         except Exception as e:
             logger.error(f"Error processing token predictions: {e}")
             return []
+
+    def _create_aggregated_entity(self, tokens: List[str], entity_type: str, 
+                                start_pos: Optional[int], end_pos: Optional[int], 
+                                text: str) -> Optional[EntitySpan]:
+        """Create entity from aggregated tokens."""
+        try:
+            if not tokens or not entity_type:
+                return None
+            
+            # Aggregate tokens properly
+            entity_text = ""
+            for i, token in enumerate(tokens):
+                clean_token = token.replace("##", "").replace("▁", " ").replace("Ġ", " ")
+                if i == 0:
+                    entity_text = clean_token
+                else:
+                    # Add space between tokens unless it's a subword
+                    if token.startswith("##"):
+                        entity_text += clean_token  # No space for subwords
+                    else:
+                        entity_text += " " + clean_token
+            
+            entity_text = entity_text.strip()
+            
+            if not entity_text:
+                return None
+            
+            # Normalize entity type
+            normalized_type = self.normalize_entity_type(entity_type)
+            
+            # Use provided positions or find in text
+            if start_pos is not None and end_pos is not None:
+                return EntitySpan(
+                    text=entity_text,
+                    labels=[normalized_type],
+                    start_pos=int(start_pos),
+                    end_pos=int(end_pos),
+                    confidence=0.8
+                )
+            else:
+                # Fallback: find in text
+                found_pos = text.find(entity_text)
+                if found_pos >= 0:
+                    return EntitySpan(
+                        text=entity_text,
+                        labels=[normalized_type],
+                        start_pos=found_pos,
+                        end_pos=found_pos + len(entity_text),
+                        confidence=0.8
+                    )
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error creating aggregated entity: {e}")
+            return None
     
     def _entity_matches_filter(self, entity: EntitySpan, entity_types: Optional[List[str]]) -> bool:
         """Check if entity matches the filter criteria."""
@@ -452,8 +738,8 @@ class TransformersNERModel(BaseNERModel):
         return False
     
     def _create_entity_from_tokens(self, entity_type: str, tokens: List[str], 
-                                 start_pos: Optional[int], text: str) -> Optional[EntitySpan]:
-        """Create entity from tokens."""
+                             start_pos: Optional[int], text: str) -> Optional[EntitySpan]:
+        """Create entity from tokens with comprehensive type normalization."""
         try:
             if not tokens or not entity_type:
                 return None
@@ -469,13 +755,16 @@ class TransformersNERModel(BaseNERModel):
             if not entity_text or len(entity_text) < 1:
                 return None
             
+            # Normalize entity type using comprehensive mapping
+            normalized_entity_type = self.normalize_entity_type(entity_type)
+            
             # Find position in text
             if start_pos is not None and start_pos >= 0:
                 end_pos = start_pos + len(entity_text)
                 if end_pos <= len(text):
                     return EntitySpan(
                         text=entity_text,
-                        labels=[entity_type],
+                        labels=[normalized_entity_type],
                         start_pos=int(start_pos),
                         end_pos=int(end_pos),
                         confidence=0.8
@@ -486,14 +775,14 @@ class TransformersNERModel(BaseNERModel):
             if found_pos >= 0:
                 return EntitySpan(
                     text=entity_text,
-                    labels=[entity_type],
+                    labels=[normalized_entity_type],
                     start_pos=found_pos,
                     end_pos=found_pos + len(entity_text),
                     confidence=0.8
                 )
             
             return None
-            
+        
         except Exception as e:
             logger.debug(f"Error creating entity from tokens: {e}")
             return None

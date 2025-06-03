@@ -179,7 +179,11 @@ class NERModel(BaseModel):
     @abstractmethod
     def extract_entities(self, text: str, entity_types: Optional[List[str]] = None) -> List[EntitySpan]:
         """Extract named entities from text with optional type filtering."""
-        pass
+        if entity_types is not None and len(entity_types) == 0:
+            entity_types = None
+        
+        # Call the actual implementation
+        return self._extract_entities_impl(text, entity_types)
     
     def extract_entities_batch(self, texts: List[str], entity_types: Optional[List[str]] = None) -> List[List[EntitySpan]]:
         """Batch entity extraction - default implementation."""

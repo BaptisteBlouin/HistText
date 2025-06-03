@@ -8,6 +8,7 @@ from typing import Optional
 
 import spacy
 from spacy.language import Language
+from toolkit.histtext_toolkit.models.base import EntitySpan
 
 from ..core.logging import get_logger
 from .ner_base import Entity, NERModel, Token, TokenizationModel
@@ -92,24 +93,39 @@ class SpacyNERModel(NERModel):
         if not self.is_loaded:
             if not self.load():
                 return []
-
-        # Process the text with newlines replaced by spaces for better processing
-        doc = self._model(text.replace("\n", " "))
-
-        # Extract entities
-        entities = []
-        for ent in doc.ents:
-            entities.append(
-                Entity(
-                    text=ent.text,
-                    labels=[ent.label_],
-                    start_pos=ent.start_char,
-                    end_pos=ent.end_char,
-                    confidence=-1.0,  # spaCy doesn't provide confidence scores
-                )
-            )
-
-        return entities
+        
+        if not text.strip():
+            return []
+        
+        # Convert empty list to None
+        if entity_types is not None and len(entity_types) == 0:
+            entity_types = None
+        
+        try:
+            # Process text
+            doc = self._nlp(text.replace("\n", " "))
+            
+            # Extract entities
+            entities = []
+            for ent in doc.ents:
+                if entity_types is None or ent.label_ in entity_types:
+                    entities.append(EntitySpan(
+                        text=ent.text,
+                        labels=[ent.label_],
+                        start_pos=ent.start_char,
+                        end_pos=ent.end_char,
+                        confidence=1.0  # spaCy doesn't provide confidence scores
+                    ))
+            
+            self._stats.total_texts += 1
+            self._stats.total_entities += len(entities)
+            
+            return entities
+            
+        except Exception as e:
+            logger.error(f"Error in spaCy entity extraction: {e}")
+            self._stats.error_count += 1
+            return []
 
 
 class SpacyTokenizationModel(TokenizationModel):

@@ -48,31 +48,59 @@ class NERProcessor:
         flat_docs = []
         total_entities = 0
         all_labels = []
+        processed_count = 0
+        empty_count = 0
+        error_count = 0
+        
+        # Sample first few documents for detailed logging
+        sample_doc_ids = list(documents.keys())[:2] if len(documents) > 0 else []
         
         for doc_id, text in tqdm(documents.items(), desc="Processing documents"):
             try:
+                # Check for empty or whitespace-only text
                 if not text or text.isspace():
+                    empty_count += 1
+                    if doc_id in sample_doc_ids:
+                        logger.debug(f"Skipping empty document {doc_id}")
                     continue
                 
+                # Log sample document processing
+                if doc_id in sample_doc_ids:
+                    logger.info(f"Processing sample document {doc_id} (length: {len(text)})")
+                
+                # Extract entities using the model
                 entities = self.model.extract_entities(text, entity_types)
+                processed_count += 1
+                
+                # Log entities found for sample documents
+                if doc_id in sample_doc_ids and entities:
+                    logger.info(f"Found {len(entities)} entities in sample document {doc_id}")
+                    for i, ent in enumerate(entities[:3]):  # Show first 3
+                        logger.info(f"  - '{ent.text}' ({ent.labels[0] if ent.labels else 'NO_LABEL'})")
                 
                 if entities:
                     total_entities += len(entities)
                     
-                    # Convert labels to compact format
-                    compact_labels = []
+                    # Process labels
+                    processed_labels = []
                     for entity in entities:
                         original_label = entity.labels[0] if entity.labels else "MISC"
-                        compact_label = get_compact_label(original_label) if use_compact_labels else original_label
-                        compact_labels.append(compact_label)
+                        
+                        if use_compact_labels:
+                            from ..models.ner_labels import get_compact_label
+                            compact_label = get_compact_label(original_label)
+                            processed_labels.append(compact_label)
+                        else:
+                            processed_labels.append(original_label)
                         
                         if include_label_stats:
                             all_labels.append(original_label)
                     
+                    # Create flat document structure
                     flat_doc = {
                         "doc_id": [doc_id] * len(entities),
                         "t": [entity.text for entity in entities],
-                        "l": compact_labels,
+                        "l": processed_labels,
                         "s": [self._convert_to_serializable(entity.start_pos) for entity in entities],
                         "e": [self._convert_to_serializable(entity.end_pos) for entity in entities],
                         "c": [self._convert_to_serializable(entity.confidence) for entity in entities]
@@ -80,18 +108,28 @@ class NERProcessor:
                     flat_docs.append(flat_doc)
             
             except Exception as e:
+                error_count += 1
                 logger.error(f"Error processing document {doc_id}: {e}")
+                if doc_id in sample_doc_ids:
+                    import traceback
+                    logger.debug(f"Error traceback: {traceback.format_exc()}")
         
-        logger.info(f"Processed {len(documents)} documents, found {total_entities} entities")
+        # Summary logging
+        logger.info(f"Processed {processed_count} documents ({empty_count} empty, {error_count} errors)")
+        logger.info(f"Found {total_entities} entities in {len(flat_docs)} documents")
         
         # Log label statistics if requested
         if include_label_stats and all_labels:
-            stats = get_label_stats(all_labels)
+            from collections import Counter
+            stats = Counter(all_labels)
             logger.info("Label distribution:")
-            for compact_label, count in sorted(stats.items(), key=lambda x: x[1], reverse=True):
-                from ..models.ner_labels import get_full_label
-                full_label = get_full_label(compact_label)
-                logger.info(f"  {compact_label} ({full_label}): {count}")
+            for label, count in sorted(stats.items(), key=lambda x: x[1], reverse=True)[:10]:
+                if use_compact_labels:
+                    from ..models.ner_labels import get_compact_label
+                    compact = get_compact_label(label)
+                    logger.info(f"  {label} -> {compact}: {count}")
+                else:
+                    logger.info(f"  {label}: {count}")
         
         return flat_docs
     
@@ -105,6 +143,7 @@ class NERProcessor:
     ):
         """Save results to cache with label mapping."""
         if not flat_docs:
+            logger.warning("No results to save")
             return
         
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -116,30 +155,34 @@ class NERProcessor:
         
         jsonl_path = cache_dir / jsonl_filename
         
-        with open(jsonl_path, 'w', encoding='utf-8') as f:
-            for doc in flat_docs:
-                f.write(json.dumps(doc, ensure_ascii=False) + '\n')
-        
-        # Save label mapping file
-        if save_label_mapping:
-            mapping_path = cache_dir / "label_mapping.json"
-            if not mapping_path.exists():
-                from ..models.ner_labels import get_all_compact_labels
-                mapping_data = {
-                    "compact_to_full": get_all_compact_labels(),
-                    "description": "Mapping from compact NER labels to full labels",
-                    "format_version": "1.0"
-                }
-                
-                with open(mapping_path, 'w', encoding='utf-8') as f:
-                    json.dump(mapping_data, f, indent=2, ensure_ascii=False)
-                
-                logger.info(f"Saved label mapping to {mapping_path}")
-        
-        total_entities = sum(len(doc.get("t", [])) for doc in flat_docs)
-        logger.debug(f"Saved {len(flat_docs)} documents with {total_entities} entities to {jsonl_path}")
-
-
+        try:
+            with open(jsonl_path, 'w', encoding='utf-8') as f:
+                for doc in flat_docs:
+                    f.write(json.dumps(doc, ensure_ascii=False) + '\n')
+            
+            # Save label mapping file
+            if save_label_mapping:
+                mapping_path = cache_dir / "label_mapping.json"
+                if not mapping_path.exists():
+                    from ..models.ner_labels import get_all_compact_labels
+                    mapping_data = {
+                        "compact_to_full": get_all_compact_labels(),
+                        "description": "Mapping from compact NER labels to full labels",
+                        "format_version": "1.0"
+                    }
+                    
+                    with open(mapping_path, 'w', encoding='utf-8') as f:
+                        json.dump(mapping_data, f, indent=2, ensure_ascii=False)
+                    
+                    logger.info(f"Saved label mapping to {mapping_path}")
+            
+            total_entities = sum(len(doc.get("t", [])) for doc in flat_docs)
+            logger.info(f"Saved {len(flat_docs)} documents with {total_entities} entities to {jsonl_path}")
+            
+        except Exception as e:
+            logger.error(f"Error saving results: {e}")
+            raise
+    
 async def precompute_ner(
     solr_client: SolrClient,
     collection: str,
@@ -155,10 +198,10 @@ async def precompute_ner(
     jsonl_prefix: Optional[str] = None,
     decimal_precision: Optional[int] = None,
     format_type: str = "flat",
-    use_compact_labels: bool = True,  # New parameter
-    include_label_stats: bool = False,  # New parameter
+    use_compact_labels: bool = True,
+    include_label_stats: bool = False,
 ) -> int:
-    """Simplified NER precomputation with compact labels."""
+    """NER precomputation with comprehensive error handling and debugging."""
     
     logger.info(f"Starting NER precomputation...")
     logger.info(f"Model: {model_config.name} ({model_config.type})")
@@ -169,22 +212,27 @@ async def precompute_ner(
     
     if entity_types:
         logger.info(f"Entity Types: {entity_types}")
+    else:
+        logger.info("Entity Types: All (no filtering)")
     
-    # Create model
+    # Create and load model
     model = create_ner_model(model_config)
     if not model:
-        logger.error("Failed to create model")
+        logger.error("Failed to create NER model")
         return 0
     
+    logger.info(f"Loading model {model_config.name}...")
     if not model.load():
         logger.error(f"Failed to load model {model_config.name}")
         return 0
+    
+    logger.info("Model loaded successfully")
     
     # Setup directories
     cache_dir = Path(cache_root) / model_name / collection / text_field
     schema_path = Path(cache_root) / f"{collection}_ner.yaml"
     
-    # Create schema with compact labels
+    # Create schema
     _create_flat_schema_with_compact_labels(str(schema_path), use_compact_labels)
     logger.info(f"Schema file: {schema_path}")
     logger.info(f"Cache directory: {cache_dir}")
@@ -192,7 +240,7 @@ async def precompute_ner(
     # Create processor
     processor = NERProcessor(model, cache_root)
     
-    # Process batches
+    # Initialize counters
     current_start = start
     current_batch = 0
     total_docs = 0
@@ -200,11 +248,41 @@ async def precompute_ner(
     session_start_time = time.time()
     
     try:
+        # Test model with sample data first
+        logger.info("Testing model with sample data from collection...")
+        test_docs = await solr_client.get_document_batch(
+            collection, text_field, 0, 3, filter_query
+        )
+        
+        if not test_docs:
+            logger.error("No documents found in collection for testing")
+            return 0
+        
+        # Test model on sample documents
+        test_results = processor.process_documents_flat(
+            test_docs, entity_types, use_compact_labels, include_label_stats
+        )
+        
+        test_entities = sum(len(doc.get("t", [])) for doc in test_results)
+        logger.info(f"Model test: {test_entities} entities found in {len(test_docs)} sample documents")
+        
+        if test_entities == 0:
+            logger.warning("No entities found in sample documents. This may indicate:")
+            logger.warning("  - Text content doesn't contain recognizable entities")
+            logger.warning("  - Entity type filtering is too restrictive")
+            logger.warning("  - Model confidence threshold is too high")
+            logger.warning("  - Text encoding issues")
+            
+            # Show sample text
+            for doc_id, text in list(test_docs.items())[:2]:
+                logger.warning(f"Sample text from {doc_id}: {repr(text[:200])}")
+        
+        # Process batches
         with tqdm(desc="Processing batches", unit="batch") as pbar:
             while num_batches is None or current_batch < num_batches:
-                logger.debug(f"Processing batch {current_batch + 1}")
+                logger.info(f"Processing batch {current_batch + 1}")
                 
-                # Get documents
+                # Get documents from Solr
                 documents = await solr_client.get_document_batch(
                     collection, text_field, current_start, batch_size, filter_query
                 )
@@ -213,27 +291,33 @@ async def precompute_ner(
                     logger.info("No more documents found")
                     break
                 
+                logger.info(f"Retrieved {len(documents)} documents from Solr")
+                
                 # Process documents
                 batch_start_time = time.time()
                 flat_docs = processor.process_documents_flat(
                     documents, 
                     entity_types,
                     use_compact_labels=use_compact_labels,
-                    include_label_stats=(current_batch == 0 and include_label_stats)  # Only show stats once
+                    include_label_stats=(current_batch == 0 and include_label_stats)
                 )
                 
-                # Apply decimal precision
+                # Apply decimal precision if specified
                 if decimal_precision is not None:
                     for doc in flat_docs:
                         if "c" in doc:
-                            doc["c"] = [round(c, decimal_precision) if c >= 0 else c for c in doc["c"]]
+                            doc["c"] = [
+                                round(c, decimal_precision) if c >= 0 else c 
+                                for c in doc["c"]
+                            ]
                 
                 # Save results
                 processor.save_results(
                     flat_docs, cache_dir, current_start, jsonl_prefix,
-                    save_label_mapping=(current_batch == 0)  # Only save mapping once
+                    save_label_mapping=(current_batch == 0)
                 )
                 
+                # Update counters
                 batch_time = time.time() - batch_start_time
                 batch_entities = sum(len(doc.get("t", [])) for doc in flat_docs)
                 
@@ -251,11 +335,11 @@ async def precompute_ner(
                 logger.info(f"Batch {current_batch + 1}: {len(documents)} docs, "
                            f"{batch_entities} entities, {batch_time:.2f}s")
                 
-                # Memory cleanup
+                # Memory cleanup every 5 batches
                 if current_batch % 5 == 0:
                     GPUMemoryManager.clear_cache()
                 
-                # Check completion
+                # Check if we're done
                 if len(documents) < batch_size:
                     logger.info("Completed collection")
                     break
@@ -264,11 +348,18 @@ async def precompute_ner(
                 current_start += batch_size
     
     except KeyboardInterrupt:
-        logger.info("Processing interrupted")
+        logger.info("Processing interrupted by user")
     except Exception as e:
         logger.error(f"Error during processing: {e}")
+        import traceback
+        logger.debug(f"Error traceback: {traceback.format_exc()}")
     finally:
-        model.unload()
+        # Cleanup
+        try:
+            model.unload()
+            logger.info("Model unloaded")
+        except Exception as e:
+            logger.warning(f"Error unloading model: {e}")
         
         # Final statistics
         session_time = time.time() - session_start_time
@@ -288,14 +379,13 @@ async def precompute_ner(
         
         logger.info(f"Results cached in: {cache_dir}")
         
-        # Show file size savings
         if use_compact_labels:
             logger.info("Compact labels reduce file size by ~30-50%")
         
         # Upload command
         upload_collection = f"{collection}_ner"
         jsonl_pattern = str(cache_dir / "*.jsonl")
-        upload_command = f'python -m histtext_toolkit.main upload {upload_collection} "{jsonl_pattern}" --schema {schema_path}'
+        upload_command = f'histtext-toolkit upload {upload_collection} "{jsonl_pattern}" --schema {schema_path}'
         
         logger.info(f"\nTo upload to Solr:")
         logger.info(f"  {upload_command}")

@@ -62,15 +62,23 @@ COMPACT2FULL: Dict[str, str] = {
 
 
 def get_compact_label(full_label: str) -> str:
-    """Convert full label to compact code."""
+    """Convert full label to compact code, keeping original if no mapping found."""
     # Handle BIO tags
     if full_label.startswith(('B-', 'I-')):
         entity_type = full_label[2:]
-        return FULL2COMPACT.get(entity_type.upper(), "MI")
+        mapped = FULL2COMPACT.get(entity_type.upper())
+        if mapped:
+            return mapped
+        else:
+            return entity_type  # Keep original entity type if no mapping
     
     # Direct mapping
-    return FULL2COMPACT.get(full_label.upper(), "MI")
-
+    mapped = FULL2COMPACT.get(full_label.upper())
+    if mapped:
+        return mapped
+    else:
+        return full_label
+    
 
 def get_full_label(compact_label: str) -> str:
     """Convert compact code to full label."""

@@ -219,20 +219,34 @@ def create_ner_model(config: ModelConfig) -> Optional[NERModel]:
     
     model_class = _NER_REGISTRY[model_type]
     
-    # Build kwargs
+    # Build kwargs systematically to avoid duplicates
     kwargs = {"model_name": config.path}
     
-    if hasattr(config, "max_length") and config.max_length:
+    # Add standard parameters if they exist
+    if hasattr(config, "max_length") and config.max_length is not None:
         kwargs["max_length"] = config.max_length
     
-    if hasattr(config, "aggregation_strategy") and config.aggregation_strategy:
+    if hasattr(config, "aggregation_strategy") and config.aggregation_strategy is not None:
         kwargs["aggregation_strategy"] = config.aggregation_strategy
     
-    if config.additional_params:
-        kwargs.update(config.additional_params)
+    # Add additional_params, but skip any that are already in kwargs
+    if hasattr(config, "additional_params") and config.additional_params:
+        for key, value in config.additional_params.items():
+            if key not in kwargs:  # Only add if not already present
+                kwargs[key] = value
+            else:
+                logger.debug(f"Skipping duplicate parameter {key} from additional_params")
     
     try:
+        logger.debug(f"Creating {model_type} model with: {list(kwargs.keys())}")
         return model_class(**kwargs)
+    except TypeError as e:
+        if "multiple values" in str(e):
+            logger.error(f"Parameter conflict in {model_type} model creation: {e}")
+            logger.error(f"Parameters being passed: {kwargs}")
+        else:
+            logger.error(f"Failed to create {model_type} model: {e}")
+        return None
     except Exception as e:
         logger.error(f"Failed to create {model_type} model: {e}")
         return None
