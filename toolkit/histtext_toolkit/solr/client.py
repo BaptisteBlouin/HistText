@@ -3,6 +3,7 @@
 This module provides a client for interacting with Apache Solr.
 """
 
+import re
 from typing import Any, Optional
 
 import aiohttp
@@ -96,7 +97,61 @@ class SolrClient:
         except aiohttp.ClientError as e:
             logger.error(f"Error checking Solr status: {e}")
             return "Solr Unreachable"
+        
+    
 
+
+    async def get_text_fields(self, collection: str) -> list[str]:
+        import json
+        import re
+        await self._ensure_session()
+        url = f"{self.url}/{collection}/schema/fields"
+        try:
+            params = {"wt": "json"}
+            async with self._session.get(url, params=params) as response:
+                response.raise_for_status()
+                try:
+                    result = await response.json()
+                except aiohttp.ContentTypeError:
+                    # Fallback if mime type is wrong
+                    text = await response.text()
+                    result = json.loads(text)
+                fields = result.get("fields", [])
+                filtered_fields = [
+                    field["name"]
+                    for field in fields
+                    if field.get("name") and field.get("type")
+                    and not field["name"].startswith("_")
+                    and (
+                        field["type"].lower() == "string"
+                        or field["type"].lower().startswith("text")
+                    )
+                ]
+                return filtered_fields
+        except Exception as e:
+            logger.error(f"Error getting text fields for collection '{collection}': {e}")
+            return []
+
+
+        
+    async def get_collections(self) -> list[str]:
+        """Get the list of all collections in Solr (excluding aliases).
+
+        Returns:
+            List[str]: List of collection names.
+        """
+        await self._ensure_session()
+
+        try:
+            payload = {"action": "LIST", "wt": "json"}
+            response = await self.admin_request("collections", payload)
+            collections = response.get("collections", [])
+            logger.debug(f"Found collections: {collections}")
+            return collections
+        except Exception as e:
+            logger.error(f"Error getting collections: {e}")
+            return []
+        
     async def collection_exists(self, collection: str) -> bool:
         """Check if a collection or alias exists.
 
