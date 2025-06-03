@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HistText Toolkit Web UI</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        body { font-family: 'Segoe UI',sans-serif; background: #f7f8fa; color: #222; margin: 0; }
+        .container { max-width: 900px; margin: 40px auto; padding: 24px 32px; background: #fff; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.09);}
+        h1 { margin-top: 0; }
+        h2 { margin-top: 2em; font-size: 1.2em; color: #2962ff; border-bottom: 1px solid #eee; padding-bottom: 3px; }
+        form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 6px;}
+        label { font-size: 1em; margin-right: 6px; }
+        input, select { padding: 7px 9px; border-radius: 6px; border: 1px solid #aaa; margin-right: 6px;}
+        button { background: #2962ff; color: #fff; border: none; border-radius: 6px; padding: 7px 20px; cursor: pointer; }
+        button:hover { background: #0039cb; }
+        pre { background: #f4f6f8; border-radius: 6px; font-size: 1em; margin: 0 0 12px 0; padding: 9px 14px; overflow-x: auto;}
+        .result { margin-bottom: 18px; }
+        .section { margin-bottom: 36px; }
+        .help { font-size: 0.96em; color: #666; margin-left: 3px; }
+        @media (max-width: 600px) {
+            .container { padding: 8px; }
+            form { flex-direction: column; align-items: flex-start; gap: 4px;}
+            button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+<h1>HistText Toolkit Web UI</h1>
+
+<div class="section">
+    <h2>1. Create Config</h2>
+    <form action="/config/create" method="post">
+        <label>Config path: <input name="config_path" placeholder="/tmp/config.yaml" required></label>
+        <button type="submit">Create</button>
+    </form>
+    {% if result_config_create %}
+        <div class="result"><pre>{{ result_config_create | tojson(indent=2) }}</pre></div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>2. Show Config</h2>
+    <form action="/config/show" method="post">
+        <label>Config path: <input name="config" placeholder="/tmp/config.yaml" required></label>
+        <button type="submit">Show</button>
+    </form>
+    {% if result_config_show %}
+        <div class="result"><pre>{{ result_config_show | tojson(indent=2) }}</pre></div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>3. Upload JSONL Files</h2>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <label>Collection: <input name="collection" required></label>
+        <label>JSONL Files: <input name="jsonl_files" type="file" accept=".jsonl" multiple required></label>
+        <label>Batch size: <input name="batch_size" type="number" value="1000"></label>
+        <button type="submit">Upload</button>
+    </form>
+    {% if result_upload %}
+        <div class="result"><pre>{{ result_upload | tojson(indent=2) }}</pre></div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>4. Upload NER Annotations</h2>
+    <form action="/upload_ner" method="post">
+        <label>Collection: <input name="collection" required></label>
+        <label>Model name: <input name="model_name" required></label>
+        <label>Solr collection: <input name="solr_collection" required></label>
+        <label>Field: <input name="field" required></label>
+        <label>Batch size: <input name="batch_size" type="number" value="1000"></label>
+        <button type="submit">Upload NER</button>
+    </form>
+    {% if result_upload_ner %}
+        <div class="result"><pre>{{ result_upload_ner | tojson(indent=2) }}</pre></div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>5. Named Entity Recognition (NER)</h2>
+    <form action="/ner" method="post">
+        <label>Collection: <input name="collection" required></label>
+        <label>Model name: <input name="model_name" required></label>
+        <label>Model type: 
+            <select name="model_type">
+                <option>transformers</option>
+                <option>gliner</option>
+                <option>spacy</option>
+                <option>flair</option>
+                <option>nuner</option>
+                <option>llm_ner</option>
+                <option>llama_ner</option>
+                <option>mistral_ner</option>
+                <option>qwen_ner</option>
+                <option>stanza</option>
+                <option>fastnlp</option>
+                <option>fasthan</option>
+                <option>lac</option>
+                <option>multilingual</option>
+            </select>
+        </label>
+        <label>Text field: <input name="text_field" value="text"></label>
+        <label>Entity types (comma-separated): <input name="entity_types" placeholder="PERSON,LOCATION"></label>
+        <label>Max length: <input name="max_length" type="number"></label>
+        <label>Aggregation: <input name="aggregation_strategy" value="simple"></label>
+        <label>Threshold: <input name="threshold" type="number" step="0.01" value="0.5"></label>
+        <label>Start: <input name="start" type="number" value="0"></label>
+        <label>Batch size: <input name="batch_size" type="number" value="10000"></label>
+        <label>Num batches: <input name="num_batches" type="number"></label>
+        <label>Filter query: <input name="filter_query"></label>
+        <label>JSONL prefix: <input name="jsonl_prefix"></label>
+        <label>Decimal precision: <input name="decimal_precision" type="number"></label>
+        <label>Format: 
+            <select name="format">
+                <option>flat</option>
+                <option>standard</option>
+            </select>
+        </label>
+        <label>Use GPU: <input name="use_gpu" type="checkbox"></label>
+        <label>Optimization level: <input name="optimization_level" type="number" min="0" max="2" value="1"></label>
+        <label>Compact labels: <input name="compact_labels" type="checkbox" checked></label>
+        <label>Label stats: <input name="label_stats" type="checkbox"></label>
+        <button type="submit">Run NER</button>
+    </form>
+    {% if result_ner %}
+        <div class="result"><pre>{{ result_ner | tojson(indent=2) }}</pre></div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>6. Tokenize Documents</h2>
+    <form action="/tokenize" method="post">
+        <label>Collection: <input name="collection" required></label>
+        <label>Model name: <input name="model_name" required></label>
+        <label>Text field: <input name="text_field" value="text"></label>
+        <label>Model type: 
+            <select name="model_type">
+                <option>transformers</option>
+                <option>spacy</option>
+                <option>chinese_segmenter</option>
+            </select>
+        </label>
+        <label>Max length: <input name="max_length" type="number"></label>
+        <label>Start: <input name="start" type="number" value="0"></label>
+        <label>Batch size: <input name="batch_size" type="number" value="1000"></label>
+        <label>Num batches: <input name="num_batches" type="number"></label>
+        <label>Filter query: <input name="filter_query"></label>
+        <label>Simplify Chinese: <input name="simplify_chinese" type="checkbox"></label>
+        <button type="submit">Tokenize</button>
+    </form>
+    {% if result_tokenize %}
+        <div class="result"><pre>{{ result_tokenize | tojson(indent=2) }}</pre></div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>7. Compute Embeddings</h2>
+    <form action="/embeddings" method="post">
+        <label>Collection: <input name="collection" required></label>
+        <label>Output path: <input name="output_path" required></label>
+        <label>Model name: <input name="model_name" required></label>
+        <label>Text field: <input name="text_field" value="text"></label>
+        <label>Model type: 
+            <select name="model_type">
+                <option>fasttext</option>
+                <option>word2vec</option>
+                <option>sentence_transformers</option>
+            </select>
+        </label>
+        <label>Dim: <input name="dim" type="number"></label>
+        <label>Max length: <input name="max_length" type="number"></label>
+        <label>Output format: 
+            <select name="output_format">
+                <option>vec</option>
+                <option>txt</option>
+                <option>binary</option>
+                <option>json</option>
+            </select>
+        </label>
+        <label>Start: <input name="start" type="number" value="0"></label>
+        <label>Batch size: <input name="batch_size" type="number" value="1000"></label>
+        <label>Num batches: <input name="num_batches" type="number"></label>
+        <label>Filter query: <input name="filter_query"></label>
+        <label>Simplify Chinese: <input name="simplify_chinese" type="checkbox"></label>
+        <button type="submit">Compute</button>
+    </form>
+    {% if result_embeddings %}
+        <div class="result"><pre>{{ result_embeddings | tojson(indent=2) }}</pre></div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>8. List Models</h2>
+    <form action="/list_models" method="post">
+        <button type="submit">List Models</button>
+    </form>
+    {% if result_models_list %}
+        <div class="result"><pre>{{ result_models_list | tojson(indent=2) }}</pre></div>
+    {% endif %}
+</div>
+
+</div>
+</body>
+</html>
