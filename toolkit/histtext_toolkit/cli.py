@@ -451,18 +451,23 @@ def compute_word_embeddings(config, log_level, solr_host, solr_port, cache_dir, 
         
         try:
             # Auto-configure parameters if requested
+            method_local = method
+            dim_local = dim
+            window_local = window
+            min_count_local = min_count
+            workers_local = workers
+
             if auto_configure:
                 click.echo("Auto-configuring word embedding parameters...")
                 params = await auto_configure_embedding_params(solr_client, collection, text_field)
-                
                 # Override with auto-configured values
-                method = params.get('method', method)
-                dim = params.get('dim', dim)
-                window = params.get('window', window)
-                min_count = params.get('min_count', min_count)
-                workers = params.get('workers', workers)
-                
-                click.echo(f"Auto-configured: method={method}, dim={dim}, window={window}, min_count={min_count}, workers={workers}")
+                method_local = params.get('method', method_local)
+                dim_local = params.get('dim', dim_local)
+                window_local = params.get('window', window_local)
+                min_count_local = params.get('min_count', min_count_local)
+                workers_local = params.get('workers', workers_local)
+                click.echo(f"Auto-configured: method={method_local}, dim={dim_local}, window={window_local}, min_count={min_count_local}, workers={workers_local}")
+
             
             # Create model config for word embeddings
             model_config = ModelConfig(

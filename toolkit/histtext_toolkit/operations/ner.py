@@ -209,6 +209,7 @@ async def precompute_ner(
     logger.info(f"Text Field: {text_field}")
     logger.info(f"Format: {format_type}")
     logger.info(f"Compact Labels: {use_compact_labels}")
+    logger.info(f"Start: {start}, Batch Size: {batch_size}")
     
     if entity_types:
         logger.info(f"Entity Types: {entity_types}")
@@ -246,13 +247,35 @@ async def precompute_ner(
     total_docs = 0
     total_entities = 0
     session_start_time = time.time()
+    processed_doc_ids = set()  # Track processed documents to avoid duplicates
     
     try:
-        # Test model with sample data first
+        # Test model with sample data first - AVOID OVERLAP WITH BATCH PROCESSING
         logger.info("Testing model with sample data from collection...")
+        
+        # Calculate test offset to avoid overlap with batch processing
+        if start == 0:
+            # If starting from beginning, use documents beyond the first batch
+            test_start = batch_size + 10
+        else:
+            # If starting from middle, use documents before the start position
+            test_start = max(0, start - 10)
+        
         test_docs = await solr_client.get_document_batch(
-            collection, text_field, 0, 3, filter_query
+            collection, text_field, test_start, 3, filter_query
         )
+        
+        # Fallback if no docs at test offset - use start position but track them
+        if not test_docs:
+            logger.info("No documents at test offset, using start position for test")
+            test_docs = await solr_client.get_document_batch(
+                collection, text_field, start, min(3, batch_size), filter_query
+            )
+            
+            if test_docs:
+                # Track these so we don't process them again
+                processed_doc_ids.update(test_docs.keys())
+                logger.info(f"Test documents will be skipped in batch processing: {list(test_docs.keys())}")
         
         if not test_docs:
             logger.error("No documents found in collection for testing")
@@ -291,6 +314,23 @@ async def precompute_ner(
                     logger.info("No more documents found")
                     break
                 
+                # Filter out documents already processed in test phase
+                if processed_doc_ids:
+                    original_count = len(documents)
+                    documents = {
+                        doc_id: text for doc_id, text in documents.items() 
+                        if doc_id not in processed_doc_ids
+                    }
+                    filtered_count = original_count - len(documents)
+                    if filtered_count > 0:
+                        logger.info(f"Filtered out {filtered_count} documents already processed in test phase")
+                
+                if not documents:
+                    logger.info("All documents in batch already processed, moving to next batch")
+                    current_batch += 1
+                    current_start += batch_size
+                    continue
+                
                 logger.info(f"Retrieved {len(documents)} documents from Solr")
                 
                 # Process documents
@@ -321,7 +361,9 @@ async def precompute_ner(
                 batch_time = time.time() - batch_start_time
                 batch_entities = sum(len(doc.get("t", [])) for doc in flat_docs)
                 
-                total_docs += len(documents)
+                # Count actual documents processed (not the ones we retrieved)
+                actual_docs_processed = len([doc for doc in flat_docs if len(doc.get("t", [])) >= 0])
+                total_docs += len(documents)  # Count all documents we attempted to process
                 total_entities += batch_entities
                 
                 # Update progress
@@ -339,9 +381,9 @@ async def precompute_ner(
                 if current_batch % 5 == 0:
                     GPUMemoryManager.clear_cache()
                 
-                # Check if we're done
+                # Check if we're done (got fewer documents than requested)
                 if len(documents) < batch_size:
-                    logger.info("Completed collection")
+                    logger.info("Completed collection (fewer documents than batch size)")
                     break
                 
                 current_batch += 1

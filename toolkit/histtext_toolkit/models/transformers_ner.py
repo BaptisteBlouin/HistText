@@ -216,6 +216,8 @@ class TransformersNERModel(BaseNERModel):
         }
         
         # Check for specific model patterns
+        
+            
         for pattern, strategy in strategy_mapping.items():
             if pattern in model_lower:
                 logger.info(f"Auto-selected aggregation strategy '{strategy}' for {pattern} model")
@@ -500,8 +502,9 @@ class TransformersNERModel(BaseNERModel):
         return processed_text
     
     def _extract_with_pipeline(self, text: str, entity_types: Optional[List[str]]) -> List[EntitySpan]:
-        """Extract using NER pipeline."""
+        """Extract using NER pipeline with robust entity reconstruction."""
         try:
+            # Get raw results from pipeline
             results = self._pipeline(text)
             
             entities = []
@@ -514,20 +517,24 @@ class TransformersNERModel(BaseNERModel):
                     entity_label = entity_label[2:]
                 
                 # Filter by entity types if specified
-                if entity_types:
-                    # Handle both direct match and BIO tag match
-                    if entity_label not in entity_types:
-                        continue
+                if entity_types and entity_label not in entity_types:
+                    continue
                 
-                # Clean up entity text
-                entity_text = result["word"].replace("##", "").replace("▁", " ").strip()
+                # Use positions from pipeline result to extract clean text
+                start_pos = result["start"]
+                end_pos = result["end"]
                 
-                if entity_text and len(entity_text) > 0:
+                # Extract entity text directly from original text using positions
+                # This avoids the tokenization artifacts in result["word"]
+                entity_text = text[start_pos:end_pos]
+                
+                # Basic validation
+                if entity_text and len(entity_text.strip()) > 0:
                     entities.append(EntitySpan(
                         text=entity_text,
-                        labels=[entity_label],  # Use the actual NER label
-                        start_pos=result["start"],
-                        end_pos=result["end"],
+                        labels=[entity_label],
+                        start_pos=start_pos,
+                        end_pos=end_pos,
                         confidence=result["score"]
                     ))
             
@@ -535,7 +542,7 @@ class TransformersNERModel(BaseNERModel):
             
         except Exception as e:
             logger.error(f"Pipeline extraction error: {e}")
-        return []
+            return []
     
     def _extract_with_manual_model(self, text: str, entity_types: Optional[List[str]]) -> List[EntitySpan]:
         """Extract using manual token classification model."""

@@ -118,11 +118,14 @@ chinese_basic = [
 fasthan = [
     "fasthan>=1.5.0",
     "torch>=1.10.0",
+    "paddlepaddle-gpu=>2.6.2",
+
 ]
 
 fastnlp = [
     "fastnlp>=0.7.0",
     "torch>=1.10.0",
+    "paddlepaddle-gpu=>2.6.2",
 ]
 
 lac = [
@@ -143,6 +146,7 @@ chinese = [
     "jieba>=0.42.0",
     "fasthan>=1.5.0",
     "fastnlp>=0.7.0",
+    "paddlepaddle-gpu=>2.6.2",
     "lac>=2.1.0",
     "hanlp>=2.1.0",
     "pkuseg>=0.0.25",
@@ -303,6 +307,7 @@ chinese_full = [
     # Advanced Chinese NLP
     "fasthan>=1.5.0",
     "fastnlp>=0.7.0",
+    "paddlepaddle-gpu=>2.6.2",
     "lac>=2.1.0",
     "hanlp>=2.1.0",
     "pkuseg>=0.0.25",
@@ -340,6 +345,7 @@ all = [
     "jieba>=0.42.0",
     "fasthan>=1.5.0",
     "fastnlp>=0.7.0",
+    "paddlepaddle-gpu=>2.6.2",
     "lac>=2.1.0",
     "hanlp>=2.1.0",
     "pkuseg>=0.0.25",
