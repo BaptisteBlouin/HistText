@@ -20,7 +20,37 @@ from concurrent.futures import ThreadPoolExecutor
 
 from ..core.config import get_settings
 from ..schemas.tokenize import TokenizeRequest
+import signal as signal_module
+from unittest.mock import patch
+import contextlib
 
+@contextlib.contextmanager
+def patch_signal_for_thread():
+    """Context manager to safely patch signal module when loading models in threads."""
+    
+    def dummy_signal(*args, **kwargs):
+        """Dummy signal function that does nothing"""
+        return None
+    
+    def dummy_alarm(*args, **kwargs):
+        """Dummy alarm function that does nothing"""
+        return 0
+    
+    # Store original functions
+    original_signal = signal_module.signal
+    original_alarm = getattr(signal_module, 'alarm', None)
+    
+    try:
+        # Replace signal functions with dummy versions
+        signal_module.signal = dummy_signal
+        if original_alarm:
+            signal_module.alarm = dummy_alarm
+        yield
+    finally:
+        # Restore original functions
+        signal_module.signal = original_signal
+        if original_alarm:
+            signal_module.alarm = original_alarm
 
 class RealTimeLogHandler(logging.Handler):
     """Custom log handler that captures logs in real-time for web interface."""
@@ -158,13 +188,11 @@ async def signal_free_cache_tokenization(
 ) -> int:
     """
     Signal-free version of cache_tokenization that completely avoids all signal handling.
-    
-    This is a reimplementation of the core functionality from the original cache_tokenization
-    function but without any signal handling code.
     """
     import aiohttp
     import jsonlines
     from tqdm import tqdm
+    import signal as signal_module
 
     # Define cache_dir early
     cache_dir = os.path.join(cache_root, model_name, collection, text_field)
@@ -212,20 +240,78 @@ async def signal_free_cache_tokenization(
         # Check if we're using ChineseSegmenter
         is_chinese_segmenter = model_config.type.lower() == "chinese_segmenter"
 
-        # Create model
+        # Create model with signal patching for Chinese segmenter
         if logger:
             logger.info(f"Creating and loading tokenization model ({model_config.type})...")
         
         from histtext_toolkit.models.registry import create_tokenization_model
         from histtext_toolkit.operations.tokenize import TokenizationProcessor
         
-        model = create_tokenization_model(model_config)
-        processing_state["model"] = model
+        # Signal patching context manager for model loading
+        def patch_signals_for_loading():
+            """Context manager to patch signals during model loading"""
+            import contextlib
+            
+            @contextlib.contextmanager
+            def signal_patch():
+                # Define dummy functions
+                def dummy_signal(*args, **kwargs):
+                    return None
+                
+                def dummy_alarm(*args, **kwargs):
+                    return 0
+                
+                # Store originals
+                original_signal = signal_module.signal
+                original_alarm = getattr(signal_module, 'alarm', None)
+                
+                try:
+                    # Apply patches
+                    signal_module.signal = dummy_signal
+                    if original_alarm:
+                        signal_module.alarm = dummy_alarm
+                    
+                    if logger and is_chinese_segmenter:
+                        logger.info("🛡️ Signal handling patched for model loading")
+                    
+                    yield
+                    
+                finally:
+                    # Restore originals
+                    signal_module.signal = original_signal
+                    if original_alarm:
+                        signal_module.alarm = original_alarm
+                    
+                    if logger and is_chinese_segmenter:
+                        logger.info("🔄 Signal handling restored after model loading")
+            
+            return signal_patch()
+        
+        # Create and load model with signal patching if needed
+        if is_chinese_segmenter:
+            with patch_signals_for_loading():
+                model = create_tokenization_model(model_config)
+                processing_state["model"] = model
+                
+                if logger:
+                    logger.info("Loading Chinese segmenter with signal protection...")
+                
+                if not model.load():
+                    if logger:
+                        logger.error(f"Failed to load Chinese segmenter model")
+                    return 0
+                
+                if logger:
+                    logger.info("✅ Chinese segmenter loaded successfully")
+        else:
+            # Regular loading for other model types
+            model = create_tokenization_model(model_config)
+            processing_state["model"] = model
 
-        if not model.load():
-            if logger:
-                logger.error(f"Failed to load model {model_config.name}")
-            return 0
+            if not model.load():
+                if logger:
+                    logger.error(f"Failed to load model {model_config.name}")
+                return 0
 
         # Create processor
         processor = TokenizationProcessor(model)
@@ -246,7 +332,7 @@ async def signal_free_cache_tokenization(
                 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
             except ImportError:
                 pass
-
+            
         # Check if Chinese simplification is requested but not available
         hanziconv_available = False
         if simplify_chinese:
@@ -782,338 +868,368 @@ class TokenizeService:
         self._log_monitor_threads[task_id] = monitor_thread
   
     async def _run_tokenize_processing(self, task_id: str, request: TokenizeRequest):
-      """Run tokenization with maximum performance and comprehensive logging."""
-      
-      def tokenize_in_thread():
-          """Thread function that runs tokenization without signal handlers."""
-          import asyncio
-          import logging
-          
-          async def async_tokenize():
-              log_handler = self._log_handlers.get(task_id)
-              
-              try:
-                  # Add debug info to task status
-                  debug_info = {
-                      "thread_id": threading.get_ident(),
-                      "request_data": {
-                          "collection": request.collection,
-                          "model_type": request.model_type,
-                          "model_name": request.model_name,
-                          "text_field": request.text_field,
-                          "batch_size": request.batch_size,
-                          "start": request.start,
-                          "num_batches": request.num_batches,
-                          "filter_query": request.filter_query,
-                          "simplify_chinese": request.simplify_chinese
-                      }
-                  }
-                  self._task_status[task_id]["debug_info"] = debug_info
-                  
-                  # Update initial status
-                  self._update_task_status(task_id, {
-                      "status": "running",
-                      "progress": 5,
-                      "message": "📚 Loading configuration..."
-                  })
-                  
-                  # Print debug info to console immediately
-                  print(f"[{task_id}] DEBUG: Starting signal-free tokenization task")
-                  print(f"[{task_id}] DEBUG: Collection = {request.collection}")
-                  print(f"[{task_id}] DEBUG: Model = {request.model_name} ({request.model_type})")
-                  print(f"[{task_id}] DEBUG: Text field = {request.text_field}")
-                  print(f"[{task_id}] DEBUG: Batch size = {request.batch_size}")
-                  
-                  # Import required modules
-                  from histtext_toolkit.core.config import ModelConfig, get_config
-                  from histtext_toolkit.solr.client import SolrClient
-                  
-                  # Setup logging for this thread - ONLY ONCE
-                  if log_handler:
-                      # Create a single logger instance to prevent duplication
-                      logger = logging.getLogger(f'histtext_tokenize_{task_id}')
-                      logger.handlers = []  # Clear any existing handlers
-                      logger.addHandler(log_handler)
-                      logger.setLevel(logging.INFO)
-                      logger.propagate = False  # Prevent propagation to root logger
-                      
-                      logger.info("="*70)
-                      logger.info("🚀 STARTING SIGNAL-FREE TOKENIZATION")
-                      logger.info("="*70)
-                      logger.info(f"📋 Task ID: {task_id}")
-                      logger.info(f"📂 Collection: {request.collection}")
-                      logger.info(f"🤖 Model Type: {request.model_type}")
-                      logger.info(f"📝 Text Field: {request.text_field}")
-                      logger.info(f"📦 Batch Size: {request.batch_size}")
-                      if request.num_batches:
-                          logger.info(f"🔢 Max Batches: {request.num_batches}")
-                      if request.filter_query:
-                          logger.info(f"🔍 Filter Query: {request.filter_query}")
-                  else:
-                      logger = None
-                  
-                  # Load configuration
-                  try:
-                      cfg = get_config()
-                      self._update_task_status(task_id, {
-                          "progress": 10,
-                          "message": f"⚙️ Configuration loaded"
-                      })
-                      if logger:
-                          logger.info(f"⚙️ Configuration loaded - Cache: {cfg.cache.root_dir}")
-                          
-                      # Add config info to debug
-                      debug_info["config"] = {
-                          "cache_root": cfg.cache.root_dir,
-                          "cache_enabled": cfg.cache.enabled,
-                          "solr_host": cfg.solr.host,
-                          "solr_port": cfg.solr.port
-                      }
-                      
-                  except Exception as e:
-                      cfg = None
-                      self._update_task_status(task_id, {
-                          "progress": 10,
-                          "message": "⚠️ Using default configuration"
-                      })
-                      if logger:
-                          logger.warning(f"⚠️ Using default configuration: {e}")
-                          
-                      debug_info["config"] = {"error": str(e), "using_defaults": True}
-                  
-                  # Setup model configuration
-                  self._update_task_status(task_id, {
-                      "progress": 15,
-                      "message": f"🔧 Configuring {request.model_type} model..."
-                  })
-                  
-                  if request.model_type == "chinese_segmenter":
-                      model_config = ModelConfig(
-                          name="chinese_segmenter",
-                          path="",
-                          type=request.model_type,
-                          max_length=request.max_length
-                      )
-                      model_name_for_cache = "chinese_segmenter"
-                      if logger:
-                          logger.info("🇨🇳 Configured Chinese Word Segmenter")
-                  else:
-                      model_config = ModelConfig(
-                          name=request.model_name,
-                          path=request.model_name,
-                          type=request.model_type,
-                          max_length=request.max_length
-                      )
-                      model_name_for_cache = request.model_name
-                      if logger:
-                          logger.info(f"🤖 Configured {request.model_type}: {request.model_name}")
-                  
-                  # Setup connection parameters
-                  if cfg:
-                      solr_host = cfg.solr.host
-                      solr_port = cfg.solr.port
-                      solr_username = cfg.solr.username
-                      solr_password = cfg.solr.password
-                      cache_root_dir = cfg.cache.root_dir
-                      cache_enabled = cfg.cache.enabled
-                  else:
-                      solr_host = self.settings.default_solr_host
-                      solr_port = self.settings.default_solr_port
-                      solr_username = None
-                      solr_password = None
-                      cache_root_dir = str(self.settings.default_cache_dir)
-                      cache_enabled = True
-                  
-                  if not cache_enabled:
-                      raise Exception("❌ Cache is not enabled in configuration")
-                  
-                  # Connect to Solr
-                  self._update_task_status(task_id, {
-                      "progress": 20,
-                      "message": f"🔗 Connecting to Solr..."
-                  })
-                  
-                  solr_client = SolrClient(solr_host, solr_port, solr_username, solr_password)
-                  await solr_client.start_session()
-                  
-                  try:
-                      # Verify collection exists
-                      if logger:
-                          logger.info(f"Checking if collection '{request.collection}' exists...")
-                          
-                      collections = await solr_client.get_collections()
-                      debug_info["available_collections"] = collections
-                      
-                      if request.collection not in collections:
-                          raise Exception(f"Collection '{request.collection}' not found. Available collections: {collections}")
-                      
-                      # Check collection has documents
-                      count_response = await solr_client.collection_select(request.collection, {"q": "*:*", "rows": 0})
-                      doc_count = count_response.get("response", {}).get("numFound", 0)
-                      debug_info["collection_doc_count"] = doc_count
-                      
-                      if logger:
-                          logger.info(f"Collection '{request.collection}' has {doc_count} documents")
-                      
-                      if doc_count == 0:
-                          raise Exception(f"Collection '{request.collection}' is empty (0 documents)")
-                      
-                      # Test field exists by sampling a document
-                      sample_response = await solr_client.collection_select(request.collection, {"q": "*:*", "rows": 1})
-                      sample_docs = sample_response.get("response", {}).get("docs", [])
-                      
-                      if sample_docs:
-                          sample_doc = sample_docs[0]
-                          debug_info["sample_doc_fields"] = list(sample_doc.keys())
-                          
-                          if request.text_field not in sample_doc:
-                              available_fields = list(sample_doc.keys())
-                              raise Exception(f"Text field '{request.text_field}' not found in documents. Available fields: {available_fields}")
-                          
-                          sample_text = sample_doc.get(request.text_field, "")
-                          debug_info["sample_text_length"] = len(sample_text) if sample_text else 0
-                          
-                          if logger:
-                              logger.info(f"Text field '{request.text_field}' found. Sample text length: {len(sample_text) if sample_text else 0}")
-                      
-                      self._update_task_status(task_id, {
-                          "progress": 25,
-                          "message": f"✅ Connected to Solr - Collection verified"
-                      })
-                      
-                      if logger:
-                          logger.info(f"✅ Connected to Solr at {solr_host}:{solr_port}")
-                          logger.info(f"📂 Collection '{request.collection}' verified ({doc_count} documents)")
-                      
-                      # Start tokenization using our signal-free function
-                      self._update_task_status(task_id, {
-                          "progress": 30,
-                          "message": f"🚀 Starting tokenization..."
-                      })
-                      
-                      if logger:
-                          logger.info(f"🚀 Starting signal-free tokenization process...")
-                      
-                      start_time = time.time()
-                      
-                      # Use our signal-free cache tokenization function
-                      total_docs = await signal_free_cache_tokenization(
-                          solr_client=solr_client,
-                          collection=request.collection,
-                          text_field=request.text_field,
-                          model_config=model_config,
-                          cache_root=cache_root_dir,
-                          model_name=model_name_for_cache,
-                          start=request.start,
-                          batch_size=request.batch_size,
-                          num_batches=request.num_batches,
-                          filter_query=request.filter_query,
-                          simplify_chinese=request.simplify_chinese,
-                          logger=logger  # Pass logger for consistent logging
-                      )
-                      
-                      end_time = time.time()
-                      processing_time = end_time - start_time
-                      
-                      # Final status update
-                      self._update_task_status(task_id, {
-                          "status": "completed",
-                          "progress": 100,
-                          "message": f"🎉 Completed! {total_docs:,} docs in {processing_time:.1f}s",
-                          "processed_docs": total_docs,
-                          "completed_at": time.time(),
-                          "processing_time": processing_time
-                      })
-                      
-                      if logger:
-                          logger.info("="*70)
-                          logger.info("🎉 SIGNAL-FREE TOKENIZATION COMPLETED")
-                          logger.info(f"📊 Total documents: {total_docs:,}")
-                          logger.info(f"⏱️ Processing time: {processing_time:.2f} seconds")
-                          if total_docs > 0:
-                              logger.info(f"⚡ Average speed: {total_docs/processing_time:.2f} docs/sec")
-                          logger.info("="*70)
-                      
-                      print(f"[{task_id}] SUCCESS: Processed {total_docs} documents in {processing_time:.1f}s")
-                      
-                      return total_docs
-                      
-                  finally:
-                      await solr_client.close_session()
-                      if logger:
-                          logger.info("🔌 Solr connection closed")
-                      
-              except Exception as e:
-                  error_details = traceback.format_exc()
-                  error_message = str(e)
-                  
-                  # Add error to debug info
-                  debug_info["error"] = {
-                      "message": error_message,
-                      "details": error_details
-                  }
-                  
-                  self._update_task_status(task_id, {
-                      "status": "failed",
-                      "progress": 0,
-                      "message": f"❌ Failed: {error_message}",
-                      "error": error_message,
-                      "error_details": error_details,
-                      "completed_at": time.time()
-                  })
-                  
-                  if logger:
-                      logger.error(f"❌ SIGNAL-FREE TOKENIZATION FAILED: {error_message}")
-                      logger.debug(f"💥 Error details:\n{error_details}")
-                  
-                  print(f"[{task_id}] ERROR: {error_message}")
-                  print(f"[{task_id}] DEBUG INFO: {debug_info}")
-              
-              finally:
-                  # Cleanup logging
-                  if log_handler:
-                      task_logger = logging.getLogger(f'histtext_tokenize_{task_id}')
-                      task_logger.removeHandler(log_handler)
-                      task_logger.handlers = []
-          
-          # Run async function in thread with new event loop
-          try:
-              loop = asyncio.new_event_loop()
-              asyncio.set_event_loop(loop)
-              return loop.run_until_complete(async_tokenize())
-          except Exception as e:
-              self._update_task_status(task_id, {
-                  "status": "failed",
-                  "progress": 0,
-                  "message": f"💥 Thread failed: {str(e)}",
-                  "error": str(e),
-                  "completed_at": time.time()
-              })
-              print(f"[{task_id}] THREAD ERROR: {str(e)}")
-              return None
-          finally:
-              try:
-                  loop.close()
-              except:
-                  pass
-      
-      # Execute in thread pool
-      try:
-          await asyncio.get_event_loop().run_in_executor(
-              self._thread_executor, tokenize_in_thread
-          )
-      except Exception as e:
-          self._update_task_status(task_id, {
-              "status": "failed",
-              "progress": 0,
-              "message": f"💥 Execution failed: {str(e)}",
-              "error": str(e),
-              "completed_at": time.time()
-          })
-          print(f"[{task_id}] EXECUTOR ERROR: {str(e)}")
-      finally:
-          # Cleanup task resources
-          self._cleanup_task(task_id)
+        """Run tokenization with maximum performance and comprehensive logging."""
+        
+        def tokenize_in_thread():
+            """Thread function that runs tokenization without signal handlers."""
+            import asyncio
+            import logging
+            import signal as signal_module
+            
+            # PATCH SIGNALS AT THE VERY BEGINNING OF THE THREAD
+            def dummy_signal(*args, **kwargs):
+                """Dummy signal function that does nothing"""
+                return None
+            
+            def dummy_alarm(*args, **kwargs):
+                """Dummy alarm function that does nothing"""
+                return 0
+            
+            # Store original signal functions immediately
+            original_signal = signal_module.signal
+            original_alarm = getattr(signal_module, 'alarm', None)
+            
+            # Apply signal patches for the entire thread duration
+            signal_module.signal = dummy_signal
+            if original_alarm:
+                signal_module.alarm = dummy_alarm
+            
+            print(f"[{task_id}] THREAD: Signal handling disabled for entire thread")
+            
+            try:
+                async def async_tokenize():
+                    log_handler = self._log_handlers.get(task_id)
+                    
+                    try:
+                        # Add debug info to task status
+                        debug_info = {
+                            "thread_id": threading.get_ident(),
+                            "signal_patched": True,
+                            "request_data": {
+                                "collection": request.collection,
+                                "model_type": request.model_type,
+                                "model_name": request.model_name,
+                                "text_field": request.text_field,
+                                "batch_size": request.batch_size,
+                                "start": request.start,
+                                "num_batches": request.num_batches,
+                                "filter_query": request.filter_query,
+                                "simplify_chinese": request.simplify_chinese
+                            }
+                        }
+                        self._task_status[task_id]["debug_info"] = debug_info
+                        
+                        # Update initial status
+                        self._update_task_status(task_id, {
+                            "status": "running",
+                            "progress": 5,
+                            "message": "📚 Loading configuration..."
+                        })
+                        
+                        # Print debug info to console immediately
+                        print(f"[{task_id}] DEBUG: Starting signal-free tokenization task")
+                        print(f"[{task_id}] DEBUG: Collection = {request.collection}")
+                        print(f"[{task_id}] DEBUG: Model = {request.model_name} ({request.model_type})")
+                        print(f"[{task_id}] DEBUG: Text field = {request.text_field}")
+                        print(f"[{task_id}] DEBUG: Batch size = {request.batch_size}")
+                        
+                        # Import required modules
+                        from histtext_toolkit.core.config import ModelConfig, get_config
+                        from histtext_toolkit.solr.client import SolrClient
+                        
+                        # Setup logging for this thread - ONLY ONCE
+                        if log_handler:
+                            # Create a single logger instance to prevent duplication
+                            logger = logging.getLogger(f'histtext_tokenize_{task_id}')
+                            logger.handlers = []  # Clear any existing handlers
+                            logger.addHandler(log_handler)
+                            logger.setLevel(logging.INFO)
+                            logger.propagate = False  # Prevent propagation to root logger
+                            
+                            logger.info("="*70)
+                            logger.info("🚀 STARTING SIGNAL-FREE TOKENIZATION")
+                            logger.info("="*70)
+                            logger.info(f"📋 Task ID: {task_id}")
+                            logger.info(f"📂 Collection: {request.collection}")
+                            logger.info(f"🤖 Model Type: {request.model_type}")
+                            logger.info(f"🛡️ Signal handling: DISABLED for entire thread")
+                            logger.info(f"📝 Text Field: {request.text_field}")
+                            logger.info(f"📦 Batch Size: {request.batch_size}")
+                            if request.num_batches:
+                                logger.info(f"🔢 Max Batches: {request.num_batches}")
+                            if request.filter_query:
+                                logger.info(f"🔍 Filter Query: {request.filter_query}")
+                        else:
+                            logger = None
+                        
+                        # Load configuration
+                        try:
+                            cfg = get_config()
+                            self._update_task_status(task_id, {
+                                "progress": 10,
+                                "message": f"⚙️ Configuration loaded"
+                            })
+                            if logger:
+                                logger.info(f"⚙️ Configuration loaded - Cache: {cfg.cache.root_dir}")
+                                
+                            # Add config info to debug
+                            debug_info["config"] = {
+                                "cache_root": cfg.cache.root_dir,
+                                "cache_enabled": cfg.cache.enabled,
+                                "solr_host": cfg.solr.host,
+                                "solr_port": cfg.solr.port
+                            }
+                            
+                        except Exception as e:
+                            cfg = None
+                            self._update_task_status(task_id, {
+                                "progress": 10,
+                                "message": "⚠️ Using default configuration"
+                            })
+                            if logger:
+                                logger.warning(f"⚠️ Using default configuration: {e}")
+                                
+                            debug_info["config"] = {"error": str(e), "using_defaults": True}
+                        
+                        # Setup model configuration
+                        self._update_task_status(task_id, {
+                            "progress": 15,
+                            "message": f"🔧 Configuring {request.model_type} model..."
+                        })
+                        
+                        if request.model_type == "chinese_segmenter":
+                            model_config = ModelConfig(
+                                name="chinese_segmenter",
+                                path="",
+                                type=request.model_type,
+                                max_length=request.max_length
+                            )
+                            model_name_for_cache = "chinese_segmenter"
+                            if logger:
+                                logger.info("🇨🇳 Configured Chinese Word Segmenter (signal-safe)")
+                        else:
+                            model_config = ModelConfig(
+                                name=request.model_name,
+                                path=request.model_name,
+                                type=request.model_type,
+                                max_length=request.max_length
+                            )
+                            model_name_for_cache = request.model_name
+                            if logger:
+                                logger.info(f"🤖 Configured {request.model_type}: {request.model_name}")
+                        
+                        # Setup connection parameters
+                        if cfg:
+                            solr_host = cfg.solr.host
+                            solr_port = cfg.solr.port
+                            solr_username = cfg.solr.username
+                            solr_password = cfg.solr.password
+                            cache_root_dir = cfg.cache.root_dir
+                            cache_enabled = cfg.cache.enabled
+                        else:
+                            solr_host = self.settings.default_solr_host
+                            solr_port = self.settings.default_solr_port
+                            solr_username = None
+                            solr_password = None
+                            cache_root_dir = str(self.settings.default_cache_dir)
+                            cache_enabled = True
+                        
+                        if not cache_enabled:
+                            raise Exception("❌ Cache is not enabled in configuration")
+                        
+                        # Connect to Solr
+                        self._update_task_status(task_id, {
+                            "progress": 20,
+                            "message": f"🔗 Connecting to Solr..."
+                        })
+                        
+                        solr_client = SolrClient(solr_host, solr_port, solr_username, solr_password)
+                        await solr_client.start_session()
+                        
+                        try:
+                            # Verify collection exists
+                            if logger:
+                                logger.info(f"Checking if collection '{request.collection}' exists...")
+                                
+                            collections = await solr_client.get_collections()
+                            debug_info["available_collections"] = collections
+                            
+                            if request.collection not in collections:
+                                raise Exception(f"Collection '{request.collection}' not found. Available collections: {collections}")
+                            
+                            # Check collection has documents
+                            count_response = await solr_client.collection_select(request.collection, {"q": "*:*", "rows": 0})
+                            doc_count = count_response.get("response", {}).get("numFound", 0)
+                            debug_info["collection_doc_count"] = doc_count
+                            
+                            if logger:
+                                logger.info(f"Collection '{request.collection}' has {doc_count} documents")
+                            
+                            if doc_count == 0:
+                                raise Exception(f"Collection '{request.collection}' is empty (0 documents)")
+                            
+                            # Test field exists by sampling a document
+                            sample_response = await solr_client.collection_select(request.collection, {"q": "*:*", "rows": 1})
+                            sample_docs = sample_response.get("response", {}).get("docs", [])
+                            
+                            if sample_docs:
+                                sample_doc = sample_docs[0]
+                                debug_info["sample_doc_fields"] = list(sample_doc.keys())
+                                
+                                if request.text_field not in sample_doc:
+                                    available_fields = list(sample_doc.keys())
+                                    raise Exception(f"Text field '{request.text_field}' not found in documents. Available fields: {available_fields}")
+                                
+                                sample_text = sample_doc.get(request.text_field, "")
+                                debug_info["sample_text_length"] = len(sample_text) if sample_text else 0
+                                
+                                if logger:
+                                    logger.info(f"Text field '{request.text_field}' found. Sample text length: {len(sample_text) if sample_text else 0}")
+                            
+                            self._update_task_status(task_id, {
+                                "progress": 25,
+                                "message": f"✅ Connected to Solr - Collection verified"
+                            })
+                            
+                            if logger:
+                                logger.info(f"✅ Connected to Solr at {solr_host}:{solr_port}")
+                                logger.info(f"📂 Collection '{request.collection}' verified ({doc_count} documents)")
+                            
+                            # Start tokenization using our signal-free function
+                            self._update_task_status(task_id, {
+                                "progress": 30,
+                                "message": f"🚀 Starting tokenization..."
+                            })
+                            
+                            if logger:
+                                logger.info(f"🚀 Starting signal-free tokenization process...")
+                            
+                            start_time = time.time()
+                            
+                            # Use our signal-free cache tokenization function
+                            total_docs = await signal_free_cache_tokenization(
+                                solr_client=solr_client,
+                                collection=request.collection,
+                                text_field=request.text_field,
+                                model_config=model_config,
+                                cache_root=cache_root_dir,
+                                model_name=model_name_for_cache,
+                                start=request.start,
+                                batch_size=request.batch_size,
+                                num_batches=request.num_batches,
+                                filter_query=request.filter_query,
+                                simplify_chinese=request.simplify_chinese,
+                                logger=logger  # Pass logger for consistent logging
+                            )
+                            
+                            end_time = time.time()
+                            processing_time = end_time - start_time
+                            
+                            # Final status update
+                            self._update_task_status(task_id, {
+                                "status": "completed",
+                                "progress": 100,
+                                "message": f"🎉 Completed! {total_docs:,} docs in {processing_time:.1f}s",
+                                "processed_docs": total_docs,
+                                "completed_at": time.time(),
+                                "processing_time": processing_time
+                            })
+                            
+                            if logger:
+                                logger.info("="*70)
+                                logger.info("🎉 SIGNAL-FREE TOKENIZATION COMPLETED")
+                                logger.info(f"📊 Total documents: {total_docs:,}")
+                                logger.info(f"⏱️ Processing time: {processing_time:.2f} seconds")
+                                if total_docs > 0:
+                                    logger.info(f"⚡ Average speed: {total_docs/processing_time:.2f} docs/sec")
+                                logger.info("="*70)
+                            
+                            print(f"[{task_id}] SUCCESS: Processed {total_docs} documents in {processing_time:.1f}s")
+                            
+                            return total_docs
+                            
+                        finally:
+                            await solr_client.close_session()
+                            if logger:
+                                logger.info("🔌 Solr connection closed")
+                            
+                    except Exception as e:
+                        error_details = traceback.format_exc()
+                        error_message = str(e)
+                        
+                        # Add error to debug info
+                        debug_info["error"] = {
+                            "message": error_message,
+                            "details": error_details
+                        }
+                        
+                        self._update_task_status(task_id, {
+                            "status": "failed",
+                            "progress": 0,
+                            "message": f"❌ Failed: {error_message}",
+                            "error": error_message,
+                            "error_details": error_details,
+                            "completed_at": time.time()
+                        })
+                        
+                        if logger:
+                            logger.error(f"❌ SIGNAL-FREE TOKENIZATION FAILED: {error_message}")
+                            logger.debug(f"💥 Error details:\n{error_details}")
+                        
+                        print(f"[{task_id}] ERROR: {error_message}")
+                        print(f"[{task_id}] DEBUG INFO: {debug_info}")
+                    
+                    finally:
+                        # Cleanup logging
+                        if log_handler:
+                            task_logger = logging.getLogger(f'histtext_tokenize_{task_id}')
+                            task_logger.removeHandler(log_handler)
+                            task_logger.handlers = []
+                
+                # Run async function in thread with new event loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                return loop.run_until_complete(async_tokenize())
+                
+            except Exception as e:
+                self._update_task_status(task_id, {
+                    "status": "failed",
+                    "progress": 0,
+                    "message": f"💥 Thread failed: {str(e)}",
+                    "error": str(e),
+                    "completed_at": time.time()
+                })
+                print(f"[{task_id}] THREAD ERROR: {str(e)}")
+                return None
+            finally:
+                # Restore original signal functions before thread exits
+                signal_module.signal = original_signal
+                if original_alarm:
+                    signal_module.alarm = original_alarm
+                print(f"[{task_id}] THREAD: Signal handling restored")
+                
+                try:
+                    loop.close()
+                except:
+                    pass
+        
+        # Execute in thread pool
+        try:
+            await asyncio.get_event_loop().run_in_executor(
+                self._thread_executor, tokenize_in_thread
+            )
+        except Exception as e:
+            self._update_task_status(task_id, {
+                "status": "failed",
+                "progress": 0,
+                "message": f"💥 Execution failed: {str(e)}",
+                "error": str(e),
+                "completed_at": time.time()
+            })
+            print(f"[{task_id}] EXECUTOR ERROR: {str(e)}")
+        finally:
+            # Cleanup task resources
+            self._cleanup_task(task_id)
   
     def _update_task_status(self, task_id: str, updates: Dict[str, Any]):
       """Update task status thread-safely."""
