@@ -18,7 +18,13 @@ interface NerData {
   c: number[];
 }
 
-// Memoized entity processing for better performance
+/**
+ * Processes raw NER data into structured entities and computes statistics.
+ * Memoized for performance optimization.
+ * 
+ * @param nerData Raw NER data keyed by document ID.
+ * @returns Object containing entities array and aggregated statistics.
+ */
 const processNERData = (nerData: Record<string, NerData>) => {
   const entities = [];
   const stats = {
@@ -28,8 +34,8 @@ const processNERData = (nerData: Record<string, NerData>) => {
     avgConfidence: 0,
     confidenceDistribution: { high: 0, medium: 0, low: 0 }
   };
+  type NerLabel = keyof typeof config.NERLABELS2FULL;
 
-  // Process all entities with optimized loop
   for (const [docId, data] of Object.entries(nerData)) {
     if (!Array.isArray(data.t)) continue;
     
@@ -38,10 +44,14 @@ const processNERData = (nerData: Record<string, NerData>) => {
     stats.totalEntities += docEntityCount;
 
     for (let idx = 0; idx < data.t.length; idx++) {
-      const label = data.l[idx];
       const confidence = data.c[idx];
-      const labelFull = config.NERLABELS2FULL[label] || label;
-      const color = config.NER_LABELS_COLORS[label] || '#grey';
+      const label = data.l[idx];
+      const labelFull = (label in config.NERLABELS2FULL) 
+        ? config.NERLABELS2FULL[label as NerLabel]
+        : label;
+      const color = (label in config.NER_LABELS_COLORS)
+        ? config.NER_LABELS_COLORS[label as NerLabel]
+        : '#grey';
 
       entities.push({
         id: docId,
@@ -52,25 +62,21 @@ const processNERData = (nerData: Record<string, NerData>) => {
         end: data.e[idx],
         confidence,
         color,
-        // Pre-calculate for sorting
         textLower: data.t[idx].toLowerCase(),
         confidenceLevel: confidence > 0.8 ? 'high' : confidence > 0.6 ? 'medium' : 'low'
       });
 
-      // Update stats
       if (!stats.byLabel[labelFull]) {
         stats.byLabel[labelFull] = { count: 0, originalLabel: label, color };
       }
       stats.byLabel[labelFull].count++;
 
-      // Confidence distribution
       if (confidence > 0.8) stats.confidenceDistribution.high++;
       else if (confidence > 0.6) stats.confidenceDistribution.medium++;
       else stats.confidenceDistribution.low++;
     }
   }
 
-  // Calculate average confidence
   stats.avgConfidence = entities.length > 0 
     ? entities.reduce((sum, e) => sum + e.confidence, 0) / entities.length 
     : 0;
@@ -78,6 +84,12 @@ const processNERData = (nerData: Record<string, NerData>) => {
   return { entities, stats };
 };
 
+/**
+ * Custom React hook to memoize NER data processing.
+ * 
+ * @param nerData Raw NER data keyed by document ID.
+ * @returns Processed entities and statistics.
+ */
 export const useNERData = (nerData: Record<string, NerData>) => {
   const processedData = useMemo(() => processNERData(nerData), [nerData]);
   

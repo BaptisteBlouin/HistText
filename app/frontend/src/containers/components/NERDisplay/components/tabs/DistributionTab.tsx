@@ -1,6 +1,8 @@
-// app/frontend/src/containers/components/NERDisplay/components/tabs/DistributionTab.tsx
 import React, { useMemo } from 'react';
-import { Grid, Card, CardContent, Typography, Alert, Box, List, ListItem, ListItemText, Chip, LinearProgress } from '@mui/material';
+import { 
+  Grid, Card, CardContent, Typography, Alert, Box, 
+  List, ListItem, ListItemText, Chip, LinearProgress 
+} from '@mui/material';
 import { DataUsage } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import DocumentLink from '../DocumentLink';
@@ -10,10 +12,20 @@ interface DistributionTabProps {
   onDocumentClick: (documentId: string) => void;
 }
 
+/**
+ * DistributionTab displays various entity-related statistical visualizations:
+ * - Confidence Score Distribution (post-filtering)
+ * - Entity Length Distribution (normalized text)
+ * - Document Entity Diversity (unique vs total normalized entities)
+ * 
+ * @param stats - Analytics statistics data related to entities.
+ * @param onDocumentClick - Callback to handle clicks on document IDs.
+ */
 const DistributionTab: React.FC<DistributionTabProps> = ({
   stats,
   onDocumentClick
 }) => {
+  // Memoize processed confidence distribution data with percentage formatted
   const confidenceDistributionData = useMemo(() =>
     stats?.confidenceDistribution?.map((item: any) => ({
       range: item.range,
@@ -24,20 +36,13 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
 
   return (
     <Grid container spacing={3}>
-      {/* Enhanced Confidence Distribution */}
+      {/* Confidence Score Distribution Chart */}
       <Grid item xs={12} lg={6}>
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Typography variant="h6">
-                Confidence Score Distribution
-              </Typography>
-              <Chip 
-                label="Post-filtering" 
-                size="small" 
-                color="info" 
-                variant="outlined"
-              />
+              <Typography variant="h6">Confidence Score Distribution</Typography>
+              <Chip label="Post-filtering" size="small" color="info" variant="outlined" />
             </Box>
             <Alert severity="info" sx={{ mb: 2 }}>
               <Typography variant="body2">
@@ -62,20 +67,13 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
         </Card>
       </Grid>
 
-      {/* Enhanced Entity Length Distribution */}
+      {/* Entity Length Distribution Chart */}
       <Grid item xs={12} lg={6}>
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Typography variant="h6">
-                Entity Length Distribution
-              </Typography>
-              <Chip 
-                label="Normalized text" 
-                size="small" 
-                color="success" 
-                variant="outlined"
-              />
+              <Typography variant="h6">Entity Length Distribution</Typography>
+              <Chip label="Normalized text" size="small" color="success" variant="outlined" />
             </Box>
             <Alert severity="info" sx={{ mb: 2 }}>
               <Typography variant="body2">
@@ -100,14 +98,12 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
         </Card>
       </Grid>
 
-      {/* Enhanced Document Entity Diversity */}
+      {/* Document Entity Diversity List */}
       <Grid item xs={12}>
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Typography variant="h6">
-                Document Entity Diversity
-              </Typography>
+              <Typography variant="h6">Document Entity Diversity</Typography>
               <DataUsage color="success" />
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -119,53 +115,56 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
               </Typography>
             </Alert>
             <List>
-              {stats?.documentsWithHighestDiversity?.slice(0, 10).map((doc: any, index: number) => (
-                <ListItem key={index} sx={{ px: 0, border: 1, borderColor: 'divider', borderRadius: 1, mb: 1 }}>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <DocumentLink 
-                          documentId={doc.documentId}
-                          onDocumentClick={onDocumentClick}
-                        >
-                          {doc.documentId.substring(0, 25) + '...'}
-                        </DocumentLink>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Chip 
-                            label={`${((doc.uniqueEntityCount / Math.max(doc.entityCount, 1)) * 100).toFixed(0)}%`}
-                            size="small" 
-                            color={
-                              ((doc.uniqueEntityCount / Math.max(doc.entityCount, 1)) * 100) > 80 ? 'success' :
-                              ((doc.uniqueEntityCount / Math.max(doc.entityCount, 1)) * 100) > 60 ? 'warning' : 'error'
-                            }
-                          />
-                          <Typography variant="caption" color="success.main">
-                            Quality score
+              {stats?.documentsWithHighestDiversity?.slice(0, 10).map((doc: any, index: number) => {
+                const diversityPercent = (doc.uniqueEntityCount / Math.max(doc.entityCount, 1)) * 100;
+                const chipColor = diversityPercent > 80 ? 'success' :
+                                  diversityPercent > 60 ? 'warning' : 'error';
+
+                return (
+                  <ListItem 
+                    key={index} 
+                    sx={{ px: 0, border: 1, borderColor: 'divider', borderRadius: 1, mb: 1 }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <DocumentLink 
+                            documentId={doc.documentId}
+                            onDocumentClick={onDocumentClick}
+                          >
+                            {doc.documentId.substring(0, 25) + '...'}
+                          </DocumentLink>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip 
+                              label={`${diversityPercent.toFixed(0)}%`}
+                              size="small" 
+                              color={chipColor}
+                            />
+                            <Typography variant="caption" color="success.main">
+                              Quality score
+                            </Typography>
+                          </Box>
+                        </Box>
+                      }
+                      secondary={
+                        <Box>
+                          <Typography variant="body2">
+                            {doc.uniqueEntityCount} unique / {doc.entityCount} total entities
                           </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={diversityPercent}
+                              color={chipColor}
+                              sx={{ flexGrow: 1, height: 4 }}
+                            />
+                          </Box>
                         </Box>
-                      </Box>
-                    }
-                    secondary={
-                      <Box>
-                        <Typography variant="body2">
-                          {doc.uniqueEntityCount} unique / {doc.entityCount} total entities
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                          <LinearProgress
-                            variant="determinate"
-                            value={(doc.uniqueEntityCount / Math.max(doc.entityCount, 1)) * 100}
-                            color={
-                              ((doc.uniqueEntityCount / Math.max(doc.entityCount, 1)) * 100) > 80 ? 'success' :
-                              ((doc.uniqueEntityCount / Math.max(doc.entityCount, 1)) * 100) > 60 ? 'warning' : 'error'
-                            }
-                            sx={{ flexGrow: 1, height: 4 }}
-                          />
-                        </Box>
-                      </Box>
-                    }
-                  />
-                </ListItem>
-              ))}
+                      }
+                    />
+                  </ListItem>
+                );
+              })}
             </List>
           </CardContent>
         </Card>

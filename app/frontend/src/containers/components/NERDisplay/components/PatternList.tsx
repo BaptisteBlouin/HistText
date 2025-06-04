@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/PatternList.tsx
 import React from 'react';
 import { List, ListItem, ListItemText, Box, Typography, Chip } from '@mui/material';
 import { CleaningServices, DataUsage, Analytics } from '@mui/icons-material';
@@ -14,6 +13,10 @@ interface PatternListProps {
   isAdvanced?: boolean;
 }
 
+/**
+ * Displays a list of entity patterns with counts and document occurrences.
+ * Supports styling variations for advanced and normalized patterns.
+ */
 const PatternList: React.FC<PatternListProps> = ({
   patterns,
   maxItems = 10,

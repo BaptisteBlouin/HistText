@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/MetadataForm/components/SearchHistoryIntegration.tsx
 import React, { useState, useCallback } from 'react';
 import {
   Box,
@@ -24,6 +23,16 @@ import {
 import { useSearchHistory, SavedSearch } from '../../../../hooks/useSearchHistory';
 import { buildQueryString } from '../../buildQueryString';
 
+/**
+ * Props for SearchHistoryIntegration component.
+ *
+ * @property formData - Current query form data.
+ * @property dateRange - Selected date range.
+ * @property selectedAlias - Current selected alias/collection.
+ * @property selectedSolrDatabase - Current selected Solr database.
+ * @property resultsCount - (Optional) Number of results for current query.
+ * @property onShowHistory - Callback to show search history/library modal.
+ */
 interface SearchHistoryIntegrationProps {
   formData: any;
   dateRange: any;
@@ -33,6 +42,10 @@ interface SearchHistoryIntegrationProps {
   onShowHistory: () => void;
 }
 
+/**
+ * Component providing UI and logic for saving searches to history or bookmarks,
+ * displaying a dialog to enter metadata, and showing a search library button.
+ */
 const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
   formData,
   dateRange,
@@ -48,15 +61,15 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
   const [searchTags, setSearchTags] = useState('');
   const [saveAsBookmarkFlag, setSaveAsBookmarkFlag] = useState(false);
 
-  // Check if current search has content
+  // Detect if current form data has any meaningful values
   const hasSearchContent = Object.values(formData).some((entries: any) =>
     entries.some((entry: any) => entry.value && entry.value.trim())
   );
 
+  // Generate a default name for saving based on form data and date range
   const generateDefaultName = useCallback(() => {
     if (!hasSearchContent || !selectedAlias) return '';
     
-    // Extract key terms from formData
     const keyTerms: string[] = [];
     Object.entries(formData).forEach(([field, entries]: [string, any]) => {
       entries.forEach((entry: any) => {
@@ -72,6 +85,7 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
     return `${selectedAlias}: ${termsPart}${datePart}`.slice(0, 100);
   }, [formData, selectedAlias, dateRange, hasSearchContent]);
 
+  // Open save dialog prefilled with default name and cleared other fields
   const handleSaveSearch = useCallback(() => {
     if (!hasSearchContent || !selectedAlias || !selectedSolrDatabase) return;
 
@@ -83,6 +97,7 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
     setSaveDialogOpen(true);
   }, [hasSearchContent, selectedAlias, selectedSolrDatabase, generateDefaultName]);
 
+  // Confirm saving the search either as bookmark or history
   const handleConfirmSave = useCallback(() => {
     if (!searchName.trim()) return;
 
@@ -164,7 +179,6 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
         )}
       </Box>
 
-      {/* Save Search Dialog */}
       <Dialog 
         open={saveDialogOpen} 
         onClose={() => setSaveDialogOpen(false)}
@@ -225,7 +239,6 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
               </Select>
             </FormControl>
 
-            {/* Preview of current search */}
             <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
                 Search Preview:

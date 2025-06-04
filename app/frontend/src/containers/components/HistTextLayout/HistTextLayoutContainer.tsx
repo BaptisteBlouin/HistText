@@ -11,6 +11,22 @@ import MainContent from './MainContent';
 import { useHistTextLayoutState } from './hooks/useHistTextLayoutState';
 import { useKeyboardHandlers } from './hooks/useKeyboardHandlers';
 
+/**
+ * Props for the HistTextLayoutContainer component.
+ * 
+ * @property data - All relevant data, results, and loading states for the app.
+ * @property actions - Functions for data handling and tab actions.
+ * @property activeTab - The current tab index.
+ * @property setActiveTab - Handler to set the active tab.
+ * @property fullscreenMode - The current fullscreen mode.
+ * @property setFullscreenMode - Setter for fullscreen mode.
+ * @property quickActions - Whether quick actions panel is open.
+ * @property setQuickActions - Setter for quick actions panel.
+ * @property notification - Notification system state.
+ * @property setNotification - Setter for notification state.
+ * @property onSolrDatabaseChange - Handler for database switching.
+ * @property showNotification - Handler to trigger notifications.
+ */
 interface HistTextLayoutContainerProps {
   data: any;
   actions: any;
@@ -26,6 +42,10 @@ interface HistTextLayoutContainerProps {
   showNotification: (message: string, severity?: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
+/**
+ * Top-level layout and logic for the historical text analytics UI.
+ * Handles fullscreen logic, layout, tab navigation, notification, and state wiring.
+ */
 const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
   data,
   actions,
@@ -43,7 +63,7 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const mainPaperRef = useRef<HTMLDivElement>(null);
 
-  // Memoized fullscreen state calculations
+  // Fullscreen state calculation (native or browser)
   const fullscreenState = useMemo(() => {
     const isNativeFullscreen = Boolean(document.fullscreenElement);
     const isBrowserFullscreen = fullscreenMode === 'browser';
@@ -56,7 +76,7 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
     };
   }, [fullscreenMode]);
 
-  // Custom hooks for state and behavior
+  // Custom layout and keyboard handler hooks
   const { containerConfig, paperStyles } = useHistTextLayoutState(fullscreenState);
   const { quickActionsHandlers, notificationHandlers } = useKeyboardHandlers(
     fullscreenMode,
@@ -75,7 +95,12 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
     >
       <LoadingOverlay loading={data.loading} progress={data.progress} />
       
-      <Container {...containerConfig}>
+      <Container
+        {...{
+          ...containerConfig,
+          maxWidth: containerConfig.maxWidth === true ? "xl" : containerConfig.maxWidth
+        }}
+      >
         {/* Database Selector - Hidden in fullscreen */}
         {!fullscreenState.isAnyFullscreen && (
           <DatabaseSelector
@@ -136,7 +161,7 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
         </Paper>
       </Container>
 
-      {/* Quick Actions - Temporarily disabled
+      {/*
       {!fullscreenState.isAnyFullscreen && (
         <QuickActions
           open={quickActions}

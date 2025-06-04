@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/EntityInfluenceScores.tsx
 import React, { useMemo, useState } from 'react';
 import { 
   Card, 
@@ -19,20 +18,20 @@ import {
   IconButton,
   Collapse
 } from '@mui/material';
-import { TrendingUp, Star, Psychology, Info, ExpandMore, ExpandLess } from '@mui/icons-material';
+import { Star, Info } from '@mui/icons-material';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from 'recharts';
 
 interface EntityInfluence {
   entity: string;
   influenceScore: number;
-  spreadFactor: number; // How widely spread across documents
-  centralityScore: number; // How connected to other entities
-  persistenceScore: number; // How consistently it appears
-  bridgeScore: number; // How well it connects different topics
+  spreadFactor: number;
+  centralityScore: number;
+  persistenceScore: number;
+  bridgeScore: number;
   documentReach: number;
   cooccurrenceStrength: number;
   frequencyScore: number;
-  diversityScore: number; // How diverse its contexts are
+  diversityScore: number;
 }
 
 interface EntityInfluenceScoresProps {
@@ -40,6 +39,10 @@ interface EntityInfluenceScoresProps {
   entities: any[];
 }
 
+/**
+ * Displays comprehensive influence scores for entities using a weighted multi-factor model.
+ * Allows sorting by various metrics and provides detailed visualizations per entity.
+ */
 const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
   stats,
   entities
@@ -48,7 +51,10 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
   const [sortBy, setSortBy] = useState<'influence' | 'spread' | 'centrality' | 'persistence' | 'bridge'>('influence');
   const [showExplanation, setShowExplanation] = useState(false);
 
-  // Compute comprehensive entity influence scores
+  /**
+   * Computes influence scores for entities based on:
+   * spread, centrality, persistence, bridging ability, frequency, and diversity.
+   */
   const influenceScores = useMemo((): EntityInfluence[] => {
     if (!stats?.topEntities) return [];
 
@@ -62,25 +68,20 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
       const entityCount = entity.count || 0;
       const documentReach = entity.documents || 1;
       
-      // 1. Spread Factor: Document reach normalized by total documents
       const spreadFactor = documentReach / totalDocuments;
       
-      // 2. Centrality Score: How connected this entity is to others
       const entityConnections = stats.strongestPairs?.filter((pair: any) => 
         pair.entity1 === entityText || pair.entity2 === entityText
       ) || [];
       const maxPossibleConnections = Math.max((stats.topEntities?.length || 1) - 1, 1);
       const centralityScore = entityConnections.length / maxPossibleConnections;
       
-      // 3. Persistence Score: How consistently it appears relative to document presence
       const avgOccurrencesPerDocument = entityCount / documentReach;
-      const persistenceScore = Math.min(avgOccurrencesPerDocument / 10, 1); // Normalize to 0-1
+      const persistenceScore = Math.min(avgOccurrencesPerDocument / 10, 1);
       
-      // 4. Bridge Score: How well it connects different entity types
       const relatedEntityTypes = new Set<string>();
       entityConnections.forEach((conn: any) => {
         const otherEntity = conn.entity1 === entityText ? conn.entity2 : conn.entity1;
-        // Find the type of the other entity
         Object.entries(stats.topEntitiesByType || {}).forEach(([type, typeEntities]: [string, any]) => {
           if (typeEntities.some((te: any) => te.text === otherEntity)) {
             relatedEntityTypes.add(type);
@@ -90,26 +91,22 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
       const maxEntityTypes = Object.keys(stats.topEntitiesByType || {}).length;
       const bridgeScore = maxEntityTypes > 0 ? relatedEntityTypes.size / maxEntityTypes : 0;
       
-      // 5. Cooccurrence Strength: Average strength of relationships
       const cooccurrenceStrength = entityConnections.length > 0
         ? entityConnections.reduce((sum: number, conn: any) => sum + (conn.strength || 0), 0) / entityConnections.length
         : 0;
       
-      // 6. Frequency Score: Relative frequency in corpus
       const maxFrequency = Math.max(...(stats.topEntities?.map((e: any) => e.count) || [1]));
       const frequencyScore = entityCount / maxFrequency;
       
-      // 7. Diversity Score: How many different document contexts
-      const diversityScore = Math.min(documentReach / 10, 1); // More documents = more diverse contexts
+      const diversityScore = Math.min(documentReach / 10, 1);
       
-      // Combined Influence Score (weighted combination)
       const influenceScore = (
-        spreadFactor * 0.25 +           // 25% weight on document reach
-        centralityScore * 0.20 +        // 20% weight on connections to other entities
-        persistenceScore * 0.15 +       // 15% weight on consistency within documents
-        bridgeScore * 0.15 +            // 15% weight on bridging different topics
-        frequencyScore * 0.15 +         // 15% weight on overall frequency
-        diversityScore * 0.10           // 10% weight on context diversity
+        spreadFactor * 0.25 +
+        centralityScore * 0.20 +
+        persistenceScore * 0.15 +
+        bridgeScore * 0.15 +
+        frequencyScore * 0.15 +
+        diversityScore * 0.10
       );
       
       influences.push({
@@ -132,7 +129,9 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
     return influences.sort((a, b) => b.influenceScore - a.influenceScore);
   }, [stats]);
 
-  // Sort influence scores
+  /**
+   * Sorts the influence scores according to the selected metric.
+   */
   const sortedInfluenceScores = useMemo(() => {
     return [...influenceScores].sort((a, b) => {
       switch (sortBy) {
@@ -146,45 +145,25 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
     });
   }, [influenceScores, sortBy]);
 
-  // Prepare radar chart data for selected entity
+  /**
+   * Prepares radar chart data representing the influence factors for the selected entity.
+   */
   const radarData = useMemo(() => {
     if (!selectedEntity) return [];
     
     return [
-      {
-        subject: 'Spread',
-        value: selectedEntity.spreadFactor * 100,
-        fullMark: 100
-      },
-      {
-        subject: 'Centrality', 
-        value: selectedEntity.centralityScore * 100,
-        fullMark: 100
-      },
-      {
-        subject: 'Persistence',
-        value: selectedEntity.persistenceScore * 100,
-        fullMark: 100
-      },
-      {
-        subject: 'Bridge',
-        value: selectedEntity.bridgeScore * 100,
-        fullMark: 100
-      },
-      {
-        subject: 'Frequency',
-        value: selectedEntity.frequencyScore * 100,
-        fullMark: 100
-      },
-      {
-        subject: 'Diversity',
-        value: selectedEntity.diversityScore * 100,
-        fullMark: 100
-      }
+      { subject: 'Spread', value: selectedEntity.spreadFactor * 100, fullMark: 100 },
+      { subject: 'Centrality', value: selectedEntity.centralityScore * 100, fullMark: 100 },
+      { subject: 'Persistence', value: selectedEntity.persistenceScore * 100, fullMark: 100 },
+      { subject: 'Bridge', value: selectedEntity.bridgeScore * 100, fullMark: 100 },
+      { subject: 'Frequency', value: selectedEntity.frequencyScore * 100, fullMark: 100 },
+      { subject: 'Diversity', value: selectedEntity.diversityScore * 100, fullMark: 100 }
     ];
   }, [selectedEntity]);
 
-  // Prepare bar chart data for top influences
+  /**
+   * Prepares bar chart data for the top 10 entities by influence.
+   */
   const barChartData = useMemo(() => {
     return sortedInfluenceScores.slice(0, 10).map(entity => ({
       name: entity.entity.length > 15 ? entity.entity.substring(0, 15) + '...' : entity.entity,
@@ -250,7 +229,6 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
           </Alert>
         </Collapse>
 
-        {/* Sort Control */}
         <Box sx={{ mb: 3 }}>
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel>Sort By</InputLabel>
@@ -267,7 +245,6 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
           </FormControl>
         </Box>
 
-        {/* Top Influences Chart */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle2" gutterBottom>
             Top Entity Influences by {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
@@ -312,9 +289,7 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
           </ResponsiveContainer>
         </Box>
  
-        {/* Entity Details List with Radar Chart */}
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {/* Entity List */}
           <Box sx={{ flex: 1 }}>
             <Typography variant="subtitle2" gutterBottom>
               Influence Rankings
@@ -416,7 +391,6 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
             </List>
           </Box>
  
-          {/* Radar Chart for Selected Entity */}
           {selectedEntity && (
             <Box sx={{ flex: 1, minWidth: 300 }}>
               <Typography variant="subtitle2" gutterBottom>
@@ -462,6 +436,6 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
       </CardContent>
     </Card>
   );
- };
- 
- export default React.memo(EntityInfluenceScores);
+};
+
+export default React.memo(EntityInfluenceScores);

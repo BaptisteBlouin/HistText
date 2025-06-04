@@ -1,9 +1,8 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { Box } from '@mui/material';
 import TabPanel from './TabPanel';
 import { useTabContent } from './hooks/useTabContent';
 
-// Constants for tabs to prevent magic numbers
 const TABS = {
   QUERY: 0,
   PARTIAL_RESULTS: 1,
@@ -13,6 +12,14 @@ const TABS = {
   NER: 5,
 } as const;
 
+/**
+ * Props for the MainContent component.
+ * 
+ * @property activeTab - Index of the currently active tab.
+ * @property data - Data and state relevant to the content panels.
+ * @property actions - Actions and handlers for content operations.
+ * @property fullscreenState - Current fullscreen mode state.
+ */
 interface MainContentProps {
   activeTab: number;
   data: any;
@@ -20,13 +27,16 @@ interface MainContentProps {
   fullscreenState: any;
 }
 
+/**
+ * Renders the main tabbed content area for the historical text analytics UI.
+ * Uses TabPanel for conditional rendering and useTabContent to select content by tab.
+ */
 const MainContent: React.FC<MainContentProps> = ({
   activeTab,
   data,
   actions,
   fullscreenState
 }) => {
-  // Custom hook for tab content rendering
   const { renderTabContent } = useTabContent(data, actions, fullscreenState);
 
   return (

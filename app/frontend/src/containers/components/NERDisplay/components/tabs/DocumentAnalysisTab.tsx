@@ -1,8 +1,27 @@
-// app/frontend/src/containers/components/NERDisplay/components/tabs/DocumentAnalysisTab.tsx
 import React, { useMemo } from 'react';
-import { Grid, Card, CardContent, Typography, Box, Chip, List, ListItem, ListItemText, LinearProgress, Alert } from '@mui/material';
+import {
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Chip,
+  List,
+  ListItem,
+  ListItemText,
+  LinearProgress,
+  Alert
+} from '@mui/material';
 import { Analytics, Psychology, Warning } from '@mui/icons-material';
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import {
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer
+} from 'recharts';
 import DocumentLink from '../DocumentLink';
 
 interface DocumentAnalysisTabProps {
@@ -10,10 +29,22 @@ interface DocumentAnalysisTabProps {
   onDocumentClick: (documentId: string) => void;
 }
 
+/**
+ * DocumentAnalysisTab component visualizes document-level NER analytics
+ * including entity counts, diversity, and anomaly detection.
+ * 
+ * Displays a scatter plot of entity count vs unique entity diversity,
+ * a ranked list of high-quality documents by diversity, and
+ * anomaly detection cards for documents with unusual entity patterns.
+ */
 const DocumentAnalysisTab: React.FC<DocumentAnalysisTabProps> = ({
   stats,
   onDocumentClick
 }) => {
+  /**
+   * Memoize processed document stats data for rendering charts and lists.
+   * Calculates diversity percentage and categorizes it as High, Medium, or Low.
+   */
   const documentStatsData = useMemo(() => {
     if (!stats?.documentStats) return [];
     
@@ -29,13 +60,13 @@ const DocumentAnalysisTab: React.FC<DocumentAnalysisTabProps> = ({
         diversityLevel: ((doc.uniqueEntityCount / Math.max(doc.entityCount, 1)) * 100) > 80 ? 'High' :
                        ((doc.uniqueEntityCount / Math.max(doc.entityCount, 1)) * 100) > 60 ? 'Medium' : 'Low'
       }))
-      .sort((a, b) => b.diversity - a.diversity)
+      .sort((a: any, b: any) => b.diversity - a.diversity)
       .slice(0, 100);
   }, [stats]);
 
   return (
     <Grid container spacing={3}>
-      {/* Enhanced Document Analysis Scatter Plot */}
+      {/* Document Analysis Scatter Plot: Entity Count vs Diversity */}
       <Grid item xs={12} lg={8}>
         <Card>
           <CardContent>
@@ -108,7 +139,7 @@ const DocumentAnalysisTab: React.FC<DocumentAnalysisTabProps> = ({
         </Card>
       </Grid>
 
-      {/* Enhanced Top Documents */}
+      {/* Top Documents by Diversity */}
       <Grid item xs={12} lg={4}>
         <Card>
           <CardContent>
@@ -127,7 +158,7 @@ const DocumentAnalysisTab: React.FC<DocumentAnalysisTabProps> = ({
               Documents ranked by entity diversity. Click document IDs to view details.
             </Typography>
             <List>
-              {documentStatsData.slice(0, 10).map((doc, index) => (
+              {documentStatsData.slice(0, 10).map((doc: any, index: number) => (
                 <ListItem key={index} sx={{ px: 0 }}>
                   <ListItemText
                     primary={
@@ -171,7 +202,7 @@ const DocumentAnalysisTab: React.FC<DocumentAnalysisTabProps> = ({
         </Card>
       </Grid>
 
-      {/* Enhanced Anomaly Detection */}
+      {/* Anomaly Detection */}
       {stats?.anomalyScores?.length > 0 && (
         <Grid item xs={12}>
           <Card>
@@ -185,58 +216,58 @@ const DocumentAnalysisTab: React.FC<DocumentAnalysisTabProps> = ({
                   label="Enhanced" 
                   size="small"
                   color="warning" 
-                 variant="outlined"
-               />
-             </Box>
-             <Alert severity="warning" sx={{ mb: 2 }}>
-               Documents with unusual normalized entity patterns that may require attention. Analysis based on quality-filtered entities.
-             </Alert>
-             <Grid container spacing={2}>
-               {stats.anomalyScores.slice(0, 8).map((anomaly: any, index: number) => (
-                 <Grid item xs={12} sm={6} md={3} key={index}>
-                   <Card variant="outlined" sx={{ 
-                     borderColor: 'warning.main',
-                     height: '100%'
-                   }}>
-                     <CardContent sx={{ p: 2 }}>
-                       <DocumentLink 
-                         documentId={anomaly.documentId}
-                         onDocumentClick={onDocumentClick}
-                       >
-                         <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                           {anomaly.documentId.substring(0, 15) + '...'}
-                         </Typography>
-                       </DocumentLink>
-                       <Box sx={{ mb: 1 }}>
-                         <Typography variant="body2" color="text.secondary">
-                           Anomaly Score
-                         </Typography>
-                         <LinearProgress 
-                           variant="determinate" 
-                           value={anomaly.score * 100} 
-                           color="warning"
-                           sx={{ mt: 0.5, height: 6, borderRadius: 3 }}
-                         />
-                       </Box>
-                       <Typography variant="caption" color="text.secondary">
-                         {anomaly.reason}
-                       </Typography>
-                       <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                         <Typography variant="caption" color="success.main">
-                           ✓ Quality filtered
-                         </Typography>
-                       </Box>
-                     </CardContent>
-                   </Card>
-                 </Grid>
-               ))}
-             </Grid>
-           </CardContent>
-         </Card>
-       </Grid>
-     )}
-   </Grid>
- );
+                  variant="outlined"
+                />
+              </Box>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Documents with unusual normalized entity patterns that may require attention. Analysis based on quality-filtered entities.
+              </Alert>
+              <Grid container spacing={2}>
+                {stats.anomalyScores.slice(0, 8).map((anomaly: any, index: number) => (
+                  <Grid item xs={12} sm={6} md={3} key={index}>
+                    <Card variant="outlined" sx={{ 
+                      borderColor: 'warning.main',
+                      height: '100%'
+                    }}>
+                      <CardContent sx={{ p: 2 }}>
+                        <DocumentLink 
+                          documentId={anomaly.documentId}
+                          onDocumentClick={onDocumentClick}
+                        >
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            {anomaly.documentId.substring(0, 15) + '...'}
+                          </Typography>
+                        </DocumentLink>
+                        <Box sx={{ mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Anomaly Score
+                          </Typography>
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={anomaly.score * 100} 
+                            color="warning"
+                            sx={{ mt: 0.5, height: 6, borderRadius: 3 }}
+                          />
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {anomaly.reason}
+                        </Typography>
+                        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" color="success.main">
+                            ✓ Quality filtered
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+      )}
+    </Grid>
+  );
 };
 
 export default React.memo(DocumentAnalysisTab);

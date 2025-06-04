@@ -1,6 +1,28 @@
 import { useState, useCallback, useEffect } from 'react';
 import { fetchNeighbors, computeSimilarity, computeAnalogy } from '../utils/embeddingsApi';
 
+/**
+ * Hook managing word embeddings interactions: fetching neighbor words,
+ * computing similarity and analogy, and handling loading states.
+ *
+ * @param solrDatabaseId - Selected Solr database ID or null if none.
+ * @param selectedAlias - Selected collection alias.
+ * @param accessToken - API access token for authentication.
+ * @param hasEmbeddings - Flag indicating if embeddings feature is enabled.
+ *
+ * @returns An object with embeddings-related states and API call methods:
+ *  - neighbors: Map of fieldName to neighbor word suggestions.
+ *  - loadingNeighbors: Map of fieldName to loading boolean for neighbors.
+ *  - similarityResult: Latest similarity computation result.
+ *  - analogyResult: Latest analogy computation result.
+ *  - embeddingLoading: Whether similarity/analogy API call is in progress.
+ *  - getNeighbors: Function to fetch neighbor words for a field.
+ *  - removeNeighborDropdown: Function to remove neighbor suggestions for a field.
+ *  - getSimilarity: Function to compute similarity between two words.
+ *  - getAnalogy: Function to compute word analogy (A is to B as C is to ?).
+ *  - setSimilarityResult: Setter for similarityResult.
+ *  - setAnalogyResult: Setter for analogyResult.
+ */
 export const useEmbeddings = (
   solrDatabaseId: number | null,
   selectedAlias: string,
@@ -19,14 +41,15 @@ export const useEmbeddings = (
     setSimilarityResult(null);
     setAnalogyResult(null);
   }, [solrDatabaseId, selectedAlias]);
+
   const getNeighbors = useCallback(async (inputValue: string, fieldName: string) => {
     if (!inputValue || !solrDatabaseId || !hasEmbeddings) return;
-    
+
     setLoadingNeighbors(prev => ({ ...prev, [fieldName]: true }));
-    
+
     try {
       const neighborWords = await fetchNeighbors(inputValue, solrDatabaseId, selectedAlias, accessToken);
-      
+
       if (neighborWords.length > 0) {
         setNeighbors(prev => ({
           ...prev,
@@ -54,7 +77,7 @@ export const useEmbeddings = (
 
   const getSimilarity = useCallback(async (word1: string, word2: string) => {
     if (!word1 || !word2 || !solrDatabaseId || !hasEmbeddings) return;
-    
+
     setEmbeddingLoading(true);
     try {
       const result = await computeSimilarity(word1, word2, solrDatabaseId, selectedAlias, accessToken);
@@ -66,7 +89,7 @@ export const useEmbeddings = (
 
   const getAnalogy = useCallback(async (wordA: string, wordB: string, wordC: string) => {
     if (!wordA || !wordB || !wordC || !solrDatabaseId || !hasEmbeddings) return;
-    
+
     setEmbeddingLoading(true);
     try {
       const result = await computeAnalogy(wordA, wordB, wordC, solrDatabaseId, selectedAlias, accessToken);

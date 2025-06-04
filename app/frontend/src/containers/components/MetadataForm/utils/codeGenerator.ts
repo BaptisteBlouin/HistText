@@ -1,6 +1,19 @@
 import { buildQueryString } from '../../buildQueryString';
 import config from '../../../../../config.json';
 
+/**
+ * Generate a cURL command string to execute the current API query.
+ *
+ * @param formData - Current form data for the query.
+ * @param dateRange - Date range filter for the query.
+ * @param selectedAlias - Selected collection alias.
+ * @param solrDatabaseId - Selected Solr database ID.
+ * @param getNER - Whether to enable Named Entity Recognition.
+ * @param downloadOnly - Whether to only download results without displaying.
+ * @param statsLevel - Level of statistics detail to request.
+ * @param accessToken - Authorization bearer token.
+ * @returns A string containing the complete cURL command.
+ */
 export const generateCurlCommand = (
   formData: any,
   dateRange: any,
@@ -23,6 +36,19 @@ export const generateCurlCommand = (
   return `curl -H "Authorization: Bearer ${accessToken}" "${url}"`;
 };
 
+/**
+ * Generate a Python script string to perform the current API query and load results.
+ *
+ * @param formData - Current form data for the query.
+ * @param dateRange - Date range filter for the query.
+ * @param selectedAlias - Selected collection alias.
+ * @param solrDatabaseId - Selected Solr database ID.
+ * @param getNER - Whether to enable Named Entity Recognition.
+ * @param downloadOnly - Whether to only download results without displaying.
+ * @param statsLevel - Level of statistics detail to request.
+ * @param accessToken - Authorization bearer token.
+ * @returns A string containing the Python script.
+ */
 export const generatePythonScript = (
   formData: any,
   dateRange: any,
@@ -53,6 +79,19 @@ print(df)
   `.trim();
 };
 
+/**
+ * Generate an R script string to perform the current API query and load results.
+ *
+ * @param formData - Current form data for the query.
+ * @param dateRange - Date range filter for the query.
+ * @param selectedAlias - Selected collection alias.
+ * @param solrDatabaseId - Selected Solr database ID.
+ * @param getNER - Whether to enable Named Entity Recognition.
+ * @param downloadOnly - Whether to only download results without displaying.
+ * @param statsLevel - Level of statistics detail to request.
+ * @param accessToken - Authorization bearer token.
+ * @returns A string containing the R script.
+ */
 export const generateRScript = (
   formData: any,
   dateRange: any,

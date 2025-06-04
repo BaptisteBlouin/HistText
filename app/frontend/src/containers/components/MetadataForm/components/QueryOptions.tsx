@@ -17,9 +17,29 @@ import {
 import { Settings } from '@mui/icons-material';
 import config from '../../../../../config.json';
 
+/**
+ * Stats level type, defined by config.
+ */
 type StatsLevel = (typeof config.statsLevelOptions)[number];
+/**
+ * Document level type, defined by config.
+ */
 type DocLevel = (typeof config.docLevelOptions)[number];
 
+/**
+ * Props for the QueryOptions component.
+ *
+ * @property getNER - Whether to enable named entity recognition.
+ * @property setGetNER - Setter for NER switch.
+ * @property downloadOnly - Whether to enable download-only mode.
+ * @property setDownloadOnly - Setter for download-only switch.
+ * @property statsLevel - Current selected statistics level.
+ * @property setStatsLevel - Setter for statistics level.
+ * @property docLevel - Current selected document limit.
+ * @property setDocLevel - Setter for document limit.
+ * @property showAdvanced - Whether advanced options are shown.
+ * @property setShowAdvanced - Setter for advanced options visibility.
+ */
 interface QueryOptionsProps {
   getNER: boolean;
   setGetNER: (value: boolean) => void;
@@ -33,6 +53,10 @@ interface QueryOptionsProps {
   setShowAdvanced: (value: boolean) => void;
 }
 
+/**
+ * Renders query options including toggles for NER, download-only mode,
+ * and (optionally) advanced controls for statistics/document levels.
+ */
 const QueryOptions: React.FC<QueryOptionsProps> = ({
   getNER,
   setGetNER,

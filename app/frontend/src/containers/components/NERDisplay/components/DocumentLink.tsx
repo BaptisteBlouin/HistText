@@ -1,13 +1,19 @@
-// app/frontend/src/containers/components/NERDisplay/components/DocumentLink.tsx
 import React from 'react';
 import { Box } from '@mui/material';
 
 interface DocumentLinkProps {
+  /** The unique identifier of the document to link to */
   documentId: string;
+  /** Child elements or text to display as the clickable link */
   children: React.ReactNode;
+  /** Callback invoked when the document link is clicked */
   onDocumentClick: (documentId: string) => void;
 }
 
+/**
+ * DocumentLink component renders a clickable styled span that
+ * triggers a callback with the document ID when clicked.
+ */
 const DocumentLink: React.FC<DocumentLinkProps> = ({ 
   documentId, 
   children,

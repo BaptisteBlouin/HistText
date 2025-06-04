@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/ProcessingBanner.tsx
 import React from 'react';
 import {
   Alert,
@@ -22,6 +21,11 @@ interface ProcessingBannerProps {
   stats?: any;
 }
 
+/**
+ * Displays the current processing status of entity analysis,
+ * including phase descriptions, progress bars, and completion indicators.
+ * Handles multiple states: processing, partial completion, and fully complete.
+ */
 const ProcessingBanner: React.FC<ProcessingBannerProps> = ({
   processingState,
   isProcessing,

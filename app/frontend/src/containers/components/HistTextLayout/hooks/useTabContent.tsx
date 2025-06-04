@@ -10,7 +10,7 @@ import StatisticsDisplay from '../../StatisticsDisplay';
 import Cloud from '../../Cloud';
 import NERDisplay from '../../NERDisplay';
 
-// Constants for tabs
+// Constants for tab indices
 const TABS = {
   QUERY: 0,
   PARTIAL_RESULTS: 1,
@@ -20,19 +20,34 @@ const TABS = {
   NER: 5,
 } as const;
 
+/**
+ * Provides a function to render tab content for a text analytics dashboard.
+ * Selects components and empty states based on tab, data, and fullscreen state.
+ *
+ * @param data - Object containing current data, form state, results, loading, etc.
+ * @param actions - Object with handler functions for queries, database switching, etc.
+ * @param fullscreenState - Object describing the current fullscreen mode.
+ *
+ * @returns Object containing:
+ *   - renderTabContent(tabIndex): React element for the given tab index
+ */
 export const useTabContent = (data: any, actions: any, fullscreenState: any) => {
-  // Memoized empty state action
+  /**
+   * Memoized action for the EmptyState, disabled when in fullscreen.
+   */
   const emptyStateAction = useMemo(() => {
     if (fullscreenState.isAnyFullscreen) return undefined;
     
     return {
       label: "Choose Data Source",
       icon: <Search />,
-      onClick: () => {} // Will be handled by showNotification in the actual component
+      onClick: () => {}
     };
   }, [fullscreenState.isAnyFullscreen]);
 
-  // Memoized tab content renderers
+  /**
+   * Returns the content for a given tab, including empty states and loading indicators.
+   */
   const renderTabContent = useCallback((tabIndex: number) => {
     const tabContentStyles = { p: fullscreenState.isAnyFullscreen ? 2 : 3 };
     
@@ -58,7 +73,6 @@ export const useTabContent = (data: any, actions: any, fullscreenState: any) => 
                 solrDatabaseId={data.selectedSolrDatabase?.id || null}
                 selectedAlias={data.selectedAlias}
                 allResults={data.allResults}
-                // Search history integration props
                 availableDatabases={data.availableDatabases || []}
                 availableCollections={data.allCollections || {}}
                 onDatabaseChange={actions.handleSolrDatabaseChange}

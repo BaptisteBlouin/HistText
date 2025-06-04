@@ -1,5 +1,22 @@
 import { useEffect, useMemo, useCallback } from 'react';
 
+/**
+ * Hook providing keyboard and UI handlers for fullscreen and quick actions.
+ *
+ * Handles ESC key for exiting fullscreen and normalizing mode,
+ * exposes memoized handlers for quick actions and notifications.
+ *
+ * @param fullscreenMode - The current fullscreen mode/state.
+ * @param setFullscreenMode - Setter function to change fullscreen mode.
+ * @param setQuickActions - Setter function to show/hide quick actions UI.
+ * @param setNotification - Setter function to update notification state.
+ * @param actions - Object containing available action handlers (export, refresh, share, settings).
+ * @param showNotification - Function or value related to showing notifications (not directly used here).
+ *
+ * @returns Object containing:
+ *   - quickActionsHandlers: Handlers for quick action UI.
+ *   - notificationHandlers: Handlers for notification UI.
+ */
 export const useKeyboardHandlers = (
   fullscreenMode: any,
   setFullscreenMode: any,
@@ -8,7 +25,11 @@ export const useKeyboardHandlers = (
   actions: any,
   showNotification: any
 ) => {
-  // Optimized keyboard handler
+  /**
+   * Handles the Escape key:
+   * - If in browser fullscreen, exits fullscreen.
+   * - Otherwise, resets fullscreenMode to 'normal' if not already.
+   */
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       if (document.fullscreenElement) {
@@ -19,7 +40,6 @@ export const useKeyboardHandlers = (
     }
   }, [fullscreenMode, setFullscreenMode]);
 
-  // Effect for ESC key handling
   useEffect(() => {
     document.addEventListener('keydown', handleKeyPress);
     return () => {
@@ -27,7 +47,9 @@ export const useKeyboardHandlers = (
     };
   }, [handleKeyPress]);
 
-  // Memoized quick actions handlers
+  /**
+   * Handlers for quick actions UI (open/close/actions).
+   */
   const quickActionsHandlers = useMemo(() => ({
     onOpen: () => setQuickActions(true),
     onClose: () => setQuickActions(false),
@@ -37,9 +59,11 @@ export const useKeyboardHandlers = (
     onOpenSettings: actions.openSettings,
   }), [setQuickActions, actions]);
 
-  // Memoized notification handlers
+  /**
+   * Handlers for notifications (close notification).
+   */
   const notificationHandlers = useMemo(() => ({
-    onClose: () => setNotification(prev => ({ ...prev, open: false }))
+    onClose: () => setNotification((prev: any) => ({ ...prev, open: false }))
   }), [setNotification]);
 
   return {

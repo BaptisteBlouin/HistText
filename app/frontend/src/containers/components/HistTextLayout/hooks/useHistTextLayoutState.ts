@@ -1,5 +1,19 @@
 import { useMemo } from 'react';
 
+/**
+ * Provides layout styles and configuration for a historical text UI component,
+ * adapting the container and paper styles based on fullscreen state.
+ *
+ * @param fullscreenState - An object describing the current fullscreen mode(s).
+ *   Should include:
+ *     - isAnyFullscreen: boolean
+ *     - isBrowserFullscreen?: boolean
+ *     - isNativeFullscreen?: boolean
+ *
+ * @returns An object containing:
+ *   - containerConfig: configuration object for the container (maxWidth, sx)
+ *   - paperStyles: style object for the paper/card
+ */
 export const useHistTextLayoutState = (fullscreenState: any) => {
   const containerConfig = useMemo(() => ({
     maxWidth: fullscreenState.isAnyFullscreen ? false : "xl" as const,

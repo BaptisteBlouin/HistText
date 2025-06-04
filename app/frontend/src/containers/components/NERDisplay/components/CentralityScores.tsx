@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/CentralityScores.tsx
 import React from 'react';
 import { Card, CardContent, Typography, List, ListItem, ListItemText, Box, Chip, LinearProgress, Tooltip } from '@mui/material';
 import { Hub } from '@mui/icons-material';
@@ -7,6 +6,15 @@ interface CentralityScoresProps {
   centralityScores: Array<{ entity: string; score: number; connections: number }>;
 }
 
+/**
+ * CentralityScores component displays the top entities with the most
+ * connections in the entity relationship network.
+ * 
+ * Shows a list of normalized entities with a connection count and
+ * a visual linear progress bar indicating their centrality score.
+ * 
+ * @param centralityScores - Array of entity centrality score objects.
+ */
 const CentralityScores: React.FC<CentralityScoresProps> = ({ centralityScores }) => {
   return (
     <Card>

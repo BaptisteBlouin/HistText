@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/EntityTimeline.tsx
 import React, { useMemo, useState } from 'react';
 import { 
   Card, 
@@ -17,7 +16,7 @@ import {
   IconButton,
   Collapse
 } from '@mui/material';
-import { Timeline, TrendingUp, Info, ExpandMore, ExpandLess } from '@mui/icons-material';
+import { Timeline, Info } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, ComposedChart, Area } from 'recharts';
 
 interface EntityTimelineProps {
@@ -37,32 +36,33 @@ interface TimelineDataPoint {
   diversityIndex: number;
 }
 
+/**
+ * Displays an analysis of entity metrics over a sequence of documents.
+ * Supports multiple metrics visualization, entity tracking, and timeline trends.
+ */
 const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
   const [selectedMetric, setSelectedMetric] = useState<'entityCount' | 'uniqueEntities' | 'avgConfidence' | 'entityDensity' | 'diversityIndex'>('entityCount');
   const [selectedEntity, setSelectedEntity] = useState<string>('');
   const [showExplanation, setShowExplanation] = useState(false);
 
-  console.log('EntityTimeline - stats:', !!stats, 'entities:', entities?.length);
-
-  // Enhanced timeline data with additional metrics
+  /**
+   * Processes document stats to build timeline data points with enhanced metrics.
+   */
   const timelineData = useMemo((): TimelineDataPoint[] => {
     if (!stats?.documentStats) return [];
 
     return stats.documentStats
       .slice(0, 30)
       .map((doc: any, index: number) => {
-        // Calculate entity density (entities per 1000 characters, estimated)
-        const estimatedDocLength = doc.entityCount * 50; // Rough estimate
+        const estimatedDocLength = doc.entityCount * 50;
         const entityDensity = (doc.entityCount / Math.max(estimatedDocLength, 1000)) * 1000;
         
-        // Find dominant entity type
         const entityTypes = doc.entityTypes || {};
         const dominantType = Object.entries(entityTypes).reduce((max, [type, count]) => 
           (count as number) > (max.count || 0) ? { type, count: count as number } : max, 
           { type: 'Mixed', count: 0 }
         ).type;
         
-        // Calculate diversity index (normalized entropy)
         const totalEntities = Object.values(entityTypes).reduce((sum: number, count) => sum + (count as number), 0);
         let diversityIndex = 0;
         if (totalEntities > 0) {
@@ -72,7 +72,6 @@ const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
               diversityIndex -= p * Math.log2(p);
             }
           });
-          // Normalize by max possible entropy
           const maxTypes = Object.keys(entityTypes).length;
           if (maxTypes > 1) {
             diversityIndex = diversityIndex / Math.log2(maxTypes);
@@ -93,13 +92,14 @@ const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
       });
   }, [stats]);
 
-  // Compute entity evolution data for specific entity tracking
+  /**
+   * Computes the evolution of a specific entity over the document timeline.
+   */
   const entityEvolutionData = useMemo(() => {
     if (!selectedEntity || !entities) return [];
 
     const entityOccurrences = new Map<string, number>();
     
-    // Group entities by document
     entities
       .filter(e => e.text.toLowerCase().includes(selectedEntity.toLowerCase()) || 
                    e.normalizedText?.toLowerCase().includes(selectedEntity.toLowerCase()))
@@ -108,7 +108,6 @@ const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
         entityOccurrences.set(entity.documentId, count + 1);
       });
 
-    // Map to timeline sequence
     return timelineData.map(point => ({
       sequence: point.sequence,
       documentId: point.documentId,
@@ -118,13 +117,17 @@ const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
     })).filter(point => point.entityOccurrences > 0);
   }, [selectedEntity, entities, timelineData]);
 
-  // Get top entities for selection
+  /**
+   * Extracts top entities from stats for selection dropdown.
+   */
   const topEntities = useMemo(() => {
     if (!stats?.topEntities) return [];
     return stats.topEntities.slice(0, 20);
   }, [stats]);
 
-  // Calculate timeline trends
+  /**
+   * Computes trends and insights by comparing metrics in the first and second halves of the timeline.
+   */
   const timelineTrends = useMemo(() => {
     if (timelineData.length < 3) return null;
 
@@ -204,7 +207,6 @@ const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
           </Alert>
         </Collapse>
 
-        {/* Controls */}
         <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
           <FormControl size="small" sx={{ minWidth: 160 }}>
             <InputLabel>Timeline Metric</InputLabel>
@@ -238,7 +240,6 @@ const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
           )}
         </Box>
 
-        {/* Main Timeline Chart */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle2" gutterBottom>
             Document Sequence Timeline - {selectedMetric.replace(/([A-Z])/g, ' $1').toLowerCase()}
@@ -260,27 +261,13 @@ const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
                         <Typography variant="subtitle2">
                           Document #{label}: {data.documentId.substring(0, 20)}...
                         </Typography>
-                        <Typography variant="body2">
-                          Total Entities: {data.entityCount}
-                        </Typography>
-                        <Typography variant="body2">
-                          Unique Entities: {data.uniqueEntities}
-                        </Typography>
-                        <Typography variant="body2">
-                          Avg Confidence: {data.avgConfidence.toFixed(1)}%
-                        </Typography>
-                        <Typography variant="body2">
-                          Entity Density: {data.entityDensity.toFixed(1)}
-                        </Typography>
-                        <Typography variant="body2">
-                          Diversity Index: {data.diversityIndex.toFixed(2)}
-                        </Typography>
-                        <Typography variant="body2">
-                          Dominant Type: {data.dominantType}
-                        </Typography>
-                        <Typography variant="body2">
-                          Top Entities: {data.topEntities.join(', ')}
-                        </Typography>
+                        <Typography variant="body2">Total Entities: {data.entityCount}</Typography>
+                        <Typography variant="body2">Unique Entities: {data.uniqueEntities}</Typography>
+                        <Typography variant="body2">Avg Confidence: {data.avgConfidence.toFixed(1)}%</Typography>
+                        <Typography variant="body2">Entity Density: {data.entityDensity.toFixed(1)}</Typography>
+                        <Typography variant="body2">Diversity Index: {data.diversityIndex.toFixed(2)}</Typography>
+                        <Typography variant="body2">Dominant Type: {data.dominantType}</Typography>
+                        <Typography variant="body2">Top Entities: {data.topEntities.join(', ')}</Typography>
                       </Box>
                     );
                   }
@@ -309,7 +296,6 @@ const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
           </ResponsiveContainer>
         </Box>
 
-        {/* Specific Entity Evolution */}
         {selectedEntity && entityEvolutionData.length > 0 && (
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" gutterBottom>
@@ -348,7 +334,6 @@ const EntityTimeline: React.FC<EntityTimelineProps> = ({ stats, entities }) => {
           </Box>
         )}
 
-        {/* Timeline Insights */}
         <Box>
           <Typography variant="subtitle2" gutterBottom>
             Timeline Insights & Trends

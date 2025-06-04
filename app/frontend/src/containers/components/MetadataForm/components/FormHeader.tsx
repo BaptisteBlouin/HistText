@@ -8,6 +8,14 @@ import {
 } from '@mui/material';
 import { AutoAwesome, Lightbulb, Close } from '@mui/icons-material';
 
+/**
+ * Props for the FormHeader component.
+ * 
+ * @property hasEmbeddings - Whether the collection has word embeddings enabled.
+ * @property showEmbeddingAlert - Whether to show the semantic search alert.
+ * @property onShowEmbeddingAlert - Handler to show/hide the alert.
+ * @property onOpenEmbeddingModal - Handler to open the embedding tools modal.
+ */
 interface FormHeaderProps {
   hasEmbeddings: boolean;
   showEmbeddingAlert: boolean;
@@ -15,6 +23,10 @@ interface FormHeaderProps {
   onOpenEmbeddingModal: () => void;
 }
 
+/**
+ * Banner alert for semantic search capabilities, shown when embeddings are available.
+ * Displays an "Explore" button and dismiss action.
+ */
 const FormHeader: React.FC<FormHeaderProps> = ({
   hasEmbeddings,
   showEmbeddingAlert,

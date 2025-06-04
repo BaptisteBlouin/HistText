@@ -1,6 +1,16 @@
 import { useState, useMemo } from 'react';
 
-// Memoized filtering function
+/**
+ * Memoized hook to filter and sort entities based on search term, labels, confidence, and sorting preferences.
+ * 
+ * @param entities Array of entity objects to filter.
+ * @param searchTerm Text to search within entity text, label, or document ID.
+ * @param selectedLabels Array of selected entity labels to filter.
+ * @param minConfidence Minimum confidence threshold.
+ * @param sortBy Property to sort by ('text', 'label', 'confidence', 'id').
+ * @param sortOrder Sort direction: ascending ('asc') or descending ('desc').
+ * @returns Filtered and sorted array of entities.
+ */
 const useFilteredEntities = (
   entities: any[], 
   searchTerm: string, 
@@ -12,7 +22,6 @@ const useFilteredEntities = (
   return useMemo(() => {
     let filtered = entities;
 
-    // Apply filters only if needed
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(entity => 
@@ -31,7 +40,6 @@ const useFilteredEntities = (
       filtered = filtered.filter(entity => entity.confidence >= minConfidence);
     }
 
-    // Optimized sorting
     if (sortBy && filtered.length > 0) {
       filtered.sort((a, b) => {
         let comparison = 0;
@@ -59,6 +67,13 @@ const useFilteredEntities = (
   }, [entities, searchTerm, selectedLabels, minConfidence, sortBy, sortOrder]);
 };
 
+/**
+ * Custom React hook to manage entity filtering, sorting, and quick filtering states.
+ * 
+ * @param entities Array of entities to filter.
+ * @param stats Optional statistics (currently unused, reserved for future use).
+ * @returns Filtering state and handlers for managing entity filters and sorting.
+ */
 export const useNERFilters = (entities: any[], stats: any) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
@@ -68,17 +83,14 @@ export const useNERFilters = (entities: any[], stats: any) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
   const [quickFilterMode, setQuickFilterMode] = useState<'all' | 'high' | 'medium' | 'low'>('all');
 
-  // Memoized unique labels
   const uniqueLabels = useMemo(() => 
     Array.from(new Set(entities.map(e => e.label))), [entities]
   );
 
-  // Memoized filtered data
   const filteredEntities = useFilteredEntities(
     entities, searchTerm, selectedLabels, minConfidence, sortBy, sortOrder
   );
 
-  // Quick filter effect
   const displayEntities = useMemo(() => {
     if (quickFilterMode === 'all') return filteredEntities;
     

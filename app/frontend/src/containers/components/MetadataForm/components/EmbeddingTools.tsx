@@ -20,6 +20,18 @@ import {
 } from '@mui/material';
 import { AutoAwesome, PlayArrow } from '@mui/icons-material';
 
+/**
+ * Props for the EmbeddingTools component.
+ *
+ * @property hasEmbeddings - Whether embeddings are available for the dataset.
+ * @property embeddingLoading - Whether an embedding operation is currently running.
+ * @property similarityResult - Result object for word similarity computation.
+ * @property analogyResult - Result object for analogy computation.
+ * @property onGetSimilarity - Handler to trigger similarity computation.
+ * @property onGetAnalogy - Handler to trigger analogy computation.
+ * @property externalModalOpen - (Optional) Controls modal open state externally.
+ * @property onExternalModalClose - (Optional) Handler for external modal close event.
+ */
 interface EmbeddingToolsProps {
   hasEmbeddings: boolean;
   embeddingLoading: boolean;
@@ -31,6 +43,10 @@ interface EmbeddingToolsProps {
   onExternalModalClose?: () => void;
 }
 
+/**
+ * Semantic analysis tools for word similarity and analogy using embeddings.
+ * Displays a floating action button and modal with similarity and analogy forms and results.
+ */
 const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
   hasEmbeddings,
   embeddingLoading,
@@ -48,7 +64,7 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
   const [analogyWordB, setAnalogyWordB] = useState('');
   const [analogyWordC, setAnalogyWordC] = useState('');
 
-  // Handle external modal control
+  // Sync modal state with external controls if provided
   useEffect(() => {
     setEmbeddingModalOpen(externalModalOpen);
   }, [externalModalOpen]);

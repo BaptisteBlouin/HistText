@@ -1,7 +1,6 @@
-// app/frontend/src/containers/components/NERDisplay/components/tabs/PatternsTab.tsx
 import React from 'react';
-import { Grid, Card, CardContent, Typography, Alert, Box, Badge, List, ListItem, ListItemText, Chip } from '@mui/material';
-import { Psychology, FilterAlt, DataUsage, Analytics, Hub, Assessment, CleaningServices } from '@mui/icons-material';
+import { Grid, Card, CardContent, Typography, Alert, Box, Badge } from '@mui/material';
+import { Psychology, FilterAlt, Hub } from '@mui/icons-material';
 import PatternList from '../PatternList';
 import PatternSummary from '../PatternSummary';
 
@@ -9,10 +8,14 @@ interface PatternsTabProps {
   stats: any;
 }
 
+/**
+ * PatternsTab component displays enhanced pattern analytics on entities,
+ * including bigram, trigram, and quadrigram sequences with normalization and filtering applied.
+ */
 const PatternsTab: React.FC<PatternsTabProps> = ({ stats }) => {
   return (
     <Grid container spacing={3}>
-      {/* Enhanced Pattern Analysis Header */}
+      {/* Header with quality improvements */}
       <Grid item xs={12}>
         <Alert severity="success" sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -37,14 +40,12 @@ const PatternsTab: React.FC<PatternsTabProps> = ({ stats }) => {
         </Alert>
       </Grid>
 
-      {/* Enhanced Bigram Patterns */}
+      {/* Bigram Patterns */}
       <Grid item xs={12} lg={6}>
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Typography variant="h6">
-                Entity Bigram Patterns
-              </Typography>
+              <Typography variant="h6">Entity Bigram Patterns</Typography>
               <Badge badgeContent="Enhanced" color="success" variant="dot">
                 <FilterAlt />
               </Badge>
@@ -61,14 +62,12 @@ const PatternsTab: React.FC<PatternsTabProps> = ({ stats }) => {
         </Card>
       </Grid>
 
-      {/* Enhanced Trigram Patterns */}
+      {/* Trigram Patterns */}
       <Grid item xs={12} lg={6}>
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Typography variant="h6">
-                Entity Trigram Patterns
-              </Typography>
+              <Typography variant="h6">Entity Trigram Patterns</Typography>
               <Badge badgeContent="Enhanced" color="primary" variant="dot">
                 <Psychology />
               </Badge>
@@ -85,14 +84,12 @@ const PatternsTab: React.FC<PatternsTabProps> = ({ stats }) => {
         </Card>
       </Grid>
 
-      {/* Enhanced Quadrigram Patterns */}
+      {/* Quadrigram Patterns */}
       <Grid item xs={12}>
         <Card>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Typography variant="h6">
-                Complex Entity Patterns (Quadrigrams)
-              </Typography>
+              <Typography variant="h6">Complex Entity Patterns (Quadrigrams)</Typography>
               <Badge badgeContent="Advanced" color="error" variant="dot">
                 <Hub />
               </Badge>
@@ -104,13 +101,13 @@ const PatternsTab: React.FC<PatternsTabProps> = ({ stats }) => {
               patterns={stats?.quadrigramPatterns || []}
               maxItems={6}
               colorType="success"
-              isAdvanced={true}
+              isAdvanced
             />
           </CardContent>
         </Card>
       </Grid>
 
-      {/* Enhanced Pattern Summary */}
+      {/* Pattern Summary */}
       <Grid item xs={12}>
         <PatternSummary stats={stats} />
       </Grid>

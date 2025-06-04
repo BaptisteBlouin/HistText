@@ -2,6 +2,16 @@ import React from 'react';
 import { Box, Typography, useTheme, alpha } from '@mui/material';
 import { LoadingButton } from '../../../components/ui';
 
+/**
+ * Props for EmptyStateComponent.
+ *
+ * @property icon - The icon displayed at the top of the empty state.
+ * @property title - Main heading for the empty state.
+ * @property description - Description or supporting text.
+ * @property action - Optional action button with label, icon, and click handler.
+ * @property variant - Visual variant, 'default' or 'minimal' (affects background/borders).
+ * @property size - Size of the component: 'small', 'medium', or 'large' (affects spacing and typography).
+ */
 interface EmptyStateComponentProps {
   icon: React.ReactNode;
   title: string;
@@ -15,6 +25,10 @@ interface EmptyStateComponentProps {
   size?: 'small' | 'medium' | 'large';
 }
 
+/**
+ * Renders an empty state UI with icon, title, description, and an optional action.
+ * Supports customizable size and variant for integration in different contexts.
+ */
 const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({ 
   icon, 
   title, 
@@ -25,6 +39,9 @@ const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({
 }) => {
   const theme = useTheme();
 
+  /**
+   * Returns size-related styles (padding, icon size, typography, width) based on the selected size.
+   */
   const getSizeStyles = () => {
     switch (size) {
       case 'small':
@@ -51,6 +68,9 @@ const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({
     }
   };
 
+  /**
+   * Returns variant-specific styles for background and borders.
+   */
   const getVariantStyles = () => {
     if (variant === 'minimal') {
       return {

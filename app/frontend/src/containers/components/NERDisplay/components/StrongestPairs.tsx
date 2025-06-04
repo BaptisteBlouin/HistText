@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/StrongestPairs.tsx
 import React from 'react';
 import { Grid, Card, CardContent, Typography, Box, Chip, LinearProgress } from '@mui/material';
 import { CleaningServices } from '@mui/icons-material';
@@ -7,16 +6,22 @@ interface StrongestPairsProps {
   strongestPairs: any[];
 }
 
+/**
+ * Displays a grid of strongest entity pairs with relationship metrics and quality indicators.
+ */
 const StrongestPairs: React.FC<StrongestPairsProps> = ({ strongestPairs }) => {
   return (
     <Grid container spacing={2}>
       {strongestPairs.slice(0, 12).map((pair, index) => (
         <Grid item xs={12} sm={6} md={4} key={index}>
-          <Card variant="outlined" sx={{ 
-            height: '100%',
-            border: pair.strength > 10 ? '2px solid' : '1px solid',
-            borderColor: pair.strength > 10 ? 'success.main' : 'divider'
-          }}>
+          <Card
+            variant="outlined"
+            sx={{ 
+              height: '100%',
+              border: pair.strength > 10 ? '2px solid' : '1px solid',
+              borderColor: pair.strength > 10 ? 'success.main' : 'divider'
+            }}
+          >
             <CardContent sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <Chip 
@@ -34,7 +39,6 @@ const StrongestPairs: React.FC<StrongestPairsProps> = ({ strongestPairs }) => {
                 />
               </Box>
               
-              {/* Strength indicator */}
               <Box sx={{ mb: 1 }}>
                 <Typography variant="caption" color="text.secondary">
                   Relationship Strength
@@ -68,7 +72,6 @@ const StrongestPairs: React.FC<StrongestPairsProps> = ({ strongestPairs }) => {
                 Proximity Score: {pair.proximityScore?.toFixed(2) || 'N/A'}
               </Typography>
               
-              {/* Quality indicator */}
               <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <CleaningServices sx={{ fontSize: 12, color: 'success.main' }} />
                 <Typography variant="caption" color="success.main">

@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/tabs/TopEntitiesTab.tsx
 import React, { useMemo } from 'react';
 import { Grid, Card, CardContent, Typography, Alert, Box, Chip, Tooltip, IconButton, Collapse } from '@mui/material';
 import { TrendingUp, FilterAlt, DataUsage, ExpandMore, ExpandLess } from '@mui/icons-material';
@@ -12,12 +11,22 @@ interface TopEntitiesTabProps {
   onToggleSection: (section: string) => void;
 }
 
+/**
+ * TopEntitiesTab component displays the most frequent entities in the dataset,
+ * along with their type distributions and a detailed list grouped by entity type.
+ * 
+ * Includes normalized and filtered entity counts and frequencies.
+ * 
+ * @param stats - Statistics object containing entity frequency and type data.
+ * @param expandedSections - Set of section keys to control expanded/collapsed UI.
+ * @param onToggleSection - Callback to toggle section expansion state.
+ */
 const TopEntitiesTab: React.FC<TopEntitiesTabProps> = ({
   stats,
   expandedSections,
   onToggleSection
 }) => {
-  // Prepare chart data
+  // Prepare top entities data for bar chart visualization
   const topEntitiesChartData = useMemo(() => 
     stats?.topEntities?.slice(0, 15).map((entity: any) => ({
       name: entity.text.length > 25 ? entity.text.substring(0, 25) + '...' : entity.text,
@@ -28,20 +37,24 @@ const TopEntitiesTab: React.FC<TopEntitiesTabProps> = ({
     })) || []
   , [stats]);
 
+  // Prepare entity type distribution data for pie chart visualization
   const entityTypeDistribution = useMemo(() => {
     if (!stats?.topEntitiesByType) return [];
     
-    return Object.entries(stats.topEntitiesByType).map(([type, entities]: [string, any[]]) => ({
-      name: type,
-      value: entities.reduce((sum, entity) => sum + entity.count, 0),
-      entities: entities.length,
-      uniqueEntities: entities.length
-    })).slice(0, 10);
+    return Object.entries(stats.topEntitiesByType).map(([type, entities]) => {
+      const entitiesArray = entities as any[]; // <-- This fixes the TS error
+      return {
+        name: type,
+        value: entitiesArray.reduce((sum, entity) => sum + entity.count, 0),
+        entities: entitiesArray.length,
+        uniqueEntities: entitiesArray.length
+      };
+    }).slice(0, 10);
   }, [stats]);
+
 
   return (
     <Grid container spacing={3}>
-      {/* Enhanced Top Entities Chart */}
       <Grid item xs={12} lg={8}>
         <Card>
           <CardContent>
@@ -108,7 +121,6 @@ const TopEntitiesTab: React.FC<TopEntitiesTabProps> = ({
         </Card>
       </Grid>
 
-      {/* Enhanced Entity Types Distribution */}
       <Grid item xs={12} lg={4}>
         <Card>
           <CardContent>
@@ -147,7 +159,6 @@ const TopEntitiesTab: React.FC<TopEntitiesTabProps> = ({
         </Card>
       </Grid>
 
-      {/* Enhanced Top Entities by Type */}
       <Grid item xs={12}>
         <Card>
           <CardContent>

@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/FeatureAvailabilityIndicator.tsx
 import React from 'react';
 import { Chip, Tooltip } from '@mui/material';
 import { 
@@ -16,6 +15,10 @@ interface FeatureAvailabilityIndicatorProps {
   description?: string;
 }
 
+/**
+ * Displays a visual indicator (chip) for feature availability status,
+ * optionally wrapped with a tooltip showing a description.
+ */
 const FeatureAvailabilityIndicator: React.FC<FeatureAvailabilityIndicatorProps> = ({
   feature,
   available,
@@ -23,6 +26,9 @@ const FeatureAvailabilityIndicator: React.FC<FeatureAvailabilityIndicatorProps> 
   limited = false,
   description
 }) => {
+  /**
+   * Determines the Chip props based on availability and status flags.
+   */
   const getChipProps = () => {
     if (loading) {
       return {

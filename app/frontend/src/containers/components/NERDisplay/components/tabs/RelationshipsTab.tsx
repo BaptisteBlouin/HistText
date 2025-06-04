@@ -1,8 +1,6 @@
-// app/frontend/src/containers/components/NERDisplay/components/tabs/RelationshipsTab.tsx
 import React, { useMemo } from 'react';
-import { Grid, Card, CardContent, Typography, Alert, Box, Chip, IconButton, Collapse, List, ListItem, ListItemText, LinearProgress, Badge } from '@mui/material';
-import { NetworkCheck, Hub, FilterAlt, Psychology, Info, ExpandMore, ExpandLess, CleaningServices } from '@mui/icons-material';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { Grid, Card, CardContent, Typography, Alert, Box, Badge, IconButton, Collapse } from '@mui/material';
+import { NetworkCheck, FilterAlt, Psychology, Info } from '@mui/icons-material';
 import CooccurrenceChart from '../CooccurrenceChart';
 import CentralityScores from '../CentralityScores';
 import StrongestPairs from '../StrongestPairs';
@@ -13,11 +11,23 @@ interface RelationshipsTabProps {
   onToggleSection: (section: string) => void;
 }
 
+/**
+ * RelationshipsTab component renders detailed analytics about entity relationships
+ * in the dataset, focusing on co-occurrence patterns, centrality scores, and strongest pairs.
+ * 
+ * It provides enhanced visualization and explanations of entity pair relationships,
+ * including normalization, quality filtering, and statistical significance.
+ * 
+ * @param stats - The statistics data object containing entity relationships and scores.
+ * @param expandedSections - Set of expanded section keys for UI collapse control.
+ * @param onToggleSection - Callback function to toggle the expanded/collapsed state of sections.
+ */
 const RelationshipsTab: React.FC<RelationshipsTabProps> = ({
   stats,
   expandedSections,
   onToggleSection
 }) => {
+  // Prepare co-occurrence network data with enhanced metrics and labels
   const cooccurrenceNetworkData = useMemo(() => {
     if (!stats?.strongestPairs) return [];
     
@@ -38,7 +48,7 @@ const RelationshipsTab: React.FC<RelationshipsTabProps> = ({
 
   return (
     <Grid container spacing={3}>
-      {/* Enhanced Entity Cooccurrence */}
+      {/* Entity Co-occurrence Visualization Section */}
       <Grid item xs={12} lg={8}>
         <Card>
           <CardContent>
@@ -65,14 +75,14 @@ const RelationshipsTab: React.FC<RelationshipsTabProps> = ({
         </Card>
       </Grid>
 
-      {/* Enhanced Centrality Scores */}
+      {/* Centrality Scores Section */}
       <Grid item xs={12} lg={4}>
         <CentralityScores 
           centralityScores={stats?.centralityScores || []}
         />
       </Grid>
 
-      {/* Enhanced Strongest Pairs Section */}
+      {/* Strongest Entity Pairs Section with expandable explanation */}
       <Grid item xs={12}>
         <Card>
           <CardContent>

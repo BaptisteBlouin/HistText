@@ -29,6 +29,18 @@ import {
 } from '@mui/icons-material';
 import { generateCurlCommand, generatePythonScript, generateRScript } from '../utils/codeGenerator';
 
+/**
+ * Props for the CodeGeneration component.
+ * 
+ * @property formData - Query form data object.
+ * @property dateRange - Date range filter object.
+ * @property selectedAlias - Selected alias for the data source.
+ * @property solrDatabaseId - Selected database ID (number or null).
+ * @property getNER - Whether named entity recognition is enabled.
+ * @property downloadOnly - Whether only downloading results.
+ * @property statsLevel - Current stats level.
+ * @property accessToken - Access token for authentication.
+ */
 interface CodeGenerationProps {
   formData: any;
   dateRange: any;
@@ -40,15 +52,29 @@ interface CodeGenerationProps {
   accessToken: string;
 }
 
+/**
+ * Interface for a code example language tab.
+ * 
+ * @property id - Unique code example identifier.
+ * @property name - Display name of the language/tool.
+ * @property icon - Icon element for the language.
+ * @property language - Language string for file extension.
+ * @property generator - Code generation function for this example.
+ * @property color - Brand color for language.
+ */
 interface CodeExample {
   id: string;
   name: string;
-  icon: React.ReactNode;
+  icon: React.ReactElement;
   language: string;
   generator: () => string;
   color: string;
 }
 
+/**
+ * Dialog and actions for generating and copying code snippets for API queries (cURL, Python, R).
+ * Provides copy/download buttons and tabbed navigation.
+ */
 const CodeGeneration: React.FC<CodeGenerationProps> = ({
   formData,
   dateRange,
@@ -136,10 +162,14 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
     }
   };
 
-  const getFileExtension = (language: string) => {
-    const extensions = { bash: 'sh', python: 'py', r: 'R' };
-    return extensions[language] || 'txt';
+  const getFileExtension = (language: string): string => {
+    const extensions: Record<'bash' | 'python' | 'r', string> = { bash: 'sh', python: 'py', r: 'R' };
+    if (language === 'bash' || language === 'python' || language === 'r') {
+      return extensions[language];
+    }
+    return 'txt';
   };
+
 
   return (
     <>
@@ -209,7 +239,7 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
               {codeExamples.map((example, index) => (
                 <Tab
                   key={example.id}
-                  icon={example.icon}
+                  icon={example.icon as React.ReactElement}
                   label={example.name}
                   iconPosition="start"
                   sx={{

@@ -1,6 +1,15 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 
+/**
+ * Props for the FullscreenInfo component.
+ * 
+ * @property isAnyFullscreen - Whether any fullscreen mode is active.
+ * @property selectedAlias - Name of the selected collection/alias.
+ * @property selectedSolrDatabase - Object representing the selected database.
+ * @property allResults - Array of all result documents.
+ * @property fullscreenMode - The current fullscreen mode ('browser' or 'native').
+ */
 interface FullscreenInfoProps {
   isAnyFullscreen: boolean;
   selectedAlias: string;
@@ -20,6 +29,10 @@ const FULLSCREEN_INFO_STYLES = {
   mb: 0
 } as const;
 
+/**
+ * Displays a top info bar with context when in fullscreen mode,
+ * showing database/collection name, number of documents, and fullscreen status.
+ */
 const FullscreenInfo: React.FC<FullscreenInfoProps> = ({
   isAnyFullscreen,
   selectedAlias,

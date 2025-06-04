@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/DocumentSimilarityNetwork.tsx
 import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { 
   Card, 
@@ -11,7 +10,6 @@ import {
   Select, 
   MenuItem, 
   Chip,
-  Tooltip,
   IconButton,
   Collapse,
   Alert,
@@ -24,18 +22,17 @@ import {
 import { 
   AccountTree, 
   Info, 
-  ExpandMore, 
-  ExpandLess, 
-  NetworkCheck,
+  Settings,
+  Fullscreen,
+  FullscreenExit,
   Visibility,
   VisibilityOff,
-  Settings,
   ZoomIn,
   ZoomOut,
   CenterFocusStrong,
-  FilterList,
-  Fullscreen,
-  FullscreenExit
+  FilterAlt,
+  Psychology,
+  NetworkCheck
 } from '@mui/icons-material';
 import * as d3 from 'd3';
 
@@ -62,10 +59,17 @@ interface NetworkData {
 }
 
 interface DocumentSimilarityNetworkProps {
+  /** Statistics data containing document stats and entities */
   stats: any;
+  /** Callback when a document node is clicked */
   onDocumentClick: (documentId: string) => void;
 }
 
+/**
+ * DocumentSimilarityNetwork component visualizes documents as nodes in a similarity network,
+ * where edges represent shared entities with a similarity score above a threshold.
+ * Supports different layouts, zoom/pan, cluster filtering, and interactive node/cluster selection.
+ */
 const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
   stats,
   onDocumentClick
@@ -82,33 +86,26 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
   const [selectedCluster, setSelectedCluster] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
-  // User-controlled node limit
+  // Node count controls
   const [maxNodes, setMaxNodes] = useState(50);
   const [customMaxNodes, setCustomMaxNodes] = useState('50');
-  
-  // New cluster size filter
   const [minClusterSize, setMinClusterSize] = useState(2);
 
-  // Get the maximum available documents for the slider
-  const maxAvailableDocuments = useMemo(() => {
-    return stats?.documentStats?.length || 100;
-  }, [stats]);
+  // Maximum number of available documents
+  const maxAvailableDocuments = useMemo(() => stats?.documentStats?.length || 100, [stats]);
 
-  // Predefined quick options for node count
+  // Quick node count selection options
   const quickNodeOptions = [10, 20, 30, 50, 75, 100];
   const availableQuickOptions = quickNodeOptions.filter(option => option <= maxAvailableDocuments);
 
-  // Compute document similarity network data
+  // Compute the network nodes and links based on entity similarity and filtering
   const networkData = useMemo((): NetworkData => {
     if (!stats?.documentStats) return { nodes: [], links: [] };
 
     console.time('Computing document similarity network');
     console.log(`Processing ${Math.min(maxNodes, maxAvailableDocuments)} out of ${maxAvailableDocuments} available documents`);
     
-    // Create document entities map for faster lookup
     const docEntitiesMap = new Map<string, Set<string>>();
-    
-    // Build entity sets for each document using topEntities
     stats.documentStats.forEach((doc: any) => {
       const entities = new Set<string>();
       if (doc.topEntities) {
@@ -119,7 +116,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       docEntitiesMap.set(doc.documentId, entities);
     });
 
-    // Create nodes with user-controlled limit
     const actualLimit = Math.min(maxNodes, maxAvailableDocuments);
     const allNodes: DocumentNode[] = stats.documentStats.slice(0, actualLimit).map((doc: any) => ({
       id: doc.documentId,
@@ -129,7 +125,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       sharedEntitiesCount: 0
     }));
 
-    // Create links based on shared entities
     const links: DocumentLink[] = [];
     
     for (let i = 0; i < allNodes.length; i++) {
@@ -140,11 +135,9 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         const entitiesA = docEntitiesMap.get(nodeA.id) || new Set();
         const entitiesB = docEntitiesMap.get(nodeB.id) || new Set();
         
-        // Calculate shared entities using Jaccard similarity
         const sharedEntities = Array.from(entitiesA).filter(entity => entitiesB.has(entity));
         
         if (sharedEntities.length > 0) {
-          // Jaccard similarity: |A ∩ B| / |A ∪ B|
           const union = new Set([...entitiesA, ...entitiesB]);
           const similarity = sharedEntities.length / union.size;
           
@@ -164,7 +157,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       }
     }
 
-    // Enhanced clustering based on connectivity
     const clusters = new Map<number, DocumentNode[]>();
     let clusterId = 0;
     
@@ -173,7 +165,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         node.cluster = clusterId;
         const cluster = [node];
         
-        // Find connected nodes using breadth-first search
         const connectedNodes = new Set([node.id]);
         const queue = [node.id];
         
@@ -208,13 +199,11 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       }
     });
 
-    // Filter nodes based on minimum cluster size
     const filteredNodes = allNodes.filter(node => {
       const cluster = clusters.get(node.cluster || 0);
       return cluster && cluster.length >= minClusterSize;
     });
 
-    // Filter links to only include those between filtered nodes
     const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
     const filteredLinks = links.filter(link => {
       const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
@@ -228,7 +217,7 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
     return { nodes: filteredNodes, links: filteredLinks };
   }, [stats, similarityThreshold, maxNodes, maxAvailableDocuments, minClusterSize]);
 
-  // Get unique clusters for navigation
+  // Group nodes by clusters with metadata for navigation and display
   const clusters = useMemo(() => {
     const clusterMap = new Map<number, DocumentNode[]>();
     networkData.nodes.forEach(node => {
@@ -248,14 +237,13 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
     })).sort((a, b) => b.size - a.size);
   }, [networkData]);
 
-  // D3 force simulation with enhanced zoom and pan
+  // D3 force simulation, zoom, pan, node/cluster highlighting and interaction
   useEffect(() => {
     if (!svgRef.current || networkData.nodes.length === 0) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    // Dynamic sizing based on fullscreen mode
     const containerElement = svgRef.current.parentElement;
     if (!containerElement) return;
 
@@ -269,20 +257,16 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       .style('background', '#fafafa')
       .style('border', '1px solid #e0e0e0');
 
-    // Create main group for zooming/panning
     const g = svg.append('g');
 
-    // Set up zoom behavior with proper event handling
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 10])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
       });
 
-    // Apply zoom behavior to svg
     svg.call(zoom);
 
-    // Store zoom reference for external controls
     const zoomBehavior = {
       zoomIn: () => {
         svg.transition().duration(300).call(zoom.scaleBy, 1.5);
@@ -297,7 +281,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         const clusterNodes = networkData.nodes.filter(n => n.cluster === clusterId);
         if (clusterNodes.length === 0) return;
 
-        // Calculate bounding box of cluster
         const xs = clusterNodes.map(n => n.x || 0);
         const ys = clusterNodes.map(n => n.y || 0);
         const minX = Math.min(...xs) - 100;
@@ -320,18 +303,14 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       }
     };
 
-    // Store in a way that can be accessed by event handlers
     (svg.node() as any).__zoomBehavior = zoomBehavior;
 
-    // Color scale for clusters
     const colorScale = d3.scaleOrdinal(d3.schemeSet3);
 
-    // Custom cluster force function
     const clusterForce = (alpha: number) => {
       const clusterCenters = new Map<number, [number, number]>();
       const numClusters = clusters.length;
       
-      // Calculate cluster centers in a more organized layout
       clusters.forEach((cluster, index) => {
         const angle = (index / numClusters) * 2 * Math.PI;
         const radius = Math.min(width, height) * 0.25;
@@ -341,7 +320,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         ]);
       });
 
-      // Apply cluster forces
       networkData.nodes.forEach(node => {
         if (node.cluster !== undefined) {
           const center = clusterCenters.get(node.cluster);
@@ -354,23 +332,20 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       });
     };
 
-    // Adjust force strength based on number of nodes
     const forceStrength = Math.max(-150, -300 * (50 / networkData.nodes.length));
     const linkStrength = Math.min(1.5, networkData.nodes.length / 20);
     const collisionRadius = Math.max(15, 30 - (networkData.nodes.length / 10));
 
-    // Create simulation
-    const simulation = d3.forceSimulation(networkData.nodes as any)
-      .force('link', d3.forceLink(networkData.links).id((d: any) => d.id).strength(d => d.similarity * linkStrength))
+    const simulation = d3.forceSimulation<DocumentNode, DocumentLink>(networkData.nodes)
+      .force('link', d3.forceLink<DocumentNode, DocumentLink>(networkData.links).id((d: any) => d.id).strength((d: DocumentLink) => d.similarity * linkStrength))
       .force('charge', d3.forceManyBody().strength(forceStrength))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide().radius(collisionRadius))
       .alpha(0.3)
       .alphaDecay(0.01);
-
     simulationRef.current = simulation;
 
-    // Apply layout-specific forces
+
     if (layoutType === 'cluster') {
       simulation.force('cluster', clusterForce);
     } else if (layoutType === 'circular') {
@@ -381,14 +356,12 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         node.fy = height / 2 + Math.sin(angle) * radius;
       });
     } else {
-      // Remove fixed positions for force layout
       networkData.nodes.forEach(node => {
         node.fx = undefined;
         node.fy = undefined;
       });
     }
 
-    // Create links
     const link = g.append('g')
       .selectAll('line')
       .data(networkData.links)
@@ -397,7 +370,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       .attr('stroke-opacity', 0.4)
       .attr('stroke-width', d => Math.sqrt(d.similarity * 15) + 1);
 
-    // Create nodes with enhanced styling
     const baseRadius = Math.max(8, 20 - (networkData.nodes.length / 8));
     const node = g.append('g')
       .selectAll('circle')
@@ -437,7 +409,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
           .attr('r', Math.sqrt(d.entityCount) * 0.6 + baseRadius + 5)
           .attr('stroke-width', 4);
         
-        // Highlight connected links
         link.style('stroke-opacity', (l: any) => 
           (l.source.id === d.id || l.target.id === d.id) ? 0.8 : 0.1
         );
@@ -452,7 +423,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         link.style('stroke-opacity', 0.4);
       });
 
-    // Add labels if enabled
     let labels: any;
     if (showLabels) {
       const fontSize = Math.max(9, 14 - (networkData.nodes.length / 15));
@@ -471,7 +441,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         .style('text-shadow', '1px 1px 2px rgba(255,255,255,0.8)');
     }
 
-    // Update positions on tick
     simulation.on('tick', () => {
       link
         .attr('x1', (d: any) => d.source.x)
@@ -490,14 +459,13 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       }
     });
 
-    // Update cluster highlighting when selectedCluster changes
     node
       .attr('stroke', d => selectedCluster === d.cluster ? '#000' : '#fff')
       .attr('stroke-width', d => selectedCluster === d.cluster ? 3 : 2)
       .attr('opacity', d => selectedCluster === null || selectedCluster === d.cluster ? 1 : 0.3);
 
     if (labels) {
-      labels.attr('opacity', d => selectedCluster === null || selectedCluster === d.cluster ? 0.9 : 0.3);
+      labels.attr('opacity', (d: DocumentNode) => selectedCluster === null || selectedCluster === d.cluster ? 0.9 : 0.3);
     }
 
     link.attr('opacity', l => {
@@ -509,13 +477,11 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
       return (sourceCluster === selectedCluster || targetCluster === selectedCluster) ? 0.6 : 0.1;
     });
 
-    // Cleanup
     return () => {
       simulation.stop();
     };
   }, [networkData, layoutType, showLabels, onDocumentClick, selectedCluster, isFullscreen]);
 
-  // Navigation functions that work with the stored zoom behavior
   const zoomIn = useCallback(() => {
     const svg = d3.select(svgRef.current);
     const zoomBehavior = (svg.node() as any)?.__zoomBehavior;
@@ -544,14 +510,12 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
     const svg = d3.select(svgRef.current);
     const zoomBehavior = (svg.node() as any)?.__zoomBehavior;
     if (zoomBehavior) {
-      // Wait a bit for the layout to settle
       setTimeout(() => {
         zoomBehavior.zoomToCluster(clusterId);
       }, 100);
     }
   }, []);
 
-  // Event handlers
   const handleThresholdChange = useCallback((event: Event, newValue: number | number[]) => {
     setSimilarityThreshold(newValue as number);
   }, []);
@@ -659,9 +623,7 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
             </Alert>
           </Collapse>
 
-          {/* Reorganized Controls - All on same level */}
           <Grid container spacing={2} sx={{ mb: 2 }}>
-            {/* Similarity Threshold */}
             <Grid item xs={12} md={4}>
               <Typography variant="caption" gutterBottom>
                 Similarity Threshold: {(similarityThreshold * 100).toFixed(0)}%
@@ -682,7 +644,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
               />
             </Grid>
 
-            {/* Number of Documents */}
             <Grid item xs={12} md={4}>
               <Typography variant="caption" gutterBottom>
                 Number of Documents: {maxNodes} / {maxAvailableDocuments} available
@@ -698,7 +659,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
               />
             </Grid>
 
-            {/* Minimum Cluster Size */}
             <Grid item xs={12} md={4}>
               <Typography variant="caption" gutterBottom>
                 Min Cluster Size: {minClusterSize} document{minClusterSize !== 2 ? 's' : ''}
@@ -727,7 +687,6 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
                 Additional Settings
               </Typography>
               
-              {/* Quick selection buttons */}
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" gutterBottom>
                   Quick Document Selection:
@@ -746,292 +705,280 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
                   ))}
                   {maxAvailableDocuments > Math.max(...availableQuickOptions) && (
                     <Chip
-                    label="All"
-                    size="small"
-                    clickable
-                    color={maxNodes === maxAvailableDocuments ? 'primary' : 'default'}
-                    variant={maxNodes === maxAvailableDocuments ? 'filled' : 'outlined'}
-                    onClick={() => handleQuickNodeSelection(maxAvailableDocuments)}
+                      label="All"
+                      size="small"
+                      clickable
+                      color={maxNodes === maxAvailableDocuments ? 'primary' : 'default'}
+                      variant={maxNodes === maxAvailableDocuments ? 'filled' : 'outlined'}
+                      onClick={() => handleQuickNodeSelection(maxAvailableDocuments)}
+                    />
+                  )}
+                </Box>
+              </Box>
+
+              <TextField
+                label="Custom Document Count"
+                size="small"
+                type="number"
+                value={customMaxNodes}
+                onChange={handleCustomMaxNodesChange}
+                inputProps={{ 
+                  min: 1, 
+                  max: maxAvailableDocuments,
+                  style: { width: '100px' }
+                }}
+                sx={{ width: 150, mb: 2 }}
+              />
+
+              {maxNodes > 50 && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  <Typography variant="body2">
+                    <strong>Performance Note:</strong> Networks with {maxNodes} documents may take longer to compute and render. 
+                    Consider using fewer documents for better responsiveness.
+                  </Typography>
+                </Alert>
+              )}
+
+              {minClusterSize > 1 && (
+                <Alert severity="info">
+                  <Typography variant="body2">
+                    <strong>Cluster Filter:</strong> Hiding isolated documents and clusters smaller than {minClusterSize} documents. 
+                    This removes {stats.documentStats.length - networkData.nodes.length} documents from the display.
+                  </Typography>
+                </Alert>
+              )}
+            </Box>
+          </Collapse>
+
+          <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Layout</InputLabel>
+              <Select
+                value={layoutType}
+                onChange={(e) => setLayoutType(e.target.value as any)}
+              >
+                <MenuItem value="force">Force</MenuItem>
+                <MenuItem value="cluster">Cluster</MenuItem>
+                <MenuItem value="circular">Circular</MenuItem>
+              </Select>
+            </FormControl>
+
+            <IconButton 
+              size="small" 
+              onClick={() => setShowLabels(!showLabels)}
+              color={showLabels ? 'primary' : 'default'}
+            >
+              {showLabels ? <Visibility /> : <VisibilityOff />}
+            </IconButton>
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Typography variant="caption">Navigation:</Typography>
+            <ButtonGroup size="small">
+              <Button onClick={zoomIn} startIcon={<ZoomIn />}>Zoom In</Button>
+              <Button onClick={zoomOut} startIcon={<ZoomOut />}>Zoom Out</Button>
+              <Button onClick={resetZoom} startIcon={<CenterFocusStrong />}>Reset</Button>
+            </ButtonGroup>
+            
+            <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+            
+            <Typography variant="caption">Clusters:</Typography>
+            <Chip
+              label="All"
+              size="small"
+              clickable
+              color={selectedCluster === null ? 'primary' : 'default'}
+              variant={selectedCluster === null ? 'filled' : 'outlined'}
+              onClick={() => setSelectedCluster(null)}
+            />
+            {clusters.slice(0, 8).map((cluster) => (
+              <Chip
+                key={cluster.id}
+                label={`C${cluster.id} (${cluster.size})`}
+                size="small"
+                clickable
+                color={selectedCluster === cluster.id ? 'primary' : 'default'}
+                variant={selectedCluster === cluster.id ? 'filled' : 'outlined'}
+                onClick={() => {
+                  setSelectedCluster(cluster.id);
+                  zoomToCluster(cluster.id);
+                }}
+              />
+            ))}
+            {clusters.length > 8 && (
+              <Typography variant="caption" color="text.secondary">
+                +{clusters.length - 8} more
+              </Typography>
+            )}
+          </Box>
+
+          <Box sx={{ 
+            flexGrow: 1,
+            border: 1, 
+            borderColor: 'divider', 
+            borderRadius: 1, 
+            overflow: 'hidden',
+            bgcolor: 'background.paper',
+            minHeight: isFullscreen ? 'calc(100vh - 400px)' : '500px',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <Box sx={{ 
+              p: 1, 
+              bgcolor: 'grey.100', 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <Typography variant="caption" color="text.secondary">
+                Drag to pan • Scroll to zoom • Drag nodes to reposition • Click to select
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Chip 
+                  size="small" 
+                  label={`${clusters.length} clusters`} 
+                  color="info" 
+                  variant="outlined"
+                />
+                <Chip 
+                  size="small" 
+                  label={selectedCluster !== null ? `Cluster ${selectedCluster} focused` : 'All visible'} 
+                  color={selectedCluster !== null ? 'primary' : 'default'}
+                />
+                {minClusterSize > 1 && (
+                  <Chip 
+                    size="small" 
+                    label={`Min size: ${minClusterSize}`} 
+                    color="secondary" 
+                    variant="outlined"
                   />
                 )}
               </Box>
             </Box>
-
-            {/* Custom input */}
-            <TextField
-              label="Custom Document Count"
-              size="small"
-              type="number"
-              value={customMaxNodes}
-              onChange={handleCustomMaxNodesChange}
-              inputProps={{ 
-                min: 1, 
-                max: maxAvailableDocuments,
-                style: { width: '100px' }
-              }}
-              sx={{ width: 150, mb: 2 }}
-            />
-
-            {/* Performance Warning */}
-            {maxNodes > 50 && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  <strong>Performance Note:</strong> Networks with {maxNodes} documents may take longer to compute and render. 
-                  Consider using fewer documents for better responsiveness.
-                </Typography>
-              </Alert>
-            )}
-
-            {/* Cluster Size Info */}
-            {minClusterSize > 1 && (
-              <Alert severity="info">
-                <Typography variant="body2">
-                  <strong>Cluster Filter:</strong> Hiding isolated documents and clusters smaller than {minClusterSize} documents. 
-                  This removes {stats.documentStats.length - networkData.nodes.length} documents from the display.
-                </Typography>
-              </Alert>
-            )}
+            
+            <Box sx={{ flexGrow: 1, position: 'relative' }}>
+              <svg 
+                ref={svgRef} 
+                style={{ 
+                  width: '100%', 
+                  height: '100%',
+                  display: 'block'
+                }} 
+              />
+            </Box>
           </Box>
-        </Collapse>
 
-        {/* Secondary Controls */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Layout</InputLabel>
-            <Select
-              value={layoutType}
-              onChange={(e) => setLayoutType(e.target.value as any)}
-            >
-              <MenuItem value="force">Force</MenuItem>
-              <MenuItem value="cluster">Cluster</MenuItem>
-              <MenuItem value="circular">Circular</MenuItem>
-            </Select>
-          </FormControl>
-
-          <IconButton 
-            size="small" 
-            onClick={() => setShowLabels(!showLabels)}
-            color={showLabels ? 'primary' : 'default'}
-          >
-            {showLabels ? <Visibility /> : <VisibilityOff />}
-          </IconButton>
-        </Box>
-
-        {/* Navigation Controls */}
-        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Typography variant="caption">Navigation:</Typography>
-          <ButtonGroup size="small">
-            <Button onClick={zoomIn} startIcon={<ZoomIn />}>Zoom In</Button>
-            <Button onClick={zoomOut} startIcon={<ZoomOut />}>Zoom Out</Button>
-            <Button onClick={resetZoom} startIcon={<CenterFocusStrong />}>Reset</Button>
-          </ButtonGroup>
-          
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-          
-          {/* Cluster Navigation */}
-          <Typography variant="caption">Clusters:</Typography>
-          <Chip
-            label="All"
-            size="small"
-            clickable
-            color={selectedCluster === null ? 'primary' : 'default'}
-            variant={selectedCluster === null ? 'filled' : 'outlined'}
-            onClick={() => setSelectedCluster(null)}
-          />
-          {clusters.slice(0, 8).map((cluster) => (
-            <Chip
-              key={cluster.id}
-              label={`C${cluster.id} (${cluster.size})`}
-              size="small"
-              clickable
-              color={selectedCluster === cluster.id ? 'primary' : 'default'}
-              variant={selectedCluster === cluster.id ? 'filled' : 'outlined'}
-              onClick={() => {
-                setSelectedCluster(cluster.id);
-                zoomToCluster(cluster.id);
-              }}
-            />
-          ))}
-          {clusters.length > 8 && (
-            <Typography variant="caption" color="text.secondary">
-              +{clusters.length - 8} more
-            </Typography>
-          )}
-        </Box>
-
-        {/* Network Visualization - Full height container */}
-        <Box sx={{ 
-          flexGrow: 1,
-          border: 1, 
-          borderColor: 'divider', 
-          borderRadius: 1, 
-          overflow: 'hidden',
-          bgcolor: 'background.paper',
-          minHeight: isFullscreen ? 'calc(100vh - 400px)' : '500px',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          {/* Toolbar for the visualization */}
-          <Box sx={{ 
-            p: 1, 
-            bgcolor: 'grey.100', 
-            borderBottom: 1, 
-            borderColor: 'divider',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <Typography variant="caption" color="text.secondary">
-              Drag to pan • Scroll to zoom • Drag nodes to reposition • Click to select
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Chip 
-                size="small" 
-                label={`${clusters.length} clusters`} 
-                color="info" 
-                variant="outlined"
-              />
-              <Chip 
-                size="small" 
-                label={selectedCluster !== null ? `Cluster ${selectedCluster} focused` : 'All visible'} 
-                color={selectedCluster !== null ? 'primary' : 'default'}
-              />
-              {minClusterSize > 1 && (
-                <Chip 
+          {selectedNode && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Selected Document: {selectedNode.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Entities: {selectedNode.entityCount} • 
+                Shared connections: {selectedNode.sharedEntitiesCount} • 
+                Cluster: {selectedNode.cluster} •
+                Unique entities in doc: {selectedNode.uniqueEntities.size}
+              </Typography>
+              <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                <Button 
                   size="small" 
-                  label={`Min size: ${minClusterSize}`} 
-                  color="secondary" 
                   variant="outlined"
-                />
+                  onClick={() => zoomToCluster(selectedNode.cluster || 0)}
+                >
+                  Focus Cluster
+                </Button>
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  onClick={() => onDocumentClick(selectedNode.id)}
+                >
+                  View Document
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {selectedCluster !== null && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Cluster {selectedCluster} Details
+              </Typography>
+              {(() => {
+                const cluster = clusters.find(c => c.id === selectedCluster);
+                if (!cluster) return null;
+                
+                return (
+                  <>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      {cluster.size} documents • Representative: {cluster.representative.title}
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                      {cluster.nodes.slice(0, 6).map((node, index) => (
+                        <Chip
+                          key={index}
+                          label={node.title}
+                          size="small"
+                          clickable
+                          onClick={() => {
+                            setSelectedNode(node);
+                            onDocumentClick(node.id);
+                          }}
+                        />
+                      ))}
+                      {cluster.nodes.length > 6 && (
+                        <Typography variant="caption" color="text.secondary">
+                          +{cluster.nodes.length - 6} more documents
+                        </Typography>
+                      )}
+                    </Box>
+                  </>
+                );
+              })()}
+            </Box>
+          )}
+
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Network Statistics
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Documents:</strong> {networkData.nodes.length} / {maxAvailableDocuments} available
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Connections:</strong> {networkData.links.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Clusters:</strong> {clusters.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Avg Similarity:</strong> {networkData.links.length > 0 
+                  ? (networkData.links.reduce((sum, link) => sum + link.similarity, 0) / networkData.links.length * 100).toFixed(1) + '%'
+                  : 'N/A'
+                }
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Density:</strong> {networkData.nodes.length > 1 
+                  ? ((networkData.links.length * 2) / (networkData.nodes.length * (networkData.nodes.length - 1)) * 100).toFixed(1) + '%'
+                  : 'N/A'
+                }
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Largest Cluster:</strong> {clusters.length > 0 ? clusters[0].size : 0} documents
+              </Typography>
+              {minClusterSize > 1 && (
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Filtered Out:</strong> {stats.documentStats.length - networkData.nodes.length} documents (clusters &lt; {minClusterSize})
+                </Typography>
               )}
             </Box>
           </Box>
-          
-          {/* SVG Container */}
-          <Box sx={{ flexGrow: 1, position: 'relative' }}>
-            <svg 
-              ref={svgRef} 
-              style={{ 
-                width: '100%', 
-                height: '100%',
-                display: 'block'
-              }} 
-            />
-          </Box>
-        </Box>
-
-        {/* Selected Node Info */}
-        {selectedNode && (
-          <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Selected Document: {selectedNode.title}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Entities: {selectedNode.entityCount} • 
-              Shared connections: {selectedNode.sharedEntitiesCount} • 
-              Cluster: {selectedNode.cluster} •
-              Unique entities in doc: {selectedNode.uniqueEntities.size}
-            </Typography>
-            <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-              <Button 
-                size="small" 
-                variant="outlined"
-                onClick={() => zoomToCluster(selectedNode.cluster || 0)}
-              >
-                Focus Cluster
-              </Button>
-              <Button 
-                size="small" 
-                variant="outlined"
-                onClick={() => onDocumentClick(selectedNode.id)}
-              >
-                View Document
-              </Button>
-            </Box>
-          </Box>
-        )}
-
-        {/* Cluster Summary */}
-        {selectedCluster !== null && (
-          <Box sx={{ mt: 2, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Cluster {selectedCluster} Details
-            </Typography>
-            {(() => {
-              const cluster = clusters.find(c => c.id === selectedCluster);
-              if (!cluster) return null;
-              
-              return (
-                <>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    {cluster.size} documents • Representative: {cluster.representative.title}
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-                    {cluster.nodes.slice(0, 6).map((node, index) => (
-                      <Chip
-                        key={index}
-                        label={node.title}
-                        size="small"
-                        clickable
-                        onClick={() => {
-                          setSelectedNode(node);
-                          onDocumentClick(node.id);
-                        }}
-                      />
-                    ))}
-                    {cluster.nodes.length > 6 && (
-                      <Typography variant="caption" color="text.secondary">
-                        +{cluster.nodes.length - 6} more documents
-                      </Typography>
-                    )}
-                  </Box>
-                </>
-              );
-            })()}
-          </Box>
-        )}
-
-        {/* Network Statistics */}
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Network Statistics
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Documents:</strong> {networkData.nodes.length} / {maxAvailableDocuments} available
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Connections:</strong> {networkData.links.length}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Clusters:</strong> {clusters.length}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Avg Similarity:</strong> {networkData.links.length > 0 
-                ? (networkData.links.reduce((sum, link) => sum + link.similarity, 0) / networkData.links.length * 100).toFixed(1) + '%'
-                : 'N/A'
-              }
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Density:</strong> {networkData.nodes.length > 1 
-                ? ((networkData.links.length * 2) / (networkData.nodes.length * (networkData.nodes.length - 1)) * 100).toFixed(1) + '%'
-                : 'N/A'
-              }
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Largest Cluster:</strong> {clusters.length > 0 ? clusters[0].size : 0} documents
-            </Typography>
-            {minClusterSize > 1 && (
-              <Typography variant="body2" color="text.secondary">
-                <strong>Filtered Out:</strong> {stats.documentStats.length - networkData.nodes.length} documents (clusters &lt; {minClusterSize})
-              </Typography>
-            )}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  </Box>
-);
+        </CardContent>
+      </Card>
+    </Box>
+  );
 };
 
 export default React.memo(DocumentSimilarityNetwork);

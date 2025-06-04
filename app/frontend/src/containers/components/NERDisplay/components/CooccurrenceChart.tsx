@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/CooccurrenceChart.tsx
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
@@ -7,6 +6,16 @@ interface CooccurrenceChartProps {
   data: any[];
 }
 
+/**
+ * CooccurrenceChart component renders a vertical bar chart
+ * showing the co-occurrence relationships between entities.
+ * 
+ * Each bar represents the proximity score of an entity pair,
+ * with tooltip details showing counts, documents, statistical strength,
+ * and other relevant metrics for the relationship.
+ * 
+ * @param data - Array of co-occurrence data objects to visualize.
+ */
 const CooccurrenceChart: React.FC<CooccurrenceChartProps> = ({ data }) => {
   return (
     <ResponsiveContainer width="100%" height={450}>

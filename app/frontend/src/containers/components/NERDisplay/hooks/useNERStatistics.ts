@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/hooks/useNERStatistics.ts
 import { useMemo, useState, useEffect } from 'react';
 import { LightEntity, EntityGroup, NERAdvancedStats } from '../types/ner-types';
 import { EntityNormalizer } from '../utils/EntityNormalizer';
@@ -16,11 +15,18 @@ interface BasicData {
   totalEntitiesBeforeLimit: number;
 }
 
+/**
+ * Hook to compute basic and advanced NER statistics from raw nerData.
+ * Handles entity filtering, normalization, grouping, and advanced async processing.
+ * Returns current stats along with processing state and status.
+ */
 export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: number) => {
   const [stats, setStats] = useState<NERAdvancedStats | null>(null);
   const { processAdvancedStats, processingState, isProcessing, cancelProcessing } = useNERProcessor();
 
-  // Fast basic preprocessing - always runs immediately
+  /**
+   * Basic preprocessing: filter, normalize, group entities and compute preliminary stats.
+   */
   const basicData = useMemo((): BasicData | null => {
     if (!nerData || Object.keys(nerData).length === 0) return null;
 
@@ -28,8 +34,9 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
     
     const entities: LightEntity[] = [];
     let totalProcessed = 0;
+    type NerLabel = keyof typeof config.NERLABELS2FULL;
 
-    // Quick first pass - extract and filter
+    // Extract entities applying filtering and normalization
     for (const [docId, data] of Object.entries(nerData)) {
       if (!Array.isArray(data.t)) continue;
       
@@ -38,7 +45,6 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
         const label = data.l[idx];
         const confidence = data.c[idx];
         
-        // Apply filtering
         if (EntityNormalizer.shouldFilter(originalText, label, confidence)) {
           continue;
         }
@@ -46,8 +52,12 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
         const normalizedText = EntityNormalizer.normalize(originalText);
         if (!normalizedText) continue;
 
-        const labelFull = config.NERLABELS2FULL[label] || label;
-        const color = config.NER_LABELS_COLORS[label] || '#grey';
+        const labelFull = (label in config.NERLABELS2FULL) 
+          ? config.NERLABELS2FULL[label as NerLabel]
+          : label;
+        const color = (label in config.NER_LABELS_COLORS)
+          ? config.NER_LABELS_COLORS[label as NerLabel]
+          : '#grey';
 
         entities.push({
           text: originalText,
@@ -95,7 +105,7 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
       totalConfidence += entity.confidence;
     });
 
-    // Calculate average confidence for each group
+    // Compute average confidence per group
     entityGroups.forEach(group => {
       group.avgConfidence = group.entities.reduce((sum, e) => sum + e.confidence, 0) / group.entities.length;
     });
@@ -114,7 +124,10 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
     };
   }, [nerData, entityLimit]);
 
-  // Start advanced processing when basic data is ready
+  /**
+   * Trigger advanced processing asynchronously once basic data is ready.
+   * Falls back to basic stats if advanced processing fails.
+   */
   useEffect(() => {
     if (!basicData || stats?.processingComplete) return;
 
@@ -131,18 +144,18 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
       } catch (error) {
         if (error instanceof Error && error.message !== 'Aborted') {
           console.error('Advanced processing failed:', error);
-          // Set basic stats even if advanced processing fails
           setStats(createBasicStats(basicData));
         }
       }
     };
 
-    // Small delay to let UI render basic data first
     const timeoutId = setTimeout(runAdvancedProcessing, 100);
     return () => clearTimeout(timeoutId);
   }, [basicData, processAdvancedStats, stats?.processingComplete]);
 
-  // Cleanup on unmount
+  /**
+   * Cleanup processing on unmount.
+   */
   useEffect(() => {
     return () => {
       cancelProcessing();
@@ -150,7 +163,6 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
     };
   }, [cancelProcessing]);
 
-  // Return basic stats immediately, then advanced stats when ready
   return {
     stats: stats || (basicData ? createBasicStats(basicData) : null),
     processingState,
@@ -158,7 +170,10 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
   };
 };
 
-// Helper function to create basic stats structure
+/**
+ * Generates a basic NER statistics object from preprocessed basic data.
+ * Used as fallback or initial stats before advanced processing completes.
+ */
 function createBasicStats(basicData: BasicData): NERAdvancedStats {
   return {
     totalEntities: basicData.totalEntities,
@@ -166,8 +181,7 @@ function createBasicStats(basicData: BasicData): NERAdvancedStats {
     averageEntitiesPerDocument: basicData.totalEntities / basicData.totalDocuments,
     entityDensity: basicData.totalEntities / basicData.totalDocuments,
     uniqueEntitiesRatio: basicData.uniqueEntities / basicData.totalEntities,
-    
-    // Will be populated by advanced processing
+
     topEntities: [],
     topEntitiesByType: {},
     entityCooccurrences: [],
@@ -185,8 +199,7 @@ function createBasicStats(basicData: BasicData): NERAdvancedStats {
     commonPatterns: [],
     communityGroups: [],
     clusterAnalysis: [],
-    
-    // Processing metadata
+
     processingComplete: false,
     hasAdvancedFeatures: basicData.totalEntities <= 10000,
     isLimited: basicData.isLimited,

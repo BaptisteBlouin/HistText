@@ -11,6 +11,17 @@ import {
 import { Warning, Refresh } from '@mui/icons-material';
 import { GradientPaper } from '../../../components/ui';
 
+/**
+ * Props for the LoadingOverlayComponent.
+ *
+ * @property loading - Whether the overlay is active for loading.
+ * @property progress - Loading progress as a percentage (0–100).
+ * @property title - Optional title to display.
+ * @property description - Optional custom description.
+ * @property error - Optional error message (displays error UI).
+ * @property onRetry - Optional handler for retry action.
+ * @property showRetry - Whether to show the retry button when an error is present.
+ */
 interface LoadingOverlayComponentProps {
   loading: boolean;
   progress: number;
@@ -21,6 +32,10 @@ interface LoadingOverlayComponentProps {
   showRetry?: boolean;
 }
 
+/**
+ * Displays a full-screen overlay with progress indicator, error state, and retry support.
+ * Used for blocking UI interactions during loading or when an error occurs.
+ */
 const LoadingOverlayComponent: React.FC<LoadingOverlayComponentProps> = ({ 
   loading, 
   progress,
@@ -32,12 +47,14 @@ const LoadingOverlayComponent: React.FC<LoadingOverlayComponentProps> = ({
 }) => {
   const theme = useTheme();
 
+  // Returns textual representation of current progress or error state
   const getProgressText = () => {
     if (error) return 'Error occurred';
     if (progress > 0) return `${progress.toFixed(0)}% complete`;
     return 'Initializing...';
   };
 
+  // Returns the main description or error
   const getDescription = () => {
     if (error) return error;
     if (description) return description;

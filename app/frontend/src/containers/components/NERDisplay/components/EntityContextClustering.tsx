@@ -21,7 +21,7 @@ import {
   IconButton,
   Collapse
 } from '@mui/material';
-import { Psychology, Group, ExpandMore, Info, Analytics, Hub } from '@mui/icons-material';
+import { Psychology, Group, ExpandMore, Info, Settings } from '@mui/icons-material';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 
 interface EntityCluster {
@@ -44,6 +44,18 @@ interface EntityContextClusteringProps {
   onDocumentClick: (documentId: string) => void;
 }
 
+/**
+ * EntityContextClustering component performs enhanced clustering of entities based on
+ * their contextual relationships, cooccurrences, and document overlaps.
+ * 
+ * Clustering methods supported:
+ * - cooccurrence: uses strong cooccurrence relationships only
+ * - document: groups entities appearing in the same documents
+ * - hybrid: combines cooccurrence and document-based relationships
+ * 
+ * Displays scatter plot for cluster analysis, pie chart for cluster type distribution,
+ * and detailed expandable lists for cluster contents and metrics.
+ */
 const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
   stats,
   onDocumentClick
@@ -52,13 +64,17 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
   const [clusteringMethod, setClusteringMethod] = useState<'cooccurrence' | 'document' | 'hybrid'>('hybrid');
   const [showExplanation, setShowExplanation] = useState(false);
 
-  // Compute enhanced entity clusters based on context
+  /**
+   * Computes entity clusters using enhanced algorithm combining cooccurrence strengths,
+   * document co-appearances, and graph traversal to identify connected components.
+   * Returns sorted clusters by cohesion score.
+   */
   const entityClusters = useMemo((): EntityCluster[] => {
     if (!stats?.strongestPairs || !stats?.topEntitiesByType) return [];
 
     console.time('Computing entity context clusters');
     
-    // Build entity-to-entity relationships map
+    // Map entities to connected entities and their cooccurrence strengths
     const entityConnections = new Map<string, Set<string>>();
     const entityStrengths = new Map<string, Map<string, number>>();
     
@@ -82,7 +98,7 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
       entityStrengths.get(entity2)!.set(entity1, pair.strength || 1);
     });
 
-    // Build document-based entity relationships
+    // Map documents to their contained entities
     const documentEntityMap = new Map<string, Set<string>>();
     if (stats.documentStats) {
       stats.documentStats.forEach((doc: any) => {
@@ -96,14 +112,12 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
       });
     }
 
-    // Get all unique entities
+    // Aggregate all unique entities from connections and top entities list
     const allEntities = new Set<string>();
     entityConnections.forEach((connections, entity) => {
       allEntities.add(entity);
       connections.forEach(connected => allEntities.add(connected));
     });
-
-    // Add entities from document stats that might not be in cooccurrences
     if (stats.topEntities) {
       stats.topEntities.forEach((entity: any) => {
         allEntities.add(entity.text);
@@ -115,7 +129,7 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
     const clusteredEntities = new Set<string>();
     let clusterId = 0;
 
-    // Enhanced clustering algorithm: connected components with multiple criteria
+    // Perform graph traversal and clustering with method-specific thresholds and expansions
     entityArray.forEach(startEntity => {
       if (clusteredEntities.has(startEntity)) return;
 
@@ -131,14 +145,13 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
           if (!clusteredEntities.has(connectedEntity)) {
             const strength = entityStrengths.get(currentEntity)?.get(connectedEntity) || 0;
             
-            // Use different thresholds based on clustering method
             let threshold = 1;
             if (clusteringMethod === 'cooccurrence') {
-              threshold = 2; // Higher threshold for cooccurrence-only
+              threshold = 2;
             } else if (clusteringMethod === 'document') {
-              threshold = 0.5; // Lower threshold for document-based
+              threshold = 0.5;
             } else {
-              threshold = 1.5; // Medium threshold for hybrid
+              threshold = 1.5;
             }
             
             if (strength >= threshold) {
@@ -149,25 +162,22 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
           }
         });
 
-        // For document-based clustering, also connect entities from same documents
         if (clusteringMethod === 'document' || clusteringMethod === 'hybrid') {
-          documentEntityMap.forEach((docEntities, docId) => {
+          documentEntityMap.forEach((docEntities) => {
             if (docEntities.has(currentEntity)) {
               docEntities.forEach(docEntity => {
                 if (!clusteredEntities.has(docEntity) && docEntity !== currentEntity) {
-                  // Additional filter: only add if entities appear together frequently
                   let shouldAdd = false;
                   if (clusteringMethod === 'document') {
                     shouldAdd = true;
                   } else {
-                    // Hybrid: check if they appear in multiple documents together
                     let coDocumentCount = 0;
                     documentEntityMap.forEach((otherDocEntities) => {
                       if (otherDocEntities.has(currentEntity) && otherDocEntities.has(docEntity)) {
                         coDocumentCount++;
                       }
                     });
-                    shouldAdd = coDocumentCount >= 2; // Must appear together in at least 2 documents
+                    shouldAdd = coDocumentCount >= 2;
                   }
                   
                   if (shouldAdd) {
@@ -182,20 +192,19 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
         }
       }
 
-      if (cluster.length > 1) { // Only create clusters with multiple entities
-        // Find common documents for this cluster
+      if (cluster.length > 1) {
+        // Identify documents containing cluster entities
         const commonDocuments: string[] = [];
         documentEntityMap.forEach((docEntities, docId) => {
-          const hasClusterEntities = cluster.some(entity => docEntities.has(entity));
-          if (hasClusterEntities) {
+          if (cluster.some(entity => docEntities.has(entity))) {
             commonDocuments.push(docId);
           }
         });
 
-        // Calculate enhanced metrics
+        // Compute cluster metrics
         let totalStrength = 0;
-        let connectionCount = 0;
         let internalConnections = 0;
+        let connectionCount = 0;
         
         for (let i = 0; i < cluster.length; i++) {
           for (let j = i + 1; j < cluster.length; j++) {
@@ -209,12 +218,9 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
         }
 
         const avgCooccurrenceStrength = connectionCount > 0 ? totalStrength / connectionCount : 0;
-        
-        // Calculate cohesion score (how tightly connected the cluster is)
         const maxPossibleConnections = (cluster.length * (cluster.length - 1)) / 2;
         const cohesionScore = maxPossibleConnections > 0 ? internalConnections / maxPossibleConnections : 0;
 
-        // Calculate external connections (connections to entities outside this cluster)
         let externalConnections = 0;
         cluster.forEach(entity => {
           const connections = entityConnections.get(entity) || new Set();
@@ -225,11 +231,10 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
           });
         });
 
-        // Isolation score: internal connections / (internal + external connections)
         const totalConnections = internalConnections + externalConnections;
         const isolationScore = totalConnections > 0 ? internalConnections / totalConnections : 0;
 
-        // Diversity index: How many different entity types are in this cluster
+        // Diversity: ratio of entity types in cluster to total types
         const entityTypes = new Set<string>();
         cluster.forEach(entity => {
           Object.entries(stats.topEntitiesByType || {}).forEach(([type, entities]: [string, any]) => {
@@ -241,22 +246,20 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
         const maxPossibleTypes = Object.keys(stats.topEntitiesByType || {}).length;
         const diversityIndex = maxPossibleTypes > 0 ? entityTypes.size / maxPossibleTypes : 0;
 
-        // Find representative entity (most connected within cluster)
+        // Representative entity: most connected within cluster
         let representative = cluster[0];
         let maxConnections = 0;
-        
         cluster.forEach(entity => {
           const connectionsInCluster = cluster.filter(other => 
             other !== entity && entityConnections.get(entity)?.has(other)
           ).length;
-          
           if (connectionsInCluster > maxConnections) {
             maxConnections = connectionsInCluster;
             representative = entity;
           }
         });
 
-        // Determine cluster type
+        // Determine cluster type heuristically
         let clusterType: 'cooccurrence' | 'document' | 'semantic' = 'semantic';
         if (avgCooccurrenceStrength > 3) {
           clusterType = 'cooccurrence';
@@ -287,9 +290,9 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
     return clusters.sort((a, b) => b.cohesionScore - a.cohesionScore);
   }, [stats, clusteringMethod]);
 
-  // Prepare scatter plot data
+  // Scatter plot data for cluster analysis visualization
   const scatterData = useMemo(() => {
-    return entityClusters.map((cluster, index) => ({
+    return entityClusters.map(cluster => ({
       id: cluster.id,
       size: cluster.size,
       cohesion: cluster.cohesionScore * 100,
@@ -302,7 +305,7 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
     }));
   }, [entityClusters]);
 
-  // Prepare pie chart data for cluster types
+  // Pie chart data for cluster type distribution
   const clusterTypeData = useMemo(() => {
     const typeCounts = entityClusters.reduce((acc, cluster) => {
       acc[cluster.clusterType] = (acc[cluster.clusterType] || 0) + 1;
@@ -705,6 +708,6 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
       </CardContent>
     </Card>
   );
- };
- 
- export default React.memo(EntityContextClustering);
+};
+
+export default React.memo(EntityContextClustering);

@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/ProcessingStatus.tsx
 import React from 'react';
 import { Alert, Box, Typography, LinearProgress, Button } from '@mui/material';
 import { Warning, Cancel } from '@mui/icons-material';
@@ -10,6 +9,10 @@ interface ProcessingStatusProps {
   showCancelButton?: boolean;
 }
 
+/**
+ * Displays the current processing status with a progress bar,
+ * alerts if processing is stuck, and optionally provides a cancel button.
+ */
 const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
   isProcessing,
   processingState,
@@ -18,8 +21,9 @@ const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
 }) => {
   if (!isProcessing) return null;
 
+  // Detect if processing is stuck: no progress change for 30 seconds
   const isStuck = processingState.progress === processingState.lastProgress && 
-                 Date.now() - processingState.lastUpdate > 30000; // 30 seconds
+                 Date.now() - processingState.lastUpdate > 30000;
 
   return (
     <Alert 

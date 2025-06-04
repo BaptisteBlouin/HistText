@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/PatternSummary.tsx
 import React from 'react';
 import { Card, CardContent, Typography, Grid, Alert, Box } from '@mui/material';
 import { Assessment, Hub, CleaningServices, DataUsage } from '@mui/icons-material';
@@ -7,6 +6,11 @@ interface PatternSummaryProps {
   stats: any;
 }
 
+/**
+ * Displays a summary overview of different quality pattern counts,
+ * including bigrams, trigrams, and quadrigrams, with visual indicators
+ * and a quality assurance note.
+ */
 const PatternSummary: React.FC<PatternSummaryProps> = ({ stats }) => {
   return (
     <Card>

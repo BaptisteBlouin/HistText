@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/MetadataForm/components/FormField.tsx
 import React from 'react';
 import {
   Paper,
@@ -28,6 +27,24 @@ import {
 import ContextHelp from '../../../../components/ui/ContextHelp';
 import { useSmartValidation } from '../../../../hooks/useSmartValidation';
 
+/**
+ * Props for the FormField component.
+ * 
+ * @property field - Metadata for the field (name, possible values, etc.).
+ * @property formData - Current form values for all fields.
+ * @property collectionInfo - Information about the collection, including the main text field.
+ * @property hasEmbeddings - Whether embeddings/AI search is enabled.
+ * @property neighbors - AI word suggestions for fields.
+ * @property loadingNeighbors - Loading state for fetching neighbors.
+ * @property metadata - All metadata fields.
+ * @property onFormChange - Handler for manual text input changes.
+ * @property onSelectChange - Handler for dropdown/select changes.
+ * @property onToggleNot - Handler to toggle NOT logic for an entry.
+ * @property onAddBooleanField - Handler to add an AND/OR boolean field.
+ * @property onRemoveBooleanField - Handler to remove a boolean field.
+ * @property onFetchNeighbors - Handler to fetch AI suggestions.
+ * @property onRemoveNeighborDropdown - Handler to hide AI suggestions.
+ */
 interface FormFieldProps {
   field: any;
   formData: any;
@@ -45,6 +62,10 @@ interface FormFieldProps {
   onRemoveNeighborDropdown: (fieldName: string) => void;
 }
 
+/**
+ * Dynamic form field supporting AND/OR boolean logic, AI suggestions, and rich validation.
+ * Renders as select/autocomplete or text field depending on field metadata.
+ */
 const FormField: React.FC<FormFieldProps> = ({
   field,
   formData,
@@ -94,34 +115,33 @@ const FormField: React.FC<FormFieldProps> = ({
     let borderWidth = 1;
     let backgroundColor = 'transparent';
 
-    // First, apply boolean operator styling (base layer)
+    // Boolean operator styling (base layer)
     if (entry.not) {
       borderColor = 'error.main';
       borderWidth = 2;
-      backgroundColor = 'rgba(244, 67, 54, 0.05)'; // Light red background for NOT
+      backgroundColor = 'rgba(244, 67, 54, 0.05)';
     } else if (entry.operator === 'AND') {
       borderColor = 'success.main';
       borderWidth = 2;
-      backgroundColor = 'rgba(76, 175, 80, 0.05)'; // Light green background for AND
+      backgroundColor = 'rgba(76, 175, 80, 0.05)';
     } else if (entry.operator === 'OR') {
       borderColor = 'info.main';
       borderWidth = 2;
-      backgroundColor = 'rgba(33, 150, 243, 0.05)'; // Light blue background for OR
+      backgroundColor = 'rgba(33, 150, 243, 0.05)';
     }
 
-    // Then, apply validation styling (only if it's an error - warnings don't override operator styling)
+    // Validation styling
     if (validation.status === 'error') {
       borderColor = 'error.main';
       borderWidth = 2;
-      backgroundColor = 'rgba(244, 67, 54, 0.08)'; // Slightly stronger red for errors
+      backgroundColor = 'rgba(244, 67, 54, 0.08)';
     } else if (validation.status === 'valid' && validation.hasValue && !entry.operator && !entry.not) {
-      // Only show green validation border if no operator is set
       borderColor = 'success.light';
       borderWidth = 1;
     }
 
-    // Primary text field gets special treatment
-    if (isTextField && !validation.status === 'error') {
+    // Special treatment for primary text field
+    if (isTextField && validation.status !== 'error') {
       borderWidth = Math.max(borderWidth, 1);
     }
 

@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/TopEntitiesList.tsx
 import React from 'react';
 import { Grid, Card, CardContent, Typography, List, ListItem, ListItemText, Box, Chip, Tooltip } from '@mui/material';
 
@@ -6,6 +5,9 @@ interface TopEntitiesListProps {
   topEntitiesByType: Record<string, Array<{ text: string; count: number; documents: number }>>;
 }
 
+/**
+ * Displays top entities grouped by their types with counts and document frequencies.
+ */
 const TopEntitiesList: React.FC<TopEntitiesListProps> = ({ topEntitiesByType }) => {
   return (
     <Grid container spacing={2}>

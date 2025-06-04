@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/NERInsightsHeader.tsx
 import React from 'react';
 import { Box, Typography, Badge, CircularProgress } from '@mui/material';
 import { Insights, CleaningServices } from '@mui/icons-material';
@@ -10,6 +9,11 @@ interface NERInsightsHeaderProps {
   stats: any;
 }
 
+/**
+ * Header component for the NER Insights section.
+ * Displays title, processing status, data source info,
+ * and feature availability indicators.
+ */
 const NERInsightsHeader: React.FC<NERInsightsHeaderProps> = ({
   selectedAlias,
   isProcessing,
@@ -30,7 +34,6 @@ const NERInsightsHeader: React.FC<NERInsightsHeaderProps> = ({
         Progressive analysis with normalized and filtered entities from {selectedAlias}
       </Typography>
       
-      {/* Feature availability indicators */}
       <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
         <FeatureAvailabilityIndicator 
           feature="Basic Stats" 

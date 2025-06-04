@@ -1,7 +1,6 @@
-// app/frontend/src/containers/components/NERDisplay/components/tabs/AdvancedAnalyticsTab.tsx
 import React from 'react';
 import { Grid, Box, Typography, Alert } from '@mui/material';
-import { Science, Insights } from '@mui/icons-material';
+import { Science } from '@mui/icons-material';
 import DocumentSimilarityNetwork from '../DocumentSimilarityNetwork';
 import EntityTimeline from '../EntityTimeline';
 import EntityContextClustering from '../EntityContextClustering';
@@ -14,22 +13,32 @@ interface AdvancedAnalyticsTabProps {
   onDocumentClick: (documentId: string) => void;
 }
 
+/**
+ * AdvancedAnalyticsTab displays deep analytics visualizations and insights
+ * related to entity relationships and document connections within the dataset.
+ * 
+ * It shows:
+ * - Document similarity network
+ * - Entity influence scores
+ * - Entity timeline
+ * - Cross-document entity tracker
+ * - Entity context clustering
+ * 
+ * @param stats - Analytics statistics data.
+ * @param entities - List of entities involved in analytics.
+ * @param onDocumentClick - Callback invoked when a document is clicked in the UI.
+ */
 const AdvancedAnalyticsTab: React.FC<AdvancedAnalyticsTabProps> = ({
   stats,
   entities,
   onDocumentClick
 }) => {
+  // Debug logs to trace rendering and data presence
   console.log('AdvancedAnalyticsTab rendered with:', { 
     hasStats: !!stats, 
     entitiesCount: entities?.length || 0,
     statsKeys: stats ? Object.keys(stats) : []
   });
-
-  console.log('AdvancedAnalyticsTab RENDERING');
-  console.log('Stats available:', !!stats);
-  console.log('Stats keys:', stats ? Object.keys(stats) : 'none');
-  console.log('Entities count:', entities?.length || 0);
-  console.log('onDocumentClick function:', typeof onDocumentClick);
 
   return (
     <Grid container spacing={3}>

@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/CrossDocumentEntityTracker.tsx
 import React, { useMemo, useState } from 'react';
 import { 
   Card, 
@@ -22,11 +21,22 @@ import {
   Autocomplete,
   TextField,
   IconButton,
-  Collapse
+  Collapse,
 } from '@mui/material';
-import { TrackChanges, Timeline, TrendingUp, Info, ExpandMore, ExpandLess } from '@mui/icons-material';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+} from 'recharts';
+import { TrackChanges, Info } from '@mui/icons-material';
 
+/**
+ * Data structure for enhanced cross-document entity tracking.
+ */
 interface EntityTrackingData {
   entity: string;
   normalizedEntity: string;
@@ -53,6 +63,21 @@ interface CrossDocumentEntityTrackerProps {
   onDocumentClick: (documentId: string) => void;
 }
 
+/**
+ * CrossDocumentEntityTracker component provides an advanced view
+ * into how entities appear and evolve across multiple documents.
+ * 
+ * Features:
+ * - Groups entities by normalized names for consistency.
+ * - Computes metrics like document spread, consistency, mobility, persistence pattern, and context diversity.
+ * - Allows sorting entities by various metrics.
+ * - Displays detailed visualizations of entity occurrences and mobility.
+ * - Provides a searchable entity selector and detailed document navigation.
+ * 
+ * @param stats - Analytics statistics including top entities by type.
+ * @param entities - Array of entity instances across documents.
+ * @param onDocumentClick - Callback when a document ID is clicked.
+ */
 const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
   stats,
   entities,
@@ -62,56 +87,36 @@ const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
   const [sortBy, setSortBy] = useState<'spread' | 'consistency' | 'mobility' | 'occurrences' | 'persistence'>('spread');
   const [showExplanation, setShowExplanation] = useState(false);
 
-  // Debug: Log the structure of entities to understand the data
-  React.useEffect(() => {
-    if (entities && entities.length > 0) {
-      console.log('CrossDocumentEntityTracker - Sample entity structure:', entities[0]);
-      console.log('Available keys:', Object.keys(entities[0]));
-    }
-  }, [entities]);
-
-  // Compute enhanced cross-document tracking data
+  // Compute enhanced tracking data with multiple metrics and filtering
   const trackingData = useMemo((): EntityTrackingData[] => {
     if (!entities || entities.length === 0) {
-      console.log('No entities available for tracking');
       return [];
     }
 
-    console.time('Computing cross-document entity tracking');
-    
-    // Group entities by normalized text, handling different possible field names
+    // Group entities by normalized text
     const entityGroups = new Map<string, Array<any>>();
-    
     entities.forEach(entity => {
-      // Handle different possible field structures
       const documentId = entity.documentId || entity.id || entity.docId || 'unknown';
       const entityText = entity.text || entity.entityText || '';
       const normalizedText = entity.normalizedText || entityText.toLowerCase();
-      
-      if (!entityText || !documentId || documentId === 'unknown') {
-        console.warn('Skipping entity with missing data:', entity);
-        return;
-      }
 
-      const key = normalizedText;
-      if (!entityGroups.has(key)) {
-        entityGroups.set(key, []);
+      if (!entityText || !documentId || documentId === 'unknown') return;
+
+      if (!entityGroups.has(normalizedText)) {
+        entityGroups.set(normalizedText, []);
       }
-      entityGroups.get(key)!.push({
+      entityGroups.get(normalizedText)!.push({
         ...entity,
-        documentId, // Ensure consistent field name
+        documentId,
         text: entityText
       });
     });
 
-    console.log(`Grouped ${entityGroups.size} unique entities from ${entities.length} total entities`);
-
     const trackingResults: EntityTrackingData[] = [];
-    
+
     entityGroups.forEach((entityInstances, normalizedText) => {
       // Group by document
       const documentMap = new Map<string, Array<any>>();
-      
       entityInstances.forEach(instance => {
         const docId = instance.documentId;
         if (!documentMap.has(docId)) {
@@ -120,13 +125,11 @@ const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
         documentMap.get(docId)!.push(instance);
       });
 
-      // Calculate document appearances with enhanced metrics
+      // Calculate document appearances with metrics
       const documentAppearances = Array.from(documentMap.entries()).map(([docId, instances]) => {
         const avgConfidence = instances.reduce((sum, inst) => sum + (inst.confidence || 0), 0) / instances.length;
         const firstPosition = Math.min(...instances.map(inst => inst.position || inst.start || 0));
         const entityTypes = Array.from(new Set(instances.map(inst => inst.labelFull || inst.label || 'UNKNOWN')));
-        
-        // Calculate relative position in document (rough estimate)
         const positions = instances.map(inst => inst.position || inst.start || 0);
         const maxPosition = Math.max(...positions);
         const relativePosition = maxPosition > 0 ? firstPosition / maxPosition : 0;
@@ -141,53 +144,47 @@ const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
         };
       });
 
-      // Sort document appearances by document ID for consistency
       documentAppearances.sort((a, b) => a.documentId.localeCompare(b.documentId));
 
-      // Calculate enhanced metrics
       const totalOccurrences = entityInstances.length;
       const documentSpread = documentAppearances.length;
-      
-      // Only process entities that appear in multiple documents or have significant presence
-      if (documentSpread < 2 && totalOccurrences < 3) {
-        return; // Skip entities with insufficient data
-      }
-      
-      // Consistency Score: How evenly distributed across documents
+
+      if (documentSpread < 2 && totalOccurrences < 3) return;
+
+      // Consistency score measures evenness across documents
       const avgOccurrencesPerDoc = totalOccurrences / documentSpread;
       const variance = documentAppearances.reduce((sum, appearance) => {
         return sum + Math.pow(appearance.count - avgOccurrencesPerDoc, 2);
       }, 0) / documentSpread;
-      const consistencyScore = 1 / (1 + Math.sqrt(variance)); // Normalize to 0-1
+      const consistencyScore = 1 / (1 + Math.sqrt(variance));
 
-      // Average confidence
       const avgConfidence = entityInstances.reduce((sum, inst) => sum + (inst.confidence || 0), 0) / entityInstances.length;
 
-      // Mobility Score: How much the entity changes position within documents
+      // Mobility score measures variability in position within documents
       const relativePositions = documentAppearances.map(app => app.relativePosition).filter(pos => !isNaN(pos));
       let mobilityScore = 0;
       if (relativePositions.length > 1) {
         const avgRelativePosition = relativePositions.reduce((sum, pos) => sum + pos, 0) / relativePositions.length;
         const positionVariance = relativePositions.reduce((sum, pos) => sum + Math.pow(pos - avgRelativePosition, 2), 0) / relativePositions.length;
-        mobilityScore = Math.min(Math.sqrt(positionVariance), 1); // Normalize
+        mobilityScore = Math.min(Math.sqrt(positionVariance), 1);
       }
 
-      // Persistence Pattern: Analyze how entity appearances change over documents
+      // Persistence pattern based on frequency changes across documents
       let persistencePattern: 'stable' | 'growing' | 'declining' | 'sporadic' = 'stable';
       if (documentAppearances.length >= 3) {
         const firstThird = documentAppearances.slice(0, Math.floor(documentAppearances.length / 3));
         const lastThird = documentAppearances.slice(-Math.floor(documentAppearances.length / 3));
-        
+
         const avgFirst = firstThird.reduce((sum, app) => sum + app.count, 0) / firstThird.length;
         const avgLast = lastThird.reduce((sum, app) => sum + app.count, 0) / lastThird.length;
-        
+
         if (avgFirst > 0) {
           const changeRatio = avgLast / avgFirst;
           const variance = documentAppearances.reduce((sum, app) => {
             const diff = app.count - avgOccurrencesPerDoc;
             return sum + diff * diff;
           }, 0) / documentAppearances.length;
-          
+
           if (variance > avgOccurrencesPerDoc * 2) {
             persistencePattern = 'sporadic';
           } else if (changeRatio > 1.5) {
@@ -198,7 +195,6 @@ const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
         }
       }
 
-      // Context Diversity: How many different entity types this entity appears with
       const allEntityTypes = new Set(documentAppearances.flatMap(app => app.entityTypes));
       const maxPossibleTypes = Math.max(Object.keys(stats?.topEntitiesByType || {}).length, 1);
       const contextDiversity = allEntityTypes.size / maxPossibleTypes;
@@ -217,9 +213,6 @@ const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
       });
     });
 
-    console.timeEnd('Computing cross-document entity tracking');
-    console.log(`Tracking ${trackingResults.length} entities across documents`);
-    
     return trackingResults.sort((a, b) => {
       switch (sortBy) {
         case 'spread': return b.documentSpread - a.documentSpread;
@@ -232,7 +225,7 @@ const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
     });
   }, [entities, stats, sortBy]);
 
-  // Get selected entity details
+  // Get selected entity details from tracking data
   const selectedEntityData = useMemo(() => {
     if (!selectedEntity) return null;
     return trackingData.find(data => 
@@ -241,10 +234,9 @@ const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
     );
   }, [selectedEntity, trackingData]);
 
-  // Prepare chart data for selected entity
+  // Chart data for the selected entity showing document occurrences
   const chartData = useMemo(() => {
     if (!selectedEntityData) return [];
-    
     return selectedEntityData.documentAppearances.map((appearance, index) => ({
       document: `Doc ${index + 1}`,
       fullDocId: appearance.documentId,
@@ -255,15 +247,12 @@ const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
     }));
   }, [selectedEntityData]);
 
-  // Calculate mobility pattern for selected entity
+  // Mobility pattern detection for the selected entity
   const mobilityPattern = useMemo(() => {
     if (!selectedEntityData || selectedEntityData.documentAppearances.length < 3) return null;
-    
     const positions = selectedEntityData.documentAppearances.map(app => app.relativePosition).filter(pos => !isNaN(pos));
     if (positions.length < 2) return null;
-    
-    const trend = positions[positions.length - 1] - positions[0]; // Compare last to first
-    
+    const trend = positions[positions.length - 1] - positions[0];
     return {
       pattern: Math.abs(trend) > 0.3 ? (trend > 0 ? 'moving-later' : 'moving-earlier') : 'stable-position',
       avgPosition: positions.reduce((sum, pos) => sum + pos, 0) / positions.length,
@@ -416,7 +405,7 @@ const CrossDocumentEntityTracker: React.FC<CrossDocumentEntityTrackerProps> = ({
                   <YAxis yAxisId="left" />
                   <YAxis yAxisId="right" orientation="right" />
                   <RechartsTooltip 
-                    content={({ active, payload, label }) => {
+                    content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (

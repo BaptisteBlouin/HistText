@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/hooks/useNERProcessor.ts
 import { useState, useCallback, useRef } from 'react';
 import { LightEntity, EntityGroup, ProcessingState, NERAdvancedStats } from '../types/ner-types';
 import { EntityNormalizer } from '../utils/EntityNormalizer';
@@ -8,6 +7,10 @@ import { StatisticsComputer } from '../utils/StatisticsComputer';
 import { ChunkedProcessor } from '../utils/ChunkedProcessor';
 import config from '../../../../../config.json';
 
+/**
+ * Custom hook to manage advanced NER processing including statistics, relationships, and patterns.
+ * Provides progress tracking, cancellation, and error handling.
+ */
 export const useNERProcessor = () => {
   const [processingState, setProcessingState] = useState<ProcessingState>({
     phase: 'idle',
@@ -19,12 +22,13 @@ export const useNERProcessor = () => {
   const processingRef = useRef<AbortController | null>(null);
   const lastProgressUpdate = useRef<number>(Date.now());
 
-  // Enhanced progress tracking with stuck detection
+  /**
+   * Update processing state with progress tracking and stuck detection timestamp.
+   */
   const updateProcessingState = useCallback((newState: Partial<ProcessingState>) => {
     setProcessingState(prev => {
       const updated = { ...prev, ...newState };
       
-      // Track when progress actually changes
       if (newState.progress && newState.progress !== prev.progress) {
         lastProgressUpdate.current = Date.now();
       }
@@ -37,12 +41,20 @@ export const useNERProcessor = () => {
     });
   }, []);
 
+  /**
+   * Runs advanced NER analysis on entities and entity groups, including statistics, co-occurrence relationships,
+   * pattern detection, and final aggregation. Supports cancellation and progress updates.
+   *
+   * @param entities Array of LightEntity objects representing all entities.
+   * @param entityGroups Map of entity groups keyed by normalized entity text.
+   * @param basicStats Basic statistics computed earlier to inform limits and initial data.
+   * @returns Promise resolving to advanced stats with full analysis results.
+   */
   const processAdvancedStats = useCallback(async (
     entities: LightEntity[],
     entityGroups: Map<string, EntityGroup>,
     basicStats: any
   ): Promise<NERAdvancedStats> => {
-    // Cancel any existing processing
     if (processingRef.current) {
       console.log('Cancelling existing processing...');
       processingRef.current.abort();
@@ -73,19 +85,15 @@ export const useNERProcessor = () => {
         currentTask: 'Initializing advanced analysis...'
       });
 
-      // Small delay to ensure UI updates
       await new Promise(resolve => setTimeout(resolve, 100));
-
       if (controller.signal.aborted) throw new Error('Aborted');
 
-      // Phase 1: Basic statistics (fast)
+      // Phase 1: Compute basic statistics and organize top entities by type
       updateProcessingState({
         phase: 'basic_stats',
         progress: 15,
         currentTask: 'Computing basic statistics...'
       });
-
-      console.log('Computing basic statistics...');
 
       const topEntities = Array.from(entityGroups.values())
         .map(group => ({
@@ -109,7 +117,6 @@ export const useNERProcessor = () => {
         });
       });
 
-      // Sort and limit each type
       Object.keys(topEntitiesByType).forEach(type => {
         topEntitiesByType[type] = topEntitiesByType[type]
           .sort((a, b) => b.count - a.count)
@@ -124,7 +131,7 @@ export const useNERProcessor = () => {
 
       if (controller.signal.aborted) throw new Error('Aborted');
 
-      // Create initial stats object with all required fields
+      // Initialize stats container for later updates
       let currentStats: NERAdvancedStats = {
         totalEntities: entities.length,
         totalDocuments: basicStats.totalDocuments,
@@ -133,8 +140,6 @@ export const useNERProcessor = () => {
         uniqueEntitiesRatio: entityGroups.size / entities.length,
         topEntities,
         topEntitiesByType,
-        
-        // Initialize empty arrays for advanced features
         entityCooccurrences: [],
         strongestPairs: [],
         bigramPatterns: [],
@@ -142,8 +147,6 @@ export const useNERProcessor = () => {
         quadrigramPatterns: [],
         centralityScores: [],
         anomalyScores: [],
-        
-        // Compute basic distributions immediately
         confidenceDistribution: StatisticsComputer.computeConfidenceDistribution(entities),
         entityLengthDistribution: StatisticsComputer.computeLengthDistribution(entityGroups),
         documentStats: StatisticsComputer.computeDocumentStats(entities),
@@ -152,8 +155,6 @@ export const useNERProcessor = () => {
         commonPatterns: [],
         communityGroups: [],
         clusterAnalysis: [],
-        
-        // Processing metadata
         processingComplete: false,
         hasAdvancedFeatures: shouldDoFullAnalysis,
         isLimited: basicStats.isLimited,
@@ -161,7 +162,6 @@ export const useNERProcessor = () => {
         processedEntities: entities.length
       };
 
-      // Complete document-level stats
       if (currentStats.documentStats.length > 0) {
         currentStats.documentsWithMostEntities = currentStats.documentStats
           .slice()
@@ -188,7 +188,7 @@ export const useNERProcessor = () => {
 
       if (controller.signal.aborted) throw new Error('Aborted');
 
-      // Phase 2: Relationships (with enhanced error handling and limits)
+      // Phase 2: Relationship analysis with timeout and error handling
       if (shouldDoRelationships && shouldDoFullAnalysis) {
         updateProcessingState({
           phase: 'relationships',
@@ -198,31 +198,26 @@ export const useNERProcessor = () => {
 
         try {
           console.log('Starting relationship analysis...');
-          
-          // Create a timeout promise
           const timeoutPromise = new Promise<never>((_, reject) => 
             setTimeout(() => {
               console.log('Relationship analysis timeout after 45 seconds');
               reject(new Error('Relationship analysis timeout'));
-            }, 45000) // 45 second timeout
+            }, 45000)
           );
 
-          // Create the analysis promise
           const relationshipPromise = CooccurrenceAnalyzer.computeCooccurrences(
             entities,
             entityGroups,
             controller.signal,
             (progress) => {
-              const adjustedProgress = 40 + (progress * 0.25);
-              updateProcessingState(prev => ({ 
-                ...prev, 
-                progress: adjustedProgress,
-                currentTask: `Analyzing relationships... ${progress.toFixed(0)}%`
-              }));
-            }
+                const adjustedProgress = 40 + (progress * 0.25);
+                updateProcessingState({
+                  progress: adjustedProgress,
+                  currentTask: `Analyzing relationships... ${progress.toFixed(0)}%`
+                });
+              }
           );
 
-          // Race between analysis and timeout
           const cooccurrences = await Promise.race([
             relationshipPromise,
             timeoutPromise
@@ -250,7 +245,6 @@ export const useNERProcessor = () => {
           
           if (controller.signal.aborted) throw error;
           
-          // Continue with empty relationships instead of failing
           console.log('Continuing with empty relationship data due to error/timeout');
           currentStats.entityCooccurrences = [];
           currentStats.strongestPairs = [];
@@ -273,10 +267,9 @@ export const useNERProcessor = () => {
 
       if (controller.signal.aborted) throw new Error('Aborted');
 
-      // Small pause between phases
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Phase 3: Patterns (with enhanced error handling and limits)
+      // Phase 3: Pattern detection with timeout and error handling
       if (shouldDoPatterns && shouldDoFullAnalysis) {
         updateProcessingState({
           phase: 'patterns',
@@ -286,30 +279,25 @@ export const useNERProcessor = () => {
 
         try {
           console.log('Starting pattern analysis...');
-          
-          // Create a timeout promise
           const timeoutPromise = new Promise<never>((_, reject) => 
             setTimeout(() => {
               console.log('Pattern analysis timeout after 60 seconds');
               reject(new Error('Pattern analysis timeout'));
-            }, 60000) // 60 second timeout
+            }, 60000)
           );
 
-          // Create the analysis promise
           const patternPromise = PatternAnalyzer.computePatterns(
             entities,
             controller.signal,
             (progress) => {
-              const adjustedProgress = 70 + (progress * 0.20);
-              updateProcessingState(prev => ({ 
-                ...prev, 
-                progress: adjustedProgress,
-                currentTask: `Detecting patterns... ${progress.toFixed(0)}%`
-              }));
-            }
+                const adjustedProgress = 70 + (progress * 0.20);
+                updateProcessingState({
+                  progress: adjustedProgress,
+                  currentTask: `Detecting patterns... ${progress.toFixed(0)}%`
+                });
+              }
           );
 
-          // Race between analysis and timeout
           const patterns = await Promise.race([
             patternPromise,
             timeoutPromise
@@ -342,7 +330,6 @@ export const useNERProcessor = () => {
           
           if (controller.signal.aborted) throw error;
           
-          // Continue with empty patterns instead of failing
           console.log('Continuing with empty pattern data due to error/timeout');
           currentStats.bigramPatterns = [];
           currentStats.trigramPatterns = [];
@@ -366,14 +353,13 @@ export const useNERProcessor = () => {
 
       if (controller.signal.aborted) throw new Error('Aborted');
 
-      // Phase 4: Final computations
+      // Phase 4: Finalization and marking complete
       updateProcessingState({
         phase: 'complete',
         progress: 95,
         currentTask: 'Finalizing analysis...'
       });
 
-      // Mark as complete
       currentStats.processingComplete = true;
 
       updateProcessingState({
@@ -400,7 +386,6 @@ export const useNERProcessor = () => {
       } else {
         console.error('Unexpected error during processing:', error);
         
-        // Return basic stats even if advanced processing fails
         const fallbackStats: NERAdvancedStats = {
           totalEntities: entities.length,
           totalDocuments: basicStats.totalDocuments,
@@ -433,12 +418,10 @@ export const useNERProcessor = () => {
         
         return fallbackStats;
       }
-      
     } finally {
       setIsProcessing(false);
       processingRef.current = null;
       
-      // Clear caches to free memory with delay
       setTimeout(() => {
         console.log('Clearing entity normalization cache...');
         EntityNormalizer.clearCache();
@@ -446,6 +429,9 @@ export const useNERProcessor = () => {
     }
   }, [updateProcessingState]);
 
+  /**
+   * Cancel any ongoing processing and reset state.
+   */
   const cancelProcessing = useCallback(() => {
     console.log('Cancelling processing...');
     if (processingRef.current) {
@@ -460,11 +446,13 @@ export const useNERProcessor = () => {
     });
   }, [updateProcessingState]);
 
-  // Check if processing appears stuck
+  /**
+   * Check if the processing is stuck (no progress for more than 45 seconds).
+   */
   const isProcessingStuck = useCallback(() => {
     if (!isProcessing) return false;
     const timeSinceLastUpdate = Date.now() - lastProgressUpdate.current;
-    return timeSinceLastUpdate > 45000; // 45 seconds without progress
+    return timeSinceLastUpdate > 45000;
   }, [isProcessing]);
 
   return {

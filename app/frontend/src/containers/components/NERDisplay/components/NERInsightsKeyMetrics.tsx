@@ -1,4 +1,3 @@
-// app/frontend/src/containers/components/NERDisplay/components/NERInsightsKeyMetrics.tsx
 import React from 'react';
 import { Card, CardContent, Grid, Typography, Box } from '@mui/material';
 
@@ -6,6 +5,11 @@ interface NERInsightsKeyMetricsProps {
   stats: any;
 }
 
+/**
+ * Displays key metrics summary for NER insights in a styled card.
+ * Metrics include total entities, entity types, average entities per document,
+ * uniqueness ratio, and count of strong entity pairs.
+ */
 const NERInsightsKeyMetrics: React.FC<NERInsightsKeyMetricsProps> = ({ stats }) => {
   return (
     <Card sx={{ mb: 4, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>

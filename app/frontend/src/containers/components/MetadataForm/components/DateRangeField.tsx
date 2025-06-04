@@ -7,12 +7,23 @@ import {
   TextField
 } from '@mui/material';
 
+/**
+ * Props for the DateRangeField component.
+ *
+ * @property dateRange - Min and max date boundaries, or null to hide field.
+ * @property formData - Form state containing min_date and max_date.
+ * @property onFormChange - Handler for input change events.
+ */
 interface DateRangeFieldProps {
   dateRange: { min: string; max: string } | null;
   formData: any;
   onFormChange: (event: any, index: number) => void;
 }
 
+/**
+ * Renders a date range filter with start and end date fields.
+ * Shown only if dateRange is provided.
+ */
 const DateRangeField: React.FC<DateRangeFieldProps> = ({
   dateRange,
   formData,

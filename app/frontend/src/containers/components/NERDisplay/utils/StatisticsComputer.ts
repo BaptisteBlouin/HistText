@@ -1,7 +1,16 @@
-// app/frontend/src/containers/components/NERDisplay/utils/StatisticsComputer.ts
 import { LightEntity, EntityGroup, DocumentStats, EntityCooccurrence } from '../types/ner-types';
 
+/**
+ * Class containing static methods for computing statistical distributions
+ * and scores related to Named Entity Recognition data.
+ */
 export class StatisticsComputer {
+  /**
+   * Computes confidence distribution of entities in defined confidence ranges.
+   * 
+   * @param entities - Array of entities to analyze
+   * @returns Array of confidence range objects with counts and percentages
+   */
   static computeConfidenceDistribution(entities: LightEntity[]) {
     const ranges = [
       { min: 0.9, max: 1.0, label: '90-100%' },
@@ -22,6 +31,12 @@ export class StatisticsComputer {
     });
   }
 
+  /**
+   * Computes distribution of entity lengths within entity groups.
+   * 
+   * @param entityGroups - Map of entity groups keyed by unique identifiers
+   * @returns Array of length distribution objects sorted by length, limited to 30 entries
+   */
   static computeLengthDistribution(entityGroups: Map<string, EntityGroup>) {
     const lengthCounts = new Map<number, number>();
     
@@ -39,9 +54,16 @@ export class StatisticsComputer {
         percentage: (count / total) * 100
       }))
       .sort((a, b) => a.length - b.length)
-      .slice(0, 30); // Limit for performance
+      .slice(0, 30);
   }
 
+  /**
+   * Computes statistics for each document including entity counts, unique entities,
+   * average confidence, entity types, and top entities by count.
+   * 
+   * @param entities - Array of entities to analyze
+   * @returns Array of document-level statistics
+   */
   static computeDocumentStats(entities: LightEntity[]): DocumentStats[] {
     const docStats = new Map<string, {
       entityCount: number;
@@ -67,23 +89,19 @@ export class StatisticsComputer {
       stat.confidenceSum += entity.confidence;
       stat.uniqueEntities.add(entity.normalizedText);
       
-      // Entity types
       const currentTypeCount = stat.entityTypes.get(entity.labelFull) || 0;
       stat.entityTypes.set(entity.labelFull, currentTypeCount + 1);
       
-      // Entity counts
       const currentEntityCount = stat.entityCounts.get(entity.text) || 0;
       stat.entityCounts.set(entity.text, currentEntityCount + 1);
     });
     
     return Array.from(docStats.entries()).map(([docId, stat]) => {
-      // Top entities for this document
       const topEntities = Array.from(stat.entityCounts.entries())
         .sort(([,a], [,b]) => b - a)
         .slice(0, 5)
         .map(([text, count]) => ({ text, count }));
       
-      // Entity types as object
       const entityTypes = Object.fromEntries(stat.entityTypes.entries());
       
       return {
@@ -97,6 +115,13 @@ export class StatisticsComputer {
     });
   }
 
+  /**
+   * Computes centrality scores for top entities based on their co-occurrence connections.
+   * 
+   * @param topEntities - Array of top entities with counts
+   * @param cooccurrences - Array of co-occurrence data between entities
+   * @returns Array of entities with centrality scores and connection counts
+   */
   static computeCentralityScores(
     topEntities: Array<{ text: string; count: number; documents: number; frequency: number }>,
     cooccurrences: EntityCooccurrence[]
@@ -114,6 +139,12 @@ export class StatisticsComputer {
     }).sort((a, b) => b.score - a.score);
   }
 
+  /**
+   * Computes anomaly scores for documents based on entity counts, diversity, and confidence.
+   * 
+   * @param documentStats - Array of document statistics
+   * @returns Array of documents flagged as anomalies with scores and reasons
+   */
   static computeAnomalyScores(documentStats: DocumentStats[]): Array<{ documentId: string; score: number; reason: string }> {
     if (documentStats.length === 0) return [];
     
