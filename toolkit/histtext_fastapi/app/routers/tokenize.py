@@ -12,11 +12,12 @@ router = APIRouter()
 tokenize_service = TokenizeService()
 
 
+
 @router.post("/process")
 async def tokenize_collection(
     background_tasks: BackgroundTasks,
     collection: str = Form(...),
-    model_name: str = Form(...),
+    model_name: str = Form(""),  # Allow empty for Chinese segmenter
     text_field: str = Form("text"),
     model_type: str = Form("transformers"),
     max_length: Optional[int] = Form(None),
@@ -26,18 +27,44 @@ async def tokenize_collection(
     filter_query: Optional[str] = Form(None),
     simplify_chinese: bool = Form(False)
 ):
-    """Tokenize documents in a collection with real-time updates."""
+    """Tokenize documents with enhanced validation."""
     try:
+        # Handle empty collection
+        if not collection or collection.strip() == "":
+            return HTMLResponse(content=f"""
+            <div class="bg-error-50 border border-error-200 rounded-md p-4">
+                <h4 class="text-sm font-medium text-error-800 mb-2">❌ Validation Error</h4>
+                <div class="text-sm text-error-700">Please select a collection before starting tokenization.</div>
+            </div>
+            """, status_code=400)
+        
+        # Handle empty text field
+        if not text_field or text_field.strip() == "":
+            text_field = "text"
+        
+        # Handle model name based on type
+        if model_type != "chinese_segmenter" and (not model_name or model_name.strip() == ""):
+            return HTMLResponse(content=f"""
+            <div class="bg-error-50 border border-error-200 rounded-md p-4">
+                <h4 class="text-sm font-medium text-error-800 mb-2">❌ Validation Error</h4>
+                <div class="text-sm text-error-700">Model name is required for {model_type} tokenization.</div>
+            </div>
+            """, status_code=400)
+        
+        # For Chinese segmenter, model_name can be empty
+        if model_type == "chinese_segmenter":
+            model_name = None
+        
         request_data = TokenizeRequest(
-            collection=collection,
-            model_name=model_name,
-            text_field=text_field,
+            collection=collection.strip(),
+            model_name=model_name.strip() if model_name else None,
+            text_field=text_field.strip(),
             model_type=model_type,
             max_length=max_length,
             start=start,
             batch_size=batch_size,
             num_batches=num_batches,
-            filter_query=filter_query,
+            filter_query=filter_query.strip() if filter_query else None,
             simplify_chinese=simplify_chinese
         )
         
@@ -221,7 +248,12 @@ async def tokenize_collection(
        """)
        
     except Exception as e:
-       raise HTTPException(status_code=400, detail=str(e))
+        return HTMLResponse(content=f"""
+        <div class="bg-error-50 border border-error-200 rounded-md p-4">
+            <h4 class="text-sm font-medium text-error-800 mb-2">❌ Processing Error</h4>
+            <div class="text-sm text-error-700">Failed to start tokenization: {str(e)}</div>
+        </div>
+        """, status_code=400)
 
 
 @router.get("/status/{task_id}")

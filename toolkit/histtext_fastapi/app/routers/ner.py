@@ -18,7 +18,7 @@ async def process_ner(
     collection: str = Form(...),
     model_name: str = Form(...),
     model_type: str = Form("transformers"),
-    text_field: str = Form("text"),
+    text_field: str = Form("text"),  # Default value
     entity_types: Optional[str] = Form(""),
     max_length: Optional[int] = Form(None),
     aggregation_strategy: str = Form("simple"),
@@ -32,21 +32,43 @@ async def process_ner(
     compact_labels: bool = Form(True),
     label_stats: bool = Form(False)
 ):
-    """Process NER on a collection with real-time updates."""
+    """Process NER on a collection with enhanced empty value handling."""
     try:
+        # Handle empty or invalid collection
+        if not collection or collection.strip() == "":
+            return HTMLResponse(content=f"""
+            <div class="bg-error-50 border border-error-200 rounded-md p-4">
+                <h4 class="text-sm font-medium text-error-800 mb-2">❌ Validation Error</h4>
+                <div class="text-sm text-error-700">Please select a collection before starting NER processing.</div>
+            </div>
+            """, status_code=400)
+        
+        # Handle empty text field - default to common field names
+        if not text_field or text_field.strip() == "":
+            text_field = "text"  # Default to most common field name
+        
+        # Handle empty model name
+        if not model_name or model_name.strip() == "":
+            return HTMLResponse(content=f"""
+            <div class="bg-error-50 border border-error-200 rounded-md p-4">
+                <h4 class="text-sm font-medium text-error-800 mb-2">❌ Validation Error</h4>
+                <div class="text-sm text-error-700">Please select a model before starting NER processing.</div>
+            </div>
+            """, status_code=400)
+        
         request_data = NERRequest(
-            collection=collection,
-            model_name=model_name,
+            collection=collection.strip(),
+            model_name=model_name.strip(),
             model_type=model_type,
-            text_field=text_field,
-            entity_types=entity_types.split(",") if entity_types else [],
+            text_field=text_field.strip(),
+            entity_types=entity_types.split(",") if entity_types and entity_types.strip() else [],
             max_length=max_length,
             aggregation_strategy=aggregation_strategy,
             threshold=threshold,
             start=start,
             batch_size=batch_size,
             num_batches=num_batches,
-            filter_query=filter_query,
+            filter_query=filter_query.strip() if filter_query else None,
             use_gpu=use_gpu,
             optimization_level=optimization_level,
             compact_labels=compact_labels,
@@ -55,6 +77,7 @@ async def process_ner(
         
         # Start processing and get task ID
         task_id = await ner_service.process_ner_async(request_data, background_tasks)
+        
         
         # Return HTML with larger log display and better statistics
         return HTMLResponse(content=f"""
@@ -478,7 +501,12 @@ async def process_ner(
             
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return HTMLResponse(content=f"""
+        <div class="bg-error-50 border border-error-200 rounded-md p-4">
+            <h4 class="text-sm font-medium text-error-800 mb-2">❌ Processing Error</h4>
+            <div class="text-sm text-error-700">Failed to start NER processing: {str(e)}</div>
+        </div>
+        """, status_code=400)
 
 
 @router.get("/status/{task_id}")
