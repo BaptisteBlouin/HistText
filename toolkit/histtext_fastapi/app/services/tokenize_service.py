@@ -71,17 +71,25 @@ class RealTimeLogHandler(logging.Handler):
             with self._lock:
                 # Add to internal logs
                 self.logs.append(formatted_message)
-                if len(self.logs) > 150:  # Keep last 150 logs
-                    self.logs = self.logs[-150:]
+                if len(self.logs) > 200:  # Keep last 200 logs
+                    self.logs = self.logs[-200:]
                 
                 # Add to queue for real-time updates
                 try:
                     self.log_queue.put_nowait(formatted_message)
                 except queue.Full:
-                    pass  # Don't block if queue is full
+                    # If queue is full, remove oldest and add new
+                    try:
+                        self.log_queue.get_nowait()
+                        self.log_queue.put_nowait(formatted_message)
+                    except queue.Empty:
+                        pass
                 
                 # Extract statistics
                 self._extract_statistics(formatted_message)
+                
+                # Also print to console for debugging
+                print(f"[{self.task_id}] LOG: {formatted_message}")
                 
         except Exception as e:
             # Don't let logging errors break the process, but print to console for debugging
@@ -102,6 +110,7 @@ class RealTimeLogHandler(logging.Handler):
                         "progress": progress,
                         "message": f"🔄 Processing batch {batch_num}..."
                     })
+                    print(f"[{self.task_id}] STATS: Updated batch {batch_num}, progress {progress}%")
             
             # Extract document processing info
             if "Retrieved" in message and "documents" in message:
@@ -121,6 +130,7 @@ class RealTimeLogHandler(logging.Handler):
                 if total_match:
                     total_docs = int(total_match.group(1))
                     self.task_status["total_docs"] = total_docs
+                    print(f"[{self.task_id}] STATS: Total docs processed: {total_docs}")
             
             # Extract processing speed
             if "Tokenized" in message and "documents in" in message and "seconds" in message:
@@ -132,6 +142,7 @@ class RealTimeLogHandler(logging.Handler):
                     if time_taken > 0:
                         speed = docs / time_taken
                         self.task_status["processing_speed"] = speed
+                        print(f"[{self.task_id}] STATS: Processing speed: {speed:.2f} docs/sec")
             
             # Extract final completion
             if "Processed" in message and "documents, skipped" in message:
@@ -148,14 +159,12 @@ class RealTimeLogHandler(logging.Handler):
             # Model loading stages
             if "Creating and loading tokenization model" in message:
                 self.task_status.update({"progress": 25, "message": "🤖 Loading tokenization model..."})
-            elif "Model loaded successfully" in message or "Final configuration:" in message:
+            elif "Model loaded successfully" in message or "Chinese segmenter loaded successfully" in message:
                 self.task_status.update({"progress": 35, "message": "✅ Model loaded and configured"})
             elif "Starting tokenization for collection" in message:
                 self.task_status.update({"progress": 40, "message": "🚀 Starting tokenization process..."})
             elif "Using ChineseWordSegmenter" in message:
-                self.task_status.update({"progress": 30, "message": "🇨🇳 Initializing Chinese segmenter..."})
-            elif "Models warmed up" in message:
-                self.task_status.update({"progress": 38, "message": "🔥 Models warmed up"})
+                self.task_status.update({"progress": 30, "message": "🇨🇳 Chinese segmenter ready..."})
             elif "Unloading tokenization model" in message:
                 self.task_status.update({"progress": 98, "message": "🧹 Cleaning up models..."})
                 
@@ -171,7 +180,6 @@ class RealTimeLogHandler(logging.Handler):
                 return self.logs.copy()
             return self.logs[-last_n:] if self.logs else []
 
-
 async def signal_free_cache_tokenization(
     solr_client,
     collection: str,
@@ -184,7 +192,9 @@ async def signal_free_cache_tokenization(
     num_batches: Optional[int] = None,
     filter_query: Optional[str] = None,
     simplify_chinese: bool = False,
-    logger = None
+    logger = None,
+    task_id: str = None,  
+    log_handler = None 
 ) -> int:
     """
     Signal-free version of cache_tokenization that completely avoids all signal handling.
@@ -209,8 +219,23 @@ async def signal_free_cache_tokenization(
     timeout = aiohttp.ClientTimeout(total=60, connect=20, sock_connect=20, sock_read=40)
     solr_client._session = aiohttp.ClientSession(auth=auth, timeout=timeout)
     
+    # In your async_tokenize function, after creating the logger:
     if logger:
-        logger.info("Created Solr session with timeout to prevent hanging")
+        # Also add the handler to the histtext_toolkit loggers
+        toolkit_loggers = [
+            'histtext_toolkit.operations.tokenize',
+            'histtext_toolkit.models.chinese_segmenter',
+            'histtext_toolkit.models.registry'
+        ]
+        
+        for logger_name in toolkit_loggers:
+            toolkit_logger = logging.getLogger(logger_name)
+            if log_handler not in toolkit_logger.handlers:
+                toolkit_logger.addHandler(log_handler)
+                toolkit_logger.setLevel(logging.INFO)
+                toolkit_logger.propagate = False
+        
+        print(f"[{task_id}] DEBUG: Added log handler to toolkit loggers")
 
     # Track processing state (NO SIGNAL HANDLING)
     processing_state = {
@@ -288,13 +313,77 @@ async def signal_free_cache_tokenization(
             return signal_patch()
         
         # Create and load model with signal patching if needed
+        # In signal_free_cache_tokenization, find the model creation section and replace it with:
+
+        # Create and load model with signal patching if needed
         if is_chinese_segmenter:
+            # Signal patching context manager for model loading
+            def patch_signals_for_loading():
+                """Context manager to patch signals during model loading"""
+                import contextlib
+                
+                @contextlib.contextmanager
+                def signal_patch():
+                    # Define dummy functions
+                    def dummy_signal(*args, **kwargs):
+                        return None
+                    
+                    def dummy_alarm(*args, **kwargs):
+                        return 0
+                    
+                    # Store originals
+                    original_signal = signal_module.signal
+                    original_alarm = getattr(signal_module, 'alarm', None)
+                    
+                    try:
+                        # Apply patches
+                        signal_module.signal = dummy_signal
+                        if original_alarm:
+                            signal_module.alarm = dummy_alarm
+                        
+                        if logger and is_chinese_segmenter:
+                            logger.info("🛡️ Signal handling patched for model loading")
+                        
+                        yield
+                        
+                    finally:
+                        # Restore originals
+                        signal_module.signal = original_signal
+                        if original_alarm:
+                            signal_module.alarm = original_alarm
+                        
+                        if logger and is_chinese_segmenter:
+                            logger.info("🔄 Signal handling restored after model loading")
+                
+                return signal_patch()
+            
             with patch_signals_for_loading():
                 model = create_tokenization_model(model_config)
                 processing_state["model"] = model
                 
                 if logger:
                     logger.info("Loading Chinese segmenter with signal protection...")
+                
+                # Connect the log handler to the model's logger if available
+                if log_handler and task_id:
+                    # Add handler to Chinese segmenter specific loggers
+                    toolkit_loggers = [
+                        'histtext_toolkit.operations.tokenize',
+                        'histtext_toolkit.models.registry',
+                        'histtext_toolkit.models.base',
+                        'histtext_toolkit.models.chinese_segmenter',
+                        'chinese_word_segmenter'
+                    ]
+                    
+                    for logger_name in toolkit_loggers:
+                        toolkit_logger = logging.getLogger(logger_name)
+                        if log_handler not in toolkit_logger.handlers:
+                            toolkit_logger.addHandler(log_handler)
+                            toolkit_logger.setLevel(logging.INFO)
+                            toolkit_logger.propagate = False
+                    
+                    if logger:
+                        logger.info(f"🔗 Connected {len(toolkit_loggers)} toolkit loggers to frontend")
                 
                 if not model.load():
                     if logger:
@@ -724,6 +813,13 @@ async def signal_free_cache_tokenization(
                     if logger:
                         logger.info(f"Cached {len(processed_docs)} documents to {jsonl_file}")
                         logger.info(f"Total documents processed so far: {total_docs}")
+                    
+                    # Force log update to frontend if handler available
+                    if log_handler and task_id:
+                        # Manually emit a status update log
+                        status_msg = f"📊 Batch {current_batch + 1} complete: {len(processed_docs)} docs cached, {total_docs} total"
+                        if logger:
+                            logger.info(status_msg)
 
                 # Update progress bar
                 pbar.update(len(docs))
@@ -821,7 +917,7 @@ class TokenizeService:
     def _setup_task_logging(self, task_id: str):
         """Setup comprehensive logging for a task."""
         # Create log queue for this task
-        log_queue = queue.Queue(maxsize=500)
+        log_queue = queue.Queue(maxsize=1000)  # Increased queue size
         self._log_queues[task_id] = log_queue
         
         # Create log handler
@@ -834,11 +930,14 @@ class TokenizeService:
         # Start log monitoring thread
         def monitor_logs():
             """Monitor log queue and update task status."""
+            print(f"[{task_id}] LOG MONITOR: Starting log monitoring thread")
+            
             while True:
                 try:
                     # Get log message with timeout
-                    log_message = log_queue.get(timeout=1.0)
+                    log_message = log_queue.get(timeout=2.0)
                     if log_message == "STOP_LOGGING":
+                        print(f"[{task_id}] LOG MONITOR: Received stop signal")
                         break
                     
                     # Update task logs
@@ -846,26 +945,33 @@ class TokenizeService:
                         current_logs = self._task_status[task_id].get("logs", [])
                         current_logs.append(log_message)
                         
-                        # Keep only last 50 logs for web interface
-                        if len(current_logs) > 50:
-                            current_logs = current_logs[-50:]
+                        # Keep only last 100 logs for web interface
+                        if len(current_logs) > 100:
+                            current_logs = current_logs[-100:]
                         
                         self._task_status[task_id]["logs"] = current_logs
-                        # Also print to console for debugging
-                        print(f"[{task_id}] {log_message}")
+                        
+                        # Print to console for debugging
+                        print(f"[{task_id}] FRONTEND LOG: {log_message}")
                         
                 except queue.Empty:
                     # Check if task is still running
                     if task_id not in self._task_status:
+                        print(f"[{task_id}] LOG MONITOR: Task no longer exists, stopping")
                         break
+                    # Continue monitoring
                     continue
                 except Exception as e:
                     print(f"Log monitoring error for task {task_id}: {e}")
                     break
-       
+            
+            print(f"[{task_id}] LOG MONITOR: Log monitoring thread stopped")
+    
         monitor_thread = threading.Thread(target=monitor_logs, daemon=True, name=f"log_monitor_{task_id}")
         monitor_thread.start()
         self._log_monitor_threads[task_id] = monitor_thread
+        
+        print(f"[{task_id}] LOG MONITOR: Log monitoring thread started")
   
     async def _run_tokenize_processing(self, task_id: str, request: TokenizeRequest):
         """Run tokenization with maximum performance and comprehensive logging."""
@@ -946,6 +1052,7 @@ class TokenizeService:
                             logger.setLevel(logging.INFO)
                             logger.propagate = False  # Prevent propagation to root logger
                             
+                            # Test the logger immediately
                             logger.info("="*70)
                             logger.info("🚀 STARTING SIGNAL-FREE TOKENIZATION")
                             logger.info("="*70)
@@ -959,8 +1066,13 @@ class TokenizeService:
                                 logger.info(f"🔢 Max Batches: {request.num_batches}")
                             if request.filter_query:
                                 logger.info(f"🔍 Filter Query: {request.filter_query}")
+                            
+                            # Force a log update to check if it's working
+                            print(f"[{task_id}] DEBUG: Logger setup complete, testing log transmission...")
+                            
                         else:
                             logger = None
+                            print(f"[{task_id}] WARNING: No log handler available!")
                         
                         # Load configuration
                         try:
@@ -1119,7 +1231,9 @@ class TokenizeService:
                                 num_batches=request.num_batches,
                                 filter_query=request.filter_query,
                                 simplify_chinese=request.simplify_chinese,
-                                logger=logger  # Pass logger for consistent logging
+                                logger=logger,
+                                task_id=task_id,           # Pass the task_id
+                                log_handler=log_handler 
                             )
                             
                             end_time = time.time()

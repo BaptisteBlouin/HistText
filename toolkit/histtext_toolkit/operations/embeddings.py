@@ -1114,7 +1114,7 @@ async def compute_word_embeddings(
 
     all_texts = []
     start = 0
-    max_docs = 100000  # Cap to prevent memory issues
+    max_docs = 1000000  # Cap to prevent memory issues
     current_batch = 0
 
     with tqdm(total=max_docs, desc="Fetching documents") as pbar:

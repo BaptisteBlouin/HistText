@@ -76,6 +76,8 @@ async def tokenize_collection(
       
         
         # Return HTML with progress tracking
+        # In your tokenize.py router, in the process_ner function, update the HTML response:
+
         return HTMLResponse(content=f"""
         <div id="tokenize-task-{task_id}" class="bg-purple-50 border border-purple-200 rounded-md p-4 mb-4">
             <div class="flex items-start">
@@ -130,6 +132,26 @@ async def tokenize_collection(
                         </div>
                     </div>
                     
+                    <!-- Enhanced Live Logs Section -->
+                    <div class="mt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-sm font-medium text-purple-800">📋 Live Processing Logs</h4>
+                            <div class="flex gap-2">
+                                <button onclick="toggleTokenizeLogs('{task_id}')" class="text-xs text-purple-600 hover:text-purple-800 px-2 py-1 bg-purple-100 rounded">
+                                    <span id="logs-toggle-{task_id}">Collapse</span>
+                                </button>
+                                <button onclick="refreshTokenizeLogs('{task_id}')" class="text-xs text-green-600 hover:text-green-800 px-2 py-1 bg-green-100 rounded">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                        </div>
+                        <div id="logs-container-{task_id}" class="bg-gray-900 text-green-400 text-xs p-3 rounded-lg font-mono max-h-64 overflow-y-auto border">
+                            <div id="logs-{task_id}" class="whitespace-pre-wrap">
+                                <div class="text-gray-500">🔄 Initializing logging system...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Action Buttons -->
                     <div class="mt-4 flex flex-wrap gap-2">
                         <button onclick="checkTokenizeStatus('{task_id}')" 
@@ -138,119 +160,220 @@ async def tokenize_collection(
                         </button>
                         <button onclick="copyTaskId('{task_id}')" 
                                 class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded-md">
-                           📋 Copy Task ID
-                       </button>
-                       <button onclick="downloadTokenizeLogs('{task_id}')" 
-                               class="text-sm bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1 rounded-md">
-                           📄 Download Logs
-                       </button>
-                       <button onclick="clearTokenizeTask('{task_id}')" 
-                               class="text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded-md">
-                           ❌ Clear
-                       </button>
-                   </div>
-               </div>
-           </div>
-       </div>
-       
-       <script>
-           window.checkTokenizeStatus = function(taskId) {{
-               fetch(`/api/tokenize/status/${{taskId}}`)
-                   .then(response => response.json())
-                   .then(data => {{
-                       updateTokenizeProgress(taskId, data);
-                       if (data.status === 'running' || data.status === 'starting') {{
-                           setTimeout(() => window.checkTokenizeStatus(taskId), 2000);
-                       }}
-                   }})
-                   .catch(error => console.error('Error checking tokenize status:', error));
-           }};
-           
-           window.updateTokenizeProgress = function(taskId, data) {{
-               const progressBar = document.querySelector(`#progress-bar-${{taskId}} div`);
-               const progressText = document.getElementById(`progress-text-${{taskId}}`);
-               const statusText = document.getElementById(`status-text-${{taskId}}`);
-               const spinner = document.getElementById(`spinner-${{taskId}}`);
-               
-               if (progressBar && progressText) {{
-                   const progress = Math.max(data.progress || 0, 0);
-                   progressBar.style.width = progress + '%';
-                   progressText.textContent = Math.round(progress) + '%';
-               }}
-               
-               if (statusText) {{
-                   if (data.status === 'completed') {{
-                       statusText.className = 'text-sm text-green-600 mt-1 font-medium';
-                       statusText.innerHTML = `✅ ${{data.message}}`;
-                       if (data.processing_time) {{
-                           statusText.innerHTML += `<br><small>⏱️ Total time: ${{data.processing_time.toFixed(2)}}s</small>`;
-                       }}
-                       if (progressBar) {{
-                           progressBar.className = 'bg-green-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center text-xs text-white font-medium';
-                           progressBar.style.width = '100%';
-                           progressText.textContent = '✅ Complete';
-                       }}
-                       if (spinner) {{
-                           spinner.classList.remove('animate-spin');
-                           spinner.innerHTML = '<svg class="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
-                       }}
-                   }} else if (data.status === 'failed') {{
-                       statusText.className = 'text-sm text-red-600 mt-1 font-medium';
-                       statusText.innerHTML = `❌ ${{data.message || data.error}}`;
-                       if (progressBar) {{
-                           progressBar.className = 'bg-red-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center text-xs text-white font-medium';
-                           progressText.textContent = '❌ Failed';
-                       }}
-                       if (spinner) {{
-                           spinner.classList.remove('animate-spin');
-                           spinner.innerHTML = '<svg class="h-5 w-5 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
-                       }}
-                   }} else {{
-                       statusText.className = 'text-sm text-purple-600 mt-1 font-medium';
-                       statusText.textContent = data.message || 'Processing...';
-                   }}
-               }}
-               
-               // Update statistics
-               const batchEl = document.getElementById(`batch-${{taskId}}`);
-               const docsEl = document.getElementById(`docs-${{taskId}}`);
-               const speedEl = document.getElementById(`speed-${{taskId}}`);
-               
-               if (batchEl) batchEl.textContent = data.current_batch || '-';
-               if (docsEl) docsEl.textContent = data.total_docs ? data.total_docs.toLocaleString() : '-';
-               if (speedEl) speedEl.textContent = data.processing_speed ? data.processing_speed.toFixed(1) : '-';
-           }};
-           
-           window.downloadTokenizeLogs = function(taskId) {{
-               fetch(`/api/tokenize/logs/${{taskId}}?last_n=-1`)
-                   .then(response => response.json())
-                   .then(data => {{
-                       const blob = new Blob([data.logs.join('\\n')], {{ type: 'text/plain' }});
-                       const url = URL.createObjectURL(blob);
-                       const a = document.createElement('a');
-                       a.href = url;
-                       a.download = `tokenize-logs-${{taskId}}.txt`;
-                       document.body.appendChild(a);
-                       a.click();
-                       document.body.removeChild(a);
-                       URL.revokeObjectURL(url);
-                   }})
-                   .catch(error => console.error('Error downloading tokenize logs:', error));
-           }};
-           
-           window.clearTokenizeTask = function(taskId) {{
-               const taskDiv = document.getElementById('tokenize-task-' + taskId);
-               if (taskDiv && confirm('Clear this task from the display?')) {{
-                   taskDiv.style.opacity = '0.5';
-                   setTimeout(() => taskDiv.remove(), 300);
-               }}
-           }};
-           
-           // Auto-start status checking
-           setTimeout(() => checkTokenizeStatus('{task_id}'), 1000);
-       </script>
-       """)
-       
+                        📋 Copy Task ID
+                    </button>
+                    <button onclick="downloadTokenizeLogs('{task_id}')" 
+                            class="text-sm bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1 rounded-md">
+                        📄 Download Logs
+                    </button>
+                    <button onclick="clearTokenizeTask('{task_id}')" 
+                            class="text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded-md">
+                        ❌ Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <script>
+        window.checkTokenizeStatus = function(taskId) {{
+            fetch(`/api/tokenize/status/${{taskId}}`)
+                .then(response => response.json())
+                .then(data => {{
+                    console.log('Tokenize status update for', taskId, data); // Debug log
+                    updateTokenizeProgress(taskId, data);
+                    if (data.status === 'running' || data.status === 'starting') {{
+                        setTimeout(() => window.checkTokenizeStatus(taskId), 2000);
+                    }}
+                }})
+                .catch(error => console.error('Error checking tokenize status:', error));
+        }};
+        
+        window.updateTokenizeProgress = function(taskId, data) {{
+            const progressBar = document.querySelector(`#progress-bar-${{taskId}} div`);
+            const progressText = document.getElementById(`progress-text-${{taskId}}`);
+            const statusText = document.getElementById(`status-text-${{taskId}}`);
+            const spinner = document.getElementById(`spinner-${{taskId}}`);
+            
+            if (progressBar && progressText) {{
+                const progress = Math.max(data.progress || 0, 0);
+                progressBar.style.width = progress + '%';
+                progressText.textContent = Math.round(progress) + '%';
+            }}
+            
+            if (statusText) {{
+                if (data.status === 'completed') {{
+                    statusText.className = 'text-sm text-green-600 mt-1 font-medium';
+                    statusText.innerHTML = `✅ ${{data.message}}`;
+                    if (data.processing_time) {{
+                        statusText.innerHTML += `<br><small>⏱️ Total time: ${{data.processing_time.toFixed(2)}}s</small>`;
+                    }}
+                    if (progressBar) {{
+                        progressBar.className = 'bg-green-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center text-xs text-white font-medium';
+                        progressBar.style.width = '100%';
+                        progressText.textContent = '✅ Complete';
+                    }}
+                    if (spinner) {{
+                        spinner.classList.remove('animate-spin');
+                        spinner.innerHTML = '<svg class="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
+                    }}
+                }} else if (data.status === 'failed') {{
+                    statusText.className = 'text-sm text-red-600 mt-1 font-medium';
+                    statusText.innerHTML = `❌ ${{data.message || data.error}}`;
+                    if (progressBar) {{
+                        progressBar.className = 'bg-red-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center text-xs text-white font-medium';
+                        progressText.textContent = '❌ Failed';
+                    }}
+                    if (spinner) {{
+                        spinner.classList.remove('animate-spin');
+                        spinner.innerHTML = '<svg class="h-5 w-5 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+                    }}
+                }} else {{
+                    statusText.className = 'text-sm text-purple-600 mt-1 font-medium';
+                    statusText.textContent = data.message || 'Processing...';
+                }}
+            }}
+            
+            // Update statistics
+            const batchEl = document.getElementById(`batch-${{taskId}}`);
+            const docsEl = document.getElementById(`docs-${{taskId}}`);
+            const speedEl = document.getElementById(`speed-${{taskId}}`);
+            
+            if (batchEl) batchEl.textContent = data.current_batch || '-';
+            if (docsEl) docsEl.textContent = data.total_docs ? data.total_docs.toLocaleString() : '-';
+            if (speedEl) speedEl.textContent = data.processing_speed ? data.processing_speed.toFixed(1) : '-';
+            
+            // Update logs with better formatting - THIS IS THE KEY PART!
+            const logsEl = document.getElementById(`logs-${{taskId}}`);
+            if (logsEl && data.logs && data.logs.length > 0) {{
+                console.log('Updating logs for', taskId, 'with', data.logs.length, 'log entries');
+                const logsHtml = data.logs.map(log => {{
+                    // Color-code different log levels
+                    if (log.includes('ERROR:')) {{
+                        return `<div class="text-red-400">${{log}}</div>`;
+                    }} else if (log.includes('WARNING:')) {{
+                        return `<div class="text-yellow-400">${{log}}</div>`;
+                    }} else if (log.includes('INFO:')) {{
+                        return `<div class="text-green-400">${{log}}</div>`;
+                    }} else {{
+                        return `<div class="text-gray-300">${{log}}</div>`;
+                    }}
+                }}).join('');
+                logsEl.innerHTML = logsHtml;
+                
+                // Auto-scroll to bottom
+                const logsContainer = document.getElementById(`logs-container-${{taskId}}`);
+                if (logsContainer) {{
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }}
+            }} else {{
+                console.log('No logs found for', taskId, 'data:', data);
+            }}
+        }};
+        
+        // Toggle logs visibility
+        window.toggleTokenizeLogs = function(taskId) {{
+            const logsEl = document.getElementById(`logs-container-${{taskId}}`);
+            const toggleEl = document.getElementById(`logs-toggle-${{taskId}}`);
+            
+            if (logsEl.style.display === 'none') {{
+                logsEl.style.display = 'block';
+                toggleEl.textContent = 'Collapse';
+            }} else {{
+                logsEl.style.display = 'none';
+                toggleEl.textContent = 'Show Logs';
+            }}
+        }};
+        
+        // Refresh logs manually
+        window.refreshTokenizeLogs = function(taskId) {{
+            fetch(`/api/tokenize/logs/${{taskId}}?last_n=50`)
+                .then(response => response.json())
+                .then(data => {{
+                    console.log('Refreshed logs for', taskId, data);
+                    const logsEl = document.getElementById(`logs-${{taskId}}`);
+                    if (logsEl && data.logs && data.logs.length > 0) {{
+                        const logsHtml = data.logs.map(log => {{
+                            if (log.includes('ERROR:')) {{
+                                return `<div class="text-red-400">${{log}}</div>`;
+                            }} else if (log.includes('WARNING:')) {{
+                                return `<div class="text-yellow-400">${{log}}</div>`;
+                            }} else if (log.includes('INFO:')) {{
+                                return `<div class="text-green-400">${{log}}</div>`;
+                            }} else {{
+                                return `<div class="text-gray-300">${{log}}</div>`;
+                            }}
+                        }}).join('');
+                        logsEl.innerHTML = logsHtml;
+                        
+                        // Auto-scroll to bottom
+                        const logsContainer = document.getElementById(`logs-container-${{taskId}}`);
+                        if (logsContainer) {{
+                            logsContainer.scrollTop = logsContainer.scrollHeight;
+                        }}
+                    }}
+                }})
+                .catch(error => {{
+                    console.error('Error refreshing tokenize logs:', error);
+                }});
+        }};
+        
+        // Download full logs
+        window.downloadTokenizeLogs = function(taskId) {{
+            fetch(`/api/tokenize/logs/${{taskId}}?last_n=-1`)
+                .then(response => response.json())
+                .then(data => {{
+                    const blob = new Blob([data.logs.join('\\n')], {{ type: 'text/plain' }});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `tokenize-logs-${{taskId}}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }})
+                .catch(error => console.error('Error downloading tokenize logs:', error));
+        }};
+        
+        window.clearTokenizeTask = function(taskId) {{
+            const taskDiv = document.getElementById('tokenize-task-' + taskId);
+            if (taskDiv && confirm('Clear this task from the display?')) {{
+                taskDiv.style.opacity = '0.5';
+                setTimeout(() => taskDiv.remove(), 300);
+            }}
+        }};
+        
+        // Copy task ID to clipboard
+        window.copyTaskId = function(taskId) {{
+            navigator.clipboard.writeText(taskId).then(() => {{
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '✅ Copied!';
+                setTimeout(() => {{
+                    button.textContent = originalText;
+                }}, 2000);
+            }});
+        }};
+        
+        // Auto-start status checking
+        setTimeout(() => checkTokenizeStatus('{task_id}'), 1000);
+        
+        // Set up periodic log refresh every 3 seconds during processing
+        let logRefreshInterval = setInterval(() => {{
+            fetch(`/api/tokenize/status/{task_id}`)
+                .then(response => response.json())
+                .then(data => {{
+                    if (data.status === 'running' || data.status === 'starting') {{
+                        refreshTokenizeLogs('{task_id}');
+                    }} else {{
+                        clearInterval(logRefreshInterval);
+                    }}
+                }});
+        }}, 3000);
+        </script>
+        """)
+            
     except Exception as e:
         return HTMLResponse(content=f"""
         <div class="bg-error-50 border border-error-200 rounded-md p-4">
