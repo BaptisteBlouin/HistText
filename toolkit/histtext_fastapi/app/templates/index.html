@@ -2463,21 +2463,24 @@
                 case 'transformers':
                     modelNameInput.placeholder = 'bert-base-cased, roberta-base, etc.';
                     modelNameInput.required = true;
+                    modelNameInput.disabled = false;
                     hint.textContent = 'HuggingFace model name or local path';
                     break;
                 case 'spacy':
                     modelNameInput.placeholder = 'en_core_web_sm, zh_core_web_sm, etc.';
                     modelNameInput.required = true;
+                    modelNameInput.disabled = false;
                     hint.textContent = 'spaCy model name (must be installed)';
                     break;
                 case 'chinese_segmenter':
-                    modelNameInput.placeholder = '';
+                    modelNameInput.placeholder = 'No model needed';
                     modelNameInput.required = false;
+                    modelNameInput.disabled = true;
                     modelNameInput.value = '';
-                    hint.textContent = 'Leave empty for Chinese segmenter (no model needed)';
+                    hint.textContent = 'Chinese segmenter uses built-in segmentation (no model needed)';
                     break;
             }
-            }
+        }
 
             function updateEmbeddingsModelHints() {
             const modelType = document.getElementById('embeddings-model-type').value;

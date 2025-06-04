@@ -17,7 +17,7 @@ tokenize_service = TokenizeService()
 async def tokenize_collection(
     background_tasks: BackgroundTasks,
     collection: str = Form(...),
-    model_name: str = Form(""),  # Allow empty for Chinese segmenter
+    model_name: str = Form(""),  # Allow empty string, will be processed by validation
     text_field: str = Form("text"),
     model_type: str = Form("transformers"),
     max_length: Optional[int] = Form(None),
@@ -42,22 +42,25 @@ async def tokenize_collection(
         if not text_field or text_field.strip() == "":
             text_field = "text"
         
-        # Handle model name based on type
-        if model_type != "chinese_segmenter" and (not model_name or model_name.strip() == ""):
-            return HTMLResponse(content=f"""
-            <div class="bg-error-50 border border-error-200 rounded-md p-4">
-                <h4 class="text-sm font-medium text-error-800 mb-2">❌ Validation Error</h4>
-                <div class="text-sm text-error-700">Model name is required for {model_type} tokenization.</div>
-            </div>
-            """, status_code=400)
-        
-        # For Chinese segmenter, model_name can be empty
+        # Handle model name based on type - this is the key fix
+        processed_model_name = None
         if model_type == "chinese_segmenter":
-            model_name = None
+            # For Chinese segmenter, model_name should be None
+            processed_model_name = None
+        else:
+            # For other types, model_name is required
+            if not model_name or model_name.strip() == "":
+                return HTMLResponse(content=f"""
+                <div class="bg-error-50 border border-error-200 rounded-md p-4">
+                    <h4 class="text-sm font-medium text-error-800 mb-2">❌ Validation Error</h4>
+                    <div class="text-sm text-error-700">Model name is required for {model_type} tokenization.</div>
+                </div>
+                """, status_code=400)
+            processed_model_name = model_name.strip()
         
         request_data = TokenizeRequest(
             collection=collection.strip(),
-            model_name=model_name.strip() if model_name else None,
+            model_name=processed_model_name,  # Use processed model name
             text_field=text_field.strip(),
             model_type=model_type,
             max_length=max_length,
@@ -70,6 +73,7 @@ async def tokenize_collection(
         
         # Start processing and get task ID
         task_id = await tokenize_service.tokenize_collection_async(request_data, background_tasks)
+      
         
         # Return HTML with progress tracking
         return HTMLResponse(content=f"""

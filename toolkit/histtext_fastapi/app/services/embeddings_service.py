@@ -444,12 +444,7 @@ class EmbeddingsService:
                 })
                 cfg = None
             
-            # Setup Solr connection
-            self._update_task_status(task_id, {
-                "progress": 15,
-                "message": "Setting up Solr connection..."
-            })
-            
+            # Get Solr connection parameters (don't create client yet)
             if cfg:
                 solr_host = cfg.solr.host
                 solr_port = cfg.solr.port
@@ -461,116 +456,192 @@ class EmbeddingsService:
                 solr_username = None
                 solr_password = None
             
-            solr_client = SolrClient(solr_host, solr_port, solr_username, solr_password)
-            await solr_client.start_session()
+            # Store connection parameters for the thread
+            solr_params = {
+                "host": solr_host,
+                "port": solr_port,
+                "username": solr_username,
+                "password": solr_password
+            }
+            
+            # Test connection first in the main thread
+            test_client = SolrClient(solr_host, solr_port, solr_username, solr_password)
+            await test_client.start_session()
             
             try:
+                # Test if collection exists
+                collections = await test_client.get_collections()
+                if request.collection not in collections:
+                    raise Exception(f"Collection '{request.collection}' does not exist. Available collections: {collections}")
+                    
                 self._update_task_status(task_id, {
                     "progress": 20,
-                    "message": f"Connected to Solr at {solr_host}:{solr_port}"
+                    "message": f"Verified collection '{request.collection}' exists on Solr at {solr_host}:{solr_port}"
+                })
+            finally:
+                await test_client.close_session()
+            
+            # Auto-configure parameters if requested (do this in main thread)
+            method_local = request.method
+            dim_local = request.dim
+            window_local = request.window
+            min_count_local = request.min_count
+            workers_local = request.workers
+
+            if request.auto_configure:
+                self._update_task_status(task_id, {
+                    "progress": 25,
+                    "message": "Auto-configuring word embedding parameters..."
                 })
                 
-                # Auto-configure parameters if requested
-                method_local = request.method
-                dim_local = request.dim
-                window_local = request.window
-                min_count_local = request.min_count
-                workers_local = request.workers
-
-                if request.auto_configure:
+                # Create a temporary client for auto-configuration
+                auto_config_client = SolrClient(solr_host, solr_port, solr_username, solr_password)
+                await auto_config_client.start_session()
+                
+                try:
+                    params = await auto_configure_embedding_params(
+                        auto_config_client, request.collection, request.text_field
+                    )
+                    
+                    # Override with auto-configured values
+                    method_local = params.get('method', method_local)
+                    dim_local = params.get('dim', dim_local)
+                    window_local = params.get('window', window_local)
+                    min_count_local = params.get('min_count', min_count_local)
+                    workers_local = params.get('workers', workers_local)
+                    
                     self._update_task_status(task_id, {
-                        "progress": 25,
-                        "message": "Auto-configuring word embedding parameters..."
+                        "progress": 30,
+                        "message": f"Auto-configured: method={method_local}, dim={dim_local}, window={window_local}"
                     })
                     
+                    if log_capture:
+                        logger.info(f"Auto-configuration complete:")
+                        logger.info(f"  Method: {method_local}")
+                        logger.info(f"  Dimensions: {dim_local}")
+                        logger.info(f"  Window: {window_local}")
+                        logger.info(f"  Min count: {min_count_local}")
+                        logger.info(f"  Workers: {workers_local}")
+                        
+                except Exception as e:
+                    if log_capture:
+                        logger.warning(f"Auto-configuration failed, using manual parameters: {str(e)}")
+                    self._update_task_status(task_id, {
+                        "progress": 30,
+                        "message": "Auto-configuration failed, using manual parameters"
+                    })
+                finally:
+                    await auto_config_client.close_session()
+            
+            # Create model config for word embeddings
+            model_config = ModelConfig(
+                name="word_embeddings",
+                path="",
+                type="word_embeddings",
+                additional_params={
+                    "method": method_local,
+                    "dim": dim_local,
+                    "window": window_local,
+                    "min_count": min_count_local,
+                    "workers": workers_local,
+                }
+            )
+            
+            # Run word embeddings computation in executor to prevent blocking
+            self._update_task_status(task_id, {
+                "progress": 35,
+                "message": f"Starting {method_local} training on collection '{request.collection}'..."
+            })
+            
+            # Create a wrapper function for the executor that creates its own Solr client
+            def run_word_embeddings():
+                """Run word embeddings in a new event loop within the thread."""
+                import asyncio
+                import logging
+                
+                # Set up logging for the thread
+                thread_logger = logging.getLogger('histtext_toolkit.operations.embeddings')
+                thread_logger.setLevel(logging.INFO)
+                
+                async def train():
+                    # Create a new Solr client within this thread's event loop
+                    from histtext_toolkit.solr.client import SolrClient
+                    from histtext_toolkit.operations.embeddings import compute_word_embeddings
+                    
+                    thread_client = SolrClient(
+                        solr_params["host"], 
+                        solr_params["port"], 
+                        solr_params["username"], 
+                        solr_params["password"]
+                    )
+                    
+                    await thread_client.start_session()
+                    
                     try:
-                        params = await auto_configure_embedding_params(
-                            solr_client, request.collection, request.text_field
+                        # Double-check collection exists in this thread
+                        collections = await thread_client.get_collections()
+                        if request.collection not in collections:
+                            raise Exception(f"Collection '{request.collection}' not found in thread. Available: {collections}")
+                        
+                        thread_logger.info(f"Thread: Successfully connected to Solr, collection '{request.collection}' verified")
+                        
+                        return await compute_word_embeddings(
+                            solr_client=thread_client,
+                            collection=request.collection,
+                            text_field=request.text_field,
+                            model_config=model_config,
+                            output_path=request.output_path,
+                            batch_size=request.batch_size,
+                            filter_query=request.filter_query,
+                            output_format=request.output_format,
+                            simplify_chinese=request.simplify_chinese,
+                            include_header=not request.no_header
                         )
-                        
-                        # Override with auto-configured values
-                        method_local = params.get('method', method_local)
-                        dim_local = params.get('dim', dim_local)
-                        window_local = params.get('window', window_local)
-                        min_count_local = params.get('min_count', min_count_local)
-                        workers_local = params.get('workers', workers_local)
-                        
-                        self._update_task_status(task_id, {
-                            "progress": 30,
-                            "message": f"Auto-configured: method={method_local}, dim={dim_local}, window={window_local}"
-                        })
-                        
-                        if log_capture:
-                            logger.info(f"Auto-configuration complete:")
-                            logger.info(f"  Method: {method_local}")
-                            logger.info(f"  Dimensions: {dim_local}")
-                            logger.info(f"  Window: {window_local}")
-                            logger.info(f"  Min count: {min_count_local}")
-                            logger.info(f"  Workers: {workers_local}")
-                            
-                    except Exception as e:
-                        if log_capture:
-                            logger.warning(f"Auto-configuration failed, using manual parameters: {str(e)}")
-                        self._update_task_status(task_id, {
-                            "progress": 30,
-                            "message": "Auto-configuration failed, using manual parameters"
-                        })
+                    finally:
+                        await thread_client.close_session()
                 
-                # Create model config for word embeddings
-                model_config = ModelConfig(
-                    name="word_embeddings",
-                    path="",
-                    type="word_embeddings",
-                    additional_params={
-                        "method": method_local,
-                        "dim": dim_local,
-                        "window": window_local,
-                        "min_count": min_count_local,
-                        "workers": workers_local,
-                    }
-                )
+                # Create new event loop for this thread
+                try:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    return loop.run_until_complete(train())
+                except Exception as e:
+                    thread_logger.error(f"Error in word embeddings thread: {str(e)}")
+                    raise
+                finally:
+                    try:
+                        loop.close()
+                    except:
+                        pass
+            
+            # Run in thread pool to prevent blocking
+            if not hasattr(self, '_executor'):
+                from concurrent.futures import ThreadPoolExecutor
+                self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="word_embeddings")
                 
-                # Run word embeddings computation
+            success = await asyncio.get_event_loop().run_in_executor(
+                self._executor, run_word_embeddings
+            )
+            
+            # Update final status
+            processing_time = time.time() - self._task_status[task_id]["started_at"]
+            
+            if success:
                 self._update_task_status(task_id, {
-                    "progress": 35,
-                    "message": f"Starting {method_local} training on collection '{request.collection}'..."
+                    "status": "completed",
+                    "progress": 100,
+                    "message": f"Successfully trained {method_local} word embeddings",
+                    "completed_at": time.time(),
+                    "processing_time": processing_time
                 })
-                
-                success = await compute_word_embeddings(
-                    solr_client=solr_client,
-                    collection=request.collection,
-                    text_field=request.text_field,
-                    model_config=model_config,
-                    output_path=request.output_path,
-                    batch_size=request.batch_size,
-                    filter_query=request.filter_query,
-                    output_format=request.output_format,
-                    simplify_chinese=request.simplify_chinese,
-                    include_header=not request.no_header
-                )
-                
-                # Update final status
-                processing_time = time.time() - self._task_status[task_id]["started_at"]
-                
-                if success:
-                    self._update_task_status(task_id, {
-                        "status": "completed",
-                        "progress": 100,
-                        "message": f"Successfully trained {method_local} word embeddings",
-                        "completed_at": time.time(),
-                        "processing_time": processing_time
-                    })
-                else:
-                    self._update_task_status(task_id, {
-                        "status": "failed",
-                        "progress": 0,
-                        "message": "Word embeddings training failed",
-                        "completed_at": time.time()
-                    })
-                
-            finally:
-                await solr_client.close_session()
-                
+            else:
+                self._update_task_status(task_id, {
+                    "status": "failed",
+                    "progress": 0,
+                    "message": "Word embeddings training failed",
+                    "completed_at": time.time()
+                })
+            
         except Exception as e:
             error_details = traceback.format_exc()
             error_message = str(e)
