@@ -189,7 +189,6 @@ class TokenizeService:
                 name=request.model_name,
                 path=request.model_name,
                 type=request.model_type,
-                max_length=request.max_length
             )
             
             # Setup Solr connection
@@ -236,7 +235,7 @@ class TokenizeService:
                     collection=request.collection,
                     text_field=request.text_field,
                     model_config=model_config,
-                    cache_dir=cache_root_dir,
+                    cache_root=cache_root_dir,
                     model_name=request.model_name,
                     start=request.start,
                     batch_size=request.batch_size,
@@ -323,7 +322,6 @@ class TokenizeService:
             name=request.model_name,
             path=request.model_name,
             type=request.model_type,
-            max_length=request.max_length
         )
         
         solr_client = SolrClient(
