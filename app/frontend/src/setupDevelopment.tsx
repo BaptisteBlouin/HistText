@@ -49,7 +49,7 @@ const useWebsocketConnection = () => {
         setWsConnected(false);
       };
       ws.onerror = err => {
-        console.error('create-rust-app:plugin_dev: Websocket error', err);
+        console.error('plugin_dev: Websocket error', err);
         ws.close();
       };
       ws.onmessage = payload => {
@@ -360,7 +360,7 @@ const CompilerMessage = ({ m, onOpenFile }: CompilerMessageProps) => {
           }}
         >
           {primarySpan.file_name}{' '}
-          {/* the following svg was taken from https://iconmonstr.com/cursor-2-svg/ and does not belong to the create-rust-app project */}
+          {/* the following svg was taken from https://iconmonstr.com/cursor-2-svg/ and does not belong to the project */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="white"
