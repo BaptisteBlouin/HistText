@@ -50,101 +50,94 @@ pub fn process_bundle_args(args: &HashMap<String, Value>) -> TeraResult<Value> {
 
 // Updated create_inject in vite_bundle.rs to add better logging
 fn create_inject(bundle_name: &str) -> String {
-    let key = format!("bundles/{}", bundle_name);
-    println!("Creating bundle injection for: {}", key);
+    println!("Creating bundle injection for: {}", bundle_name);
 
     #[cfg(not(debug_assertions))]
     {
         println!("Production mode bundle injection");
-        let entry = VITE_MANIFEST.get_entry(&key).unwrap_or_else(|| {
-            println!(
-                "Warning: Could not find bundle '{}' in manifest",
-                bundle_name
-            );
-            // Return an empty entry reference - this is safe as we handle it below
-            VITE_MANIFEST.get_entry("__empty__").unwrap_or_else(|| {
-                println!(
-                    "Error: Failed to load Vite manifest for bundle: {}",
-                    bundle_name
-                );
-                panic!("Failed to load Vite manifest for bundle: {}", bundle_name)
-            })
-        });
+        
+        // Try multiple possible keys since Vite manifest can have different formats
+        let possible_keys = vec![
+            bundle_name.to_string(),                    // "index.tsx"
+            format!("bundles/{}", bundle_name),         // "bundles/index.tsx"
+            format!("src/{}", bundle_name),             // "src/index.tsx"
+        ];
+        
+        let mut found_entry = None;
+        let mut used_key = String::new();
+        
+        for key in possible_keys {
+            if let Some(entry) = VITE_MANIFEST.entries.get(&key) {
+                found_entry = Some(entry);
+                used_key = key;
+                break;
+            }
+        }
+        
+        match found_entry {
+            Some(entry) => {
+                println!("Found entry with key: {}", used_key);
+                
+                let css_files = entry
+                    .css
+                    .iter()
+                    .map(|css_file| {
+                        format!(r#"<link rel="stylesheet" href="/{file}" />"#, file = css_file)
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n");
 
-        println!("Using entry file: {}", entry.file);
-        let entry_file = format!(
-            r#"<script type="module" src="/{file}"></script>"#,
-            file = entry.file
-        );
-
-        println!("CSS files count: {}", entry.css.len());
-        let css_files = entry
-            .css
-            .iter()
-            .map(|css_file| {
-                println!("  - CSS file: {}", css_file);
-                format!(
-                    r#"<link rel="stylesheet" href="/{file}" />"#,
-                    file = css_file
-                )
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        println!("Dynamic imports count: {}", entry.dynamic_imports.len());
-        let dyn_entry_files = entry
-            .dynamic_imports
-            .iter()
-            .map(|dyn_script_file| {
-                println!("  - Dynamic import: {}", dyn_script_file);
-                format!(
+                let entry_file = format!(
                     r#"<script type="module" src="/{file}"></script>"#,
-                    file = dyn_script_file
-                )
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
+                    file = entry.file
+                );
 
-        let result = format!(
-            r#"
-    <!-- production mode -->
-    {entry_file}
+                let result = format!(
+                    r#"
+    <!-- Production bundle -->
     {css_files}
-    {dyn_entry_files}
+    {entry_file}
     "#
-        );
-
-        println!("Production bundle injection created");
-        result
+                );
+                
+                println!("Production bundle injection created successfully");
+                result
+            }
+            None => {
+                println!("Warning: Could not find bundle '{}' in manifest", bundle_name);
+                println!("Available entries: {:?}", VITE_MANIFEST.entries.keys().collect::<Vec<_>>());
+                
+                // Fallback - try to serve a basic script
+                format!(
+                    r#"<script type="module" src="/assets/{}.js"></script>"#,
+                    bundle_name
+                )
+            }
+        }
     }
 
     #[cfg(debug_assertions)]
     {
         println!("Development mode bundle injection");
-        let result = format!(
+        format!(
             r#"<script type="module">
-            // Injecting bundle for development mode
             import RefreshRuntime from 'http://localhost:21012/@react-refresh';
             RefreshRuntime.injectIntoGlobalHook(window);
             window.$RefreshReg$ = () => {{}};
             window.$RefreshSig$ = () => (type) => type;
             window.__vite_plugin_react_preamble_installed__ = true;
             
-            // Load the main bundle
             const script = document.createElement('script');
             script.type = 'module';
             script.src = `http://localhost:21012/bundles/{bundle_name}`;
             document.head.appendChild(script);
             
-            // Load the dev script
             const devScript = document.createElement('script');
             devScript.type = 'module';
             devScript.src = 'http://localhost:21012/src/dev.tsx';
             document.head.appendChild(devScript);
             </script>"#
-        );
-        println!("Development bundle injection created");
-        result
+        )
     }
 }
 

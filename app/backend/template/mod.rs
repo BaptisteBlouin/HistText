@@ -73,13 +73,20 @@ pub async fn render_views(req: HttpRequest) -> HttpResponse {
     render_template_response(path)
 }
 
-/// Try to serve static files from various locations
 async fn try_serve_static_file(path: &str, req: &HttpRequest) -> Option<HttpResponse> {
+    #[cfg(debug_assertions)]
+    let mut static_paths = vec![
+        format!("frontend/dist{}", path),
+    ];
+    
+    #[cfg(not(debug_assertions))]
     let static_paths = vec![
         format!("frontend/dist{}", path),
-        #[cfg(debug_assertions)]
-        format!("frontend/public{}", path),
     ];
+    
+    // Only add public path in development
+    #[cfg(debug_assertions)]
+    static_paths.push(format!("frontend/public{}", path));
     
     for static_path in static_paths {
         if Path::new(&static_path).is_file() {
@@ -103,13 +110,54 @@ fn is_vite_request(path: &str) -> bool {
         || path.starts_with("/src/")
 }
 
+
+/// Enhance content with development tools when in debug mode
+fn enhance_content_with_dev_tools(content: String) -> String {
+    #[cfg(debug_assertions)]
+    {
+        let dev_client_injection = r#"
+        <!-- Vite Dev HMR Client -->
+        <script type="module">
+            import RefreshRuntime from 'http://localhost:21012/@react-refresh';
+            RefreshRuntime.injectIntoGlobalHook(window);
+            window.$RefreshReg$ = () => {};
+            window.$RefreshSig$ = () => (type) => type;
+            window.__vite_plugin_react_preamble_installed__ = true;
+
+            const viteClient = document.createElement('script');
+            viteClient.type = 'module';
+            viteClient.src = 'http://localhost:21012/@vite/client';
+            document.head.appendChild(viteClient);
+        </script>
+        "#;
+
+        if content.contains("<head>") {
+            content.replace("<head>", &format!("<head>{}", dev_client_injection))
+        } else if content.contains("<html>") {
+            content.replace(
+                "<html>",
+                &format!("<html><head>{}</head>", dev_client_injection),
+            )
+        } else {
+            format!(
+                "<html><head>{}</head>{}</html>",
+                dev_client_injection, content
+            )
+        }
+    }
+    
+    #[cfg(not(debug_assertions))]
+    {
+        content // Return unchanged in production
+    }
+}
 /// Render template with simplified logic
 fn render_template_response(path: &str) -> HttpResponse {
     let template_name = to_template_name(path);
     
     match TEMPLATES.render(template_name, &Context::new()) {
         Ok(content) => {
-            let final_content = enhance_content_for_dev(content);
+            let final_content = enhance_content_with_dev_tools(content);
             HttpResponse::build(StatusCode::OK)
                 .content_type("text/html")
                 .body(final_content)
