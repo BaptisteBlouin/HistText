@@ -148,6 +148,43 @@ The `solr_database_permissions` table manages access to Solr collections.
 | collection_name | Text | Primary key part 2, Collection name |
 | permission | Text | Primary key part 3, Permission identifier |
 
+## Security and Audit
+
+### Security Events
+
+The `security_events` table stores security-related events for audit trails and monitoring.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | SERIAL | Primary key |
+| `event_type` | VARCHAR(50) | Type of security event (login_attempt, permission_change, etc.) |
+| `user_id` | INTEGER | Foreign key to users table (nullable for system events) |
+| `user_email` | VARCHAR(255) | Email of user involved in the event |
+| `description` | TEXT | Detailed description of the security event |
+| `severity` | VARCHAR(20) | Event severity level (low, medium, high, critical) |
+| `ip_address` | VARCHAR(45) | IP address associated with the event |
+| `user_agent` | TEXT | User agent string from the request |
+| `created_at` | TIMESTAMP | When the event occurred |
+
+**Indexes:**
+- `idx_security_events_created_at`: For time-based queries and log analysis
+- `idx_security_events_user_id`: For user-specific event lookups
+- `idx_security_events_event_type`: For filtering by event type
+- `idx_security_events_severity`: For filtering by severity level
+
+**Common Event Types:**
+- `login_success`: Successful user authentication
+- `login_failure`: Failed login attempt
+- `password_change`: User password modification
+- `permission_granted`: Permission granted to user
+- `permission_revoked`: Permission removed from user
+- `account_locked`: User account locked due to security policy
+- `suspicious_activity`: Potentially malicious behavior detected
+- `ssh_tunnel_created`: SSH tunnel established for Solr access
+- `data_export`: Large data export operations
+
+This table provides comprehensive audit capabilities for security monitoring and compliance requirements.
+
 ## Relationships
 
 The schema includes the following relationships:
@@ -254,7 +291,20 @@ erDiagram
         text permission PK
     }
 
+    SECURITY_EVENTS {
+        int4 id PK
+        text event_type
+        int4 user_id FK
+        text user_email
+        text description
+        text severity
+        text ip_address
+        text user_agent
+        timestamptz created_at
+    }
+
     USERS ||--o{ USER_SESSIONS : has
+    USERS ||--o{ SECURITY_EVENTS : generates
     USERS ||--o{ USER_OAUTH2_LINKS : has
     USERS ||--o{ USER_PERMISSIONS : has
     USERS ||--o{ USER_ROLES : has

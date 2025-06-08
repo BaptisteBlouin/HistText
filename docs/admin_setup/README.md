@@ -73,19 +73,32 @@ cp .env.example .env
 vim .env
 ```
 
-Important environment variables to configure:
+Important environment variables to configure (verified from `app/backend/config.rs`):
 
 | Variable | Description | Example Value |
 |----------|-------------|---------------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgres://user:password@postgres:15432/databasename` (Docker)<br>`postgres://user:password@localhost:5432/databasename` (Local) |
-| `SECRET_KEY` | Application security key | Generate a secure random string |
-| `APP_URL` | Public URL for the application | `http://localhost:3000` |
-| `EMBED_PATH` | Path to default embeddings | `/data/embeddings/default-model` |
-| `SMTP_*` | Email configuration settings | Varies based on provider |
-| `DO_OPENAPI` | Enable API documentation | `true` |
-| `OPENAPI_LOGIN` | API docs username | `api_user` |
-| `OPENAPI_PWD` | API docs password | `secure_password` |
-| `SOLR_NER_PORT` | Port for NER Solr instance | `8983` |
+| `SECRET_KEY` | Application security key (required) | Generate a 256-bit secure random string |
+| `SOLR_NER_PORT` | Port for NER Solr instance | `8982` |
+| `PATH_STORE_FILES` | Temporary files storage path | `/data/histtext-tmp` |
+| `EMBED_PATH` | Path to word embeddings file | `/data/embeddings/glove.6B.50d.txt` |
+| `MAX_SIZE_QUERY` | Maximum query size limit | `20000` |
+| `MAX_EMBEDDINGS_FILES` | Max embeddings files to cache | `3` |
+| `MAIL_FROM` | Email sender address (optional) | `noreply@your-domain.com` |
+| `MAIL_REPLY_TO` | Email reply-to address (optional) | `support@your-domain.com` |
+
+**Core Required Variables:**
+- `DATABASE_URL`: PostgreSQL connection (required)
+- `SECRET_KEY`: 256-bit security key (required)
+- `SOLR_NER_PORT`: Solr port configuration (default: 8982)
+
+**Storage Configuration:**
+- `PATH_STORE_FILES`: Directory for temporary processing files
+- `EMBED_PATH`: Path to pre-trained word embeddings file
+
+**Performance Tuning:**
+- `MAX_SIZE_QUERY`: Controls maximum query result size
+- `MAX_EMBEDDINGS_FILES`: Limits embeddings cache size
 
 > **Important:** For production environments, ensure all passwords and keys are strong and unique. Never use default values.
 
@@ -223,6 +236,8 @@ SSH tunnel established successfully
 
 ![](images/ssh_correct.png)
 
+> **Automatic Tunnel Management**: SSH tunnels are automatically established on server startup and monitored for connectivity. The application manages tunnel lifecycle, including cleanup on shutdown. See `docs/ARCHITECTURE.md` for implementation details.
+
 ### Configuring Database Information
 For each Solr collection you want to use:
 
@@ -324,6 +339,8 @@ To authenticate API requests for testing:
 HistText provides interfaces to perform NLP operations on your Solr collections.
 
 ![](images/HistTextTool.png)
+
+> **Advanced NLP Operations**: For more advanced NLP processing, the separate HistText Toolkit provides a Python CLI and FastAPI interface with 15+ model types. See `docs/TOOLKIT.md` for integration details and `toolkit/README.md` for complete toolkit documentation.
 
 
 #### Named Entity Recognition

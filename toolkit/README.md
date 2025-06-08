@@ -1,26 +1,45 @@
 # HistText Toolkit
 
-HistText Toolkit is a Python command-line toolkit designed for ingesting, processing, and analyzing textual data with Apache Solr. It provides a comprehensive set of tools for natural language processing of historical and other text collections, with a focus on scalability, robustness, and performance.
+A comprehensive Python toolkit for advanced Natural Language Processing operations on historical text collections stored in Apache Solr. The toolkit provides both CLI and modern web interfaces for text processing, named entity recognition, embeddings generation, and document upload operations.
 
-## Key Features
+## Features
 
-- **JSONL ingestion and management** with automatic Solr schema creation, validation, and customization
-- **Named Entity Recognition (NER)** precomputation, caching, and upload with support for multiple entity types and formats
-- **Tokenization** for CSV files, plain text, and Solr collections with language-specific handling
-- **Word and Document Embeddings** generation with multiple algorithms and output formats:
-  - Document-level embeddings for semantic search
-  - Custom word vectors trained on your collections
-  - Support for FastText, Word2Vec, and Sentence Transformers
-- **Chinese text processing** with specialized support for traditional/simplified conversion
-- **Model registry** with pluggable architectures:
-  - spaCy for NER and tokenization
-  - Transformers (HuggingFace) for state-of-the-art NLP
-  - GLiNER for specialized historical entity recognition
-  - ChineseWordSegmenter for optimized Chinese tokenization
-- **Configurable caching** of intermediate results for performance optimization
-- **Checkpoint system** for resuming interrupted long-running operations
-- **Rich logging and progress reporting** with detailed metrics
-- **Robust error handling** with automatic recovery and detailed diagnostics
+### **Dual Interface**
+- **Command Line Interface (CLI)**: Traditional CLI for scripting and automation
+- **Modern Web UI**: FastAPI-based web interface with interactive documentation
+
+### **Text Processing**
+- **Multi-language tokenization** with specialized Chinese text segmentation
+- **15+ NER model types** including Transformers, GLiNER, spaCy, Flair, and specialized Chinese models
+- **Word embeddings generation** with Word2Vec, FastText, and Sentence Transformers
+- **Batch processing** with checkpoint support for large collections
+
+### **Collection Management**
+- **JSONL document upload** to Solr collections with automatic schema detection
+- **Embeddings computation** for entire document collections
+- **NER processing** with configurable entity types and confidence thresholds
+- **Configuration management** with YAML-based settings
+
+### **Model Support**
+
+#### NER Models
+- **Transformers**: BERT, RoBERTa, DistilBERT, multilingual models
+- **GLiNER**: Zero-shot NER with custom entity types
+- **spaCy**: Pre-trained models for multiple languages
+- **Flair**: Contextual string embeddings
+- **Stanza**: Stanford NLP toolkit with Chinese support
+- **Chinese-specific**: LAC, HanLP, PKUSEG, FastHan, FastNLP
+- **LLM-based**: Llama, Mistral, Qwen for advanced NER
+
+#### Tokenization Models
+- **spaCy**: Industrial-strength tokenization
+- **Transformers**: Subword tokenization (BPE, WordPiece)
+- **Chinese Segmenter**: Jieba-based Chinese text segmentation
+
+#### Embeddings Models
+- **FastText**: Pre-trained and trainable models
+- **Word2Vec**: Classic word embeddings
+- **Sentence Transformers**: Semantic embeddings for documents
 
 ---
 
@@ -71,8 +90,8 @@ HistText Toolkit is a Python command-line toolkit designed for ingesting, proces
 ### Basic Installation
 
 ```bash
-git clone https://github.com/BaptisteBlouin/hisstext.git
-cd histtext/toolkit
+git clone https://github.com/BaptisteBlouin/HistText.git
+cd HistText/toolkit
 pip install .
 ```
 
@@ -233,17 +252,39 @@ export HISTTEXT_CACHE_DIR=./my_cache
 
 ## Usage
 
-### Basic Usage
+### CLI Usage
 
 Invoke the toolkit via the console script or directly as a module:
 
 ```bash
-# Using the installed console script
-python -m histtext_toolkit.main [GLOBAL OPTIONS] <command> [COMMAND OPTIONS]
+# Using the new Click-based CLI (recommended)
+histtext-toolkit [GLOBAL OPTIONS] <command> [COMMAND OPTIONS]
 
-# Or with Python's module flag (useful in development or virtual environments)
+# Or with Python's module flag
 python -m histtext_toolkit.main [GLOBAL OPTIONS] <command> [COMMAND OPTIONS]
 ```
+
+### Web Interface
+
+Start the modern FastAPI web interface:
+
+```bash
+# Start web UI server
+cd histtext_fastapi/
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Access the web interface:
+- **Main Interface**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Alternative Docs**: http://localhost:8000/redoc
+
+#### Web UI Features
+- **Interactive forms** for all operations
+- **Real-time progress tracking** for long-running tasks
+- **Model configuration** with parameter validation
+- **Results visualization** and download
+- **API endpoint testing** with automatic documentation
 
 ### Global Options
 
@@ -263,6 +304,12 @@ Global options must be specified **before** the subcommand:
 
 The toolkit provides commands in several categories:
 
+#### Configuration Management
+
+* `config create` - Create default configuration file
+* `config show` - Show current configuration
+* `config validate` - Validate configuration file
+
 #### Document Management
 
 * `upload` - Upload JSONL files to a Solr collection
@@ -271,17 +318,20 @@ The toolkit provides commands in several categories:
 
 #### Text Processing
 
+* `tokenize` - Tokenize text from various sources
 * `tokenize-csv` - Tokenize text in a CSV file
 * `tokenize-text` - Tokenize a text string
 * `tokenize-solr` - Tokenize documents from a Solr collection
 
 #### Named Entity Recognition
 
+* `ner` - Run NER on collections with multiple model support
 * `precompute-ner` - Precompute NER annotations for a collection
+* `test-ner` - Test NER models with sample text
 
 #### Embedding Operations
 
-* `compute-embeddings` - Compute document embeddings for a collection
+* `embeddings` - Compute document embeddings for a collection
 * `semantic-search` - Search documents using semantic similarity
 * `compute-word-embeddings` - Generate word embeddings from collection texts
 * `build-embedding-index` - Build a vector index for a collection
@@ -291,6 +341,7 @@ The toolkit provides commands in several categories:
 * `list-models` - List available model types and tasks
 * `verify-solr` - Check Solr connection and collection status
 * `clear-cache` - Clear the cache directory
+* `server` - Start FastAPI web server (alternative to uvicorn)
 
 ### Example Command Structure
 
@@ -467,6 +518,65 @@ python -m histtext_toolkit.main verify-solr my-collection
 
 ```bash
 python -m histtext_toolkit.main clear-cache --model bert-base --collection my-collection
+```
+
+## API Reference
+
+### REST Endpoints
+
+The FastAPI web interface provides RESTful endpoints:
+
+#### Configuration
+- `GET /api/config` - Get current configuration
+- `POST /api/config` - Update configuration
+- `GET /api/models` - List available models
+
+#### Upload Operations
+- `POST /api/upload/solr` - Upload JSONL files to Solr
+- `GET /api/upload/status/{task_id}` - Check upload progress
+
+#### NER Operations  
+- `POST /api/ner/process` - Run NER on collection
+- `GET /api/ner/status/{task_id}` - Check NER progress
+- `GET /api/ner/results/{task_id}` - Get NER results
+
+#### Tokenization
+- `POST /api/tokenize/collection` - Tokenize Solr collection
+- `POST /api/tokenize/text` - Tokenize text directly
+
+#### Embeddings
+- `POST /api/embeddings/compute` - Generate embeddings for collection
+- `POST /api/embeddings/similarity` - Compute word similarity
+
+### Python API
+
+Use the toolkit programmatically:
+
+```python
+from histtext_toolkit.core.config import ModelConfig
+from histtext_toolkit.models.registry import create_ner_model
+from histtext_toolkit.operations.ner import process_ner
+from histtext_toolkit.solr.client import SolrClient
+
+# Create NER model
+config = ModelConfig(
+    name="dbmdz/bert-large-cased-finetuned-conll03-english",
+    type="transformers",
+    path="dbmdz/bert-large-cased-finetuned-conll03-english"
+)
+model = create_ner_model(config)
+
+# Initialize Solr client
+solr_client = SolrClient("http://localhost:8983/solr")
+
+# Process collection
+await process_ner(
+    solr_client=solr_client,
+    collection="my_collection",
+    text_field="content",
+    model_config=config,
+    output_path="ner_results.json"
+)
 ```
 
 ---
@@ -717,31 +827,48 @@ To resume an interrupted operation, simply run the same command again, and the t
 
 The HistText Toolkit follows a modular architecture for flexibility and extensibility:
 
-```
-                         ┌─────────────────┐
-                         │  Command Line   │
-                         │   Interface     │
-                         └────────┬────────┘
-                                  │
-                         ┌────────▼────────┐
-                         │  Configuration  │
-                         │   Management    │
-                         └────────┬────────┘
-                                  │
-          ┌──────────────────────┼──────────────────────┐
-          │                      │                      │
-┌─────────▼─────────┐   ┌────────▼────────┐    ┌────────▼────────┐
-│    Operations     │   │    Models       │    │   Solr Client   │
-│    Framework      │   │    Registry     │    │    Interface    │
-└─────────┬─────────┘   └────────┬────────┘    └────────┬────────┘
-          │                      │                      │
-          │              ┌───────▼────────┐             │
-          │              │ Model Backends │             │
-          │              └───────┬────────┘             │
-          │                      │                      │
-┌─────────▼──────────────────────▼──────────────────────▼─────────┐
-│                       Caching & Persistence                      │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    CLI[Command Line Interface] --> Config[Configuration Management]
+    WebUI[FastAPI Web Interface] --> Config
+    
+    Config --> Operations[Operations Framework]
+    Config --> Registry[Models Registry]
+    Config --> SolrClient[Solr Client Interface]
+    
+    Operations --> Cache[Caching & Persistence]
+    Registry --> Backends[Model Backends]
+    SolrClient --> Cache
+    
+    Backends --> NER[NER Models]
+    Backends --> Tokenization[Tokenization Models]
+    Backends --> Embeddings[Embeddings Models]
+    
+    NER --> Transformers[Transformers/BERT]
+    NER --> GLiNER[GLiNER]
+    NER --> SpaCy[spaCy]
+    NER --> Chinese[Chinese Models]
+    NER --> LLM[LLM-based]
+    
+    Tokenization --> SpaCyTok[spaCy Tokenizer]
+    Tokenization --> TransformersTok[Transformers Tokenizer]
+    Tokenization --> ChineseSegmenter[Chinese Segmenter]
+    
+    Embeddings --> FastText[FastText]
+    Embeddings --> Word2Vec[Word2Vec]
+    Embeddings --> SentenceTransformers[Sentence Transformers]
+    
+    Operations --> Upload[Document Upload]
+    Operations --> NERProcessing[NER Processing]
+    Operations --> TokenizeOps[Tokenization]
+    Operations --> EmbeddingOps[Embedding Generation]
+    
+    style CLI fill:#e1f5fe
+    style WebUI fill:#e1f5fe
+    style Config fill:#f3e5f5
+    style Operations fill:#e8f5e8
+    style Registry fill:#fff3e0
+    style Cache fill:#fce4ec
 ```
 
 ### Core Modules
@@ -810,6 +937,153 @@ Operations are organized as pipelines, where each stage processes data and passe
 5. **Storage** — Cache or upload to Solr
 
 This pipeline architecture enables efficient processing of large document collections.
+
+---
+
+## Performance & Optimization
+
+### Adaptive Batch Sizing
+
+The toolkit automatically adjusts batch sizes based on actual implementation:
+
+- **Text length**: 4-64 documents per batch depending on average text length
+- **Available memory**: Scales with GPU/RAM availability detected at runtime
+- **Error rate**: Reduces batch size if >20% error rate occurs
+- **Success rate**: Increases batch size if <1% error rate maintained
+
+### Memory Requirements by Model Type
+
+Based on actual implementation:
+
+| Model Type | Min RAM | Recommended RAM | GPU Memory | Notes |
+|------------|---------|-----------------|------------|--------|
+| spaCy | 1GB | 2GB | N/A | CPU-only processing |
+| Transformers (base) | 2GB | 4GB | 2GB | BERT, RoBERTa models |
+| Transformers (large) | 4GB | 8GB | 4GB | Large BERT models |
+| GLiNER | 2GB | 4GB | 2GB | Zero-shot NER |
+| Chinese models | 1GB | 2GB | N/A | LAC, HanLP, PKUSEG |
+| LLM-based | 8GB+ | 16GB+ | 8GB+ | Llama, Mistral, Qwen |
+
+### Optimization Features
+
+1. **Adaptive Processing**: Automatic batch size adjustment based on performance
+2. **Memory Management**: Automatic GPU cache clearing on errors
+3. **Parallel Processing**: Configurable worker processes
+4. **Multi-level Caching**: L1 (memory), L2 (file), L3 (database)
+5. **Checkpoint Recovery**: Resume interrupted operations automatically
+
+---
+
+## Error Handling & Recovery
+
+### Implemented Error Types
+
+Based on actual `core/errors.py` implementation:
+
+- **`EmbeddingError`**: Embedding computation failures with model-specific details
+- **`ModelError`**: Model loading/initialization issues with path and type info
+- **`ResourceError`**: File/memory resource problems with resource type tracking
+- **`SolrError`**: Solr connection and query issues with collection context
+
+### Automatic Recovery Features
+
+- **Exponential backoff**: 3 retries with increasing delays (0.5s, 1s, 1.5s)
+- **Memory cleanup**: Automatic garbage collection and GPU cache clearing on errors
+- **Checkpoint recovery**: Resume from last saved state with `.checkpoint.json`
+- **Graceful degradation**: Zero vectors for failed embeddings to maintain processing
+- **Signal handling**: Graceful shutdown on CTRL+C with state preservation
+
+### Checkpoint System Details
+
+- **Frequency**: Every 5 batches or 1000 documents processed
+- **Resume capability**: Automatically detects and resumes from existing checkpoints
+- **File structure**: JSON files containing progress, error counts, and processed document IDs
+- **Partial results**: Saves `.partial.{format}` files for incomplete operations
+
+Example checkpoint file:
+```json
+{
+  "collection": "my_collection",
+  "text_field": "content", 
+  "model": "bert-base-uncased",
+  "progress": {
+    "current_start": 5000,
+    "total_docs": 4850,
+    "error_docs": 150,
+    "skipped_docs": 25
+  },
+  "doc_ids_processed": ["doc1", "doc2", "..."]
+}
+```
+
+---
+
+## Model Selection Guide
+
+### Available NER Models
+
+Based on actual `models/registry.py`:
+
+| Model Type | Implementation | Memory | GPU | Use Case | Languages |
+|------------|----------------|---------|-----|----------|-----------|
+| `transformers` | Basic BERT-style | High | Recommended | High accuracy | 100+ |
+| `multilingual` | Enhanced with patterns | High | Recommended | Multilingual texts | Any |
+| `historical` | Historical text processing | High | Recommended | Historical documents | Any |
+| `gliner` | Zero-shot NER | Medium | Optional | Custom entity types | Any |
+| `spacy` | Standard pipeline | Low | No | Fast processing | 20+ |
+| `flair` | Contextual embeddings | Medium | Optional | Good accuracy | Multiple |
+| `stanza` | Stanford NLP | Medium | No | Academic research | 60+ |
+| `fasthan` | Chinese NER (variants) | Low | No | Chinese texts | Chinese |
+| `lac` | Baidu Chinese NER | Low | No | Chinese texts | Chinese |
+| `hanlp` | HanLP Chinese | Low | No | Chinese texts | Chinese |
+| `llm_ner` | LLM-based NER | Very High | Required | Experimental/Research | Any |
+
+### Model Variants Available
+
+#### Transformers Family
+- **`transformers`**: Basic wrapper for any Hugging Face model
+- **`multilingual`**: Pattern enhancement + language detection
+- **`historical`**: Specialized for historical text processing
+- **`nuner`**: Alias for transformers
+- **`bert`**: Alias for transformers
+
+#### Chinese Models
+- **`fasthan`**: FastHan base model
+- **`fasthan_base`**: FastHan base variant
+- **`fasthan_large`**: FastHan large variant  
+- **`fasthan_small`**: FastHan small variant
+- **`stanza_zh`**: Chinese-specific Stanza
+
+#### GLiNER Variants
+- **`gliner`**: Standard GLiNER
+- **`gliner_enhanced`**: Enhanced GLiNER
+- **`nunerzero`**: Zero-shot GLiNER alias
+
+### When to Use Each Model
+
+**For High Accuracy:**
+- Use `transformers` with BERT/RoBERTa models
+- GPU recommended, higher memory requirements
+
+**For Speed:**
+- Use `spacy` for real-time processing
+- CPU-only, lower memory requirements
+
+**For Custom Entities:**
+- Use `gliner` for zero-shot entity recognition
+- Define custom entity types without training
+
+**For Chinese Texts:**
+- Use `fasthan`, `lac`, or `hanlp` for Chinese-specific processing
+- Better handling of Chinese linguistic features
+
+**For Historical Documents:**
+- Use `historical` model type for better period-specific processing
+- Enhanced pattern recognition for historical text patterns
+
+**For Research/Experimentation:**
+- Use `llm_ner` with Llama/Mistral/Qwen models
+- Requires significant GPU memory (8GB+)
 
 ---
 
@@ -922,8 +1196,136 @@ schema:
       dest: text_stemmed
 ```
 
+### Environment Variables
+
+Based on actual FastAPI and core configuration:
+
+#### FastAPI Web Interface
+```bash
+HISTTEXT_DEBUG=false              # Enable debug mode
+HISTTEXT_WEB_HOST=0.0.0.0        # Web server host
+HISTTEXT_WEB_PORT=8000           # Web server port
+```
+
+#### Processing Configuration
+```bash
+HISTTEXT_SOLR_URL=http://localhost:8983/solr    # Solr connection
+HISTTEXT_CACHE_DIR=/tmp/histtext_cache          # Cache directory
+HISTTEXT_USE_GPU=true                           # Enable GPU acceleration
+HISTTEXT_WORKERS=4                              # Number of worker processes
+```
+
+#### Model Configuration
+```bash
+HISTTEXT_MODEL_CACHE=/models/cache              # Model cache location
+HISTTEXT_MAX_BATCH_SIZE=100                     # Override batch size limits
+```
+
 ---
 
+## Caching System Details
+
+### Cache Structure
+Based on actual cache implementation:
+
+```
+cache/
+├── embeddings/
+│   ├── L1_cache/          # DashMap in-memory cache
+│   ├── L2_file_cache/     # File-based cache  
+│   └── L3_database/       # Database cache
+└── {model_name}/
+    └── {collection}/
+        └── {field}/
+            ├── 0.jsonl           # Batch 0-999
+            ├── 1000.jsonl        # Batch 1000-1999
+            └── checkpoint.json   # Resume information
+```
+
+### Cache Statistics Available
+
+The toolkit tracks and reports:
+- Memory usage patterns and peak usage
+- Cache hit/miss rates for embeddings
+- LRU eviction events and frequency
+- File cache sizes and cleanup events
+- Processing speed improvements from caching
+
+### Cache Management Commands
+
+```bash
+# Clear specific model cache
+histtext-toolkit clear-cache --model bert-base
+
+# Clear collection-specific cache  
+histtext-toolkit clear-cache --collection my_collection
+
+# Clear all caches
+histtext-toolkit clear-cache --all
+```
+
+---
+
+## Complete CLI Command Reference
+
+### Configuration Management 
+```bash
+histtext-toolkit config create config.yaml      # Create default config
+histtext-toolkit config show                    # Display current config
+histtext-toolkit config validate config.yaml    # Validate config file
+```
+
+### Processing Commands
+```bash
+# NER processing with multiple model types
+histtext-toolkit ner collection \
+  --model-name dbmdz/bert-large-cased-finetuned-conll03-english \
+  --model-type transformers \
+  --text-field content \
+  --batch-size 500
+
+# GLiNER zero-shot NER
+histtext-toolkit ner collection \
+  --model-name urchade/gliner_mediumv2.1 \
+  --model-type gliner \
+  --entity-types "Person,Organization,Location"
+
+# Chinese NER
+histtext-toolkit ner collection \
+  --model-name fasthan \
+  --model-type fasthan_large \
+  --simplify-chinese
+
+# Embeddings generation
+histtext-toolkit embeddings collection output.vec \
+  --model-name sentence-transformers/all-MiniLM-L6-v2 \
+  --model-type sentence_transformers \
+  --text-field content \
+  --output-format binary
+
+# Tokenization
+histtext-toolkit tokenize collection \
+  --tokenizer-type spacy \
+  --text-field content \
+  --output-path tokens.json
+
+# Document upload
+histtext-toolkit upload collection files.jsonl \
+  --batch-size 1000 \
+  --schema schema.yaml
+```
+
+### Utility Commands
+```bash
+histtext-toolkit list-models                    # Shows 15+ model types
+histtext-toolkit test-ner \                     # Test NER with sample text
+  --model-name en_core_web_sm \
+  --model-type spacy \
+  --text "Apple Inc. was founded by Steve Jobs."
+histtext-toolkit server --port 8000             # Start FastAPI server
+```
+
+---
 
 ## Contributing
 
