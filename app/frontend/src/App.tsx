@@ -1,4 +1,3 @@
-import { useApolloClient } from "@apollo/client";
 import { useAuth, useAuthCheck, AuthProvider } from "./hooks/useAuth";
 import { AccountPage } from "./containers/AccountPage";
 import { LoginPage } from "./containers/LoginPage";
@@ -7,7 +6,7 @@ import { ActivationPage } from "./containers/ActivationPage";
 import { RegistrationPage } from "./containers/RegistrationPage";
 import { RecoveryPage } from "./containers/RecoveryPage";
 import { ResetPage } from "./containers/ResetPage";
-import { ProtectedRoute, PublicRoute } from "./components/RouteGuards";
+import { ProtectedRoute } from "./components/RouteGuards";
 import { LogoutButton } from "./components/LogoutButton";
 import React, { useState } from "react";
 import "./App.css";

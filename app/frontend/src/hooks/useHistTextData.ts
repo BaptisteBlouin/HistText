@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "./useAuth";
 import axios, { AxiosHeaders } from "axios";
 import config from "../../config.json";
-import { buildQueryString } from "../containers/components/buildQueryString";
 
 type StatsLevel = (typeof config.statsLevelOptions)[number];
 type DocLevel = (typeof config.docLevelOptions)[number];
@@ -72,6 +71,7 @@ export const useHistTextData = () => {
   // Settings
   const [getNER, setGetNER] = useState<boolean>(false);
   const [downloadOnly, setdownloadOnly] = useState<boolean>(false);
+  const [statsOnly, setStatsOnly] = useState<boolean>(false);
   const [statsLevel, setStatsLevel] = useState<StatsLevel>(
     config.statsLevelOptions[0],
   );
@@ -119,6 +119,7 @@ export const useHistTextData = () => {
     // Settings
     getNER,
     downloadOnly,
+    statsOnly,
     statsLevel,
     docLevel,
     isNERVisible,
@@ -149,6 +150,7 @@ export const useHistTextData = () => {
     setCloudProgress,
     setGetNER,
     setdownloadOnly,
+    setStatsOnly,
     setStatsLevel,
     setDocLevel,
     setIsNERVisible,

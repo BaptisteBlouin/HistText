@@ -69,6 +69,8 @@ interface MetadataFormProps {
   setGetNER: React.Dispatch<React.SetStateAction<boolean>>;
   downloadOnly: boolean;
   setdownloadOnly: React.Dispatch<React.SetStateAction<boolean>>;
+  statsOnly: boolean;
+  setStatsOnly: React.Dispatch<React.SetStateAction<boolean>>;
   statsLevel: StatsLevel;
   setStatsLevel: React.Dispatch<React.SetStateAction<StatsLevel>>;
   docLevel: DocLevel;
@@ -94,6 +96,8 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   setGetNER,
   downloadOnly,
   setdownloadOnly,
+  statsOnly,
+  setStatsOnly,
   statsLevel,
   setStatsLevel,
   docLevel,
@@ -270,7 +274,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
         }
 
         // Execute the query
-        handleQuery(e, false, getNER, downloadOnly, statsLevel, docLevel);
+        handleQuery(e, statsOnly, getNER, downloadOnly, statsLevel, docLevel);
       }
     },
     [
@@ -285,6 +289,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       handleQuery,
       getNER,
       downloadOnly,
+      statsOnly,
       statsLevel,
       docLevel,
     ],
@@ -490,6 +495,8 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
               setGetNER={setGetNER}
               downloadOnly={downloadOnly}
               setDownloadOnly={setdownloadOnly}
+              statsOnly={statsOnly}
+              setStatsOnly={setStatsOnly}
               statsLevel={statsLevel}
               setStatsLevel={setStatsLevel}
               docLevel={docLevel}

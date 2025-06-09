@@ -2,8 +2,6 @@ import { useCallback } from "react";
 import config from "../../config.json";
 import { buildQueryString } from "../containers/components/buildQueryString";
 
-type StatsLevel = (typeof config.statsLevelOptions)[number];
-type DocLevel = (typeof config.docLevelOptions)[number];
 
 interface UseHistTextActionsProps {
   authAxios: any;
@@ -237,7 +235,7 @@ export const useHistTextActions = ({
         const firstResponse = await authAxios.get(
           `/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(
             queryString,
-          )}&start=${start}&rows=${batchSize}&get_ner=${wantNER}&download_only=${wantDownload}&stats_level=${selectedStatsLevel}&solr_database_id=${solrDatabaseId}&is_first=true`,
+          )}&start=${start}&rows=${batchSize}&get_ner=${wantNER}&download_only=${wantDownload}&stats_level=${selectedStatsLevel}&solr_database_id=${solrDatabaseId}&is_first=true&only_stats=${onlyComputeStats}`,
         );
 
         const firstSolrResponse = firstResponse.data.solr_response;
@@ -256,6 +254,12 @@ export const useHistTextActions = ({
           setPartialResults([]);
           setAllResults([]);
           setActiveTab(1);
+        } else if (onlyComputeStats) {
+          // When only computing stats, don't set document results
+          setPartialResults([]);
+          setAllResults([]);
+          setActiveTab(2); // Switch to stats tab
+          showNotification(`Computing statistics for ${totalResults} documents`, "success");
         } else {
           setPartialResults([...firstDocs]);
           setActiveTab(1);
@@ -265,8 +269,8 @@ export const useHistTextActions = ({
         start += batchSize;
         setProgress((start / Math.max(totalResults, 1)) * 100);
         setLoading(false);
-        // Continue with full results if needed
-        if (totalResults > batchSize) {
+        // Continue with full results if needed (skip if only computing stats)
+        if (totalResults > batchSize && !onlyComputeStats) {
           const allResponse = await authAxios.get(
             `/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(
               queryString,

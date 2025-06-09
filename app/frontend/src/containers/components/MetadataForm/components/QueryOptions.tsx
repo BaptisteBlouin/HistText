@@ -33,6 +33,8 @@ type DocLevel = (typeof config.docLevelOptions)[number];
  * @property setGetNER - Setter for NER switch.
  * @property downloadOnly - Whether to enable download-only mode.
  * @property setDownloadOnly - Setter for download-only switch.
+ * @property statsOnly - Whether to compute only statistics without fetching documents.
+ * @property setStatsOnly - Setter for stats-only switch.
  * @property statsLevel - Current selected statistics level.
  * @property setStatsLevel - Setter for statistics level.
  * @property docLevel - Current selected document limit.
@@ -45,6 +47,8 @@ interface QueryOptionsProps {
   setGetNER: (value: boolean) => void;
   downloadOnly: boolean;
   setDownloadOnly: (value: boolean) => void;
+  statsOnly: boolean;
+  setStatsOnly: (value: boolean) => void;
   statsLevel: StatsLevel;
   setStatsLevel: (value: StatsLevel) => void;
   docLevel: DocLevel;
@@ -54,7 +58,7 @@ interface QueryOptionsProps {
 }
 
 /**
- * Renders query options including toggles for NER, download-only mode,
+ * Renders query options including toggles for NER, download-only mode, stats-only mode,
  * and (optionally) advanced controls for statistics/document levels.
  */
 const QueryOptions: React.FC<QueryOptionsProps> = ({
@@ -62,6 +66,8 @@ const QueryOptions: React.FC<QueryOptionsProps> = ({
   setGetNER,
   downloadOnly,
   setDownloadOnly,
+  statsOnly,
+  setStatsOnly,
   statsLevel,
   setStatsLevel,
   docLevel,
@@ -91,28 +97,42 @@ const QueryOptions: React.FC<QueryOptionsProps> = ({
         </Box>
 
         <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <FormControlLabel
               control={
                 <Switch
                   checked={getNER}
                   onChange={(e) => setGetNER(e.target.checked)}
                   color="primary"
+                  disabled={statsOnly}
                 />
               }
               label="Named Entity Recognition"
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <FormControlLabel
               control={
                 <Switch
                   checked={downloadOnly}
                   onChange={(e) => setDownloadOnly(e.target.checked)}
                   color="secondary"
+                  disabled={statsOnly}
                 />
               }
               label="Download Only"
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={statsOnly}
+                  onChange={(e) => setStatsOnly(e.target.checked)}
+                  color="info"
+                />
+              }
+              label="Statistics Only"
             />
           </Grid>
 
