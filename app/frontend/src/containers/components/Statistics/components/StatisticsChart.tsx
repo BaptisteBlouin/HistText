@@ -86,7 +86,7 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({
         </Box>
         <Box sx={{ height: "100%", pt: 4 }}>
           <ChartComponent
-            ref={(ref) => {
+            ref={(ref: any) => {
               chartRef.current = ref;
               if (ref) {
                 chartInstanceRef.current = ref;

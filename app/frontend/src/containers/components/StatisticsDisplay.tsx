@@ -164,7 +164,7 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
       });
     }, []);
 
-    const onGridReady = useCallback((params) => {
+    const onGridReady = useCallback((params: any) => {
       setGridApi(params.api);
       params.api.sizeColumnsToFit();
     }, []);

@@ -81,8 +81,9 @@ const NEREntityTypes: React.FC<NEREntityTypesProps> = ({
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 3 }}>
         {Object.entries(stats.byLabel)
-          .sort(([, a], [, b]) => b.count - a.count)
-          .map(([labelFull, { count, originalLabel, color }]) => {
+          .sort(([, a], [, b]) => (b as any).count - (a as any).count)
+          .map(([labelFull, stat]) => {
+            const { count, originalLabel, color } = stat as any;
             const isSelected = selectedLabels.includes(originalLabel);
 
             return (

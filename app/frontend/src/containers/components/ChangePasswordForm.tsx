@@ -10,7 +10,7 @@ import {
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { toast } from "react-toastify";
 
-export const ChangePasswordForm = ({ auth }) => {
+export const ChangePasswordForm = ({ auth }: { auth: any }) => {
   const [processing, setProcessing] = useState<boolean>(false);
   const [originalPassword, setOriginalPassword] = useState<string>("");
   const [password, setPassword] = useState<string>("");

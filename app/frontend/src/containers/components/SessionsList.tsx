@@ -3,7 +3,7 @@ import { Box, Typography, Button, Pagination, Grid } from "@mui/material";
 import "../css/SessionsList.css";
 import { toast } from "react-toastify";
 
-export const SessionsList = ({ auth }) => {
+export const SessionsList = ({ auth }: { auth: any }) => {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [isFetchingSessions, setFetchingSessions] = useState<boolean>(false);

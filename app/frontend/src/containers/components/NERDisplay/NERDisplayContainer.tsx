@@ -90,7 +90,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
     Object.values(nerData).forEach((data: any) => {
       if (Array.isArray(data.l)) {
         data.l.forEach((label: string) => {
-          const labelFull = config.NERLABELS2FULL[label] || label;
+          const labelFull = (config.NERLABELS2FULL as any)[label] || label;
           typeStats[labelFull] = typeStats[labelFull] || {
             count: 0,
             percentage: 0,
@@ -132,7 +132,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
         const filteredIndices: number[] = [];
 
         data.l.forEach((label: string, index: number) => {
-          const labelFull = config.NERLABELS2FULL[label] || label;
+          const labelFull = (config.NERLABELS2FULL as any)[label] || label;
           if (selectedEntityTypes.includes(labelFull)) {
             filteredIndices.push(index);
           }
@@ -340,7 +340,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
                 label={type}
                 size="small"
                 style={{
-                  backgroundColor: config.NER_LABELS_COLORS[type] || "#757575",
+                  backgroundColor: (config.NER_LABELS_COLORS as any)[type] || "#757575",
                   color: "white",
                 }}
               />

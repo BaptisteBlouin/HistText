@@ -68,7 +68,7 @@ export const useStatisticsData = (stats: any, selectedStat: string) => {
             return Object.entries(stats.languages_detected).map(
               ([lang, count]) => ({
                 language: lang.toUpperCase(),
-                count: formatValue(count),
+                count: Number(formatValue(count)),
               }),
             );
 

@@ -555,7 +555,7 @@ const AdminPanel: React.FC = () => {
               p: 1.5,
               background:
                 mainTab === index
-                  ? `linear-gradient(135deg, ${theme.palette[tab.color as keyof typeof theme.palette].main} 0%, ${theme.palette[tab.color as keyof typeof theme.palette].dark} 100%)`
+                  ? `linear-gradient(135deg, ${(theme.palette as any)[tab.color]?.main || theme.palette.primary.main} 0%, ${(theme.palette as any)[tab.color]?.dark || theme.palette.primary.dark} 100%)`
                   : "transparent",
               color: mainTab === index ? "white" : "inherit",
               boxShadow:
@@ -563,11 +563,11 @@ const AdminPanel: React.FC = () => {
               "&:hover": {
                 background:
                   mainTab === index
-                    ? `linear-gradient(135deg, ${theme.palette[tab.color as keyof typeof theme.palette].dark} 0%, ${theme.palette[tab.color as keyof typeof theme.palette].main} 100%)`
-                    : `linear-gradient(135deg, ${theme.palette[tab.color as keyof typeof theme.palette].light} 0%, ${theme.palette[tab.color as keyof typeof theme.palette].main} 100%)`,
+                    ? `linear-gradient(135deg, ${(theme.palette as any)[tab.color]?.dark || theme.palette.primary.dark} 0%, ${(theme.palette as any)[tab.color]?.main || theme.palette.primary.main} 100%)`
+                    : `linear-gradient(135deg, ${(theme.palette as any)[tab.color]?.light || theme.palette.primary.light} 0%, ${(theme.palette as any)[tab.color]?.main || theme.palette.primary.main} 100%)`,
                 color: "white",
                 transform: "translateY(-2px)",
-                boxShadow: `0 8px 25px rgba(${theme.palette[tab.color as keyof typeof theme.palette].main.slice(4, -1)}, 0.3)`,
+                boxShadow: `0 8px 25px rgba(${((theme.palette as any)[tab.color]?.main || theme.palette.primary.main).slice(4, -1)}, 0.3)`,
               },
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             }}

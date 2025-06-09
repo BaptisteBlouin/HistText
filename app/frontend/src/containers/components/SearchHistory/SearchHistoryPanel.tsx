@@ -1064,7 +1064,6 @@ const EditSearchDialog: React.FC<{
     onSave({
       name,
       description,
-      description,
       tags: tags
         .split(",")
         .map((tag) => tag.trim())

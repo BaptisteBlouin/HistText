@@ -20,7 +20,7 @@ export const useHistTextData = () => {
             config.headers.set("Authorization", `Bearer ${accessToken}`);
           } else {
             config.headers = new AxiosHeaders({
-              ...config.headers,
+              ...(config.headers as any),
               Authorization: `Bearer ${accessToken}`,
             });
           }
@@ -84,7 +84,7 @@ export const useHistTextData = () => {
   // Computed values
   const totalEntities = useMemo(
     () =>
-      nerData ? Object.values(nerData).flatMap((d) => d.t || []).length : 0,
+      nerData ? Object.values(nerData).flatMap((d: any) => d.t || []).length : 0,
     [nerData],
   );
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
 
-export const Permissions = ({ auth }) => {
+export const Permissions = ({ auth }: { auth: any }) => {
   return (
     <Box sx={{ backgroundColor: "#f1f1f1", p: 3, borderRadius: 2 }}>
       <Typography variant="h6">Permissions</Typography>
@@ -9,7 +9,7 @@ export const Permissions = ({ auth }) => {
         {!auth.session && (
           <Typography>Error: No auth session present.</Typography>
         )}
-        {auth.session?.permissions?.map((perm, index) => (
+        {auth.session?.permissions?.map((perm: any, index: number) => (
           <Typography key={index}>{JSON.stringify(perm)}</Typography>
         ))}
         {auth.session?.permissions?.length === 0 && (

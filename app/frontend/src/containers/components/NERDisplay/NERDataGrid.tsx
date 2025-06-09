@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { ColDef } from "@ag-grid-community/core";
+import { ColDef } from "ag-grid-community";
 import { Paper, Box, Typography, Chip, LinearProgress } from "@mui/material";
 import { TableChart } from "@mui/icons-material";
 

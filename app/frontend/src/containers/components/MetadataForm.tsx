@@ -132,7 +132,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     getAnalogy,
     setSimilarityResult,
     setAnalogyResult,
-  } = useEmbeddings(solrDatabaseId, selectedAlias, accessToken, hasEmbeddings);
+  } = useEmbeddings(solrDatabaseId, selectedAlias, accessToken || "", hasEmbeddings);
 
   // Smart validation hook
   const { validateField, formValidation } = useSmartValidation(
@@ -349,7 +349,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       setFormData((prev) => ({
         ...prev,
         [name!]: (prev[name!] || []).map((entry, i) =>
-          i === index ? { ...entry, value: value.toString() } : entry,
+          i === index ? { ...entry, value: (value as any)?.toString() || "" } : entry,
         ),
       }));
     },
@@ -557,7 +557,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                   getNER={getNER}
                   downloadOnly={downloadOnly}
                   statsLevel={statsLevel}
-                  accessToken={accessToken}
+                  accessToken={accessToken || ""}
                 />
               )}
             </Box>

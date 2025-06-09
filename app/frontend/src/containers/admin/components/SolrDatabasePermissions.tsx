@@ -954,19 +954,20 @@ const SolrDatabasePermissions: React.FC = () => {
               columns={columns}
               initialState={{
                 pagination: {
-                  paginationModel: { page: 0, pageSize: 10 },
+                  page: 0,
+                  pageSize: 10,
                 },
               }}
-              pageSizeOptions={[10, 25, 50, 100]}
+              pageSize={100}
               getRowId={(row) =>
                 `${row.solr_database_id}-${row.collection_name}-${row.permission}`
               }
               checkboxSelection
-              rowSelectionModel={selectedPermissions}
-              onRowSelectionModelChange={(newSelection) => {
+              selectionModel={selectedPermissions}
+              onSelectionModelChange={(newSelection: any) => {
                 setSelectedPermissions(newSelection as string[]);
               }}
-              disableRowSelectionOnClick={false}
+              disableSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {

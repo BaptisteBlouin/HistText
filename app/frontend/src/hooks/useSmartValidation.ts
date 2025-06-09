@@ -114,7 +114,7 @@ export const useSmartValidation = (
       }
 
       // Check all entries for validation issues
-      let worstSeverity: "valid" | "info" | "warning" | "error" = "valid";
+      let worstSeverity: "valid" | "warning" | "error" = "valid";
       let validationMessage = "";
       const suggestions: string[] = [];
 
@@ -123,12 +123,14 @@ export const useSmartValidation = (
 
         for (const rule of applicableRules) {
           if (!rule.test(entry.value)) {
-            if (
-              rule.severity === "error" ||
-              (rule.severity === "warning" && worstSeverity !== "error") ||
-              (rule.severity === "info" && worstSeverity === "valid")
-            ) {
-              worstSeverity = rule.severity;
+            if (rule.severity === "error") {
+              worstSeverity = "error";
+              validationMessage = rule.message;
+            } else if (rule.severity === "warning" && worstSeverity !== "error") {
+              worstSeverity = "warning";
+              validationMessage = rule.message;
+            } else if (rule.severity === "info" && worstSeverity === "valid") {
+              worstSeverity = "warning"; // Treat info as warning for display purposes
               validationMessage = rule.message;
             }
             break;

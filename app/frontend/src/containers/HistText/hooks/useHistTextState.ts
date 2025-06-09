@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { FullscreenMode } from "../components/TabNavigation";
+import { FullscreenMode } from "../../components/TabNavigation";
 
 interface NotificationState {
   open: boolean;

@@ -109,7 +109,7 @@ export const useHistTextActions = ({
                   min: dateRangeResponse.data.min.split("T")[0],
                   max: dateRangeResponse.data.max.split("T")[0],
                 });
-                setFormData((prevData) => ({
+                setFormData((prevData: any) => ({
                   ...prevData,
                   min_date: [
                     {
@@ -194,8 +194,8 @@ export const useHistTextActions = ({
       // Check if user has entered at least one search term (excluding dates)
       const hasSearchTerms = Object.entries(formData).some(([key, entries]) => {
         if (key === "min_date" || key === "max_date") return false;
-        return entries.some(
-          (entry) => entry.value && entry.value.trim() !== "",
+        return (entries as any).some(
+          (entry: any) => entry.value && entry.value.trim() !== "",
         );
       });
 
@@ -318,7 +318,7 @@ export const useHistTextActions = ({
             .get(
               `/api/solr/stats?path=${encodeURIComponent(firstSolrResponse.stats_path)}&solr_database_id=${solrDatabaseId}`,
             )
-            .then((response_stats) => {
+            .then((response_stats: any) => {
               if (statsTimeoutId) {
                 clearTimeout(statsTimeoutId);
                 statsTimeoutId = null;
@@ -326,7 +326,7 @@ export const useHistTextActions = ({
               setStats(response_stats.data);
               setStatsReady(true);
             })
-            .catch((error) => {
+            .catch((error: any) => {
               if (statsTimeoutId) {
                 clearTimeout(statsTimeoutId);
                 statsTimeoutId = null;
@@ -341,7 +341,7 @@ export const useHistTextActions = ({
                   "Statistics file not found - it may have expired",
                   "warning",
                 );
-              } else if (error.response?.status >= 500) {
+              } else if ((error as any).response?.status >= 500) {
                 showNotification(
                   "Server error while generating statistics",
                   "warning",
@@ -386,7 +386,7 @@ export const useHistTextActions = ({
               .get(
                 `/api/solr/ner?path=${encodeURIComponent(firstSolrResponse.ner_path)}&solr_database_id=${solrDatabaseId}`,
               )
-              .then((response_ner) => {
+              .then((response_ner: any) => {
                 if (nerTimeoutId) {
                   clearTimeout(nerTimeoutId);
                   nerTimeoutId = null;
@@ -413,7 +413,7 @@ export const useHistTextActions = ({
                   );
                 }
               })
-              .catch((error) => {
+              .catch((error: any) => {
                 if (nerTimeoutId) {
                   clearTimeout(nerTimeoutId);
                   nerTimeoutId = null;
@@ -430,7 +430,7 @@ export const useHistTextActions = ({
                     "NER data file not found - it may have expired",
                     "info",
                   );
-                } else if (error.response?.status >= 500) {
+                } else if ((error as any).response?.status >= 500) {
                   showNotification(
                     "Named entity recognition is not available for this collection",
                     "info",
@@ -488,19 +488,19 @@ export const useHistTextActions = ({
         setIsNERVisible(false);
 
         // Provide specific error messages
-        if (error.response?.status === 400) {
+        if ((error as any).response?.status === 400) {
           showNotification(
             "Invalid search query. Please check your search criteria.",
             "error",
           );
-        } else if (error.response?.status === 404) {
+        } else if ((error as any).response?.status === 404) {
           showNotification(
             "Collection not found. It may have been removed or renamed.",
             "error",
           );
-        } else if (error.response?.status >= 500) {
+        } else if ((error as any).response?.status >= 500) {
           showNotification("Server error. Please try again later.", "error");
-        } else if (error.code === "NETWORK_ERROR" || !error.response) {
+        } else if ((error as any).code === "NETWORK_ERROR" || !(error as any).response) {
           showNotification(
             "Network error. Please check your connection and try again.",
             "error",

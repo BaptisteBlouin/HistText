@@ -31,7 +31,7 @@ import {
   Switch,
   Badge,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridSelectionModel } from "@mui/x-data-grid";
 import {
   Add,
   Edit,
@@ -143,7 +143,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     message: "",
     severity: "info",
   });
-  const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>([]);
+  const [selectedRows, setSelectedRows] = useState<GridSelectionModel>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [openImportDialog, setOpenImportDialog] = useState(false);
@@ -533,7 +533,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       errors.push("Collection name is required");
     } else if (!isValidCollectionName(newCollectionName)) {
       errors.push("Collection name can only contain letters, numbers, underscores, and hyphens");
-    } else if (selectedSolrDatabase && collectionInfoExists(selectedSolrDatabase.id, newCollectionName, editingRecord)) {
+    } else if (selectedSolrDatabase && collectionInfoExists(selectedSolrDatabase.id, newCollectionName, editingRecord || undefined)) {
       errors.push("Collection information already exists for this database");
     }
     
@@ -650,7 +650,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       await authAxios.delete(
         `/api/solr_database_info/${solr_database_id}/${encodeURIComponent(collection_name)}`,
       );
-      setSelectedRows(prev => prev.filter(rowId => rowId !== `${solr_database_id}-${collection_name}`));
+      setSelectedRows((prev: any) => prev.filter((rowId: any) => rowId !== `${solr_database_id}-${collection_name}`));
       fetchSolrDatabaseInfos();
       setOpenDeleteDialog(false);
       setRecordToDelete(null);
@@ -1071,23 +1071,20 @@ const SolrDatabaseInfoComponent: React.FC = () => {
               columns={columns}
               initialState={{
                 pagination: {
-                  paginationModel: { page: 0, pageSize: 10 },
+                  page: 0,
+                  pageSize: 10,
                 },
               }}
-              paginationModel={{
-                page: Math.floor((selectedRows.length > 0 ? 0 : 0)),
-                pageSize: 10
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
+              pageSize={100}
               getRowId={(row) =>
                 `${row.solr_database_id}-${row.collection_name}`
               }
               checkboxSelection
-              rowSelectionModel={selectedRows}
-              onRowSelectionModelChange={(newSelection) => {
+              selectionModel={selectedRows}
+              onSelectionModelChange={(newSelection: any) => {
                 setSelectedRows(newSelection);
               }}
-              disableRowSelectionOnClick={false}
+              disableSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {

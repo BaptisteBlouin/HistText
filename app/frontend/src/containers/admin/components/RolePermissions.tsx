@@ -921,17 +921,18 @@ const RolePermissions: React.FC = () => {
               columns={columns}
               initialState={{
                 pagination: {
-                  paginationModel: { page: 0, pageSize: 10 },
+                  page: 0,
+                  pageSize: 10,
                 },
               }}
-              pageSizeOptions={[10, 25, 50, 100]}
+              pageSize={100}
               getRowId={(row) => `${row.role}-${row.permission}`}
               checkboxSelection
-              rowSelectionModel={selectedRolePermissions}
-              onRowSelectionModelChange={(newSelection) => {
+              selectionModel={selectedRolePermissions}
+              onSelectionModelChange={(newSelection: any) => {
                 setSelectedRolePermissions(newSelection as string[]);
               }}
-              disableRowSelectionOnClick={false}
+              disableSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {

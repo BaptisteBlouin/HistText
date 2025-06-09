@@ -32,7 +32,7 @@ import {
   Switch,
   Badge as MuiBadge,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridSelectionModel } from "@mui/x-data-grid";
 import {
   Add,
   Delete,
@@ -120,7 +120,7 @@ const UserRoles: React.FC = () => {
     message: "",
     severity: "info",
   });
-  const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>([]);
+  const [selectedRows, setSelectedRows] = useState<GridSelectionModel>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -291,13 +291,13 @@ const UserRoles: React.FC = () => {
         const errorSummary = errors.length <= 2 ? 
           errors.join('; ') : 
           `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
-        showNotification(`Imported ${successCount} user roles successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
+        showNotification(`Imported ${successCount} user roles successfully. ${errors.length} failed: ${errorSummary}`, "warning");
         fetchUserRoles();
       } else {
         const errorSummary = errors.length <= 2 ? 
           errors.join('; ') : 
           `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
-        showNotification(`Import failed for all user roles: ${errorSummary}`, "error", 15000);
+        showNotification(`Import failed for all user roles: ${errorSummary}`, "error");
       }
       
       setOpenImportDialog(false);
@@ -305,7 +305,7 @@ const UserRoles: React.FC = () => {
     } catch (err: any) {
       console.error('Import failed:', err);
       const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unknown error occurred';
-      showNotification(`Import failed: ${errorMsg}`, "error", 10000);
+      showNotification(`Import failed: ${errorMsg}`, "error");
     } finally {
       setImporting(false);
     }
@@ -919,21 +919,18 @@ const UserRoles: React.FC = () => {
               columns={columns}
               initialState={{
                 pagination: {
-                  paginationModel: { page: 0, pageSize: 10 },
+                  page: 0,
+                  pageSize: 10,
                 },
               }}
-              paginationModel={{
-                page: Math.floor((selectedRows.length > 0 ? 0 : 0)),
-                pageSize: 10
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
+              pageSize={100}
               getRowId={(row) => `${row.user_id}-${row.role}`}
               checkboxSelection
-              rowSelectionModel={selectedRows}
-              onRowSelectionModelChange={(newSelection) => {
+              selectionModel={selectedRows}
+              onSelectionModelChange={(newSelection: any) => {
                 setSelectedRows(newSelection);
               }}
-              disableRowSelectionOnClick={false}
+              disableSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {

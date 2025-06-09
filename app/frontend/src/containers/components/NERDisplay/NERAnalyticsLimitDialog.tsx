@@ -136,7 +136,7 @@ const NERAnalyticsLimitDialog: React.FC<NERAnalyticsLimitDialogProps> = ({
   };
 
   const getEntityTypeColor = (type: string) => {
-    return config.NER_LABELS_COLORS[type] || "#757575";
+    return (config.NER_LABELS_COLORS as any)[type] || "#757575";
   };
 
   return (

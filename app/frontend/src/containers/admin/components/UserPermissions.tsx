@@ -467,12 +467,13 @@ const UserPermissions: React.FC = () => {
               columns={columns}
               initialState={{
                 pagination: {
-                  paginationModel: { page: 0, pageSize: 10 },
+                  page: 0,
+                  pageSize: 10,
                 },
               }}
-              pageSizeOptions={[10, 25, 50, 100]}
+              pageSize={10}
               getRowId={(row) => `${row.user_id}-${row.permission}`}
-              disableRowSelectionOnClick
+              disableSelectionOnClick
               checkboxSelection={false}
               sx={{
                 border: "none",

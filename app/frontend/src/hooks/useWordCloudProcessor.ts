@@ -288,10 +288,10 @@ export const useWordCloudProcessor = ({
             err,
           );
           console.error("Error details:", {
-            message: err.message,
-            status: err.response?.status,
-            statusText: err.response?.statusText,
-            data: err.response?.data,
+            message: (err as any).message,
+            status: (err as any).response?.status,
+            statusText: (err as any).response?.statusText,
+            data: (err as any).response?.data,
           });
 
           // Enhanced fallback processing for this batch

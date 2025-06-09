@@ -27,7 +27,7 @@ import {
   Switch,
   Badge,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridSelectionModel } from "@mui/x-data-grid";
 import {
   Add,
   Edit,
@@ -118,7 +118,7 @@ const SolrDatabaseComponent: React.FC = () => {
     message: "",
     severity: "info",
   });
-  const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>([]);
+  const [selectedRows, setSelectedRows] = useState<GridSelectionModel>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [openImportDialog, setOpenImportDialog] = useState(false);
@@ -563,7 +563,7 @@ const SolrDatabaseComponent: React.FC = () => {
       await authAxios.delete(`/api/solr_databases/${id}`);
       showNotification(`Database "${dbName}" deleted successfully`, "success");
       if (editingDatabase?.id === id) resetForm();
-      setSelectedRows(prev => prev.filter(rowId => rowId !== id));
+      setSelectedRows((prev: any) => prev.filter((rowId: any) => rowId !== id));
       fetchSolrDatabases();
       setOpenDeleteDialog(false);
       setDatabaseToDelete(null);
@@ -998,21 +998,18 @@ const SolrDatabaseComponent: React.FC = () => {
               columns={columns}
               initialState={{
                 pagination: {
-                  paginationModel: { page: 0, pageSize: 10 },
+                  page: 0,
+                  pageSize: 10,
                 },
               }}
-              paginationModel={{
-                page: Math.floor((selectedRows.length > 0 ? 0 : 0)),
-                pageSize: 10
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
+              pageSize={100}
               getRowId={(row) => row.id}
               checkboxSelection
-              rowSelectionModel={selectedRows}
-              onRowSelectionModelChange={(newSelection) => {
+              selectionModel={selectedRows}
+              onSelectionModelChange={(newSelection: any) => {
                 setSelectedRows(newSelection);
               }}
-              disableRowSelectionOnClick={false}
+              disableSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {
