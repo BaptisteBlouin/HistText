@@ -24,9 +24,6 @@ import {
   CardContent,
   Grid,
   Stack,
-  Alert,
-  useTheme,
-  useMediaQuery,
   Fade,
   Chip,
   LinearProgress,
@@ -99,8 +96,6 @@ const useAuthAxios = () => {
  */
 const ComputeWordEmbeddings: React.FC = () => {
   const authAxios = useAuthAxios();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [solrDatabases, setSolrDatabases] = useState<SolrDatabase[]>([]);
   const [aliases, setAliases] = useState<string[]>([]);

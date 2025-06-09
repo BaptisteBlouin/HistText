@@ -22,9 +22,6 @@ import {
   CardContent,
   Grid,
   Stack,
-  Alert,
-  useTheme,
-  useMediaQuery,
   Fade,
   Chip,
   LinearProgress,
@@ -92,8 +89,6 @@ const useAuthAxios = () => {
  */
 const TokenizeSolr: React.FC = () => {
   const authAxios = useAuthAxios();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [solrDatabases, setSolrDatabases] = useState<SolrDatabase[]>([]);
   const [aliases, setAliases] = useState<string[]>([]);
@@ -111,9 +106,6 @@ const TokenizeSolr: React.FC = () => {
   const [textField, setTextField] = useState("");
   const [availableFields, setAvailableFields] = useState<string[]>([]);
 
-  const [filterQuery, setFilterQuery] = useState("");
-  const [batchSize, setBatchSize] = useState<number | "">(1000);
-  const [nbatches, setNbatches] = useState<number | "">("");
 
   const [tokenizeCommand, setTokenizeCommand] = useState("");
   const [uploadCommand, setUploadCommand] = useState("");

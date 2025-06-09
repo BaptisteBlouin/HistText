@@ -5,17 +5,11 @@ import {
   Typography,
   Paper,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Card,
   CardContent,
   Grid,
   Stack,
   Alert,
-  useTheme,
-  useMediaQuery,
   Fade,
   CircularProgress,
   InputAdornment,
@@ -38,7 +32,6 @@ import {
   VpnKey,
   Refresh,
   Email,
-  Badge,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
@@ -98,8 +91,6 @@ const useAuthAxios = () => {
  */
 const UserPermissions: React.FC = () => {
   const authAxios = useAuthAxios();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [permissions, setPermissions] = useState<UserPermission[]>([]);
   const [users, setUsers] = useState<User[]>([]);

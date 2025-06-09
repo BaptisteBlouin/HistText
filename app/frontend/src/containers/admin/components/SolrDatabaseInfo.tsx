@@ -15,8 +15,6 @@ import {
   Grid,
   Stack,
   Alert,
-  useTheme,
-  useMediaQuery,
   Fade,
   CircularProgress,
   InputAdornment,
@@ -38,9 +36,7 @@ import {
   Delete,
   Search,
   Storage,
-  Description,
   Language,
-  Settings,
   Refresh,
   Save,
   Cancel,
@@ -107,8 +103,6 @@ const useAuthAxios = () => {
  */
 const SolrDatabaseInfoComponent: React.FC = () => {
   const authAxios = useAuthAxios();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   // --- State variables ---
   const [solrDatabaseInfos, setSolrDatabaseInfos] = useState<

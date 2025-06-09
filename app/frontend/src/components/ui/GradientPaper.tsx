@@ -1,5 +1,5 @@
 import React from "react";
-import { Paper, PaperProps, alpha } from "@mui/material";
+import { Paper, PaperProps } from "@mui/material";
 
 /**
  * Props for GradientPaper component.

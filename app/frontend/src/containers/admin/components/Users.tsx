@@ -20,8 +20,6 @@ import {
   Tooltip,
   Stack,
   Alert,
-  useTheme,
-  useMediaQuery,
   Fade,
   CircularProgress,
   InputAdornment,
@@ -30,13 +28,11 @@ import {
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import {
-  Add,
   Edit,
   Delete,
   PersonAdd,
   Search,
   Email,
-  Badge as BadgeIcon,
   CheckCircle,
   Cancel,
   People,
@@ -97,8 +93,6 @@ const useAuthAxios = () => {
  */
 const Users: React.FC = () => {
   const authAxios = useAuthAxios();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [users, setUsers] = useState<User[]>([]);
   const [newUser, setNewUser] = useState<Partial<User>>({});

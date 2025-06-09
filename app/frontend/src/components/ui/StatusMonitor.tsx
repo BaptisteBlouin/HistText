@@ -91,7 +91,6 @@ const StatusMonitor: React.FC<StatusMonitorProps> = ({
 
   const checkSystemHealth = async () => {
     setLoading(true);
-    const startTime = Date.now();
     
     try {
       // For demo purposes, simulate healthy system

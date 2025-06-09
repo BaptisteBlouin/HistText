@@ -3,18 +3,12 @@ import {
   Box,
   Button,
   Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   TextField,
   Card,
   CardContent,
   Chip,
   Stack,
   Alert,
-  useTheme,
-  useMediaQuery,
   Fade,
   CircularProgress,
   InputAdornment,
@@ -26,7 +20,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Checkbox,
   Avatar,
   Divider,
   Badge,
@@ -94,8 +87,6 @@ const useAuthAxios = () => {
  */
 const RolePermissions: React.FC = () => {
   const authAxios = useAuthAxios();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   // Main data and UI state
   const [permissions, setPermissions] = useState<RolePermission[]>([]);

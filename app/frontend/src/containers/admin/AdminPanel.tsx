@@ -4,7 +4,6 @@ import {
   Box,
   Typography,
   Card,
-  CardContent,
   Tabs,
   Tab,
   Button,
@@ -24,9 +23,6 @@ import {
   Stack,
   LinearProgress,
   Alert,
-  Switch,
-  FormControlLabel,
-  Tooltip,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -38,14 +34,14 @@ import {
   Menu as MenuIcon,
   Close as CloseIcon,
   AdminPanelSettings,
+  Home,
   DarkMode,
   LightMode,
 } from "@mui/icons-material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { BreadcrumbNavigation } from "../../components/ui";
-import StatusMonitor from "../../components/ui/StatusMonitor";
-// import { useThemeMode } from "../../contexts/ThemeContext";
+import BreadcrumbNavigation from "../../components/ui/BreadcrumbNavigation";
+import { AdminThemeProvider, useAdminTheme } from "./AdminThemeProvider";
 
 const Users = React.lazy(() => import("./components/Users"));
 const RolePermissions = React.lazy(
@@ -306,16 +302,16 @@ const ApiDocumentation: React.FC = () => {
 };
 
 /**
- * Main admin panel component for the application.
+ * Main admin panel content component.
  * Handles tab selection, sidebar layout, and content rendering.
  */
-const AdminPanel: React.FC = () => {
+const AdminPanelContent: React.FC = () => {
   useAuthCheck();
   const auth = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isAdmin = auth.session?.hasRole("Admin");
-  // const { darkMode, toggleDarkMode } = useThemeMode();
+  const { darkMode, toggleDarkMode } = useAdminTheme();
 
   // State for tab selections and mobile drawer.
   const [mainTab, setMainTab] = useState<number>(() => {
@@ -519,6 +515,8 @@ const AdminPanel: React.FC = () => {
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        bgcolor: "background.paper",
+        color: "text.primary",
       }}
     >
       <Box
@@ -526,7 +524,9 @@ const AdminPanel: React.FC = () => {
           p: 3,
           borderBottom: "1px solid",
           borderColor: "divider",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: darkMode 
+            ? "linear-gradient(135deg, #424242 0%, #303030 100%)"
+            : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           color: "white",
           textAlign: "center",
         }}
@@ -557,7 +557,7 @@ const AdminPanel: React.FC = () => {
                 mainTab === index
                   ? `linear-gradient(135deg, ${(theme.palette as any)[tab.color]?.main || theme.palette.primary.main} 0%, ${(theme.palette as any)[tab.color]?.dark || theme.palette.primary.dark} 100%)`
                   : "transparent",
-              color: mainTab === index ? "white" : "inherit",
+              color: mainTab === index ? "white" : "text.primary",
               boxShadow:
                 mainTab === index ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
               "&:hover": {
@@ -613,10 +613,23 @@ const AdminPanel: React.FC = () => {
       <Divider sx={{ mx: 2 }} />
 
       <Box sx={{ p: 2, textAlign: "center" }}>
+        <IconButton
+          onClick={toggleDarkMode}
+          sx={{
+            mb: 1,
+            bgcolor: darkMode ? "primary.dark" : "primary.light",
+            color: "white",
+            "&:hover": {
+              bgcolor: darkMode ? "primary.main" : "primary.main",
+            },
+          }}
+        >
+          {darkMode ? <LightMode /> : <DarkMode />}
+        </IconButton>
         <Typography
           variant="caption"
           color="text.secondary"
-          sx={{ fontWeight: 500 }}
+          sx={{ fontWeight: 500, display: "block" }}
         >
           HistText Admin v2.0
         </Typography>
@@ -656,7 +669,7 @@ const AdminPanel: React.FC = () => {
             ModalProps={{ keepMounted: true }}
             sx={{
               "& .MuiDrawer-paper": {
-                background: "linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)",
+                bgcolor: "background.paper",
               },
             }}
           >
@@ -672,7 +685,7 @@ const AdminPanel: React.FC = () => {
         <Paper
           elevation={1}
           sx={{
-            background: "linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)",
+            bgcolor: "background.paper",
             borderRadius: 0,
             borderRight: "1px solid",
             borderColor: "divider",
@@ -688,7 +701,7 @@ const AdminPanel: React.FC = () => {
           flex: 1,
           overflow: "auto",
           pt: isMobile ? 8 : 0,
-          background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+          bgcolor: "background.default",
           minHeight: "100vh",
         }}
       >
@@ -697,21 +710,50 @@ const AdminPanel: React.FC = () => {
             <Paper
               elevation={0}
               sx={{
-                background: "rgba(255, 255, 255, 0.9)",
-                backdropFilter: "blur(10px)",
+                bgcolor: "background.paper",
                 borderRadius: 4,
                 p: 3,
                 minHeight: "calc(100vh - 8rem)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                border: 1,
+                borderColor: "divider",
               }}
             >
+              <BreadcrumbNavigation 
+                darkMode={darkMode}
+                items={[
+                  {
+                    label: 'Home',
+                    path: '/',
+                    icon: <Home fontSize="small" />,
+                  },
+                  {
+                    label: 'Admin Panel',
+                    icon: <AdminPanelSettings fontSize="small" />,
+                  },
+                  {
+                    label: mainTabs[mainTab]?.label || 'Dashboard',
+                    icon: mainTabs[mainTab]?.icon || <DashboardIcon fontSize="small" />,
+                    current: true,
+                  },
+                ]}
+              />
               {renderContent()}
             </Paper>
           </Fade>
         </Container>
       </Box>
     </Box>
+  );
+};
+
+/**
+ * Main admin panel component with theme provider.
+ */
+const AdminPanel: React.FC = () => {
+  return (
+    <AdminThemeProvider>
+      <AdminPanelContent />
+    </AdminThemeProvider>
   );
 };
 

@@ -17,8 +17,6 @@ import {
   Grid,
   Stack,
   Alert,
-  useTheme,
-  useMediaQuery,
   Fade,
   CircularProgress,
   InputAdornment,
@@ -43,8 +41,6 @@ import {
   Refresh,
   CheckBox,
   CheckBoxOutlineBlank,
-  Save,
-  Cancel,
   GetApp,
   DeleteSweep,
   SelectAll,
@@ -101,8 +97,6 @@ const useAuthAxios = () => {
  */
 const SolrDatabasePermissions: React.FC = () => {
   const authAxios = useAuthAxios();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   // ----------------
   // State management
@@ -126,7 +120,6 @@ const SolrDatabasePermissions: React.FC = () => {
     useState<SolrDatabasePermission | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [openBulkDeleteDialog, setOpenBulkDeleteDialog] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [notification, setNotification] = useState<NotificationState>({
     open: false,
@@ -240,7 +233,6 @@ const SolrDatabasePermissions: React.FC = () => {
         ),
       ) as string[];
       setAvailablePermissions(perms);
-      setLastRefresh(new Date());
       setSelectedPermissions([]); // Clear selection on refresh
     } catch (error) {
       console.error("Failed to fetch permissions:", error);

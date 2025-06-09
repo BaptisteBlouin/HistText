@@ -17,8 +17,6 @@ import {
   Chip,
   Stack,
   Alert,
-  useTheme,
-  useMediaQuery,
   Fade,
   InputAdornment,
   IconButton,
@@ -39,7 +37,6 @@ import {
   Refresh,
   Save,
   Cancel,
-  CheckCircle,
   Error as ErrorIcon,
   GetApp,
   DeleteSweep,
@@ -96,8 +93,6 @@ const useAuthAxios = () => {
  */
 const SolrDatabaseComponent: React.FC = () => {
   const authAxios = useAuthAxios();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   // ------------- State variables -------------
   const [solrDatabases, setSolrDatabases] = useState<SolrDatabase[]>([]);

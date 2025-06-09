@@ -4,18 +4,12 @@ import {
   Button,
   Typography,
   Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   TextField,
   Card,
   CardContent,
   Chip,
   Stack,
   Alert,
-  useTheme,
-  useMediaQuery,
   Fade,
   CircularProgress,
   InputAdornment,
@@ -104,8 +98,6 @@ const useAuthAxios = () => {
  */
 const UserRoles: React.FC = () => {
   const authAxios = useAuthAxios();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -549,7 +541,6 @@ const UserRoles: React.FC = () => {
             assignments.push(
               authAxios.post("/api/user_roles", { user_id: userId, role })
             );
-            const user = users.find(u => u.id === userId);
             newAssignments.push(`${getUserDisplayName(userId)} → ${role}`);
           }
         }

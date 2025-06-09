@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation, Link as RouterLink } from 'react-router-dom';
 import {
   Breadcrumbs,
   Link,
@@ -27,35 +28,76 @@ interface BreadcrumbItem {
 interface BreadcrumbNavigationProps {
   items?: BreadcrumbItem[];
   maxItems?: number;
+  darkMode?: boolean;
 }
 
 const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
   items,
   maxItems = 8,
+  darkMode = false,
 }) => {
   const theme = useTheme();
+  const location = useLocation();
 
-  // Simple breadcrumb for admin panel
-  const breadcrumbItems: BreadcrumbItem[] = items || [
-    {
-      label: 'Home',
-      path: '/',
-      icon: <Home fontSize="small" />,
-    },
-    {
-      label: 'Admin Panel',
-      icon: <AdminPanelSettings fontSize="small" />,
-      current: true,
-    },
-  ];
+  const getIconForPath = (path: string) => {
+    if (path.includes('/admin')) return <AdminPanelSettings fontSize="small" />;
+    if (path.includes('/users')) return <People fontSize="small" />;
+    if (path.includes('/roles') || path.includes('/permissions')) return <Security fontSize="small" />;
+    if (path.includes('/database')) return <Storage fontSize="small" />;
+    if (path.includes('/info')) return <Info fontSize="small" />;
+    return <Home fontSize="small" />;
+  };
+
+  const generateBreadcrumbs = (): BreadcrumbItem[] => {
+    if (items) return items;
+
+    const pathSegments = location.pathname.split('/').filter(Boolean);
+    const breadcrumbs: BreadcrumbItem[] = [
+      {
+        label: 'Home',
+        path: '/',
+        icon: <Home fontSize="small" />,
+      },
+    ];
+
+    let currentPath = '';
+    pathSegments.forEach((segment, index) => {
+      currentPath += `/${segment}`;
+      const isLast = index === pathSegments.length - 1;
+
+      let label = segment
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      if (segment === 'admin') label = 'Admin Panel';
+      if (segment === 'role_permissions') label = 'Role Permissions';
+      if (segment === 'user_roles') label = 'User Roles';
+      if (segment === 'user_permissions') label = 'User Permissions';
+      if (segment === 'solr_database') label = 'Solr Databases';
+      if (segment === 'solr_database_info') label = 'Database Info';
+      if (segment === 'solr_database_permissions') label = 'Database Permissions';
+
+      breadcrumbs.push({
+        label,
+        path: isLast ? undefined : currentPath,
+        icon: getIconForPath(currentPath),
+        current: isLast,
+      });
+    });
+
+    return breadcrumbs;
+  };
+
+  const breadcrumbItems = generateBreadcrumbs();
 
   return (
     <Box
       sx={{
         py: 2,
         px: 3,
-        backgroundColor: theme.palette.mode === 'dark' 
-          ? 'rgba(30, 30, 30, 0.8)' 
+        backgroundColor: darkMode
+          ? 'rgba(30, 30, 30, 0.8)'
           : 'rgba(248, 249, 250, 0.8)',
         backdropFilter: 'blur(10px)',
         borderBottom: `1px solid ${theme.palette.divider}`,
@@ -68,13 +110,13 @@ const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
         maxItems={maxItems}
         sx={{
           '& .MuiBreadcrumbs-separator': {
-            color: theme.palette.text.secondary,
+            color: darkMode ? '#b0b0b0' : theme.palette.text.secondary,
           },
         }}
       >
         {breadcrumbItems.map((item, index) => {
           const isLast = index === breadcrumbItems.length - 1;
-          
+
           if (isLast || !item.path) {
             return (
               <Box
@@ -90,9 +132,9 @@ const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
                   variant="body2"
                   sx={{
                     fontWeight: isLast ? 600 : 400,
-                    color: isLast 
-                      ? theme.palette.primary.main 
-                      : theme.palette.text.primary,
+                    color: isLast
+                      ? theme.palette.primary.main
+                      : darkMode ? '#ffffff' : theme.palette.text.primary,
                   }}
                 >
                   {item.label}
@@ -113,18 +155,19 @@ const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
           return (
             <Link
               key={index}
-              href={item.path}
+              component={RouterLink}
+              to={item.path}
               underline="hover"
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                color: theme.palette.text.secondary,
+                color: darkMode ? '#b0b0b0' : theme.palette.text.secondary,
                 transition: 'all 0.2s ease',
                 padding: '4px 8px',
                 borderRadius: '6px',
                 '&:hover': {
-                  backgroundColor: theme.palette.action.hover,
+                  backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : theme.palette.action.hover,
                   color: theme.palette.primary.main,
                   transform: 'translateY(-1px)',
                 },
@@ -138,11 +181,16 @@ const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
           );
         })}
       </Breadcrumbs>
-      
+
       <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <Typography variant="caption" color="text.secondary">
-          💡 Use keyboard shortcuts: Ctrl+N (New), Ctrl+R (Refresh), Del (Delete selected), Esc (Clear)
-        </Typography>
+        {location.pathname.includes('/admin') && (
+          <Typography 
+            variant="caption" 
+            sx={{ color: darkMode ? '#b0b0b0' : 'text.secondary' }}
+          >
+            💡 Use keyboard shortcuts: Ctrl+N (New), Ctrl+R (Refresh), Del (Delete selected), Esc (Clear)
+          </Typography>
+        )}
       </Box>
     </Box>
   );

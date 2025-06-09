@@ -1,6 +1,6 @@
 import React from "react";
-import { Tooltip, IconButton, Box, Typography, Link } from "@mui/material";
-import { Help, Info, Warning, CheckCircle, Star } from "@mui/icons-material";
+import { Tooltip, IconButton, Box, Typography } from "@mui/material";
+import { Help, Warning, CheckCircle } from "@mui/icons-material";
 
 /**
  * All valid help topic keys for ContextHelp.
