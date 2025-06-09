@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Box,
   Button,
@@ -27,8 +27,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Divider,
+  FormControlLabel,
+  Switch,
+  Badge as MuiBadge,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel } from "@mui/x-data-grid";
 import {
   Add,
   Delete,
@@ -37,6 +41,10 @@ import {
   Person,
   Badge,
   Refresh,
+  GetApp,
+  DeleteSweep,
+  SelectAll,
+  Autorenew,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
@@ -111,11 +119,202 @@ const UserRoles: React.FC = () => {
     message: "",
     severity: "info",
   });
+  const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>([]);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState<UserRole | null>(null);
 
   useEffect(() => {
     fetchUserRoles();
     fetchUsers();
   }, []);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        fetchUserRoles();
+      }, 30000); // Refresh every 30 seconds
+      setRefreshInterval(interval);
+    } else {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        setRefreshInterval(null);
+      }
+    }
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [autoRefresh]);
+
+  const filteredUserRoles = useMemo(() => 
+    userRoles.filter((ur) => {
+      const user = users.find((u) => u.id === ur.user_id);
+      const searchTerm = search.toLowerCase();
+      return (
+        user?.email.toLowerCase().includes(searchTerm) ||
+        user?.firstname?.toLowerCase().includes(searchTerm) ||
+        user?.lastname?.toLowerCase().includes(searchTerm) ||
+        ur.role.toLowerCase().includes(searchTerm)
+      );
+    }), [userRoles, users, search]
+  );
+
+  // Highlight search terms
+  const highlightText = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, index) => 
+      regex.test(part) ? <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>{part}</mark> : part
+    );
+  };
+
+  /**
+   * Format user full name or fallback to email.
+   */
+  const getUserDisplayName = (userId: number) => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return `User ${userId}`;
+    const fullName = `${user.firstname || ""} ${user.lastname || ""}`.trim();
+    return fullName || user.email;
+  };
+
+  /**
+   * Initials for user avatar display.
+   */
+  const getUserInitials = (userId: number) => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return "?";
+    if (user.firstname && user.lastname) {
+      return `${user.firstname.charAt(0)}${user.lastname.charAt(0)}`;
+    }
+    return user.email.charAt(0).toUpperCase();
+  };
+
+  // Export to CSV functionality
+  const handleExportCSV = useCallback(() => {
+    const csvHeaders = ['User ID', 'User Name', 'Email', 'Role', 'Assigned Date'];
+    const csvData = filteredUserRoles.map(ur => {
+      const user = users.find(u => u.id === ur.user_id);
+      return [
+        ur.user_id,
+        getUserDisplayName(ur.user_id),
+        user?.email || '',
+        ur.role,
+        new Date(ur.created_at).toISOString()
+      ];
+    });
+    
+    const csvContent = [csvHeaders, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `user_roles_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    showNotification(`Exported ${filteredUserRoles.length} user role assignments to CSV`, 'success');
+  }, [filteredUserRoles, users]);
+
+  // Bulk delete functionality
+  const handleBulkDelete = useCallback(() => {
+    if (selectedRows.length === 0) {
+      showNotification('No role assignments selected for deletion', 'warning');
+      return;
+    }
+    
+    const selectedRoles = filteredUserRoles.filter(ur => 
+      selectedRows.includes(`${ur.user_id}-${ur.role}`)
+    );
+    setRoleToDelete(selectedRoles[0]); // Use first selected for display
+    setOpenDeleteDialog(true);
+  }, [selectedRows, filteredUserRoles]);
+
+  // Bulk delete confirmation handler
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedRows.length === 0) return;
+    
+    const selectedRoles = filteredUserRoles.filter(ur => 
+      selectedRows.includes(`${ur.user_id}-${ur.role}`)
+    );
+    
+    try {
+      const deletions = selectedRoles.map(ur => 
+        authAxios.delete(`/api/user_roles/${ur.user_id}/${encodeURIComponent(ur.role)}`)
+      );
+      
+      await Promise.all(deletions);
+      setSelectedRows([]);
+      setOpenDeleteDialog(false);
+      setRoleToDelete(null);
+      fetchUserRoles();
+      
+      showNotification(`Successfully removed ${selectedRoles.length} role assignment(s)`, 'success');
+    } catch (err: any) {
+      console.error('Bulk delete failed:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
+      showNotification(`Failed to remove some role assignments: ${errorMessage}`, 'error');
+      fetchUserRoles(); // Refresh to sync with server
+    }
+  };
+
+  // Bulk operations
+  const handleSelectAll = () => {
+    const allIds = filteredUserRoles.map(ur => `${ur.user_id}-${ur.role}`);
+    setSelectedRows(allIds);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedRows([]);
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        switch (event.key) {
+          case 'r':
+            event.preventDefault();
+            fetchUserRoles();
+            break;
+          case 'n':
+            event.preventDefault();
+            setOpenAddDialog(true);
+            break;
+          case 'a':
+            if (event.shiftKey) {
+              event.preventDefault();
+              const allIds = filteredUserRoles.map(ur => `${ur.user_id}-${ur.role}`);
+              setSelectedRows(allIds);
+            }
+            break;
+          case 'e':
+            if (selectedRows.length > 0) {
+              event.preventDefault();
+              handleExportCSV();
+            }
+            break;
+          case 'Delete':
+          case 'Backspace':
+            if (selectedRows.length > 0) {
+              event.preventDefault();
+              handleBulkDelete();
+            }
+            break;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedRows, filteredUserRoles, handleExportCSV, handleBulkDelete]);
 
   /**
    * Display feedback notification to the user.
@@ -302,39 +501,6 @@ const UserRoles: React.FC = () => {
   };
 
   /**
-   * Format user full name or fallback to email.
-   */
-  const getUserDisplayName = (userId: number) => {
-    const user = users.find((u) => u.id === userId);
-    if (!user) return `User ${userId}`;
-    const fullName = `${user.firstname || ""} ${user.lastname || ""}`.trim();
-    return fullName || user.email;
-  };
-
-  /**
-   * Initials for user avatar display.
-   */
-  const getUserInitials = (userId: number) => {
-    const user = users.find((u) => u.id === userId);
-    if (!user) return "?";
-    if (user.firstname && user.lastname) {
-      return `${user.firstname.charAt(0)}${user.lastname.charAt(0)}`;
-    }
-    return user.email.charAt(0).toUpperCase();
-  };
-
-  const filteredUserRoles = userRoles.filter((ur) => {
-    const user = users.find((u) => u.id === ur.user_id);
-    const searchTerm = search.toLowerCase();
-    return (
-      user?.email.toLowerCase().includes(searchTerm) ||
-      user?.firstname?.toLowerCase().includes(searchTerm) ||
-      user?.lastname?.toLowerCase().includes(searchTerm) ||
-      ur.role.toLowerCase().includes(searchTerm)
-    );
-  });
-
-  /**
    * Deterministically color roles for visual variety.
    */
   const getRoleColor = (role: string) => {
@@ -380,10 +546,10 @@ const UserRoles: React.FC = () => {
           <Person fontSize="small" color="action" />
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {getUserDisplayName(params.row.user_id)}
+              {highlightText(getUserDisplayName(params.row.user_id), search)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {users.find((u) => u.id === params.row.user_id)?.email}
+              {highlightText(users.find((u) => u.id === params.row.user_id)?.email || "", search)}
             </Typography>
           </Box>
         </Box>
@@ -396,7 +562,7 @@ const UserRoles: React.FC = () => {
       renderCell: (params) => (
         <Chip
           icon={<Badge />}
-          label={params.value}
+          label={highlightText(params.value, search)}
           color={getRoleColor(params.value)}
           size="small"
           sx={{ fontWeight: 600 }}
@@ -474,7 +640,24 @@ const UserRoles: React.FC = () => {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Refresh Data">
+            <Tooltip title="Auto-refresh (30s)">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Autorenew fontSize="small" />
+                    Auto
+                  </Box>
+                }
+              />
+            </Tooltip>
+            <Tooltip title="Refresh Data (Ctrl+R)">
               <IconButton onClick={fetchUserRoles} color="primary">
                 <Refresh />
               </IconButton>
@@ -490,7 +673,7 @@ const UserRoles: React.FC = () => {
                 },
               }}
             >
-              Assign Roles
+              Assign Roles (Ctrl+N)
             </Button>
           </Stack>
         </Box>
@@ -498,19 +681,97 @@ const UserRoles: React.FC = () => {
 
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <TextField
-              fullWidth
-              placeholder="Search by user name, email, or role..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  placeholder="Search by user name, email, or role..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                  {selectedRows.length > 0 && (
+                    <>
+                      <MuiBadge badgeContent={selectedRows.length} color="primary">
+                        <Tooltip title="Export Selected to CSV (Ctrl+E)">
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<GetApp />}
+                            onClick={handleExportCSV}
+                          >
+                            Export
+                          </Button>
+                        </Tooltip>
+                      </MuiBadge>
+                      <Tooltip title="Remove Selected Roles (Delete/Backspace)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          startIcon={<DeleteSweep />}
+                          onClick={handleBulkDelete}
+                        >
+                          Remove ({selectedRows.length})
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Deselect All">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={handleDeselectAll}
+                        >
+                          Clear
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                  {selectedRows.length === 0 && (
+                    <>
+                      <Tooltip title="Export All to CSV">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredUserRoles.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Select All (Ctrl+Shift+A)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredUserRoles.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                </Stack>
+              </Grid>
+            </Grid>
+            {selectedRows.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Divider />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {selectedRows.length} role assignment(s) selected | Keyboard shortcuts: Ctrl+E (export), Delete (bulk remove), Ctrl+R (refresh)
+                </Typography>
+              </Box>
+            )}
           </CardContent>
         </Card>
 
@@ -535,10 +796,18 @@ const UserRoles: React.FC = () => {
                   paginationModel: { page: 0, pageSize: 10 },
                 },
               }}
+              paginationModel={{
+                page: Math.floor((selectedRows.length > 0 ? 0 : 0)),
+                pageSize: 10
+              }}
               pageSizeOptions={[10, 25, 50, 100]}
               getRowId={(row) => `${row.user_id}-${row.role}`}
-              disableRowSelectionOnClick
-              checkboxSelection={false}
+              checkboxSelection
+              rowSelectionModel={selectedRows}
+              onRowSelectionModelChange={(newSelection) => {
+                setSelectedRows(newSelection);
+              }}
+              disableRowSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {
@@ -696,6 +965,52 @@ const UserRoles: React.FC = () => {
               }}
             >
               Assign {selectedRoles.length} Role{selectedRoles.length !== 1 ? 's' : ''} to {selectedUsers.length} User{selectedUsers.length !== 1 ? 's' : ''}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete confirmation dialog */}
+        <Dialog
+          open={openDeleteDialog}
+          onClose={() => setOpenDeleteDialog(false)}
+        >
+          <DialogTitle
+            sx={{
+              color: "error.main",
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
+            <Delete />
+            Confirm Role Removal
+          </DialogTitle>
+          <DialogContent>
+            {selectedRows.length > 1 ? (
+              <Typography>
+                Are you sure you want to remove {selectedRows.length} selected role assignments? This action cannot be undone.
+              </Typography>
+            ) : (
+              <Typography>
+                Are you sure you want to remove the role "{roleToDelete?.role}" from {roleToDelete ? getUserDisplayName(roleToDelete.user_id) : 'this user'}? This action cannot be undone.
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => {
+                if (selectedRows.length > 1) {
+                  handleBulkDeleteConfirm();
+                } else if (roleToDelete) {
+                  handleDelete(roleToDelete.user_id, roleToDelete.role);
+                }
+                setOpenDeleteDialog(false);
+              }}
+            >
+              Remove {selectedRows.length > 1 ? `${selectedRows.length} Assignments` : 'Role'}
             </Button>
           </DialogActions>
         </Dialog>

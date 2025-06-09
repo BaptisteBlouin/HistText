@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
   Button,
@@ -26,8 +26,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Divider,
+  FormControlLabel,
+  Switch,
+  Badge,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel } from "@mui/x-data-grid";
 import {
   Add,
   Edit,
@@ -42,6 +46,10 @@ import {
   Cancel,
   Info,
   DataObject,
+  GetApp,
+  DeleteSweep,
+  SelectAll,
+  Autorenew,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
@@ -134,12 +142,147 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     message: "",
     severity: "info",
   });
+  const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>([]);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   /** Initial data fetch for Solr DBs and collection metadata info. */
   useEffect(() => {
     fetchSolrDatabaseInfos();
     fetchSolrDatabases();
   }, []);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        fetchSolrDatabaseInfos();
+      }, 30000); // Refresh every 30 seconds
+      setRefreshInterval(interval);
+    } else {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        setRefreshInterval(null);
+      }
+    }
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [autoRefresh]);
+
+  /** Filters info records by search term with highlighting. */
+  const filteredInfos = useMemo(() => 
+    solrDatabaseInfos.filter((info) =>
+      `${info.collection_name} ${info.description} ${info.embeddings}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    ), [solrDatabaseInfos, search]
+  );
+
+  // Highlight search terms
+  const highlightText = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, index) => 
+      regex.test(part) ? <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>{part}</mark> : part
+    );
+  };
+
+  // Export to CSV functionality
+  const handleExportCSV = useCallback(() => {
+    const csvHeaders = ['Database ID', 'Collection Name', 'Description', 'Embeddings', 'Language', 'Text Field', 'Tokenizer', 'Hidden Fields'];
+    const csvData = filteredInfos.map(info => [
+      info.solr_database_id,
+      info.collection_name,
+      info.description,
+      info.embeddings,
+      info.lang || '',
+      info.text_field || '',
+      info.tokenizer || '',
+      info.to_not_display ? info.to_not_display.filter(Boolean).join(';') : ''
+    ]);
+    
+    const csvContent = [csvHeaders, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `solr_database_info_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    showNotification(`Exported ${filteredInfos.length} database info records to CSV`, 'success');
+  }, [filteredInfos]);
+
+  // Bulk delete functionality
+  const handleBulkDelete = useCallback(() => {
+    if (selectedRows.length === 0) {
+      showNotification('No records selected for deletion', 'warning');
+      return;
+    }
+    
+    const selectedInfos = filteredInfos.filter(info => 
+      selectedRows.includes(`${info.solr_database_id}-${info.collection_name}`)
+    );
+    setRecordToDelete(selectedInfos[0]); // Use first selected for display
+    setOpenDeleteDialog(true);
+  }, [selectedRows, filteredInfos]);
+
+  // Bulk operations
+  const handleSelectAll = () => {
+    const allIds = filteredInfos.map(info => `${info.solr_database_id}-${info.collection_name}`);
+    setSelectedRows(allIds);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedRows([]);
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        switch (event.key) {
+          case 'r':
+            event.preventDefault();
+            fetchSolrDatabaseInfos();
+            break;
+          case 'n':
+            event.preventDefault();
+            setOpenAddDialog(true);
+            break;
+          case 'a':
+            if (event.shiftKey) {
+              event.preventDefault();
+              const allIds = filteredInfos.map(info => `${info.solr_database_id}-${info.collection_name}`);
+              setSelectedRows(allIds);
+            }
+            break;
+          case 'e':
+            if (selectedRows.length > 0) {
+              event.preventDefault();
+              handleExportCSV();
+            }
+            break;
+          case 'Delete':
+          case 'Backspace':
+            if (selectedRows.length > 0) {
+              event.preventDefault();
+              handleBulkDelete();
+            }
+            break;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedRows, filteredInfos, handleExportCSV, handleBulkDelete]);
 
   /** Fetch Solr collection aliases for the selected DB. */
   useEffect(() => {
@@ -388,6 +531,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       await authAxios.delete(
         `/api/solr_database_info/${solr_database_id}/${encodeURIComponent(collection_name)}`,
       );
+      setSelectedRows(prev => prev.filter(rowId => rowId !== `${solr_database_id}-${collection_name}`));
       fetchSolrDatabaseInfos();
       setOpenDeleteDialog(false);
       setRecordToDelete(null);
@@ -411,6 +555,44 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     }
   };
 
+  /**
+   * Handle bulk deletion of selected records
+   */
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedRows.length === 0) return;
+    
+    const selectedInfos = filteredInfos.filter(info => 
+      selectedRows.includes(`${info.solr_database_id}-${info.collection_name}`)
+    );
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const info of selectedInfos) {
+      try {
+        await authAxios.delete(
+          `/api/solr_database_info/${info.solr_database_id}/${encodeURIComponent(info.collection_name)}`
+        );
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to delete info for ${info.collection_name}:`, err);
+        errorCount++;
+      }
+    }
+    
+    if (successCount > 0) {
+      showNotification(`Successfully deleted ${successCount} record(s)`, 'success');
+    }
+    if (errorCount > 0) {
+      showNotification(`Failed to delete ${errorCount} record(s)`, 'error');
+    }
+    
+    setSelectedRows([]);
+    fetchSolrDatabaseInfos();
+    setOpenDeleteDialog(false);
+    setRecordToDelete(null);
+  };
+
   /** Resets the form and editing state to blank. */
   const resetForm = () => {
     setEditingRecord(null);
@@ -425,13 +607,6 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     setAvailableFields([]);
     setOpenAddDialog(false);
   };
-
-  /** Filters info records by search term. */
-  const filteredInfos = solrDatabaseInfos.filter((info) =>
-    `${info.collection_name} ${info.description} ${info.embeddings}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
 
   /** Handler for "Fields To Not Display" multiselect. */
   const handleToNotDisplayChange = (
@@ -459,7 +634,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <DataObject fontSize="small" color="primary" />
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {params.value}
+            {highlightText(params.value, search)}
           </Typography>
         </Box>
       ),
@@ -469,7 +644,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       headerName: "Description",
       width: 200,
       renderCell: (params) => (
-        <Typography variant="body2">{params.value}</Typography>
+        <Typography variant="body2">{highlightText(params.value, search)}</Typography>
       ),
     },
     {
@@ -477,7 +652,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       headerName: "Embeddings",
       width: 150,
       renderCell: (params) => (
-        <Chip label={params.value} size="small" color="info" />
+        <Chip label={highlightText(params.value, search)} size="small" color="info" />
       ),
     },
     {
@@ -611,7 +786,24 @@ const SolrDatabaseInfoComponent: React.FC = () => {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Refresh Data">
+            <Tooltip title="Auto-refresh (30s)">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Autorenew fontSize="small" />
+                    Auto
+                  </Box>
+                }
+              />
+            </Tooltip>
+            <Tooltip title="Refresh Data (Ctrl+R)">
               <IconButton onClick={fetchSolrDatabaseInfos} color="primary">
                 <Refresh />
               </IconButton>
@@ -628,28 +820,106 @@ const SolrDatabaseInfoComponent: React.FC = () => {
                 },
               }}
             >
-              Add Database Info
+              Add Database Info (Ctrl+N)
             </Button>
           </Stack>
         </Box>
 
 
-        {/* Search/filter field */}
+        {/* Search and bulk operations */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <TextField
-              fullWidth
-              placeholder="Search by collection, description, or embeddings..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  placeholder="Search by collection, description, or embeddings..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                  {selectedRows.length > 0 && (
+                    <>
+                      <Badge badgeContent={selectedRows.length} color="primary">
+                        <Tooltip title="Export Selected to CSV (Ctrl+E)">
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<GetApp />}
+                            onClick={handleExportCSV}
+                          >
+                            Export
+                          </Button>
+                        </Tooltip>
+                      </Badge>
+                      <Tooltip title="Delete Selected (Delete/Backspace)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          startIcon={<DeleteSweep />}
+                          onClick={handleBulkDelete}
+                        >
+                          Delete ({selectedRows.length})
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Deselect All">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={handleDeselectAll}
+                        >
+                          Clear
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                  {selectedRows.length === 0 && (
+                    <>
+                      <Tooltip title="Export All to CSV">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredInfos.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Select All (Ctrl+Shift+A)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredInfos.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                </Stack>
+              </Grid>
+            </Grid>
+            {selectedRows.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Divider />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {selectedRows.length} record(s) selected | Keyboard shortcuts: Ctrl+E (export), Delete (bulk delete), Ctrl+R (refresh)
+                </Typography>
+              </Box>
+            )}
           </CardContent>
         </Card>
 
@@ -675,12 +945,20 @@ const SolrDatabaseInfoComponent: React.FC = () => {
                   paginationModel: { page: 0, pageSize: 10 },
                 },
               }}
+              paginationModel={{
+                page: Math.floor((selectedRows.length > 0 ? 0 : 0)),
+                pageSize: 10
+              }}
               pageSizeOptions={[10, 25, 50, 100]}
               getRowId={(row) =>
                 `${row.solr_database_id}-${row.collection_name}`
               }
-              disableRowSelectionOnClick
-              checkboxSelection={false}
+              checkboxSelection
+              rowSelectionModel={selectedRows}
+              onRowSelectionModelChange={(newSelection) => {
+                setSelectedRows(newSelection);
+              }}
+              disableRowSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {
@@ -918,25 +1196,34 @@ const SolrDatabaseInfoComponent: React.FC = () => {
             Confirm Delete
           </DialogTitle>
           <DialogContent>
-            <Typography>
-              Are you sure you want to delete the record for collection "
-              {recordToDelete?.collection_name}"? This action cannot be undone.
-            </Typography>
+            {selectedRows.length > 1 ? (
+              <Typography>
+                Are you sure you want to delete {selectedRows.length} selected database info records? This action cannot be undone.
+              </Typography>
+            ) : (
+              <Typography>
+                Are you sure you want to delete the record for collection "
+                {recordToDelete?.collection_name}"? This action cannot be undone.
+              </Typography>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
             <Button
               variant="contained"
               color="error"
-              onClick={() =>
-                recordToDelete &&
-                handleDelete(
-                  recordToDelete.solr_database_id,
-                  recordToDelete.collection_name,
-                )
-              }
+              onClick={() => {
+                if (selectedRows.length > 1) {
+                  handleBulkDeleteConfirm();
+                } else if (recordToDelete) {
+                  handleDelete(
+                    recordToDelete.solr_database_id,
+                    recordToDelete.collection_name
+                  );
+                }
+              }}
             >
-              Delete
+              Delete {selectedRows.length > 1 ? `${selectedRows.length} Records` : 'Record'}
             </Button>
           </DialogActions>
         </Dialog>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Box,
   Button,
@@ -22,8 +22,12 @@ import {
   Fade,
   InputAdornment,
   IconButton,
+  Divider,
+  FormControlLabel,
+  Switch,
+  Badge,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel } from "@mui/x-data-grid";
 import {
   Add,
   Edit,
@@ -37,6 +41,10 @@ import {
   Cancel,
   CheckCircle,
   Error as ErrorIcon,
+  GetApp,
+  DeleteSweep,
+  SelectAll,
+  Autorenew,
 } from "@mui/icons-material";
 import axios, { AxiosHeaders } from "axios";
 import { useAuth } from "../../../hooks/useAuth";
@@ -109,11 +117,141 @@ const SolrDatabaseComponent: React.FC = () => {
     message: "",
     severity: "info",
   });
+  const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>([]);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   // ------------- Data loading -------------
   useEffect(() => {
     fetchSolrDatabases();
   }, []);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        fetchSolrDatabases();
+      }, 30000); // Refresh every 30 seconds
+      setRefreshInterval(interval);
+    } else {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        setRefreshInterval(null);
+      }
+    }
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [autoRefresh]);
+
+  // ------------- Filtering for search with highlighting -------------
+  const filteredDatabases = useMemo(() => 
+    solrDatabases.filter((db) =>
+      `${db.name} ${db.url}`.toLowerCase().includes(search.toLowerCase()),
+    ), [solrDatabases, search]
+  );
+
+  // Highlight search terms
+  const highlightText = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, index) => 
+      regex.test(part) ? <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>{part}</mark> : part
+    );
+  };
+
+  // Export to CSV functionality
+  const handleExportCSV = useCallback(() => {
+    const csvHeaders = ['ID', 'Name', 'URL', 'Server Port', 'Local Port', 'Created At', 'Updated At'];
+    const csvData = filteredDatabases.map(db => [
+      db.id,
+      db.name,
+      db.url,
+      db.server_port,
+      db.local_port,
+      new Date(db.created_at).toISOString(),
+      new Date(db.updated_at).toISOString()
+    ]);
+    
+    const csvContent = [csvHeaders, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `solr_databases_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    showNotification(`Exported ${filteredDatabases.length} databases to CSV`, 'success');
+  }, [filteredDatabases]);
+
+  // Bulk delete functionality
+  const handleBulkDelete = useCallback(() => {
+    if (selectedRows.length === 0) {
+      showNotification('No databases selected for deletion', 'warning');
+      return;
+    }
+    
+    const selectedDatabases = filteredDatabases.filter(db => selectedRows.includes(db.id));
+    setDatabaseToDelete(selectedDatabases[0]); // Use first selected for display
+    setOpenDeleteDialog(true);
+  }, [selectedRows, filteredDatabases]);
+
+  // Bulk operations
+  const handleSelectAll = () => {
+    const allIds = filteredDatabases.map(db => db.id);
+    setSelectedRows(allIds);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedRows([]);
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        switch (event.key) {
+          case 'r':
+            event.preventDefault();
+            fetchSolrDatabases();
+            break;
+          case 'n':
+            event.preventDefault();
+            setOpenAddDialog(true);
+            break;
+          case 'a':
+            if (event.shiftKey) {
+              event.preventDefault();
+              const allIds = filteredDatabases.map(db => db.id);
+              setSelectedRows(allIds);
+            }
+            break;
+          case 'e':
+            if (selectedRows.length > 0) {
+              event.preventDefault();
+              handleExportCSV();
+            }
+            break;
+          case 'Delete':
+          case 'Backspace':
+            if (selectedRows.length > 0) {
+              event.preventDefault();
+              handleBulkDelete();
+            }
+            break;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedRows, filteredDatabases, handleExportCSV, handleBulkDelete]);
 
   /**
    * Displays a notification (snackbar/alert).
@@ -174,7 +312,7 @@ const SolrDatabaseComponent: React.FC = () => {
    * Check if database name already exists
    */
   const databaseNameExists = (name: string, excludeId?: number) => {
-    return databases.some(db => 
+    return solrDatabases.some(db => 
       db.name.toLowerCase() === name.toLowerCase() && 
       db.id !== excludeId
     );
@@ -184,7 +322,7 @@ const SolrDatabaseComponent: React.FC = () => {
    * Check if port combination already exists
    */
   const portCombinationExists = (serverPort: number, localPort: number, excludeId?: number) => {
-    return databases.some(db => 
+    return solrDatabases.some(db => 
       (db.server_port === serverPort || db.local_port === localPort) && 
       db.id !== excludeId
     );
@@ -299,13 +437,14 @@ const SolrDatabaseComponent: React.FC = () => {
    * Calls API to delete a database by ID with enhanced error handling.
    */
   const handleDelete = async (id: number) => {
-    const dbToDelete = databases.find(db => db.id === id);
+    const dbToDelete = solrDatabases.find(db => db.id === id);
     const dbName = dbToDelete?.name || `Database ${id}`;
     
     try {
       await authAxios.delete(`/api/solr_databases/${id}`);
       showNotification(`Database "${dbName}" deleted successfully`, "success");
       if (editingDatabase?.id === id) resetForm();
+      setSelectedRows(prev => prev.filter(rowId => rowId !== id));
       fetchSolrDatabases();
       setOpenDeleteDialog(false);
       setDatabaseToDelete(null);
@@ -326,6 +465,39 @@ const SolrDatabaseComponent: React.FC = () => {
       setOpenDeleteDialog(false);
       setDatabaseToDelete(null);
     }
+  };
+
+  /**
+   * Handle bulk deletion of selected databases
+   */
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedRows.length === 0) return;
+    
+    const selectedDatabases = filteredDatabases.filter(db => selectedRows.includes(db.id));
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const db of selectedDatabases) {
+      try {
+        await authAxios.delete(`/api/solr_databases/${db.id}`);
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to delete database ${db.name}:`, err);
+        errorCount++;
+      }
+    }
+    
+    if (successCount > 0) {
+      showNotification(`Successfully deleted ${successCount} database(s)`, 'success');
+    }
+    if (errorCount > 0) {
+      showNotification(`Failed to delete ${errorCount} database(s)`, 'error');
+    }
+    
+    setSelectedRows([]);
+    fetchSolrDatabases();
+    setOpenDeleteDialog(false);
+    setDatabaseToDelete(null);
   };
 
   /**
@@ -354,11 +526,6 @@ const SolrDatabaseComponent: React.FC = () => {
     }
   };
 
-  // ------------- Filtering for search -------------
-  const filteredDatabases = solrDatabases.filter((db) =>
-    `${db.name} ${db.url}`.toLowerCase().includes(search.toLowerCase()),
-  );
-
   // ------------- DataGrid columns -------------
   const columns: GridColDef[] = [
     {
@@ -377,7 +544,7 @@ const SolrDatabaseComponent: React.FC = () => {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Storage fontSize="small" color="primary" />
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {params.value}
+            {highlightText(params.value, search)}
           </Typography>
         </Box>
       ),
@@ -390,7 +557,7 @@ const SolrDatabaseComponent: React.FC = () => {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <LinkIcon fontSize="small" color="action" />
           <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-            {params.value}
+            {highlightText(params.value, search)}
           </Typography>
         </Box>
       ),
@@ -522,7 +689,24 @@ const SolrDatabaseComponent: React.FC = () => {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Refresh Databases">
+            <Tooltip title="Auto-refresh (30s)">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Autorenew fontSize="small" />
+                    Auto
+                  </Box>
+                }
+              />
+            </Tooltip>
+            <Tooltip title="Refresh Databases (Ctrl+R)">
               <IconButton onClick={fetchSolrDatabases} color="primary">
                 <Refresh />
               </IconButton>
@@ -539,7 +723,7 @@ const SolrDatabaseComponent: React.FC = () => {
                 },
               }}
             >
-              Add Database
+              Add Database (Ctrl+N)
             </Button>
           </Stack>
         </Box>
@@ -569,22 +753,100 @@ const SolrDatabaseComponent: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Search input */}
+        {/* Search and bulk operations */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <TextField
-              fullWidth
-              placeholder="Search by database name or URL..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  placeholder="Search by database name or URL..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                  {selectedRows.length > 0 && (
+                    <>
+                      <Badge badgeContent={selectedRows.length} color="primary">
+                        <Tooltip title="Export Selected to CSV (Ctrl+E)">
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<GetApp />}
+                            onClick={handleExportCSV}
+                          >
+                            Export
+                          </Button>
+                        </Tooltip>
+                      </Badge>
+                      <Tooltip title="Delete Selected (Delete/Backspace)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          startIcon={<DeleteSweep />}
+                          onClick={handleBulkDelete}
+                        >
+                          Delete ({selectedRows.length})
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Deselect All">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={handleDeselectAll}
+                        >
+                          Clear
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                  {selectedRows.length === 0 && (
+                    <>
+                      <Tooltip title="Export All to CSV">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredDatabases.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Select All (Ctrl+Shift+A)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredDatabases.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                </Stack>
+              </Grid>
+            </Grid>
+            {selectedRows.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Divider />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {selectedRows.length} database(s) selected | Keyboard shortcuts: Ctrl+E (export), Delete (bulk delete), Ctrl+R (refresh)
+                </Typography>
+              </Box>
+            )}
           </CardContent>
         </Card>
 
@@ -610,10 +872,18 @@ const SolrDatabaseComponent: React.FC = () => {
                   paginationModel: { page: 0, pageSize: 10 },
                 },
               }}
+              paginationModel={{
+                page: Math.floor((selectedRows.length > 0 ? 0 : 0)),
+                pageSize: 10
+              }}
               pageSizeOptions={[10, 25, 50, 100]}
               getRowId={(row) => row.id}
-              disableRowSelectionOnClick
-              checkboxSelection={false}
+              checkboxSelection
+              rowSelectionModel={selectedRows}
+              onRowSelectionModelChange={(newSelection) => {
+                setSelectedRows(newSelection);
+              }}
+              disableRowSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {
@@ -757,21 +1027,31 @@ const SolrDatabaseComponent: React.FC = () => {
             Confirm Delete
           </DialogTitle>
           <DialogContent>
-            <Typography>
-              Are you sure you want to delete the database "
-              {databaseToDelete?.name}"? This action cannot be undone.
-            </Typography>
+            {selectedRows.length > 1 ? (
+              <Typography>
+                Are you sure you want to delete {selectedRows.length} selected databases? This action cannot be undone.
+              </Typography>
+            ) : (
+              <Typography>
+                Are you sure you want to delete the database "
+                {databaseToDelete?.name}"? This action cannot be undone.
+              </Typography>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
             <Button
               variant="contained"
               color="error"
-              onClick={() =>
-                databaseToDelete && handleDelete(databaseToDelete.id)
-              }
+              onClick={() => {
+                if (selectedRows.length > 1) {
+                  handleBulkDeleteConfirm();
+                } else if (databaseToDelete) {
+                  handleDelete(databaseToDelete.id);
+                }
+              }}
             >
-              Delete
+              Delete {selectedRows.length > 1 ? `${selectedRows.length} Databases` : 'Database'}
             </Button>
           </DialogActions>
         </Dialog>

@@ -25,6 +25,8 @@ import {
   Fade,
   CircularProgress,
   InputAdornment,
+  Divider,
+  Badge,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import {
@@ -34,11 +36,14 @@ import {
   PersonAdd,
   Search,
   Email,
-  Badge,
+  Badge as BadgeIcon,
   CheckCircle,
   Cancel,
   People,
   Refresh,
+  GetApp,
+  DeleteSweep,
+  SelectAll,
 } from "@mui/icons-material";
 import axios, { AxiosHeaders } from "axios";
 import { useAuth } from "../../../hooks/useAuth";
@@ -103,6 +108,10 @@ const Users: React.FC = () => {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [openBulkDeleteDialog, setOpenBulkDeleteDialog] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [notification, setNotification] = useState<NotificationState>({
     open: false,
     message: "",
@@ -117,6 +126,53 @@ const Users: React.FC = () => {
   }, []);
 
   /**
+   * Auto-refresh functionality
+   */
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        fetchUsers();
+      }, 30000); // Refresh every 30 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [autoRefresh]);
+
+  /**
+   * Keyboard shortcuts
+   */
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'n':
+            e.preventDefault();
+            setOpenAddDialog(true);
+            break;
+          case 'r':
+            e.preventDefault();
+            fetchUsers();
+            break;
+        }
+      } else if (e.key === 'Delete' && selectedUsers.length > 0) {
+        e.preventDefault();
+        setOpenBulkDeleteDialog(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setSelectedUsers([]);
+        setOpenAddDialog(false);
+        setOpenDeleteDialog(false);
+        setOpenBulkDeleteDialog(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [selectedUsers]);
+
+  /**
    * Loads all users from the API.
    */
   const fetchUsers = async () => {
@@ -124,6 +180,8 @@ const Users: React.FC = () => {
       setLoading(true);
       const { data } = await authAxios.get("/api/users");
       setUsers(Array.isArray(data) ? data : []);
+      setLastRefresh(new Date());
+      setSelectedUsers([]); // Clear selection on refresh
     } catch (err) {
       console.error("Fetch users failed:", err);
       showNotification("Failed to fetch users", "error");
@@ -305,6 +363,100 @@ const Users: React.FC = () => {
   };
 
   /**
+   * Handle bulk delete operation
+   */
+  const handleBulkDelete = async () => {
+    if (selectedUsers.length === 0) return;
+    
+    try {
+      await Promise.all(
+        selectedUsers.map(id => authAxios.delete(`/api/users/${id}`))
+      );
+      
+      showNotification(
+        `Successfully deleted ${selectedUsers.length} user${selectedUsers.length !== 1 ? 's' : ''}`,
+        "success"
+      );
+      
+      setSelectedUsers([]);
+      setOpenBulkDeleteDialog(false);
+      fetchUsers();
+    } catch (err: any) {
+      console.error("Bulk delete failed:", err);
+      showNotification(
+        `Failed to delete some users: ${err.response?.data?.message || err.message}`,
+        "error"
+      );
+      setOpenBulkDeleteDialog(false);
+    }
+  };
+
+  /**
+   * Select all filtered users
+   */
+  const handleSelectAll = () => {
+    const allUserIds = filteredUsers.map(user => user.id);
+    setSelectedUsers(allUserIds);
+  };
+
+  /**
+   * Deselect all users
+   */
+  const handleDeselectAll = () => {
+    setSelectedUsers([]);
+  };
+
+  /**
+   * Export users to CSV
+   */
+  const handleExportCSV = () => {
+    const csvData = users.map(user => ({
+      ID: user.id,
+      "First Name": user.firstname,
+      "Last Name": user.lastname,
+      Email: user.email,
+      Status: user.activated ? "Active" : "Inactive",
+      "Created At": new Date(user.created_at).toLocaleDateString(),
+      "Updated At": new Date(user.updated_at).toLocaleDateString()
+    }));
+    
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showNotification(`Exported ${users.length} users to CSV`, "success");
+  };
+
+  /**
+   * Highlight search terms in text
+   */
+  const highlightSearchTerm = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>
+          {part}
+        </mark>
+      ) : part
+    );
+  };
+
+  /**
    * Open the edit dialog for a specific user.
    */
   const handleEditOpen = (user: User) => {
@@ -365,7 +517,7 @@ const Users: React.FC = () => {
       width: 150,
       renderCell: (params) => (
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {params.value || "-"}
+          {highlightSearchTerm(params.value || "-", search)}
         </Typography>
       ),
     },
@@ -375,7 +527,7 @@ const Users: React.FC = () => {
       width: 150,
       renderCell: (params) => (
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {params.value || "-"}
+          {highlightSearchTerm(params.value || "-", search)}
         </Typography>
       ),
     },
@@ -386,7 +538,9 @@ const Users: React.FC = () => {
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Email fontSize="small" color="action" />
-          <Typography variant="body2">{params.value}</Typography>
+          <Typography variant="body2">
+            {highlightSearchTerm(params.value, search)}
+          </Typography>
         </Box>
       ),
     },
@@ -473,10 +627,43 @@ const Users: React.FC = () => {
             <Typography variant="body1" color="text.secondary">
               Manage system users and their account settings
             </Typography>
+            {selectedUsers.length > 0 && (
+              <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+                {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''} selected
+              </Typography>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              Last updated: {lastRefresh.toLocaleTimeString()}
+              {autoRefresh && " • Auto-refresh enabled"}
+            </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Refresh Users">
-              <IconButton onClick={fetchUsers} color="primary">
+            {selectedUsers.length > 0 && (
+              <>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<Delete />}
+                  onClick={() => setOpenBulkDeleteDialog(true)}
+                  size="small"
+                >
+                  Delete ({selectedUsers.length})
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<Cancel />}
+                  onClick={() => setSelectedUsers([])}
+                  size="small"
+                >
+                  Clear Selection
+                </Button>
+              </>
+            )}
+            <Tooltip title="Toggle Auto-refresh (30s)">
+              <IconButton 
+                onClick={() => setAutoRefresh(!autoRefresh)} 
+                color={autoRefresh ? "primary" : "default"}
+              >
                 <Refresh />
               </IconButton>
             </Tooltip>
@@ -499,19 +686,97 @@ const Users: React.FC = () => {
 
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <TextField
-              fullWidth
-              placeholder="Search users by name or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  placeholder="Search users by name or email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                  {selectedUsers.length > 0 && (
+                    <>
+                      <Badge badgeContent={selectedUsers.length} color="primary">
+                        <Tooltip title="Export Selected to CSV (Ctrl+E)">
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<GetApp />}
+                            onClick={handleExportCSV}
+                          >
+                            Export
+                          </Button>
+                        </Tooltip>
+                      </Badge>
+                      <Tooltip title="Delete Selected Users (Delete/Backspace)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          startIcon={<DeleteSweep />}
+                          onClick={handleBulkDelete}
+                        >
+                          Delete ({selectedUsers.length})
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Deselect All">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={handleDeselectAll}
+                        >
+                          Clear
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                  {selectedUsers.length === 0 && (
+                    <>
+                      <Tooltip title="Export All to CSV">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredUsers.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Select All (Ctrl+Shift+A)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredUsers.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                </Stack>
+              </Grid>
+            </Grid>
+            {selectedUsers.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Divider />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {selectedUsers.length} user(s) selected | Keyboard shortcuts: Ctrl+E (export), Delete (bulk delete), Ctrl+R (refresh)
+                </Typography>
+              </Box>
+            )}
           </CardContent>
         </Card>
 
@@ -538,8 +803,12 @@ const Users: React.FC = () => {
               }}
               pageSizeOptions={[10, 25, 50, 100]}
               getRowId={(row) => row.id}
-              disableRowSelectionOnClick
-              checkboxSelection={false}
+              checkboxSelection
+              rowSelectionModel={selectedUsers}
+              onRowSelectionModelChange={(newSelection) => {
+                setSelectedUsers(newSelection as number[]);
+              }}
+              disableRowSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {
@@ -779,6 +1048,50 @@ const Users: React.FC = () => {
               onClick={() => userToDelete && handleDelete(userToDelete.id)}
             >
               Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <Dialog
+          open={openBulkDeleteDialog}
+          onClose={() => setOpenBulkDeleteDialog(false)}
+        >
+          <DialogTitle sx={{ color: "error.main" }}>Confirm Bulk Delete</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete {selectedUsers.length} selected user{selectedUsers.length !== 1 ? 's' : ''}? 
+              This action cannot be undone.
+            </Typography>
+            {selectedUsers.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Users to be deleted:
+                </Typography>
+                {selectedUsers.slice(0, 5).map(id => {
+                  const user = users.find(u => u.id === id);
+                  return user ? (
+                    <Typography key={id} variant="body2" sx={{ ml: 2 }}>
+                      • {user.firstname} {user.lastname} ({user.email})
+                    </Typography>
+                  ) : null;
+                })}
+                {selectedUsers.length > 5 && (
+                  <Typography variant="body2" sx={{ ml: 2, fontStyle: 'italic' }}>
+                    ... and {selectedUsers.length - 5} more
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenBulkDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={handleBulkDelete}
+            >
+              Delete {selectedUsers.length} User{selectedUsers.length !== 1 ? 's' : ''}
             </Button>
           </DialogActions>
         </Dialog>

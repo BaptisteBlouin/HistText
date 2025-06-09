@@ -24,6 +24,9 @@ import {
   Stack,
   LinearProgress,
   Alert,
+  Switch,
+  FormControlLabel,
+  Tooltip,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -35,9 +38,14 @@ import {
   Menu as MenuIcon,
   Close as CloseIcon,
   AdminPanelSettings,
+  DarkMode,
+  LightMode,
 } from "@mui/icons-material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { BreadcrumbNavigation } from "../../components/ui";
+import StatusMonitor from "../../components/ui/StatusMonitor";
+// import { useThemeMode } from "../../contexts/ThemeContext";
 
 const Users = React.lazy(() => import("./components/Users"));
 const RolePermissions = React.lazy(
@@ -307,6 +315,7 @@ const AdminPanel: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isAdmin = auth.session?.hasRole("Admin");
+  // const { darkMode, toggleDarkMode } = useThemeMode();
 
   // State for tab selections and mobile drawer.
   const [mainTab, setMainTab] = useState<number>(() => {

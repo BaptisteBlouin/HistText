@@ -29,6 +29,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Divider,
+  Badge,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import {
@@ -41,6 +43,11 @@ import {
   Refresh,
   CheckBox,
   CheckBoxOutlineBlank,
+  Save,
+  Cancel,
+  GetApp,
+  DeleteSweep,
+  SelectAll,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
@@ -116,6 +123,10 @@ const SolrDatabasePermissions: React.FC = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [permissionToDelete, setPermissionToDelete] =
     useState<SolrDatabasePermission | null>(null);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [openBulkDeleteDialog, setOpenBulkDeleteDialog] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [notification, setNotification] = useState<NotificationState>({
     open: false,
     message: "",
@@ -131,6 +142,53 @@ const SolrDatabasePermissions: React.FC = () => {
     fetchPermissions();
     fetchDatabases();
   }, []);
+
+  /**
+   * Auto-refresh functionality
+   */
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        fetchPermissions();
+      }, 30000); // Refresh every 30 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [autoRefresh]);
+
+  /**
+   * Keyboard shortcuts
+   */
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'n':
+            e.preventDefault();
+            setOpenAddDialog(true);
+            break;
+          case 'r':
+            e.preventDefault();
+            fetchPermissions();
+            break;
+        }
+      } else if (e.key === 'Delete' && selectedPermissions.length > 0) {
+        e.preventDefault();
+        setOpenBulkDeleteDialog(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setSelectedPermissions([]);
+        setOpenAddDialog(false);
+        setOpenDeleteDialog(false);
+        setOpenBulkDeleteDialog(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [selectedPermissions]);
 
   /** When DB changes, load collections (aliases) for that DB. */
   useEffect(() => {
@@ -177,6 +235,8 @@ const SolrDatabasePermissions: React.FC = () => {
         ),
       ) as string[];
       setAvailablePermissions(perms);
+      setLastRefresh(new Date());
+      setSelectedPermissions([]); // Clear selection on refresh
     } catch (error) {
       console.error("Failed to fetch permissions:", error);
       setPermissions([]);
@@ -372,6 +432,105 @@ const SolrDatabasePermissions: React.FC = () => {
     }
   };
 
+  /**
+   * Handle bulk delete operation
+   */
+  const handleBulkDelete = async () => {
+    if (selectedPermissions.length === 0) return;
+    
+    try {
+      await Promise.all(
+        selectedPermissions.map(permissionKey => {
+          const [solrDatabaseId, collectionName, permission] = permissionKey.split('-');
+          return authAxios.delete(
+            `/api/solr_database_permissions/${solrDatabaseId}/${encodeURIComponent(collectionName)}/${encodeURIComponent(permission)}`
+          );
+        })
+      );
+      
+      showNotification(
+        `Successfully deleted ${selectedPermissions.length} permission${selectedPermissions.length !== 1 ? 's' : ''}`,
+        "success"
+      );
+      
+      setSelectedPermissions([]);
+      setOpenBulkDeleteDialog(false);
+      fetchPermissions();
+    } catch (err: any) {
+      console.error("Bulk delete failed:", err);
+      showNotification(
+        `Failed to delete some permissions: ${err.response?.data?.message || err.message}`,
+        "error"
+      );
+      setOpenBulkDeleteDialog(false);
+    }
+  };
+
+  /**
+   * Select all filtered permissions for bulk operations
+   */
+  const handleSelectAllPermissions = () => {
+    const allPermissionIds = filteredPermissions.map(perm => 
+      `${perm.solr_database_id}-${perm.collection_name}-${perm.permission}`
+    );
+    setSelectedPermissions(allPermissionIds);
+  };
+
+  /**
+   * Deselect all permissions for bulk operations
+   */
+  const handleDeselectAllPermissions = () => {
+    setSelectedPermissions([]);
+  };
+
+  /**
+   * Export permissions to CSV
+   */
+  const handleExportCSV = () => {
+    const csvData = permissions.map(permission => ({
+      "Database ID": permission.solr_database_id,
+      "Database Name": getDatabaseName(permission.solr_database_id),
+      "Collection": permission.collection_name,
+      "Permission": permission.permission,
+      "Created At": new Date(permission.created_at).toLocaleDateString()
+    }));
+    
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `solr-database-permissions-export-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showNotification(`Exported ${permissions.length} permissions to CSV`, "success");
+  };
+
+  /**
+   * Highlight search terms in text
+   */
+  const highlightSearchTerm = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>
+          {part}
+        </mark>
+      ) : part
+    );
+  };
+
   /** Filter permissions by search term. */
   const filteredPermissions = permissions.filter((p) =>
     `${p.collection_name} ${p.permission}`
@@ -410,7 +569,7 @@ const SolrDatabasePermissions: React.FC = () => {
           <Storage fontSize="small" color="primary" />
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {getDatabaseName(params.value)}
+              {highlightSearchTerm(getDatabaseName(params.value), search)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               ID: {params.value}
@@ -425,7 +584,7 @@ const SolrDatabasePermissions: React.FC = () => {
       width: 200,
       renderCell: (params) => (
         <Chip
-          label={params.value}
+          label={highlightSearchTerm(params.value, search)}
           size="small"
           variant="outlined"
           sx={{ fontFamily: "monospace" }}
@@ -440,7 +599,7 @@ const SolrDatabasePermissions: React.FC = () => {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <VpnKey fontSize="small" color="action" />
           <Chip
-            label={params.value}
+            label={highlightSearchTerm(params.value, search)}
             color={getPermissionColor(params.value)}
             size="small"
           />
@@ -526,8 +685,11 @@ const SolrDatabasePermissions: React.FC = () => {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Refresh Data">
-              <IconButton onClick={fetchPermissions} color="primary">
+            <Tooltip title="Toggle Auto-refresh (30s)">
+              <IconButton 
+                onClick={() => setAutoRefresh(!autoRefresh)} 
+                color={autoRefresh ? "primary" : "default"}
+              >
                 <Refresh />
               </IconButton>
             </Tooltip>
@@ -548,22 +710,100 @@ const SolrDatabasePermissions: React.FC = () => {
         </Box>
 
 
-        {/* Search */}
+        {/* Search and bulk operations */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <TextField
-              fullWidth
-              placeholder="Search by collection or permission..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  placeholder="Search by collection or permission..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                  {selectedPermissions.length > 0 && (
+                    <>
+                      <Badge badgeContent={selectedPermissions.length} color="primary">
+                        <Tooltip title="Export Selected to CSV (Ctrl+E)">
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<GetApp />}
+                            onClick={handleExportCSV}
+                          >
+                            Export
+                          </Button>
+                        </Tooltip>
+                      </Badge>
+                      <Tooltip title="Delete Selected (Delete/Backspace)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          startIcon={<DeleteSweep />}
+                          onClick={() => setOpenBulkDeleteDialog(true)}
+                        >
+                          Delete ({selectedPermissions.length})
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Deselect All">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={handleDeselectAllPermissions}
+                        >
+                          Clear
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                  {selectedPermissions.length === 0 && (
+                    <>
+                      <Tooltip title="Export All to CSV">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredPermissions.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Select All (Ctrl+Shift+A)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAllPermissions}
+                          disabled={filteredPermissions.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                </Stack>
+              </Grid>
+            </Grid>
+            {selectedPermissions.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Divider />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {selectedPermissions.length} permission(s) selected | Keyboard shortcuts: Ctrl+E (export), Delete (bulk delete), Ctrl+R (refresh)
+                </Typography>
+              </Box>
+            )}
           </CardContent>
         </Card>
 
@@ -593,8 +833,12 @@ const SolrDatabasePermissions: React.FC = () => {
               getRowId={(row) =>
                 `${row.solr_database_id}-${row.collection_name}-${row.permission}`
               }
-              disableRowSelectionOnClick
-              checkboxSelection={false}
+              checkboxSelection
+              rowSelectionModel={selectedPermissions}
+              onRowSelectionModelChange={(newSelection) => {
+                setSelectedPermissions(newSelection as string[]);
+              }}
+              disableRowSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {
@@ -817,6 +1061,51 @@ const SolrDatabasePermissions: React.FC = () => {
               }
             >
               Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <Dialog
+          open={openBulkDeleteDialog}
+          onClose={() => setOpenBulkDeleteDialog(false)}
+        >
+          <DialogTitle sx={{ color: "error.main" }}>Confirm Bulk Delete</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete {selectedPermissions.length} selected permission{selectedPermissions.length !== 1 ? 's' : ''}? 
+              This action cannot be undone.
+            </Typography>
+            {selectedPermissions.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Permissions to be deleted:
+                </Typography>
+                {selectedPermissions.slice(0, 5).map(permissionKey => {
+                  const [solrDatabaseId, collectionName, permissionName] = permissionKey.split('-');
+                  const dbName = getDatabaseName(Number(solrDatabaseId));
+                  return (
+                    <Typography key={permissionKey} variant="body2" sx={{ ml: 2 }}>
+                      • {permissionName} on {collectionName} ({dbName})
+                    </Typography>
+                  );
+                })}
+                {selectedPermissions.length > 5 && (
+                  <Typography variant="body2" sx={{ ml: 2, fontStyle: 'italic' }}>
+                    ... and {selectedPermissions.length - 5} more
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenBulkDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={handleBulkDelete}
+            >
+              Delete {selectedPermissions.length} Permission{selectedPermissions.length !== 1 ? 's' : ''}
             </Button>
           </DialogActions>
         </Dialog>

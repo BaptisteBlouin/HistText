@@ -26,6 +26,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Checkbox,
+  Avatar,
+  Divider,
+  Badge,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import {
@@ -36,6 +40,10 @@ import {
   VpnKey,
   Shield,
   Refresh,
+  Cancel,
+  GetApp,
+  DeleteSweep,
+  SelectAll,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
@@ -104,6 +112,14 @@ const RolePermissions: React.FC = () => {
     message: "",
     severity: "info",
   });
+  
+  // Enhanced functionality state
+  const [selectedRolePermissions, setSelectedRolePermissions] = useState<string[]>([]);
+  const [openBulkDeleteDialog, setOpenBulkDeleteDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [rolePermissionToDelete, setRolePermissionToDelete] = useState<RolePermission | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   // On mount, fetch all required data for dropdowns and grid
   useEffect(() => {
@@ -111,6 +127,53 @@ const RolePermissions: React.FC = () => {
     fetchRoles();
     fetchAvailablePermissions();
   }, []);
+  
+  /**
+   * Auto-refresh functionality
+   */
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        fetchPermissions();
+      }, 30000); // Refresh every 30 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [autoRefresh]);
+
+  /**
+   * Keyboard shortcuts
+   */
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'n':
+            e.preventDefault();
+            setOpenAddDialog(true);
+            break;
+          case 'r':
+            e.preventDefault();
+            fetchPermissions();
+            break;
+        }
+      } else if (e.key === 'Delete' && selectedRolePermissions.length > 0) {
+        e.preventDefault();
+        setOpenBulkDeleteDialog(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setSelectedRolePermissions([]);
+        setOpenAddDialog(false);
+        setOpenDeleteDialog(false);
+        setOpenBulkDeleteDialog(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [selectedRolePermissions]);
 
   /** Show a notification/alert (auto-hides after 5s) */
   const showNotification = (
@@ -130,6 +193,8 @@ const RolePermissions: React.FC = () => {
       setLoading(true);
       const { data } = await authAxios.get("/api/role_permissions");
       setPermissions(data);
+      setLastRefresh(new Date());
+      setSelectedRolePermissions([]); // Clear selection on refresh
     } catch (err) {
       console.error("Fetch role permissions failed", err);
       showNotification("Failed to fetch role permissions", "error");
@@ -278,6 +343,8 @@ const RolePermissions: React.FC = () => {
         `/api/role_permissions/${encodeURIComponent(role)}/${encodeURIComponent(permission)}`,
       );
       showNotification(`Successfully removed permission "${permission}" from role "${role}"`, "success");
+      setOpenDeleteDialog(false);
+      setRolePermissionToDelete(null);
       fetchPermissions();
     } catch (err: any) {
       console.error("Delete role permission failed:", err);
@@ -293,7 +360,112 @@ const RolePermissions: React.FC = () => {
       } else {
         showNotification(`Failed to remove permission: ${errorMessage}`, "error");
       }
+      setOpenDeleteDialog(false);
+      setRolePermissionToDelete(null);
     }
+  };
+  
+  /**
+   * Open the dialog to confirm role permission deletion.
+   */
+  const handleDeleteDialogOpen = (rolePermission: RolePermission) => {
+    setRolePermissionToDelete(rolePermission);
+    setOpenDeleteDialog(true);
+  };
+
+  /**
+   * Handle bulk delete operation
+   */
+  const handleBulkDelete = async () => {
+    if (selectedRolePermissions.length === 0) return;
+    
+    try {
+      const deletePromises = selectedRolePermissions.map(id => {
+        const [role, permission] = id.split('-');
+        return authAxios.delete(
+          `/api/role_permissions/${encodeURIComponent(role)}/${encodeURIComponent(permission)}`
+        );
+      });
+      
+      await Promise.all(deletePromises);
+      
+      showNotification(
+        `Successfully deleted ${selectedRolePermissions.length} permission assignment${selectedRolePermissions.length !== 1 ? 's' : ''}`,
+        "success"
+      );
+      
+      setSelectedRolePermissions([]);
+      setOpenBulkDeleteDialog(false);
+      fetchPermissions();
+    } catch (err: any) {
+      console.error("Bulk delete failed:", err);
+      showNotification(
+        `Failed to delete some permission assignments: ${err.response?.data?.message || err.message}`,
+        "error"
+      );
+      setOpenBulkDeleteDialog(false);
+    }
+  };
+
+  /**
+   * Select all filtered role permissions
+   */
+  const handleSelectAll = () => {
+    const allPermissionIds = filteredPermissions.map(perm => `${perm.role}-${perm.permission}`);
+    setSelectedRolePermissions(allPermissionIds);
+  };
+
+  /**
+   * Deselect all role permissions
+   */
+  const handleDeselectAll = () => {
+    setSelectedRolePermissions([]);
+  };
+
+  /**
+   * Export role permissions to CSV
+   */
+  const handleExportCSV = () => {
+    const csvData = permissions.map(perm => ({
+      Role: perm.role,
+      Permission: perm.permission,
+      "Created At": new Date(perm.created_at).toLocaleDateString()
+    }));
+    
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `role-permissions-export-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showNotification(`Exported ${permissions.length} role permissions to CSV`, "success");
+  };
+
+  /**
+   * Highlight search terms in text
+   */
+  const highlightSearchTerm = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>
+          {part}
+        </mark>
+      ) : part
+    );
   };
 
   // Filter the table rows according to current search
@@ -330,17 +502,27 @@ const RolePermissions: React.FC = () => {
   // Table columns for the DataGrid
   const columns: GridColDef[] = [
     {
+      field: "avatar",
+      headerName: "",
+      width: 80,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Avatar
+          sx={{ bgcolor: getRoleColor(params.row.role) === 'primary' ? "primary.main" : "secondary.main" }}
+        >
+          <Shield />
+        </Avatar>
+      ),
+    },
+    {
       field: "role",
       headerName: "Role",
       width: 200,
       renderCell: (params) => (
-        <Chip
-          icon={<Shield />}
-          label={params.value}
-          color={getRoleColor(params.value)}
-          size="small"
-          sx={{ fontWeight: 600 }}
-        />
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {highlightSearchTerm(params.value, search)}
+        </Typography>
       ),
     },
     {
@@ -350,12 +532,9 @@ const RolePermissions: React.FC = () => {
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <VpnKey fontSize="small" color="action" />
-          <Chip
-            label={params.value}
-            color={getPermissionColor(params.value)}
-            variant="outlined"
-            size="small"
-          />
+          <Typography variant="body2">
+            {highlightSearchTerm(params.value, search)}
+          </Typography>
         </Box>
       ),
     },
@@ -380,7 +559,7 @@ const RolePermissions: React.FC = () => {
           <IconButton
             size="small"
             color="error"
-            onClick={() => handleDelete(params.row.role, params.row.permission)}
+            onClick={() => handleDeleteDialogOpen(params.row)}
           >
             <Delete />
           </IconButton>
@@ -430,10 +609,43 @@ const RolePermissions: React.FC = () => {
             <Typography variant="body1" color="text.secondary">
               Configure permissions for each role in the system
             </Typography>
+            {selectedRolePermissions.length > 0 && (
+              <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+                {selectedRolePermissions.length} permission assignment{selectedRolePermissions.length !== 1 ? 's' : ''} selected
+              </Typography>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              Last updated: {lastRefresh.toLocaleTimeString()}
+              {autoRefresh && " • Auto-refresh enabled"}
+            </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Refresh Data">
-              <IconButton onClick={fetchPermissions} color="primary">
+            {selectedRolePermissions.length > 0 && (
+              <>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<Delete />}
+                  onClick={() => setOpenBulkDeleteDialog(true)}
+                  size="small"
+                >
+                  Delete ({selectedRolePermissions.length})
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<Cancel />}
+                  onClick={() => setSelectedRolePermissions([])}
+                  size="small"
+                >
+                  Clear Selection
+                </Button>
+              </>
+            )}
+            <Tooltip title="Toggle Auto-refresh (30s)">
+              <IconButton 
+                onClick={() => setAutoRefresh(!autoRefresh)} 
+                color={autoRefresh ? "primary" : "default"}
+              >
                 <Refresh />
               </IconButton>
             </Tooltip>
@@ -454,22 +666,100 @@ const RolePermissions: React.FC = () => {
         </Box>
 
 
-        {/* Search field */}
+        {/* Search and bulk operations */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <TextField
-              fullWidth
-              placeholder="Search by role or permission..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  placeholder="Search by role or permission..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                  {selectedRolePermissions.length > 0 && (
+                    <>
+                      <Badge badgeContent={selectedRolePermissions.length} color="primary">
+                        <Tooltip title="Export Selected to CSV (Ctrl+E)">
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<GetApp />}
+                            onClick={handleExportCSV}
+                          >
+                            Export
+                          </Button>
+                        </Tooltip>
+                      </Badge>
+                      <Tooltip title="Delete Selected (Delete/Backspace)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          startIcon={<DeleteSweep />}
+                          onClick={handleBulkDelete}
+                        >
+                          Delete ({selectedRolePermissions.length})
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Deselect All">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={handleDeselectAll}
+                        >
+                          Clear
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                  {selectedRolePermissions.length === 0 && (
+                    <>
+                      <Tooltip title="Export All to CSV">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredPermissions.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Select All (Ctrl+Shift+A)">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredPermissions.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                </Stack>
+              </Grid>
+            </Grid>
+            {selectedRolePermissions.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Divider />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {selectedRolePermissions.length} permission(s) selected | Keyboard shortcuts: Ctrl+E (export), Delete (bulk delete), Ctrl+R (refresh)
+                </Typography>
+              </Box>
+            )}
           </CardContent>
         </Card>
 
@@ -497,8 +787,12 @@ const RolePermissions: React.FC = () => {
               }}
               pageSizeOptions={[10, 25, 50, 100]}
               getRowId={(row) => `${row.role}-${row.permission}`}
-              disableRowSelectionOnClick
-              checkboxSelection={false}
+              checkboxSelection
+              rowSelectionModel={selectedRolePermissions}
+              onRowSelectionModelChange={(newSelection) => {
+                setSelectedRolePermissions(newSelection as string[]);
+              }}
+              disableRowSelectionOnClick={false}
               sx={{
                 border: "none",
                 "& .MuiDataGrid-cell": {
@@ -646,6 +940,77 @@ const RolePermissions: React.FC = () => {
               }}
             >
               Assign {selectedPermissions.length} Permission{selectedPermissions.length !== 1 ? 's' : ''} to {selectedRoles.length} Role{selectedRoles.length !== 1 ? 's' : ''}
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={openDeleteDialog}
+          onClose={() => setOpenDeleteDialog(false)}
+        >
+          <DialogTitle sx={{ color: "error.main" }}>Confirm Delete</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to remove permission "{rolePermissionToDelete?.permission}" from role "{rolePermissionToDelete?.role}"? This
+              action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => 
+                rolePermissionToDelete && 
+                handleDelete(rolePermissionToDelete.role, rolePermissionToDelete.permission)
+              }
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <Dialog
+          open={openBulkDeleteDialog}
+          onClose={() => setOpenBulkDeleteDialog(false)}
+        >
+          <DialogTitle sx={{ color: "error.main" }}>Confirm Bulk Delete</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete {selectedRolePermissions.length} selected permission assignment{selectedRolePermissions.length !== 1 ? 's' : ''}? 
+              This action cannot be undone.
+            </Typography>
+            {selectedRolePermissions.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Permission assignments to be deleted:
+                </Typography>
+                {selectedRolePermissions.slice(0, 5).map(id => {
+                  const [role, permission] = id.split('-');
+                  return (
+                    <Typography key={id} variant="body2" sx={{ ml: 2 }}>
+                      • {role} → {permission}
+                    </Typography>
+                  );
+                })}
+                {selectedRolePermissions.length > 5 && (
+                  <Typography variant="body2" sx={{ ml: 2, fontStyle: 'italic' }}>
+                    ... and {selectedRolePermissions.length - 5} more
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenBulkDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={handleBulkDelete}
+            >
+              Delete {selectedRolePermissions.length} Assignment{selectedRolePermissions.length !== 1 ? 's' : ''}
             </Button>
           </DialogActions>
         </Dialog>

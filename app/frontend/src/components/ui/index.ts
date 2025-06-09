@@ -7,3 +7,4 @@ export { default as GradientPaper } from "./GradientPaper";
 export { default as IconAvatar } from "./IconAvatar";
 export { default as FullscreenContainer } from "./FullscreenContainer";
 export { default as ContextHelp } from "./ContextHelp";
+export { default as BreadcrumbNavigation } from "./BreadcrumbNavigation";
