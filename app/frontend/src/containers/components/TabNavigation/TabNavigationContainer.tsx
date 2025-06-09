@@ -79,7 +79,7 @@ const TabNavigationContainer: React.FC<TabNavigationContainerProps> = ({
       sx={{
         borderBottom: 1,
         borderColor: "divider",
-        background: "linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%)",
+        bgcolor: "background.paper",
         position: "relative",
       }}
     >
