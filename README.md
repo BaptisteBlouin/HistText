@@ -104,43 +104,97 @@ HistText is a comprehensive web application for large-scale historical text anal
 
 ### Setup Steps
 
-1. **Database setup**
-   ```bash
-   # Create PostgreSQL database
-   createuser histtext
-   createdb historicaltext -O histtext
-   
-   # Run migrations
-   diesel migration run
-   ```
+#### System Requirements
 
-2. **Solr setup**
-   ```bash
-   # Start Solr and create core
-   bin/solr start
-   bin/solr create -c ner
-   ```
+**Operating System Support:**
+- Ubuntu 20.04+ / Debian 11+
+- CentOS 8+ / RHEL 8+
+- macOS 12+
+- Windows 11 with WSL2
 
-3. **Frontend setup**
-   ```bash
-   cd app/frontend
-   npm install
-   ```
+**Dependencies:**
+```bash
+# Rust toolchain
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup update stable
 
-4. **Initialize application**
-   ```bash
-   # Initialize admin user and roles
-   cargo run --release --bin script
-   ```
+# Node.js and npm
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
-5. **Start services**
-   ```bash
-   # Backend (terminal 1)
-   cargo run --release --bin HistTextWeb
-   
-   # Frontend (terminal 2)
-   cd app/frontend && npm start
-   ```
+# PostgreSQL
+sudo apt-get install postgresql postgresql-contrib libpq-dev
+
+# Apache Solr
+wget https://downloads.apache.org/lucene/solr/9.4.1/solr-9.4.1.tgz
+tar xzf solr-9.4.1.tgz
+sudo mv solr-9.4.1 /opt/solr
+sudo chown -R solr:solr /opt/solr
+
+# System tools
+sudo apt-get install build-essential pkg-config openssl libssl-dev
+cargo install diesel_cli --no-default-features --features postgres
+```
+
+#### Manual Installation Steps
+
+**1. Database Setup**
+```bash
+# Create PostgreSQL user and database
+sudo -u postgres createuser histtext
+sudo -u postgres createdb historicaltext -O histtext
+sudo -u postgres psql -c "ALTER USER histtext PASSWORD 'secure_password';"
+
+# Configure PostgreSQL
+sudo nano /etc/postgresql/15/main/postgresql.conf
+# Listen on all addresses: listen_addresses = '*'
+
+sudo nano /etc/postgresql/15/main/pg_hba.conf
+# Add: host historicaltext histtext 0.0.0.0/0 md5
+
+sudo systemctl restart postgresql
+```
+
+**2. Solr Setup**
+```bash
+# Create Solr user
+sudo useradd -r -s /bin/false solr
+
+# Start Solr
+sudo -u solr /opt/solr/bin/solr start -p 8983
+
+# Create NER core
+sudo -u solr /opt/solr/bin/solr create -c ner -p 8983
+
+# Configure Solr for HistText
+sudo -u solr /opt/solr/bin/solr config -c ner -p 8983 -action set-property -property requestHandler.max-content-length:100000000
+```
+
+**3. Application Setup**
+```bash
+# Clone and build
+git clone https://github.com/BaptisteBlouin/HistText.git
+cd HistText
+
+# Configure environment
+cp .env.example app/.env
+nano app/.env  # Edit configuration
+
+# Build frontend
+cd app/frontend
+npm install
+npm run build
+
+# Run database migrations
+diesel migration run
+
+# Initialize admin user
+cargo run --release --bin script
+
+# Build backend
+cd ..
+cargo build --release
+```
 
 ## Core Workflows
 

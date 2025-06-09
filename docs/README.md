@@ -4,7 +4,7 @@ Welcome to the comprehensive HistText documentation. This directory provides det
 
 ## Documentation Structure
 
-### 📋 **Core Documentation**
+### **Core Documentation**
 
 #### [**ARCHITECTURE.md**](ARCHITECTURE.md)
 Complete system architecture documentation covering:
@@ -52,11 +52,11 @@ Comprehensive troubleshooting and maintenance guide including:
 - Recovery procedures and disaster recovery
 - Regular maintenance tasks and schedules
 
-### 📚 **Specialized Documentation**
+### **Specialized Documentation**
 
 #### **Administrator Guide** (`admin_setup/`)
 - **Status**: Active and comprehensive
-- Complete visual setup guide with 96+ screenshots
+- Complete visual setup guide with screenshots
 - Step-by-step deployment and configuration procedures
 - Database connection, SSH tunneling, and user management workflows
 - Essential for production deployment and administration
@@ -163,9 +163,9 @@ curl http://localhost:3000/api/openapi.json > histtext-api.json
 ## Version Information
 
 ### Current Documentation Version
-- **Version**: 1.1.0 (January 2025)
-- **HistText Version**: 1.1.0
-- **Last Updated**: January 2025
+- **Version**: 2.0.0 (January 2025)
+- **HistText Version**: 2.0.0
+- **Last Updated**: June 2025
 
 ### Compatibility
 - **Minimum HistText Version**: 1.0.0

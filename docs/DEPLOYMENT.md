@@ -252,15 +252,15 @@ cd app/frontend
 npm install
 npm run build
 
-# Build backend
-cd ..
-cargo build --release
-
 # Run database migrations
 diesel migration run
 
 # Initialize admin user
 cargo run --release --bin script
+
+# Build backend
+cd ..
+cargo build --release
 
 # Create systemd service
 sudo cp deployment/histtext.service /etc/systemd/system/

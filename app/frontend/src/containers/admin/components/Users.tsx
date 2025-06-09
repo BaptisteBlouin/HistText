@@ -44,6 +44,7 @@ import {
   GetApp,
   DeleteSweep,
   SelectAll,
+  CloudUpload,
 } from "@mui/icons-material";
 import axios, { AxiosHeaders } from "axios";
 import { useAuth } from "../../../hooks/useAuth";
@@ -117,6 +118,9 @@ const Users: React.FC = () => {
     message: "",
     severity: "info",
   });
+  const [openImportDialog, setOpenImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
 
   /**
    * Fetch users on component mount.
@@ -196,11 +200,12 @@ const Users: React.FC = () => {
   const showNotification = (
     message: string,
     severity: NotificationState["severity"] = "info",
+    duration: number = 5000,
   ) => {
     setNotification({ open: true, message, severity });
     setTimeout(
       () => setNotification((prev) => ({ ...prev, open: false })),
-      5000,
+      duration,
     );
   };
 
@@ -404,6 +409,143 @@ const Users: React.FC = () => {
    */
   const handleDeselectAll = () => {
     setSelectedUsers([]);
+  };
+
+  /**
+   * Handle CSV file import
+   */
+  const handleImportCSV = async () => {
+    if (!importFile) {
+      showNotification("Please select a file to import", "warning");
+      return;
+    }
+
+    setImporting(true);
+    
+    try {
+      const text = await importFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        showNotification("CSV file must contain header and at least one data row", "error");
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const expectedHeaders = ['email', 'firstname', 'lastname', 'password'];
+      
+      // Validate headers
+      const missingHeaders = expectedHeaders.filter(h => !headers.some(header => header.toLowerCase().includes(h)));
+      if (missingHeaders.length > 0) {
+        showNotification(`Missing required columns: ${missingHeaders.join(', ')}. Expected: email, firstname, lastname, password`, "error");
+        return;
+      }
+
+      // Parse CSV data
+      const userData = [];
+      const activatedIndex = headers.findIndex(h => h.toLowerCase().includes('activated'));
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        if (values.length >= 4) {
+          userData.push({
+            email: values[headers.findIndex(h => h.toLowerCase().includes('email'))],
+            firstname: values[headers.findIndex(h => h.toLowerCase().includes('firstname'))],
+            lastname: values[headers.findIndex(h => h.toLowerCase().includes('lastname'))],
+            hash_password: values[headers.findIndex(h => h.toLowerCase().includes('password'))],
+            activated: activatedIndex >= 0 ? values[activatedIndex].toLowerCase() === 'true' : true, // Default to true if not specified
+          });
+        }
+      }
+
+      if (userData.length === 0) {
+        showNotification("No valid user data found in CSV", "error");
+        return;
+      }
+
+      // Import users
+      let successCount = 0;
+      const errors: string[] = [];
+      
+      for (const user of userData) {
+        try {
+          await authAxios.post('/api/users', user);
+          successCount++;
+        } catch (err: any) {
+          console.error(`Failed to import user ${user.email}:`, err);
+          
+          let specificError = 'Unknown error';
+          
+          if (err.response?.data) {
+            const responseData = err.response.data;
+            
+            // Handle the API structure: response.data.error.message
+            if (responseData.error && responseData.error.message) {
+              specificError = responseData.error.message;
+            } 
+            // Fallback: direct message in responseData
+            else if (responseData.message) {
+              specificError = responseData.message;
+            }
+            // Fallback: error object as string
+            else if (responseData.error && typeof responseData.error === 'object') {
+              if (responseData.error.code) {
+                specificError = responseData.error.code.replace(/_/g, ' ');
+              } else {
+                specificError = 'Validation error';
+              }
+            }
+            // Handle string responses like Json deserialize errors  
+            else if (typeof responseData === 'string') {
+              if (responseData.includes('Json deserialize error')) {
+                if (responseData.includes('missing field')) {
+                  const field = responseData.match(/missing field `([^`]+)`/)?.[1];
+                  specificError = field ? `Missing required field: ${field}` : 'Missing required field';
+                } else {
+                  specificError = 'Invalid data format';
+                }
+              } else {
+                specificError = responseData;
+              }
+            }
+            // Last resort fallback
+            else {
+              specificError = 'Invalid request format';
+            }
+          } else if (err.message) {
+            specificError = err.message;
+          }
+          
+          // Add user email and clean error message
+          errors.push(`${user.email}: ${specificError}`);
+        }
+      }
+
+      // Show detailed results with longer duration for errors
+      if (successCount > 0 && errors.length === 0) {
+        showNotification(`Successfully imported all ${successCount} users`, "success");
+        fetchUsers();
+      } else if (successCount > 0 && errors.length > 0) {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Imported ${successCount} users successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
+        fetchUsers();
+      } else {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Import failed for all users: ${errorSummary}`, "error", 15000);
+      }
+      
+      setOpenImportDialog(false);
+      setImportFile(null);
+    } catch (err: any) {
+      console.error('Import failed:', err);
+      showNotification(`Import failed: ${err.message}`, "error");
+    } finally {
+      setImporting(false);
+    }
   };
 
   /**
@@ -742,6 +884,16 @@ const Users: React.FC = () => {
                   )}
                   {selectedUsers.length === 0 && (
                     <>
+                      <Tooltip title="Import from CSV">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<CloudUpload />}
+                          onClick={() => setOpenImportDialog(true)}
+                        >
+                          Import
+                        </Button>
+                      </Tooltip>
                       <Tooltip title="Export All to CSV">
                         <Button
                           variant="outlined"
@@ -1092,6 +1244,62 @@ const Users: React.FC = () => {
               onClick={handleBulkDelete}
             >
               Delete {selectedUsers.length} User{selectedUsers.length !== 1 ? 's' : ''}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Import CSV Dialog */}
+        <Dialog
+          open={openImportDialog}
+          onClose={() => setOpenImportDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+            }}
+          >
+            <CloudUpload />
+            Import Users from CSV
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Upload a CSV file with columns: <strong>email, firstname, lastname, password</strong>
+              <br />
+              Optional: <strong>activated</strong> (true/false, defaults to true)
+            </Typography>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              style={{ marginBottom: '16px' }}
+            />
+            {importFile && (
+              <Typography variant="body2" color="success.main">
+                Selected: {importFile.name}
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={handleImportCSV}
+              disabled={!importFile || importing}
+              startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                },
+              }}
+            >
+              {importing ? 'Importing...' : 'Import'}
             </Button>
           </DialogActions>
         </Dialog>

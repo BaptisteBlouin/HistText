@@ -48,6 +48,7 @@ import {
   GetApp,
   DeleteSweep,
   SelectAll,
+  CloudUpload,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
@@ -132,6 +133,9 @@ const SolrDatabasePermissions: React.FC = () => {
     message: "",
     severity: "info",
   });
+  const [openImportDialog, setOpenImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
 
   // --------
   // Effects
@@ -213,11 +217,12 @@ const SolrDatabasePermissions: React.FC = () => {
   const showNotification = (
     message: string,
     severity: NotificationState["severity"] = "info",
+    duration: number = 5000,
   ) => {
     setNotification({ open: true, message, severity });
     setTimeout(
       () => setNotification((prev) => ({ ...prev, open: false })),
-      5000,
+      duration,
     );
   };
 
@@ -481,6 +486,119 @@ const SolrDatabasePermissions: React.FC = () => {
    */
   const handleDeselectAllPermissions = () => {
     setSelectedPermissions([]);
+  };
+
+  // Handle CSV file import for Solr database permissions
+  const handleImportCSV = async () => {
+    if (!importFile) {
+      showNotification("Please select a file to import", "warning");
+      return;
+    }
+
+    setImporting(true);
+    
+    try {
+      const text = await importFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        showNotification("CSV file must contain header and at least one data row", "error");
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const expectedHeaders = ['solr_database_id', 'collection_name', 'permission'];
+      
+      // Validate headers
+      const missingHeaders = expectedHeaders.filter(h => !headers.some(header => header.toLowerCase().includes(h)));
+      if (missingHeaders.length > 0) {
+        showNotification(`Missing required columns: ${missingHeaders.join(', ')}. Expected: solr_database_id, collection_name, permission`, "error");
+        return;
+      }
+
+      // Parse CSV data
+      const permissionData = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        if (values.length >= 3) {
+          permissionData.push({
+            solr_database_id: parseInt(values[headers.findIndex(h => h.toLowerCase().includes('solr_database_id'))]),
+            collection_name: values[headers.findIndex(h => h.toLowerCase().includes('collection_name'))],
+            permission: values[headers.findIndex(h => h.toLowerCase().includes('permission'))],
+          });
+        }
+      }
+
+      if (permissionData.length === 0) {
+        showNotification("No valid permission data found in CSV", "error");
+        return;
+      }
+
+      // Import permissions
+      let successCount = 0;
+      const errors: string[] = [];
+      
+      for (const perm of permissionData) {
+        try {
+          await authAxios.post('/api/solr_database_permissions', perm);
+          successCount++;
+        } catch (err: any) {
+          console.error(`Failed to import permission ${perm.collection_name}:${perm.permission}:`, err);
+          
+          let specificError = 'Unknown error';
+          
+          if (err.response?.data) {
+            const responseData = err.response.data;
+            
+            if (responseData.error && responseData.error.message) {
+              specificError = responseData.error.message;
+            } else if (responseData.message) {
+              specificError = responseData.message;
+            } else if (responseData.error && typeof responseData.error === 'object') {
+              if (responseData.error.code) {
+                specificError = responseData.error.code.replace(/_/g, ' ');
+              } else {
+                specificError = 'Validation error';
+              }
+            } else if (typeof responseData === 'string') {
+              specificError = responseData;
+            } else {
+              specificError = 'Invalid request format';
+            }
+          } else if (err.message) {
+            specificError = err.message;
+          }
+          
+          errors.push(`${perm.collection_name}:${perm.permission}: ${specificError}`);
+        }
+      }
+
+      // Show detailed results with longer duration for errors
+      if (successCount > 0 && errors.length === 0) {
+        showNotification(`Successfully imported all ${successCount} permission assignments`, "success");
+        fetchPermissions();
+      } else if (successCount > 0 && errors.length > 0) {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Imported ${successCount} permissions successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
+        fetchPermissions();
+      } else {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Import failed for all permissions: ${errorSummary}`, "error", 15000);
+      }
+      
+      setOpenImportDialog(false);
+      setImportFile(null);
+    } catch (err: any) {
+      console.error('Import failed:', err);
+      const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unknown error occurred';
+      showNotification(`Import failed: ${errorMsg}`, "error", 10000);
+    } finally {
+      setImporting(false);
+    }
   };
 
   /**
@@ -769,6 +887,16 @@ const SolrDatabasePermissions: React.FC = () => {
                   )}
                   {selectedPermissions.length === 0 && (
                     <>
+                      <Tooltip title="Import from CSV">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<CloudUpload />}
+                          onClick={() => setOpenImportDialog(true)}
+                        >
+                          Import
+                        </Button>
+                      </Tooltip>
                       <Tooltip title="Export All to CSV">
                         <Button
                           variant="outlined"
@@ -1106,6 +1234,60 @@ const SolrDatabasePermissions: React.FC = () => {
               onClick={handleBulkDelete}
             >
               Delete {selectedPermissions.length} Permission{selectedPermissions.length !== 1 ? 's' : ''}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Import CSV Dialog */}
+        <Dialog
+          open={openImportDialog}
+          onClose={() => setOpenImportDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+            }}
+          >
+            <CloudUpload />
+            Import Database Permissions from CSV
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Upload a CSV file with columns: <strong>solr_database_id, collection_name, permission</strong>
+            </Typography>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              style={{ marginBottom: '16px' }}
+            />
+            {importFile && (
+              <Typography variant="body2" color="success.main">
+                Selected: {importFile.name}
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={handleImportCSV}
+              disabled={!importFile || importing}
+              startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                },
+              }}
+            >
+              {importing ? 'Importing...' : 'Import'}
             </Button>
           </DialogActions>
         </Dialog>

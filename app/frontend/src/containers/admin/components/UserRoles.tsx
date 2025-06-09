@@ -45,6 +45,7 @@ import {
   DeleteSweep,
   SelectAll,
   Autorenew,
+  CloudUpload,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
@@ -124,6 +125,9 @@ const UserRoles: React.FC = () => {
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<UserRole | null>(null);
+  const [openImportDialog, setOpenImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     fetchUserRoles();
@@ -193,6 +197,118 @@ const UserRoles: React.FC = () => {
       return `${user.firstname.charAt(0)}${user.lastname.charAt(0)}`;
     }
     return user.email.charAt(0).toUpperCase();
+  };
+
+  // Handle CSV file import for user roles
+  const handleImportCSV = async () => {
+    if (!importFile) {
+      showNotification("Please select a file to import", "warning");
+      return;
+    }
+
+    setImporting(true);
+    
+    try {
+      const text = await importFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        showNotification("CSV file must contain header and at least one data row", "error");
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const expectedHeaders = ['user_id', 'role'];
+      
+      // Validate headers
+      const missingHeaders = expectedHeaders.filter(h => !headers.some(header => header.toLowerCase().includes(h)));
+      if (missingHeaders.length > 0) {
+        showNotification(`Missing required columns: ${missingHeaders.join(', ')}. Expected: user_id, role`, "error");
+        return;
+      }
+
+      // Parse CSV data
+      const userRoleData = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        if (values.length >= 2) {
+          userRoleData.push({
+            user_id: parseInt(values[headers.findIndex(h => h.toLowerCase().includes('user_id'))]),
+            role: values[headers.findIndex(h => h.toLowerCase().includes('role'))],
+          });
+        }
+      }
+
+      if (userRoleData.length === 0) {
+        showNotification("No valid user role data found in CSV", "error");
+        return;
+      }
+
+      // Import user roles
+      let successCount = 0;
+      const errors: string[] = [];
+      
+      for (const ur of userRoleData) {
+        try {
+          await authAxios.post('/api/user_roles', ur);
+          successCount++;
+        } catch (err: any) {
+          console.error(`Failed to import user role ${ur.user_id}-${ur.role}:`, err);
+          
+          let specificError = 'Unknown error';
+          
+          if (err.response?.data) {
+            const responseData = err.response.data;
+            
+            if (responseData.error && responseData.error.message) {
+              specificError = responseData.error.message;
+            } else if (responseData.message) {
+              specificError = responseData.message;
+            } else if (responseData.error && typeof responseData.error === 'object') {
+              if (responseData.error.code) {
+                specificError = responseData.error.code.replace(/_/g, ' ');
+              } else {
+                specificError = 'Validation error';
+              }
+            } else if (typeof responseData === 'string') {
+              specificError = responseData;
+            } else {
+              specificError = 'Invalid request format';
+            }
+          } else if (err.message) {
+            specificError = err.message;
+          }
+          
+          errors.push(`User ${ur.user_id} → ${ur.role}: ${specificError}`);
+        }
+      }
+
+      // Show detailed results with longer duration for errors
+      if (successCount > 0 && errors.length === 0) {
+        showNotification(`Successfully imported all ${successCount} user role assignments`, "success");
+        fetchUserRoles();
+      } else if (successCount > 0 && errors.length > 0) {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Imported ${successCount} user roles successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
+        fetchUserRoles();
+      } else {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Import failed for all user roles: ${errorSummary}`, "error", 15000);
+      }
+      
+      setOpenImportDialog(false);
+      setImportFile(null);
+    } catch (err: any) {
+      console.error('Import failed:', err);
+      const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unknown error occurred';
+      showNotification(`Import failed: ${errorMsg}`, "error", 10000);
+    } finally {
+      setImporting(false);
+    }
   };
 
   // Export to CSV functionality
@@ -737,6 +853,16 @@ const UserRoles: React.FC = () => {
                   )}
                   {selectedRows.length === 0 && (
                     <>
+                      <Tooltip title="Import from CSV">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<CloudUpload />}
+                          onClick={() => setOpenImportDialog(true)}
+                        >
+                          Import
+                        </Button>
+                      </Tooltip>
                       <Tooltip title="Export All to CSV">
                         <Button
                           variant="outlined"
@@ -1011,6 +1137,60 @@ const UserRoles: React.FC = () => {
               }}
             >
               Remove {selectedRows.length > 1 ? `${selectedRows.length} Assignments` : 'Role'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Import CSV Dialog */}
+        <Dialog
+          open={openImportDialog}
+          onClose={() => setOpenImportDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+            }}
+          >
+            <CloudUpload />
+            Import User Roles from CSV
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Upload a CSV file with columns: <strong>user_id, role</strong>
+            </Typography>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              style={{ marginBottom: '16px' }}
+            />
+            {importFile && (
+              <Typography variant="body2" color="success.main">
+                Selected: {importFile.name}
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={handleImportCSV}
+              disabled={!importFile || importing}
+              startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                },
+              }}
+            >
+              {importing ? 'Importing...' : 'Import'}
             </Button>
           </DialogActions>
         </Dialog>
