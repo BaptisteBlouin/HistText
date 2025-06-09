@@ -138,14 +138,14 @@ const TabsHeader: React.FC<TabsHeaderProps> = ({
           minHeight: 56,
           transition: "all 0.2s ease",
           "&:hover": {
-            backgroundColor: "rgba(102, 126, 234, 0.1)",
+            backgroundColor: "action.hover",
           },
         },
         "& .Mui-selected": {
-          color: "#667eea !important",
+          color: "primary.main !important",
         },
         "& .MuiTabs-indicator": {
-          backgroundColor: "#667eea",
+          backgroundColor: "primary.main",
           height: 3,
         },
       }}

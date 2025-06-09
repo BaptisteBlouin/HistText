@@ -107,7 +107,7 @@ const SolrDatabaseSelector: React.FC<SolrDatabaseSelectorProps> = React.memo(
               right: 0,
               mt: 1,
               borderRadius: 3,
-              background: "white",
+              bgcolor: "background.paper",
               border: `1px solid ${theme.palette.divider}`,
               zIndex: 1000,
               maxHeight: isMobile ? "70vh" : "500px",

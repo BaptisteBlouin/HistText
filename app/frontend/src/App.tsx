@@ -10,6 +10,7 @@ import { ProtectedRoute } from "./components/RouteGuards";
 import { LogoutButton } from "./components/LogoutButton";
 import React, { useState } from "react";
 import "./App.css";
+import { CustomThemeProvider, useThemeMode } from "./contexts/ThemeContext";
 import { Home } from "./containers/Home";
 import { Route, useNavigate, Routes } from "react-router-dom";
 import HistText from "./containers/HistText";
@@ -45,6 +46,8 @@ import {
   ChevronLeft,
   ChevronRight,
   GitHub,
+  DarkMode,
+  LightMode,
 } from "@mui/icons-material";
 import HistLogo from "./images/HistTextLogoC.png";
 
@@ -54,6 +57,7 @@ const AppContent = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const { darkMode, toggleDarkMode } = useThemeMode();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // Add proper typing
@@ -283,6 +287,57 @@ const AppContent = () => {
       <Divider />
 
       <Box sx={{ p: collapsed ? 1 : 2 }}>
+        {/* Theme Toggle */}
+        <Box sx={{ mb: 2 }}>
+          {collapsed ? (
+            <Tooltip title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"} placement="right">
+              <IconButton
+                onClick={toggleDarkMode}
+                sx={{
+                  width: "100%",
+                  height: 48,
+                  borderRadius: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  mb: 1,
+                  bgcolor: darkMode ? "grey.800" : "primary.light",
+                  color: "white",
+                  "&:hover": {
+                    bgcolor: darkMode ? "grey.700" : "primary.main",
+                  },
+                }}
+              >
+                {darkMode ? <LightMode /> : <DarkMode />}
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <ListItem
+              button
+              onClick={toggleDarkMode}
+              sx={{
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                mb: 1,
+                bgcolor: darkMode ? "grey.800" : "primary.light",
+                color: "white",
+                "&:hover": {
+                  bgcolor: darkMode ? "grey.700" : "primary.main",
+                },
+              }}
+            >
+              <ListItemIcon>
+                {darkMode ? <LightMode sx={{ color: "white" }} /> : <DarkMode sx={{ color: "white" }} />}
+              </ListItemIcon>
+              <ListItemText
+                primary={darkMode ? "Light Mode" : "Dark Mode"}
+                secondary="Toggle theme"
+                secondaryTypographyProps={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)" }}
+              />
+            </ListItem>
+          )}
+        </Box>
+        
         <Box sx={{ mb: 2 }}>
           {collapsed ? (
             <Tooltip title="View on GitHub" placement="right">
@@ -515,7 +570,7 @@ const AppContent = () => {
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              background: "linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)",
+              bgcolor: "background.paper",
             },
           }}
         >
@@ -536,7 +591,7 @@ const AppContent = () => {
               boxSizing: "border-box",
               borderRight: "1px solid",
               borderColor: "divider",
-              background: "linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)",
+              bgcolor: "background.paper",
               transition: theme.transitions.create("width", {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
@@ -554,7 +609,7 @@ const AppContent = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          backgroundColor: "#f5f7fa",
+          bgcolor: "background.default",
           minHeight: "100vh",
           pt: isMobile ? 8 : 0,
           transition: theme.transitions.create("margin", {
@@ -609,12 +664,14 @@ const AppContent = () => {
   );
 };
 
-// Wrap the entire app with AuthProvider
+// Wrap the entire app with providers
 const App = () => {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <CustomThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </CustomThemeProvider>
   );
 };
 

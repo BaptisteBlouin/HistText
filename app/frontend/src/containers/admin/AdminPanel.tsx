@@ -41,7 +41,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import BreadcrumbNavigation from "../../components/ui/BreadcrumbNavigation";
-import { AdminThemeProvider, useAdminTheme } from "./AdminThemeProvider";
+import { useThemeMode } from "../../contexts/ThemeContext";
 
 const Users = React.lazy(() => import("./components/Users"));
 const RolePermissions = React.lazy(
@@ -311,7 +311,7 @@ const AdminPanelContent: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isAdmin = auth.session?.hasRole("Admin");
-  const { darkMode, toggleDarkMode } = useAdminTheme();
+  const { darkMode, toggleDarkMode } = useThemeMode();
 
   // State for tab selections and mobile drawer.
   const [mainTab, setMainTab] = useState<number>(() => {
@@ -524,9 +524,7 @@ const AdminPanelContent: React.FC = () => {
           p: 3,
           borderBottom: "1px solid",
           borderColor: "divider",
-          background: darkMode 
-            ? "linear-gradient(135deg, #424242 0%, #303030 100%)"
-            : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           color: "white",
           textAlign: "center",
         }}
@@ -613,23 +611,10 @@ const AdminPanelContent: React.FC = () => {
       <Divider sx={{ mx: 2 }} />
 
       <Box sx={{ p: 2, textAlign: "center" }}>
-        <IconButton
-          onClick={toggleDarkMode}
-          sx={{
-            mb: 1,
-            bgcolor: darkMode ? "primary.dark" : "primary.light",
-            color: "white",
-            "&:hover": {
-              bgcolor: darkMode ? "primary.main" : "primary.main",
-            },
-          }}
-        >
-          {darkMode ? <LightMode /> : <DarkMode />}
-        </IconButton>
         <Typography
           variant="caption"
           color="text.secondary"
-          sx={{ fontWeight: 500, display: "block" }}
+          sx={{ fontWeight: 500 }}
         >
           HistText Admin v2.0
         </Typography>
@@ -747,14 +732,11 @@ const AdminPanelContent: React.FC = () => {
 };
 
 /**
- * Main admin panel component with theme provider.
+ * Main admin panel component.
+ * Uses the global app theme instead of separate admin theme.
  */
 const AdminPanel: React.FC = () => {
-  return (
-    <AdminThemeProvider>
-      <AdminPanelContent />
-    </AdminThemeProvider>
-  );
+  return <AdminPanelContent />;
 };
 
 export default AdminPanel;
