@@ -1,21 +1,28 @@
-import React, { useState } from 'react';
-import { Box, TextField, Button, IconButton, InputAdornment, Typography } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { toast } from 'react-toastify';
+import React, { useState } from "react";
+import {
+  Box,
+  TextField,
+  Button,
+  IconButton,
+  InputAdornment,
+  Typography,
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { toast } from "react-toastify";
 
 export const ChangePasswordForm = ({ auth }) => {
   const [processing, setProcessing] = useState<boolean>(false);
-  const [originalPassword, setOriginalPassword] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [originalPassword, setOriginalPassword] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const changePassword = async () => {
     setProcessing(true);
     try {
-      const response = await fetch('/api/auth/change', {
-        method: 'POST',
+      const response = await fetch("/api/auth/change", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${auth.accessToken}`,
         },
         body: JSON.stringify({
@@ -25,22 +32,22 @@ export const ChangePasswordForm = ({ auth }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Password change failed');
+        throw new Error("Password change failed");
       }
 
-      toast.success('Password changed successfully!');
+      toast.success("Password changed successfully!");
     } catch (error) {
       console.error(error);
-      toast.error('Failed to change password.');
+      toast.error("Failed to change password.");
     } finally {
-      setOriginalPassword('');
-      setPassword('');
+      setOriginalPassword("");
+      setPassword("");
       setProcessing(false);
     }
   };
 
   return (
-    <Box sx={{ backgroundColor: '#f9f9f9', p: 3, borderRadius: 2 }}>
+    <Box sx={{ backgroundColor: "#f9f9f9", p: 3, borderRadius: 2 }}>
       <Typography variant="h6" gutterBottom>
         Change Password
       </Typography>
@@ -50,16 +57,16 @@ export const ChangePasswordForm = ({ auth }) => {
         fullWidth
         variant="outlined"
         value={originalPassword}
-        onChange={e => setOriginalPassword(e.target.value)}
+        onChange={(e) => setOriginalPassword(e.target.value)}
         sx={{ mb: 3 }}
       />
       <TextField
         label="New Password"
-        type={showPassword ? 'text' : 'password'}
+        type={showPassword ? "text" : "password"}
         fullWidth
         variant="outlined"
         value={password}
-        onChange={e => setPassword(e.target.value)}
+        onChange={(e) => setPassword(e.target.value)}
         InputProps={{
           endAdornment: (
             <InputAdornment position="end">
@@ -83,7 +90,7 @@ export const ChangePasswordForm = ({ auth }) => {
         fullWidth
         sx={{ mt: 2 }}
       >
-        {processing ? 'Changing...' : 'Change Password'}
+        {processing ? "Changing..." : "Change Password"}
       </Button>
     </Box>
   );

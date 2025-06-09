@@ -1,9 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import AliasSelector from './AliasSelector';
-import SolrDatabaseSelector from './SolrDatabaseSelector';
-import { Box, Button, CircularProgress, Tab, Tabs, Typography } from '@mui/material';
-import '../css/SidebarMenu.css';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import AliasSelector from "./AliasSelector";
+import SolrDatabaseSelector from "./SolrDatabaseSelector";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Tab,
+  Tabs,
+  Typography,
+} from "@mui/material";
+import "../css/SidebarMenu.css";
+import axios from "axios";
 
 interface SidebarMenuProps {
   aliases: string[];
@@ -21,12 +28,12 @@ interface SidebarMenuProps {
 }
 
 const TABS = {
-  QUERY: 'QUERY',
-  PARTIAL_RESULTS: 'PARTIAL_RESULTS',
-  ALL_RESULTS: 'ALL_RESULTS',
-  CLOUD: 'CLOUD',
-  STATS: 'STATS',
-  NER: 'NER',
+  QUERY: "QUERY",
+  PARTIAL_RESULTS: "PARTIAL_RESULTS",
+  ALL_RESULTS: "ALL_RESULTS",
+  CLOUD: "CLOUD",
+  STATS: "STATS",
+  NER: "NER",
 };
 
 const SidebarMenu: React.FC<SidebarMenuProps> = ({
@@ -44,14 +51,18 @@ const SidebarMenu: React.FC<SidebarMenuProps> = ({
   setActiveTab,
 }) => {
   // State variable to hold the real descriptions mapping (collection_name -> description)
-  const [collectionDescriptions, setCollectionDescriptions] = useState<Record<string, string>>({});
+  const [collectionDescriptions, setCollectionDescriptions] = useState<
+    Record<string, string>
+  >({});
 
   // When the selected Solr database changes, fetch the descriptions for its collections.
   useEffect(() => {
     if (selectedSolrDatabase && selectedSolrDatabase.id) {
       axios
-        .get(`/api/solr_database_info?solr_database_id=${selectedSolrDatabase.id}`)
-        .then(response => {
+        .get(
+          `/api/solr_database_info?solr_database_id=${selectedSolrDatabase.id}`,
+        )
+        .then((response) => {
           const mapping: Record<string, string> = {};
           if (Array.isArray(response.data)) {
             response.data.forEach((info: any) => {
@@ -60,8 +71,8 @@ const SidebarMenu: React.FC<SidebarMenuProps> = ({
           }
           setCollectionDescriptions(mapping);
         })
-        .catch(error => {
-          console.error('Failed to fetch collection descriptions:', error);
+        .catch((error) => {
+          console.error("Failed to fetch collection descriptions:", error);
           setCollectionDescriptions({});
         });
     } else {
@@ -73,33 +84,36 @@ const SidebarMenu: React.FC<SidebarMenuProps> = ({
     <Box
       sx={{
         p: 3,
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
-        display: 'flex',
-        flexDirection: 'column',
+        backgroundColor: "white",
+        borderRadius: "16px",
+        boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+        display: "flex",
+        flexDirection: "column",
         gap: 3,
       }}
     >
       {/* Header Section */}
       <Box
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-start",
           gap: 1,
         }}
       >
         {/* Solr Database Selector */}
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
             gap: 2,
           }}
         >
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', minWidth: '80px' }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: "bold", minWidth: "80px" }}
+          >
             Database
           </Typography>
           <SolrDatabaseSelector
@@ -112,13 +126,16 @@ const SidebarMenu: React.FC<SidebarMenuProps> = ({
         {/* Alias Selector */}
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
             gap: 2,
           }}
         >
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', minWidth: '80px' }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: "bold", minWidth: "80px" }}
+          >
             Collection
           </Typography>
           <AliasSelector
@@ -140,19 +157,23 @@ const SidebarMenu: React.FC<SidebarMenuProps> = ({
           textColor="primary"
           indicatorColor="primary"
           sx={{
-            '& .MuiTab-root': {
-              fontWeight: 'bold',
+            "& .MuiTab-root": {
+              fontWeight: "bold",
             },
           }}
         >
           <Tab label="Query" value={TABS.QUERY} />
           <Tab
-            label={<Box sx={{ display: 'flex', alignItems: 'center' }}>Partial Results</Box>}
+            label={
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                Partial Results
+              </Box>
+            }
             value={TABS.PARTIAL_RESULTS}
           />
           <Tab
             label={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 All Results
                 {isDataLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
               </Box>
@@ -161,25 +182,29 @@ const SidebarMenu: React.FC<SidebarMenuProps> = ({
           />
           <Tab
             label={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 Wordcloud
-                {isCloudLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
+                {isCloudLoading && (
+                  <CircularProgress size={16} sx={{ ml: 1 }} />
+                )}
               </Box>
             }
             value={TABS.CLOUD}
           />
           <Tab
             label={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 Stats
-                {isStatsLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
+                {isStatsLoading && (
+                  <CircularProgress size={16} sx={{ ml: 1 }} />
+                )}
               </Box>
             }
             value={TABS.STATS}
           />
           <Tab
             label={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
                 NER
                 {isNERLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
               </Box>

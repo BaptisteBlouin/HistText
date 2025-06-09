@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 /**
  * Custom hook for keyboard accessibility and focus in alias/collection dropdowns.
@@ -13,19 +13,19 @@ import { useEffect } from 'react';
 export const useAliasSelectorKeyboard = (
   isOpen: boolean,
   onClose: () => void,
-  searchInputRef: React.RefObject<HTMLInputElement>
+  searchInputRef: React.RefObject<HTMLInputElement>,
 ) => {
   // Register ESC key event for closing when open
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === "Escape" && isOpen) {
         onClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscKey);
+    document.addEventListener("keydown", handleEscKey);
     return () => {
-      document.removeEventListener('keydown', handleEscKey);
+      document.removeEventListener("keydown", handleEscKey);
     };
   }, [isOpen, onClose]);
 

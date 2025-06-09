@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { scaleLinear } from 'd3-scale';
+import { useMemo } from "react";
+import { scaleLinear } from "d3-scale";
 
 /**
  * Detect if a string contains at least one Chinese character.
@@ -42,14 +42,22 @@ export const useCloudData = ({
   maxWords,
   highlightedWord,
   fullscreen,
-  isMobile
+  isMobile,
 }: UseCloudDataProps) => {
   /**
    * Calculates responsive cloud dimensions based on fullscreen and device type.
    */
   const cloudDimensions = useMemo(() => {
-    const baseWidth = fullscreen ? window.innerWidth - 100 : (isMobile ? 350 : 800);
-    const baseHeight = fullscreen ? window.innerHeight - 200 : (isMobile ? 300 : 500);
+    const baseWidth = fullscreen
+      ? window.innerWidth - 100
+      : isMobile
+        ? 350
+        : 800;
+    const baseHeight = fullscreen
+      ? window.innerHeight - 200
+      : isMobile
+        ? 300
+        : 500;
     return { width: baseWidth, height: baseHeight };
   }, [isMobile, fullscreen]);
 
@@ -69,8 +77,8 @@ export const useCloudData = ({
     if (!wordFrequency || wordFrequency.length === 0) return [];
 
     let filtered = wordFrequency
-      .filter(item => item.value >= filterMinFreq)
-      .filter(item => {
+      .filter((item) => item.value >= filterMinFreq)
+      .filter((item) => {
         const word = item.text.toLowerCase();
         const isChinese = containsChinese(item.text);
 
@@ -84,7 +92,43 @@ export const useCloudData = ({
         // Only apply English stop words to non-Chinese text
         if (!isChinese) {
           const stopWords = new Set([
-            'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use'
+            "the",
+            "and",
+            "for",
+            "are",
+            "but",
+            "not",
+            "you",
+            "all",
+            "can",
+            "had",
+            "her",
+            "was",
+            "one",
+            "our",
+            "out",
+            "day",
+            "get",
+            "has",
+            "him",
+            "his",
+            "how",
+            "man",
+            "new",
+            "now",
+            "old",
+            "see",
+            "two",
+            "who",
+            "boy",
+            "did",
+            "its",
+            "let",
+            "put",
+            "say",
+            "she",
+            "too",
+            "use",
           ]);
           return !stopWords.has(word);
         }
@@ -94,8 +138,8 @@ export const useCloudData = ({
 
     // Apply search term if any
     if (searchTerm) {
-      filtered = filtered.filter(item => 
-        item.text.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter((item) =>
+        item.text.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
@@ -105,14 +149,12 @@ export const useCloudData = ({
 
     if (sortedData.length === 0) return [];
 
-    const values = sortedData.map(w => Math.log2(w.value + 1));
+    const values = sortedData.map((w) => Math.log2(w.value + 1));
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
 
     // Linear scaling for word font size
-    const scale = scaleLinear()
-      .domain([minVal, maxVal])
-      .range([12, 60]);
+    const scale = scaleLinear().domain([minVal, maxVal]).range([12, 60]);
 
     return sortedData.map((item, index) => ({
       text: item.text,
@@ -120,7 +162,7 @@ export const useCloudData = ({
       size: scale(Math.log2(item.value + 1)),
       rank: index + 1,
       isHighlighted: highlightedWord === item.text,
-      isChinese: containsChinese(item.text)
+      isChinese: containsChinese(item.text),
     }));
   }, [wordFrequency, filterMinFreq, searchTerm, maxWords, highlightedWord]);
 
@@ -138,23 +180,31 @@ export const useCloudData = ({
     if (processedData.length === 0) return null;
 
     const searchResults = searchTerm ? processedData.length : null;
-    const chineseWords = processedData.filter(w => w.isChinese).length;
-    const englishWords = processedData.filter(w => !w.isChinese).length;
+    const chineseWords = processedData.filter((w) => w.isChinese).length;
+    const englishWords = processedData.filter((w) => !w.isChinese).length;
 
     return {
       totalWords: processedData.length,
-      maxFrequency: Math.max(...processedData.map(w => w.value)),
-      avgFrequency: Math.round(processedData.reduce((sum, w) => sum + w.value, 0) / processedData.length),
+      maxFrequency: Math.max(...processedData.map((w) => w.value)),
+      avgFrequency: Math.round(
+        processedData.reduce((sum, w) => sum + w.value, 0) /
+          processedData.length,
+      ),
       searchResults,
       chineseWords,
       englishWords,
-      uniqueLetters: new Set(processedData.map(w => w.text).join('').toLowerCase()).size
+      uniqueLetters: new Set(
+        processedData
+          .map((w) => w.text)
+          .join("")
+          .toLowerCase(),
+      ).size,
     };
   }, [processedData, searchTerm]);
 
   return {
     processedData,
     stats,
-    cloudDimensions
+    cloudDimensions,
   };
 };

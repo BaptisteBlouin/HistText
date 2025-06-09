@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import {
   Container,
   Grid,
@@ -20,7 +20,7 @@ import {
   IconButton,
   Badge,
   Alert,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Person,
   Security,
@@ -28,14 +28,14 @@ import {
   Settings,
   Menu as MenuIcon,
   Close as CloseIcon,
-} from '@mui/icons-material';
-import { UserDetails } from './components/account/UserDetails';
-import { ChangePasswordForm } from './components/account/ChangePasswordForm';
-import { UserToken } from './components/account/UserToken';
-import { Permissions } from './components/account/Permissions';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { LogoutButton } from '../components/LogoutButton';
+} from "@mui/icons-material";
+import { UserDetails } from "./components/account/UserDetails";
+import { ChangePasswordForm } from "./components/account/ChangePasswordForm";
+import { UserToken } from "./components/account/UserToken";
+import { Permissions } from "./components/account/Permissions";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { LogoutButton } from "../components/LogoutButton";
 
 interface MenuItem {
   id: number;
@@ -48,25 +48,25 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   {
     id: 0,
-    label: 'Profile Information',
+    label: "Profile Information",
     icon: <Person />,
     component: UserDetails,
   },
   {
     id: 1,
-    label: 'Security & Password',
+    label: "Security & Password",
     icon: <Security />,
     component: ChangePasswordForm,
   },
   {
     id: 2,
-    label: 'API Tokens',
+    label: "API Tokens",
     icon: <VpnKey />,
     component: UserToken,
   },
   {
     id: 3,
-    label: 'Permissions',
+    label: "Permissions",
     icon: <Settings />,
     component: Permissions,
   },
@@ -76,8 +76,8 @@ export const AccountPage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   const [activeTab, setActiveTab] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -94,13 +94,13 @@ export const AccountPage = () => {
 
   if (!auth.isAuthenticated) {
     return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
-        <Paper 
-          sx={{ 
-            p: 6, 
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
+        <Paper
+          sx={{
+            p: 6,
             borderRadius: 3,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-            color: 'white' 
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
           }}
         >
           <Security sx={{ fontSize: 80, mb: 3, opacity: 0.9 }} />
@@ -112,22 +112,22 @@ export const AccountPage = () => {
           </Typography>
           <Box
             component="button"
-            onClick={() => navigate('/login')}
+            onClick={() => navigate("/login")}
             sx={{
               px: 4,
               py: 1.5,
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              border: 'none',
+              backgroundColor: "rgba(255, 255, 255, 0.2)",
+              color: "white",
+              border: "none",
               borderRadius: 2,
-              cursor: 'pointer',
-              fontSize: '1rem',
+              cursor: "pointer",
+              fontSize: "1rem",
               fontWeight: 500,
-              backdropFilter: 'blur(10px)',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                transform: 'translateY(-2px)',
+              backdropFilter: "blur(10px)",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.3)",
+                transform: "translateY(-2px)",
               },
             }}
           >
@@ -141,25 +141,25 @@ export const AccountPage = () => {
   const ActiveComponent = menuItems[activeTab]?.component || UserDetails;
 
   const renderSidebar = () => (
-    <Box sx={{ width: 300, height: '100%' }}>
+    <Box sx={{ width: 300, height: "100%" }}>
       {/* User Info Header */}
-      <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ p: 3, borderBottom: "1px solid", borderColor: "divider" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Box
             sx={{
               width: 48,
               height: 48,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
               fontWeight: 600,
-              fontSize: '1.2rem',
+              fontSize: "1.2rem",
             }}
           >
-            {auth.session?.user?.email?.charAt(0).toUpperCase() || 'U'}
+            {auth.session?.user?.email?.charAt(0).toUpperCase() || "U"}
           </Box>
           <Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -182,20 +182,21 @@ export const AccountPage = () => {
             sx={{
               borderRadius: 2,
               mb: 1,
-              '&.Mui-selected': {
-                backgroundColor: 'primary.light',
-                color: 'primary.contrastText',
-                '& .MuiListItemIcon-root': {
-                  color: 'primary.contrastText',
+              "&.Mui-selected": {
+                backgroundColor: "primary.light",
+                color: "primary.contrastText",
+                "& .MuiListItemIcon-root": {
+                  color: "primary.contrastText",
                 },
-                '&:hover': {
-                  backgroundColor: 'primary.main',
+                "&:hover": {
+                  backgroundColor: "primary.main",
                 },
               },
-              '&:hover': {
-                backgroundColor: activeTab === item.id ? 'primary.main' : 'action.hover',
+              "&:hover": {
+                backgroundColor:
+                  activeTab === item.id ? "primary.main" : "action.hover",
               },
-              transition: 'all 0.2s ease',
+              transition: "all 0.2s ease",
             }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
@@ -207,7 +208,7 @@ export const AccountPage = () => {
                 item.icon
               )}
             </ListItemIcon>
-            <ListItemText 
+            <ListItemText
               primary={item.label}
               primaryTypographyProps={{ fontWeight: 500 }}
             />
@@ -223,15 +224,15 @@ export const AccountPage = () => {
         <Box>
           {/* Header */}
           <Box sx={{ mb: 4 }}>
-            <Typography 
-              variant="h3" 
-              sx={{ 
+            <Typography
+              variant="h3"
+              sx={{
                 fontWeight: 700,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                mb: 1
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                mb: 1,
               }}
             >
               Account Settings
@@ -246,14 +247,14 @@ export const AccountPage = () => {
             <IconButton
               onClick={handleDrawerToggle}
               sx={{
-                position: 'fixed',
+                position: "fixed",
                 top: 100,
                 left: 16,
                 zIndex: theme.zIndex.speedDial,
-                backgroundColor: 'primary.main',
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: 'primary.dark',
+                backgroundColor: "primary.main",
+                color: "white",
+                "&:hover": {
+                  backgroundColor: "primary.dark",
                 },
                 boxShadow: theme.shadows[4],
               }}
@@ -271,8 +272,8 @@ export const AccountPage = () => {
                 onClose={handleDrawerToggle}
                 ModalProps={{ keepMounted: true }}
                 sx={{
-                  '& .MuiDrawer-paper': {
-                    boxSizing: 'border-box',
+                  "& .MuiDrawer-paper": {
+                    boxSizing: "border-box",
                     width: 300,
                   },
                 }}
@@ -285,10 +286,10 @@ export const AccountPage = () => {
                   elevation={0}
                   sx={{
                     borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    overflow: 'hidden',
-                    position: 'sticky',
+                    border: "1px solid",
+                    borderColor: "divider",
+                    overflow: "hidden",
+                    position: "sticky",
                     top: 100,
                   }}
                 >
@@ -303,10 +304,10 @@ export const AccountPage = () => {
                 elevation={0}
                 sx={{
                   borderRadius: 3,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  minHeight: '60vh',
-                  overflow: 'hidden',
+                  border: "1px solid",
+                  borderColor: "divider",
+                  minHeight: "60vh",
+                  overflow: "hidden",
                 }}
               >
                 <ActiveComponent auth={auth} />

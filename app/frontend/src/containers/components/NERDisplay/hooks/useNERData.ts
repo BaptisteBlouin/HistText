@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import config from '../../../../../config.json';
+import { useMemo } from "react";
+import config from "../../../../../config.json";
 
 interface Annotation {
   t: string;
@@ -21,7 +21,7 @@ interface NerData {
 /**
  * Processes raw NER data into structured entities and computes statistics.
  * Memoized for performance optimization.
- * 
+ *
  * @param nerData Raw NER data keyed by document ID.
  * @returns Object containing entities array and aggregated statistics.
  */
@@ -29,16 +29,19 @@ const processNERData = (nerData: Record<string, NerData>) => {
   const entities = [];
   const stats = {
     totalEntities: 0,
-    byLabel: {} as Record<string, { count: number; originalLabel: string; color: string }>,
+    byLabel: {} as Record<
+      string,
+      { count: number; originalLabel: string; color: string }
+    >,
     byDocument: {} as Record<string, number>,
     avgConfidence: 0,
-    confidenceDistribution: { high: 0, medium: 0, low: 0 }
+    confidenceDistribution: { high: 0, medium: 0, low: 0 },
   };
   type NerLabel = keyof typeof config.NERLABELS2FULL;
 
   for (const [docId, data] of Object.entries(nerData)) {
     if (!Array.isArray(data.t)) continue;
-    
+
     const docEntityCount = data.t.length;
     stats.byDocument[docId] = docEntityCount;
     stats.totalEntities += docEntityCount;
@@ -46,12 +49,14 @@ const processNERData = (nerData: Record<string, NerData>) => {
     for (let idx = 0; idx < data.t.length; idx++) {
       const confidence = data.c[idx];
       const label = data.l[idx];
-      const labelFull = (label in config.NERLABELS2FULL) 
-        ? config.NERLABELS2FULL[label as NerLabel]
-        : label;
-      const color = (label in config.NER_LABELS_COLORS)
-        ? config.NER_LABELS_COLORS[label as NerLabel]
-        : '#grey';
+      const labelFull =
+        label in config.NERLABELS2FULL
+          ? config.NERLABELS2FULL[label as NerLabel]
+          : label;
+      const color =
+        label in config.NER_LABELS_COLORS
+          ? config.NER_LABELS_COLORS[label as NerLabel]
+          : "#grey";
 
       entities.push({
         id: docId,
@@ -63,7 +68,8 @@ const processNERData = (nerData: Record<string, NerData>) => {
         confidence,
         color,
         textLower: data.t[idx].toLowerCase(),
-        confidenceLevel: confidence > 0.8 ? 'high' : confidence > 0.6 ? 'medium' : 'low'
+        confidenceLevel:
+          confidence > 0.8 ? "high" : confidence > 0.6 ? "medium" : "low",
       });
 
       if (!stats.byLabel[labelFull]) {
@@ -77,25 +83,26 @@ const processNERData = (nerData: Record<string, NerData>) => {
     }
   }
 
-  stats.avgConfidence = entities.length > 0 
-    ? entities.reduce((sum, e) => sum + e.confidence, 0) / entities.length 
-    : 0;
+  stats.avgConfidence =
+    entities.length > 0
+      ? entities.reduce((sum, e) => sum + e.confidence, 0) / entities.length
+      : 0;
 
   return { entities, stats };
 };
 
 /**
  * Custom React hook to memoize NER data processing.
- * 
+ *
  * @param nerData Raw NER data keyed by document ID.
  * @returns Processed entities and statistics.
  */
 export const useNERData = (nerData: Record<string, NerData>) => {
   const processedData = useMemo(() => processNERData(nerData), [nerData]);
-  
+
   return {
     entities: processedData.entities,
     stats: processedData.stats,
-    processedData
+    processedData,
   };
 };

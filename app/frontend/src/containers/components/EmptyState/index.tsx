@@ -1,5 +1,5 @@
-import React from 'react';
-import EmptyStateComponent from './EmptyStateComponent';
+import React from "react";
+import EmptyStateComponent from "./EmptyStateComponent";
 
 /**
  * Props for the EmptyState component.

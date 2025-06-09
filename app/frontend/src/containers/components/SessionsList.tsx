@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, Button, Pagination, Grid } from '@mui/material';
-import '../css/SessionsList.css';
-import { toast } from 'react-toastify';
+import React, { useEffect, useState } from "react";
+import { Box, Typography, Button, Pagination, Grid } from "@mui/material";
+import "../css/SessionsList.css";
+import { toast } from "react-toastify";
 
 export const SessionsList = ({ auth }) => {
   const [page, setPage] = useState<number>(1);
@@ -26,22 +26,25 @@ export const SessionsList = ({ auth }) => {
         return;
       }
 
-      const response = await fetch(`/api/auth/sessions?page=${page - 1}&page_size=${pageSize}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${auth.accessToken}`,
+      const response = await fetch(
+        `/api/auth/sessions?page=${page - 1}&page_size=${pageSize}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${auth.accessToken}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch sessions');
+        throw new Error("Failed to fetch sessions");
       }
 
       const sessionsData = await response.json();
       setSessions(sessionsData);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to fetch sessions.');
+      toast.error("Failed to fetch sessions.");
     } finally {
       setFetchingSessions(false);
     }
@@ -51,24 +54,24 @@ export const SessionsList = ({ auth }) => {
     setDeleting(true);
     try {
       const response = await fetch(`/api/auth/sessions/${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
           Authorization: `Bearer ${auth.accessToken}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete session');
+        throw new Error("Failed to delete session");
       }
 
       if (sessions.sessions.length === 1 && page !== 1) {
         setPage(page - 1);
       }
       await fetchSessions();
-      toast.success('Session deleted successfully!');
+      toast.success("Session deleted successfully!");
     } catch (error) {
       console.error(error);
-      toast.error('Failed to delete session.');
+      toast.error("Failed to delete session.");
     } finally {
       setDeleting(false);
     }
@@ -78,29 +81,29 @@ export const SessionsList = ({ auth }) => {
     setDeleting(true);
     try {
       const response = await fetch(`/api/auth/sessions`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
           Authorization: `Bearer ${auth.accessToken}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete all sessions');
+        throw new Error("Failed to delete all sessions");
       }
 
       setPage(1);
       await fetchSessions();
-      toast.success('All sessions deleted successfully!');
+      toast.success("All sessions deleted successfully!");
     } catch (error) {
       console.error(error);
-      toast.error('Failed to delete all sessions.');
+      toast.error("Failed to delete all sessions.");
     } finally {
       setDeleting(false);
     }
   };
 
   return (
-    <Box sx={{ backgroundColor: '#f9f9f9', p: 3, borderRadius: 2 }}>
+    <Box sx={{ backgroundColor: "#f9f9f9", p: 3, borderRadius: 2 }}>
       <Typography variant="h6">Sessions</Typography>
       <Button
         variant="contained"
@@ -109,7 +112,7 @@ export const SessionsList = ({ auth }) => {
         onClick={deleteAllSessions}
         sx={{ mb: 2 }}
       >
-        {isDeleting ? 'Deleting...' : 'Delete All Sessions'}
+        {isDeleting ? "Deleting..." : "Delete All Sessions"}
       </Button>
       {isFetchingSessions ? (
         <Typography>Fetching sessions...</Typography>
@@ -118,7 +121,7 @@ export const SessionsList = ({ auth }) => {
           {sessions.sessions.length === 0 ? (
             <Typography>No active sessions.</Typography>
           ) : (
-            sessions.sessions.map(session => (
+            sessions.sessions.map((session) => (
               <Box key={session.id} className="session-item" sx={{ mb: 2 }}>
                 <pre>{JSON.stringify(session, null, 2)}</pre>
                 <Button
@@ -127,7 +130,7 @@ export const SessionsList = ({ auth }) => {
                   disabled={isDeleting}
                   onClick={() => deleteSession(session.id)}
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                  {isDeleting ? "Deleting..." : "Delete"}
                 </Button>
               </Box>
             ))

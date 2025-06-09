@@ -1,26 +1,26 @@
-import React from 'react';
-import { Box, Typography, Slide, Fade } from '@mui/material';
-import { Analytics } from '@mui/icons-material';
-import StatisticsHeader from './StatisticsHeader';
-import StatisticsChart from './StatisticsChart';
-import StatisticsGrid from './StatisticsGrid';
+import React from "react";
+import { Box, Typography, Slide, Fade } from "@mui/material";
+import { Analytics } from "@mui/icons-material";
+import StatisticsHeader from "./StatisticsHeader";
+import StatisticsChart from "./StatisticsChart";
+import StatisticsGrid from "./StatisticsGrid";
 
 interface StatisticsMainContentProps {
   stats: any;
   selectedStat: string;
   chartData: any;
   chartOptions: any;
-  currentChartType: 'bar' | 'pie' | 'line';
+  currentChartType: "bar" | "pie" | "line";
   rowData: any[];
   navigationInfo: any;
   shouldDisplayChart: boolean;
   showChart: boolean;
   isMobile: boolean;
-  onNavigate: (direction: 'next' | 'prev') => void;
+  onNavigate: (direction: "next" | "prev") => void;
   onDownloadCsv: () => void;
   onDownloadChart: () => void;
   onToggleChart: (show: boolean) => void;
-  onChartTypeChange: (type: 'bar' | 'pie' | 'line') => void;
+  onChartTypeChange: (type: "bar" | "pie" | "line") => void;
   onGridReady: (params: any) => void;
 }
 
@@ -44,8 +44,10 @@ const StatisticsMainContent: React.FC<StatisticsMainContentProps> = ({
 }) => {
   if (!stats || !selectedStat) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
-        <Analytics sx={{ fontSize: 80, color: 'text.secondary', mb: 3, opacity: 0.5 }} />
+      <Box sx={{ textAlign: "center", py: 8 }}>
+        <Analytics
+          sx={{ fontSize: 80, color: "text.secondary", mb: 3, opacity: 0.5 }}
+        />
         <Typography variant="h5" color="text.secondary" gutterBottom>
           No Statistics Available
         </Typography>
@@ -57,7 +59,7 @@ const StatisticsMainContent: React.FC<StatisticsMainContentProps> = ({
   }
 
   return (
-    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
       <StatisticsHeader
         selectedStat={selectedStat}
         rowDataLength={rowData.length}
@@ -69,7 +71,7 @@ const StatisticsMainContent: React.FC<StatisticsMainContentProps> = ({
         onDownloadChart={onDownloadChart}
         onToggleChart={onToggleChart}
       />
-      
+
       {shouldDisplayChart && showChart ? (
         <Slide direction="up" in={showChart} mountOnEnter unmountOnExit>
           <Box>

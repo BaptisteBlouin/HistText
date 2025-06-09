@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Button,
@@ -27,9 +27,9 @@ import {
   useMediaQuery,
   Fade,
   Chip,
-  LinearProgress
-} from '@mui/material';
-import Autocomplete from '@mui/material/Autocomplete';
+  LinearProgress,
+} from "@mui/material";
+import Autocomplete from "@mui/material/Autocomplete";
 import {
   ContentCopy,
   Download,
@@ -40,10 +40,10 @@ import {
   GetApp,
   Code,
   Memory,
-  SmartToy
-} from '@mui/icons-material';
-import axios, { AxiosHeaders } from 'axios';
-import { useAuth } from '../../../hooks/useAuth';
+  SmartToy,
+} from "@mui/icons-material";
+import axios, { AxiosHeaders } from "axios";
+import { useAuth } from "../../../hooks/useAuth";
 
 interface SolrDatabase {
   id: number;
@@ -54,22 +54,23 @@ interface SolrDatabase {
  * Maps CLI arguments to their descriptions for the help dialog.
  */
 const ARG_DESCRIPTIONS: Record<string, string> = {
-  'solr-host': 'Solr host (default: localhost)',
-  'solr-port': 'Solr port (default: 8983)',
-  'cache-dir': 'Root directory where JSONL will be cached',
-  'ner': 'Command to precompute NER for a collection',
-  collection: 'Solr collection name',
-  'model-name': 'Model name or path to use for NER',
-  'model-type': 'Type of model to use (spacy, transformers, etc.)',
-  'text-field': 'Solr field containing plain text',
-  'filter-query': 'Additional Solr fq to restrict documents',
-  'batch-size': 'Number of Solr docs per batch',
-  'num-batches': 'Limit number of batches (None = all)',
-  'entity-types': 'Entity types to extract (Person, Organization, Location, etc.)',
-  upload: 'Command to upload processed files to Solr',
-  schema: 'Schema file to use for upload',
-  'compact-labels': 'Use compact labels for smaller file sizes',
-  'label-stats': 'Show label distribution statistics',
+  "solr-host": "Solr host (default: localhost)",
+  "solr-port": "Solr port (default: 8983)",
+  "cache-dir": "Root directory where JSONL will be cached",
+  ner: "Command to precompute NER for a collection",
+  collection: "Solr collection name",
+  "model-name": "Model name or path to use for NER",
+  "model-type": "Type of model to use (spacy, transformers, etc.)",
+  "text-field": "Solr field containing plain text",
+  "filter-query": "Additional Solr fq to restrict documents",
+  "batch-size": "Number of Solr docs per batch",
+  "num-batches": "Limit number of batches (None = all)",
+  "entity-types":
+    "Entity types to extract (Person, Organization, Location, etc.)",
+  upload: "Command to upload processed files to Solr",
+  schema: "Schema file to use for upload",
+  "compact-labels": "Use compact labels for smaller file sizes",
+  "label-stats": "Show label distribution statistics",
 };
 
 /**
@@ -77,145 +78,124 @@ const ARG_DESCRIPTIONS: Record<string, string> = {
  */
 const MODEL_CONFIGURATIONS = {
   spacy: {
-    label: 'spaCy',
-    description: 'Fast, production-ready NER',
+    label: "spaCy",
+    description: "Fast, production-ready NER",
     presets: [
-      'en_core_web_sm',
-      'en_core_web_md', 
-      'en_core_web_lg',
-      'en_core_web_trf',
-      'zh_core_web_sm',
-      'de_core_news_sm',
-      'fr_core_news_sm',
-      'es_core_news_sm',
-      'ja_core_news_sm',
-      'ko_core_news_sm'
+      "en_core_web_sm",
+      "en_core_web_md",
+      "en_core_web_lg",
+      "en_core_web_trf",
+      "zh_core_web_sm",
+      "de_core_news_sm",
+      "fr_core_news_sm",
+      "es_core_news_sm",
+      "ja_core_news_sm",
+      "ko_core_news_sm",
     ],
-    default: 'en_core_web_sm'
+    default: "en_core_web_sm",
   },
   transformers: {
-    label: 'Transformers (HuggingFace)',
-    description: 'State-of-the-art transformer models',
+    label: "Transformers (HuggingFace)",
+    description: "State-of-the-art transformer models",
     presets: [
-      'xlm-roberta-large-finetuned-conll03-english',
-      'xlm-roberta-base-finetuned-conll03-english',
-      'dbmdz/bert-base-historic-multilingual-cased',
-      'ckiplab/bert-base-chinese-ner',
-      'cl-tohoku/bert-base-japanese-char-whole-word-masking',
-      'klue/bert-base',
-      'aubmindlab/bert-base-arabertv2',
-      'bert-base-multilingual-cased',
-      'distilbert-base-multilingual-cased'
+      "xlm-roberta-large-finetuned-conll03-english",
+      "xlm-roberta-base-finetuned-conll03-english",
+      "dbmdz/bert-base-historic-multilingual-cased",
+      "ckiplab/bert-base-chinese-ner",
+      "cl-tohoku/bert-base-japanese-char-whole-word-masking",
+      "klue/bert-base",
+      "aubmindlab/bert-base-arabertv2",
+      "bert-base-multilingual-cased",
+      "distilbert-base-multilingual-cased",
     ],
-    default: 'xlm-roberta-base-finetuned-conll03-english'
+    default: "xlm-roberta-base-finetuned-conll03-english",
   },
   gliner: {
-    label: 'GLiNER',
-    description: 'Zero-shot entity recognition',
+    label: "GLiNER",
+    description: "Zero-shot entity recognition",
     presets: [
-      'urchade/gliner_mediumv2.1',
-      'urchade/gliner_largev2.1',
-      'urchade/gliner_small-v2.1',
-      'numind/NuNerZero'
+      "urchade/gliner_mediumv2.1",
+      "urchade/gliner_largev2.1",
+      "urchade/gliner_small-v2.1",
+      "numind/NuNerZero",
     ],
-    default: 'urchade/gliner_mediumv2.1'
+    default: "urchade/gliner_mediumv2.1",
   },
   stanza: {
-    label: 'Stanza',
-    description: 'Multilingual NLP (50+ languages)',
-    presets: [
-      'en',
-      'zh-hans',
-      'ja',
-      'ko',
-      'de',
-      'fr',
-      'es',
-      'ru',
-      'ar',
-      'hi'
-    ],
-    default: 'en'
+    label: "Stanza",
+    description: "Multilingual NLP (50+ languages)",
+    presets: ["en", "zh-hans", "ja", "ko", "de", "fr", "es", "ru", "ar", "hi"],
+    default: "en",
   },
   flair: {
-    label: 'Flair',
-    description: 'Research-grade NER',
+    label: "Flair",
+    description: "Research-grade NER",
     presets: [
-      'ner',
-      'ner-large',
-      'ner-ontonotes',
-      'ner-ontonotes-large',
-      'ner-multi',
-      'ner-multi-fast',
-      'ner-german',
-      'ner-german-large'
+      "ner",
+      "ner-large",
+      "ner-ontonotes",
+      "ner-ontonotes-large",
+      "ner-multi",
+      "ner-multi-fast",
+      "ner-german",
+      "ner-german-large",
     ],
-    default: 'ner'
+    default: "ner",
   },
   llm_ner: {
-    label: 'LLM NER',
-    description: 'Large Language Models for NER',
+    label: "LLM NER",
+    description: "Large Language Models for NER",
     presets: [
-      'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B',
-      'microsoft/DialoGPT-medium',
-      'microsoft/Phi-3-mini-4k-instruct',
-      'Qwen/Qwen-7B-Chat',
-      'mistralai/Mistral-7B-Instruct-v0.3'
+      "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+      "microsoft/DialoGPT-medium",
+      "microsoft/Phi-3-mini-4k-instruct",
+      "Qwen/Qwen-7B-Chat",
+      "mistralai/Mistral-7B-Instruct-v0.3",
     ],
-    default: 'microsoft/DialoGPT-medium'
+    default: "microsoft/DialoGPT-medium",
   },
   multilingual: {
-    label: 'Auto Multilingual',
-    description: 'Best multilingual model selection',
-    presets: [
-      'auto',
-      'multilingual',
-      'historical'
-    ],
-    default: 'auto'
+    label: "Auto Multilingual",
+    description: "Best multilingual model selection",
+    presets: ["auto", "multilingual", "historical"],
+    default: "auto",
   },
   fastnlp: {
-    label: 'FastNLP',
-    description: 'High-performance Chinese NLP',
+    label: "FastNLP",
+    description: "High-performance Chinese NLP",
     presets: [
-      'ner-msra',
-      'ner-ontonotes',
-      'ner-weibo',
-      'cws-pku',
-      'en-ner-conll'
+      "ner-msra",
+      "ner-ontonotes",
+      "ner-weibo",
+      "cws-pku",
+      "en-ner-conll",
     ],
-    default: 'ner-msra'
+    default: "ner-msra",
   },
   fasthan: {
-    label: 'FastHan',
-    description: 'Fast Chinese NER',
-    presets: [
-      'base',
-      'large',
-      'small'
-    ],
-    default: 'base'
+    label: "FastHan",
+    description: "Fast Chinese NER",
+    presets: ["base", "large", "small"],
+    default: "base",
   },
   lac: {
-    label: 'Baidu LAC',
-    description: 'Chinese lexical analysis',
-    presets: [
-      'lac'
-    ],
-    default: 'lac'
-  }
+    label: "Baidu LAC",
+    description: "Chinese lexical analysis",
+    presets: ["lac"],
+    default: "lac",
+  },
 };
 
 /**
  * useAuthAxios
- * 
+ *
  * Returns an Axios instance with Authorization header set.
  */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
     const instance = axios.create();
-    instance.interceptors.request.use(config => {
+    instance.interceptors.request.use((config) => {
       if (accessToken) {
         config.headers = new AxiosHeaders({
           ...config.headers,
@@ -230,52 +210,75 @@ const useAuthAxios = () => {
 
 /**
  * PrecomputeNER
- * 
+ *
  * UI to generate command lines for precomputing and uploading NER data from a Solr collection.
  * Allows the user to configure all relevant options, get the full CLI, and download a script.
  */
 const PrecomputeNER: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [solrDatabases, setSolrDatabases] = useState<SolrDatabase[]>([]);
   const [aliases, setAliases] = useState<string[]>([]);
-  const [selectedSolrDb, setSelectedSolrDb] = useState<SolrDatabase | null>(null);
-  const [collectionName, setCollectionName] = useState('');
+  const [selectedSolrDb, setSelectedSolrDb] = useState<SolrDatabase | null>(
+    null,
+  );
+  const [collectionName, setCollectionName] = useState("");
 
-  const [solrHost, setSolrHost] = useState('localhost');
-  const [solrPort, setSolrPort] = useState<number | ''>(8983);
-  const [cacheDir, setCacheDir] = useState('./cache');
+  const [solrHost, setSolrHost] = useState("localhost");
+  const [solrPort, setSolrPort] = useState<number | "">(8983);
+  const [cacheDir, setCacheDir] = useState("./cache");
 
-  const [modelType, setModelType] = useState('transformers');
-  const [modelName, setModelName] = useState('');
-  const [textField, setTextField] = useState('');
+  const [modelType, setModelType] = useState("transformers");
+  const [modelName, setModelName] = useState("");
+  const [textField, setTextField] = useState("");
   const [availableFields, setAvailableFields] = useState<string[]>([]);
 
-  const [filterQuery, setFilterQuery] = useState('');
-  const [batchSize, setBatchSize] = useState<number | ''>(1000);
-  const [nbatches, setNbatches] = useState<number | ''>('');
-  const [entityTypes, setEntityTypes] = useState<string[]>(['Person', 'Organization', 'Location']);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [batchSize, setBatchSize] = useState<number | "">(1000);
+  const [nbatches, setNbatches] = useState<number | "">("");
+  const [entityTypes, setEntityTypes] = useState<string[]>([
+    "Person",
+    "Organization",
+    "Location",
+  ]);
   const [useCompactLabels, setUseCompactLabels] = useState(true);
   const [showLabelStats, setShowLabelStats] = useState(false);
 
-  const [nerCommand, setNerCommand] = useState('');
-  const [uploadCommand, setUploadCommand] = useState('');
+  const [nerCommand, setNerCommand] = useState("");
+  const [uploadCommand, setUploadCommand] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Available entity types
   const availableEntityTypes = [
-    'Person', 'Organization', 'Location', 'Date', 'Time', 
-    'Money', 'Percent', 'Product', 'Event', 'Miscellaneous',
-    'GPE', 'NORP', 'FAC', 'WORK_OF_ART', 'LAW', 'LANGUAGE'
+    "Person",
+    "Organization",
+    "Location",
+    "Date",
+    "Time",
+    "Money",
+    "Percent",
+    "Product",
+    "Event",
+    "Miscellaneous",
+    "GPE",
+    "NORP",
+    "FAC",
+    "WORK_OF_ART",
+    "LAW",
+    "LANGUAGE",
   ];
 
   // Set default model name when model type changes
   useEffect(() => {
-    if (modelType && MODEL_CONFIGURATIONS[modelType as keyof typeof MODEL_CONFIGURATIONS]) {
-      const config = MODEL_CONFIGURATIONS[modelType as keyof typeof MODEL_CONFIGURATIONS];
+    if (
+      modelType &&
+      MODEL_CONFIGURATIONS[modelType as keyof typeof MODEL_CONFIGURATIONS]
+    ) {
+      const config =
+        MODEL_CONFIGURATIONS[modelType as keyof typeof MODEL_CONFIGURATIONS];
       setModelName(config.default);
     }
   }, [modelType]);
@@ -283,7 +286,7 @@ const PrecomputeNER: React.FC = () => {
   // Load available Solr databases
   useEffect(() => {
     authAxios
-      .get('/api/solr_databases')
+      .get("/api/solr_databases")
       .then(({ data }) => setSolrDatabases(data))
       .catch(() => setSolrDatabases([]));
   }, [authAxios]);
@@ -292,7 +295,7 @@ const PrecomputeNER: React.FC = () => {
   useEffect(() => {
     if (!selectedSolrDb) {
       setAliases([]);
-      setCollectionName('');
+      setCollectionName("");
       setAvailableFields([]);
       return;
     }
@@ -300,7 +303,7 @@ const PrecomputeNER: React.FC = () => {
       .get<string[]>(`/api/solr/aliases?solr_database_id=${selectedSolrDb.id}`)
       .then(({ data }) => setAliases(Array.isArray(data) ? data : []))
       .catch(() => setAliases([]));
-    setCollectionName('');
+    setCollectionName("");
     setAvailableFields([]);
   }, [selectedSolrDb, authAxios]);
 
@@ -323,11 +326,11 @@ const PrecomputeNER: React.FC = () => {
 
           if (!textField) {
             const textFieldCandidates = fieldNames.filter(
-              field =>
-                field.includes('text') ||
-                field.includes('content') ||
-                field.includes('body') ||
-                field.includes('description'),
+              (field) =>
+                field.includes("text") ||
+                field.includes("content") ||
+                field.includes("body") ||
+                field.includes("description"),
             );
 
             if (textFieldCandidates.length > 0) {
@@ -336,8 +339,8 @@ const PrecomputeNER: React.FC = () => {
           }
         }
       })
-      .catch(error => {
-        console.error('Failed to fetch collection metadata:', error);
+      .catch((error) => {
+        console.error("Failed to fetch collection metadata:", error);
         setAvailableFields([]);
       })
       .finally(() => setLoading(false));
@@ -354,7 +357,7 @@ const PrecomputeNER: React.FC = () => {
       !!textField &&
       !!cacheDir &&
       !!solrHost &&
-      solrPort !== ''
+      solrPort !== ""
     );
   }, [
     collectionName,
@@ -372,11 +375,11 @@ const PrecomputeNER: React.FC = () => {
   const getCacheModelName = (modelName: string): string => {
     // Remove special characters and replace with underscores
     return modelName
-      .replace(/[\/\\:*?"<>|]/g, '_')
-      .replace(/\s+/g, '_')
-      .replace(/[^\w\-_.]/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_|_$/g, '');
+      .replace(/[\/\\:*?"<>|]/g, "_")
+      .replace(/\s+/g, "_")
+      .replace(/[^\w\-_.]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "");
   };
 
   /**
@@ -384,22 +387,22 @@ const PrecomputeNER: React.FC = () => {
    */
   const handleGenerate = () => {
     const cacheModelName = getCacheModelName(modelName);
-    
+
     // Build NER command
     let nerCmd = `python -m histtext_toolkit.main --solr-host ${solrHost} --solr-port ${solrPort} --cache-dir "${cacheDir}" ner "${collectionName}" --model-name "${modelName}" --model-type "${modelType}" --text-field "${textField}"`;
-    
+
     // Add optional parameters
     if (filterQuery) {
       nerCmd += ` --filter-query "${filterQuery}"`;
     }
-    if (batchSize !== '') {
+    if (batchSize !== "") {
       nerCmd += ` --batch-size ${batchSize}`;
     }
-    if (nbatches !== '') {
+    if (nbatches !== "") {
       nerCmd += ` --num-batches ${nbatches}`;
     }
     if (entityTypes.length > 0) {
-      nerCmd += ` --entity-types ${entityTypes.join(' ')}`;
+      nerCmd += ` --entity-types ${entityTypes.join(" ")}`;
     }
     if (useCompactLabels) {
       nerCmd += ` --compact-labels`;
@@ -422,16 +425,34 @@ const PrecomputeNER: React.FC = () => {
    * Get current model configuration
    */
   const currentModelConfig = useMemo(() => {
-    return MODEL_CONFIGURATIONS[modelType as keyof typeof MODEL_CONFIGURATIONS] || null;
+    return (
+      MODEL_CONFIGURATIONS[modelType as keyof typeof MODEL_CONFIGURATIONS] ||
+      null
+    );
   }, [modelType]);
 
   return (
     <Fade in={true} timeout={600}>
       <Box>
         {/* Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 4,
+          }}
+        >
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
               <SmartToy color="primary" />
               Named Entity Recognition
             </Typography>
@@ -449,7 +470,11 @@ const PrecomputeNER: React.FC = () => {
         {/* Configuration Form */}
         <Card sx={{ mb: 4 }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            >
               <Settings />
               Configuration
             </Typography>
@@ -460,20 +485,28 @@ const PrecomputeNER: React.FC = () => {
                 <FormControl fullWidth required error={!selectedSolrDb}>
                   <InputLabel>Solr Database</InputLabel>
                   <Select
-                    value={selectedSolrDb?.id ?? ''}
+                    value={selectedSolrDb?.id ?? ""}
                     label="Solr Database"
-                    onChange={e =>
+                    onChange={(e) =>
                       setSelectedSolrDb(
-                        solrDatabases.find(db => db.id === Number(e.target.value)) || null,
+                        solrDatabases.find(
+                          (db) => db.id === Number(e.target.value),
+                        ) || null,
                       )
                     }
                   >
-                    {solrDatabases.map(db => (
+                    {solrDatabases.map((db) => (
                       <MenuItem key={db.id} value={db.id}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
                           <Memory fontSize="small" />
                           {db.name}
-                          <Chip label={`ID: ${db.id}`} size="small" variant="outlined" />
+                          <Chip
+                            label={`ID: ${db.id}`}
+                            size="small"
+                            variant="outlined"
+                          />
                         </Box>
                       </MenuItem>
                     ))}
@@ -489,14 +522,14 @@ const PrecomputeNER: React.FC = () => {
                   value={collectionName}
                   inputValue={collectionName}
                   onInputChange={(_, v) => setCollectionName(v)}
-                  onChange={(_, v) => setCollectionName(v || '')}
-                  renderInput={params => (
+                  onChange={(_, v) => setCollectionName(v || "")}
+                  renderInput={(params) => (
                     <TextField
                       {...params}
                       label="Collection Name"
                       required
                       error={!collectionName}
-                      helperText={!collectionName && 'Required'}
+                      helperText={!collectionName && "Required"}
                     />
                   )}
                 />
@@ -507,11 +540,11 @@ const PrecomputeNER: React.FC = () => {
                 <TextField
                   label="Solr Host"
                   value={solrHost}
-                  onChange={e => setSolrHost(e.target.value)}
+                  onChange={(e) => setSolrHost(e.target.value)}
                   fullWidth
                   required
                   error={!solrHost}
-                  helperText={!solrHost && 'Required'}
+                  helperText={!solrHost && "Required"}
                 />
               </Grid>
 
@@ -521,11 +554,13 @@ const PrecomputeNER: React.FC = () => {
                   label="Solr Port"
                   type="number"
                   value={solrPort}
-                  onChange={e => setSolrPort(e.target.value === '' ? '' : +e.target.value)}
+                  onChange={(e) =>
+                    setSolrPort(e.target.value === "" ? "" : +e.target.value)
+                  }
                   fullWidth
                   required
-                  error={solrPort === ''}
-                  helperText={solrPort === '' && 'Required'}
+                  error={solrPort === ""}
+                  helperText={solrPort === "" && "Required"}
                 />
               </Grid>
 
@@ -534,11 +569,11 @@ const PrecomputeNER: React.FC = () => {
                 <TextField
                   label="Cache Output Directory"
                   value={cacheDir}
-                  onChange={e => setCacheDir(e.target.value)}
+                  onChange={(e) => setCacheDir(e.target.value)}
                   fullWidth
                   required
                   error={!cacheDir}
-                  helperText={!cacheDir && 'Required'}
+                  helperText={!cacheDir && "Required"}
                 />
               </Grid>
 
@@ -549,21 +584,38 @@ const PrecomputeNER: React.FC = () => {
                   <Select
                     value={modelType}
                     label="Model Type"
-                    onChange={e => setModelType(e.target.value)}
+                    onChange={(e) => setModelType(e.target.value)}
                   >
-                    {Object.entries(MODEL_CONFIGURATIONS).map(([type, config]) => (
-                      <MenuItem key={type} value={type}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <SmartToy fontSize="small" />
-                            {config.label}
+                    {Object.entries(MODEL_CONFIGURATIONS).map(
+                      ([type, config]) => (
+                        <MenuItem key={type} value={type}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "flex-start",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <SmartToy fontSize="small" />
+                              {config.label}
+                            </Box>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {config.description}
+                            </Typography>
                           </Box>
-                          <Typography variant="caption" color="text.secondary">
-                            {config.description}
-                          </Typography>
-                        </Box>
-                      </MenuItem>
-                    ))}
+                        </MenuItem>
+                      ),
+                    )}
                   </Select>
                 </FormControl>
               </Grid>
@@ -576,19 +628,19 @@ const PrecomputeNER: React.FC = () => {
                   value={modelName}
                   inputValue={modelName}
                   onInputChange={(_, v) => setModelName(v)}
-                  onChange={(_, v) => setModelName(v || '')}
-                  renderInput={params => (
+                  onChange={(_, v) => setModelName(v || "")}
+                  renderInput={(params) => (
                     <TextField
                       {...params}
                       label="Model Name"
                       required
                       error={!modelName}
                       helperText={
-                        !modelName 
-                          ? 'Required' 
-                          : currentModelConfig 
+                        !modelName
+                          ? "Required"
+                          : currentModelConfig
                             ? `${currentModelConfig.description} - Type to add custom model`
-                            : 'Enter model name or path'
+                            : "Enter model name or path"
                       }
                     />
                   )}
@@ -597,7 +649,12 @@ const PrecomputeNER: React.FC = () => {
                       <Box>
                         <Typography variant="body2">{option}</Typography>
                         {option === currentModelConfig?.default && (
-                          <Chip label="Recommended" size="small" color="primary" variant="outlined" />
+                          <Chip
+                            label="Recommended"
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
                         )}
                       </Box>
                     </Box>
@@ -610,8 +667,8 @@ const PrecomputeNER: React.FC = () => {
                 <FormControl fullWidth>
                   <InputLabel>Text Field</InputLabel>
                   <Select
-                    value={textField || ''}
-                    onChange={e => setTextField(e.target.value)}
+                    value={textField || ""}
+                    onChange={(e) => setTextField(e.target.value)}
                     label="Text Field"
                     disabled={availableFields.length === 0}
                     required
@@ -620,7 +677,7 @@ const PrecomputeNER: React.FC = () => {
                     <MenuItem value="">
                       <em>None</em>
                     </MenuItem>
-                    {availableFields.map(field => (
+                    {availableFields.map((field) => (
                       <MenuItem key={field} value={field}>
                         {field}
                       </MenuItem>
@@ -662,7 +719,7 @@ const PrecomputeNER: React.FC = () => {
                 <TextField
                   label="Filter Query (optional)"
                   value={filterQuery}
-                  onChange={e => setFilterQuery(e.target.value)}
+                  onChange={(e) => setFilterQuery(e.target.value)}
                   fullWidth
                   helperText="Solr filter query to restrict documents"
                 />
@@ -673,7 +730,9 @@ const PrecomputeNER: React.FC = () => {
                   label="Batch Size"
                   type="number"
                   value={batchSize}
-                  onChange={e => setBatchSize(e.target.value === '' ? '' : +e.target.value)}
+                  onChange={(e) =>
+                    setBatchSize(e.target.value === "" ? "" : +e.target.value)
+                  }
                   fullWidth
                   helperText="Documents per batch"
                 />
@@ -684,7 +743,9 @@ const PrecomputeNER: React.FC = () => {
                   label="Max Batches (optional)"
                   type="number"
                   value={nbatches}
-                  onChange={e => setNbatches(e.target.value === '' ? '' : +e.target.value)}
+                  onChange={(e) =>
+                    setNbatches(e.target.value === "" ? "" : +e.target.value)
+                  }
                   fullWidth
                   helperText="Limit number of batches"
                 />
@@ -696,21 +757,27 @@ const PrecomputeNER: React.FC = () => {
                   <FormControl>
                     <InputLabel>Label Format</InputLabel>
                     <Select
-                      value={useCompactLabels ? 'compact' : 'full'}
-                      onChange={e => setUseCompactLabels(e.target.value === 'compact')}
+                      value={useCompactLabels ? "compact" : "full"}
+                      onChange={(e) =>
+                        setUseCompactLabels(e.target.value === "compact")
+                      }
                       label="Label Format"
                       size="small"
                     >
-                      <MenuItem value="compact">Compact (P, O, L) - Smaller files</MenuItem>
+                      <MenuItem value="compact">
+                        Compact (P, O, L) - Smaller files
+                      </MenuItem>
                       <MenuItem value="full">Full (PERSON, ORG, LOC)</MenuItem>
                     </Select>
                   </FormControl>
-                  
+
                   <FormControl>
                     <InputLabel>Statistics</InputLabel>
                     <Select
-                      value={showLabelStats ? 'yes' : 'no'}
-                      onChange={e => setShowLabelStats(e.target.value === 'yes')}
+                      value={showLabelStats ? "yes" : "no"}
+                      onChange={(e) =>
+                        setShowLabelStats(e.target.value === "yes")
+                      }
                       label="Statistics"
                       size="small"
                     >
@@ -731,10 +798,12 @@ const PrecomputeNER: React.FC = () => {
                   fullWidth
                   size="large"
                   sx={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                    }
+                    background:
+                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    "&:hover": {
+                      background:
+                        "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                    },
                   }}
                 >
                   Generate NER Commands
@@ -745,8 +814,13 @@ const PrecomputeNER: React.FC = () => {
         </Card>
 
         {/* Help Dialog */}
-        <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="md" fullWidth>
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Dialog
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Help />
             histtext_toolkit.main — Command‐Line Arguments
           </DialogTitle>
@@ -754,16 +828,16 @@ const PrecomputeNER: React.FC = () => {
             <List dense>
               {Object.entries(ARG_DESCRIPTIONS).map(([arg, desc]) => (
                 <ListItem key={arg} alignItems="flex-start">
-                  <ListItemText 
+                  <ListItemText
                     primary={
-                      <Chip 
-                        label={arg} 
-                        variant="outlined" 
-                        size="small" 
-                        sx={{ fontFamily: 'monospace' }} 
+                      <Chip
+                        label={arg}
+                        variant="outlined"
+                        size="small"
+                        sx={{ fontFamily: "monospace" }}
                       />
-                    } 
-                    secondary={desc} 
+                    }
+                    secondary={desc}
                   />
                 </ListItem>
               ))}
@@ -779,23 +853,39 @@ const PrecomputeNER: React.FC = () => {
           <Stack spacing={3}>
             <Card>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 3,
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  >
                     <Code />
                     NER Command
                   </Typography>
                   <Stack direction="row" spacing={1}>
                     <Tooltip title="Copy NER Command">
-                      <IconButton onClick={() => navigator.clipboard.writeText(nerCommand)}>
+                      <IconButton
+                        onClick={() =>
+                          navigator.clipboard.writeText(nerCommand)
+                        }
+                      >
                         <ContentCopy />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Save to File">
                       <IconButton
                         onClick={() => {
-                          const blob = new Blob([nerCommand], { type: 'text/plain' });
+                          const blob = new Blob([nerCommand], {
+                            type: "text/plain",
+                          });
                           const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
+                          const a = document.createElement("a");
                           a.href = url;
                           a.download = `ner_command_${collectionName}.sh`;
                           document.body.appendChild(a);
@@ -810,15 +900,22 @@ const PrecomputeNER: React.FC = () => {
                   </Stack>
                 </Box>
 
-                <Paper sx={{ p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200' }}>
+                <Paper
+                  sx={{
+                    p: 2,
+                    bgcolor: "grey.50",
+                    border: "1px solid",
+                    borderColor: "grey.200",
+                  }}
+                >
                   <TextField
                     multiline
                     fullWidth
                     minRows={3}
                     value={nerCommand}
-                    InputProps={{ 
+                    InputProps={{
                       readOnly: true,
-                      sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                      sx: { fontFamily: "monospace", fontSize: "0.875rem" },
                     }}
                     variant="outlined"
                   />
@@ -827,10 +924,12 @@ const PrecomputeNER: React.FC = () => {
                 {/* Show cache model name info */}
                 <Alert severity="info" sx={{ mt: 2 }}>
                   <Typography variant="body2">
-                    <strong>Cache Model Name:</strong> {getCacheModelName(modelName)}
+                    <strong>Cache Model Name:</strong>{" "}
+                    {getCacheModelName(modelName)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Automatically generated from model name for file system compatibility
+                    Automatically generated from model name for file system
+                    compatibility
                   </Typography>
                 </Alert>
               </CardContent>
@@ -838,60 +937,83 @@ const PrecomputeNER: React.FC = () => {
 
             <Card>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 3,
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  >
                     <Code />
                     Upload Command
                   </Typography>
                   <Stack direction="row" spacing={1}>
                     <Tooltip title="Copy Upload Command">
-                      <IconButton onClick={() => navigator.clipboard.writeText(uploadCommand)}>
+                      <IconButton
+                        onClick={() =>
+                          navigator.clipboard.writeText(uploadCommand)
+                        }
+                      >
                         <ContentCopy />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Save to File">
                       <IconButton
                         onClick={() => {
-                          const blob = new Blob([uploadCommand], { type: 'text/plain' });
+                          const blob = new Blob([uploadCommand], {
+                            type: "text/plain",
+                          });
                           const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
+                          const a = document.createElement("a");
                           a.href = url;
                           a.download = `upload_command_${collectionName}.sh`;
                           document.body.appendChild(a);
                           a.click();
                           document.body.removeChild(a);
-                         URL.revokeObjectURL(url);
-                       }}
-                     >
-                       <Download />
-                     </IconButton>
-                   </Tooltip>
-                 </Stack>
-               </Box>
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Box>
 
-               <Paper sx={{ p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200' }}>
-                 <TextField
-                   multiline
-                   fullWidth
-                   minRows={3}
-                   value={uploadCommand}
-                   InputProps={{ 
-                     readOnly: true,
-                     sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
-                   }}
-                   variant="outlined"
-                 />
-               </Paper>
-             </CardContent>
-           </Card>
+                <Paper
+                  sx={{
+                    p: 2,
+                    bgcolor: "grey.50",
+                    border: "1px solid",
+                    borderColor: "grey.200",
+                  }}
+                >
+                  <TextField
+                    multiline
+                    fullWidth
+                    minRows={3}
+                    value={uploadCommand}
+                    InputProps={{
+                      readOnly: true,
+                      sx: { fontFamily: "monospace", fontSize: "0.875rem" },
+                    }}
+                    variant="outlined"
+                  />
+                </Paper>
+              </CardContent>
+            </Card>
 
-           <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-             <Button
-               variant="contained"
-               color="secondary"
-               startIcon={<GetApp />}
-               onClick={() => {
-                 const fullScript = `#!/bin/bash
+            <Box sx={{ display: "flex", justifyContent: "center" }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<GetApp />}
+                onClick={() => {
+                  const fullScript = `#!/bin/bash
 
 # Named Entity Recognition Pipeline
 # Generated for collection: ${collectionName}
@@ -924,7 +1046,7 @@ if [ $? -eq 0 ]; then
    echo ""
    echo "You can now query the NER results using:"
    echo "  - Field 't': Entity text"
-   echo "  - Field 'l': Entity label${useCompactLabels ? ' (compact format: P=Person, O=Organization, L=Location, etc.)' : ''}"
+   echo "  - Field 'l': Entity label${useCompactLabels ? " (compact format: P=Person, O=Organization, L=Location, etc.)" : ""}"
    echo "  - Field 's': Start position"
    echo "  - Field 'e': End position" 
    echo "  - Field 'c': Confidence score"
@@ -941,103 +1063,113 @@ fi
 echo ""
 echo "🎉 NER pipeline completed successfully!"`;
 
-                 const blob = new Blob([fullScript], { type: 'text/plain' });
-                 const url = URL.createObjectURL(blob);
-                 const a = document.createElement('a');
-                 a.href = url;
-                 a.download = `ner_pipeline_${collectionName}_${modelType}.sh`;
-                 document.body.appendChild(a);
-                 a.click();
-                 document.body.removeChild(a);
-                 URL.revokeObjectURL(url);
-               }}
-               size="large"
-             >
-               Download Complete Shell Script
-             </Button>
-           </Box>
+                  const blob = new Blob([fullScript], { type: "text/plain" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `ner_pipeline_${collectionName}_${modelType}.sh`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                size="large"
+              >
+                Download Complete Shell Script
+              </Button>
+            </Box>
 
-           {/* Additional Information */}
-           <Card>
-             <CardContent>
-               <Typography variant="h6" gutterBottom>
-                 📋 Pipeline Information
-               </Typography>
-               <Grid container spacing={2}>
-                 <Grid item xs={12} md={6}>
-                   <Typography variant="body2" color="text.secondary">
-                     <strong>Model Configuration:</strong>
-                   </Typography>
-                   <Typography variant="body2">
-                     • Type: {currentModelConfig?.label || modelType}
-                   </Typography>
-                   <Typography variant="body2">
-                     • Model: {modelName}
-                   </Typography>
-                   <Typography variant="body2">
-                     • Cache Name: {getCacheModelName(modelName)}
-                   </Typography>
-                   <Typography variant="body2">
-                     • Description: {currentModelConfig?.description || 'Custom model'}
-                   </Typography>
-                 </Grid>
-                 <Grid item xs={12} md={6}>
-                   <Typography variant="body2" color="text.secondary">
-                     <strong>Output Configuration:</strong>
-                   </Typography>
-                   <Typography variant="body2">
-                     • Label Format: {useCompactLabels ? 'Compact (P, O, L, ...)' : 'Full (PERSON, ORG, LOC, ...)'}
-                   </Typography>
-                   <Typography variant="body2">
-                     • Entity Types: {entityTypes.length > 0 ? entityTypes.join(', ') : 'All types'}
-                   </Typography>
-                   <Typography variant="body2">
-                     • Statistics: {showLabelStats ? 'Enabled' : 'Disabled'}
-                   </Typography>
-                   <Typography variant="body2">
-                     • Target Collection: {collectionName}-ner
-                   </Typography>
-                 </Grid>
-               </Grid>
+            {/* Additional Information */}
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  📋 Pipeline Information
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Model Configuration:</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      • Type: {currentModelConfig?.label || modelType}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Model: {modelName}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Cache Name: {getCacheModelName(modelName)}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Description:{" "}
+                      {currentModelConfig?.description || "Custom model"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Output Configuration:</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      • Label Format:{" "}
+                      {useCompactLabels
+                        ? "Compact (P, O, L, ...)"
+                        : "Full (PERSON, ORG, LOC, ...)"}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Entity Types:{" "}
+                      {entityTypes.length > 0
+                        ? entityTypes.join(", ")
+                        : "All types"}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Statistics: {showLabelStats ? "Enabled" : "Disabled"}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Target Collection: {collectionName}-ner
+                    </Typography>
+                  </Grid>
+                </Grid>
 
-               {useCompactLabels && (
-                 <Alert severity="info" sx={{ mt: 2 }}>
-                   <Typography variant="body2">
-                     <strong>Compact Labels Mapping:</strong> P=Person, O=Organization, L=Location, 
-                     G=GPE, N=NORP, F=Facility, PR=Product, E=Event, W=Work of Art, LA=Law, 
-                     D=Date, T=Time, M=Money, PE=Percent, Q=Quantity, OR=Ordinal, C=Cardinal, 
-                     LG=Language, MI=Miscellaneous
-                   </Typography>
-                 </Alert>
-               )}
+                {useCompactLabels && (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      <strong>Compact Labels Mapping:</strong> P=Person,
+                      O=Organization, L=Location, G=GPE, N=NORP, F=Facility,
+                      PR=Product, E=Event, W=Work of Art, LA=Law, D=Date,
+                      T=Time, M=Money, PE=Percent, Q=Quantity, OR=Ordinal,
+                      C=Cardinal, LG=Language, MI=Miscellaneous
+                    </Typography>
+                  </Alert>
+                )}
 
-               <Alert severity="success" sx={{ mt: 2 }}>
-                 <Typography variant="body2">
-                   <strong>Next Steps:</strong>
-                 </Typography>
-                 <Typography variant="body2">
-                   1. Run the NER command to process your documents
-                 </Typography>
-                 <Typography variant="body2">
-                   2. Check the cache directory for generated JSONL files
-                 </Typography>
-                 <Typography variant="body2">
-                   3. Run the upload command to load results into Solr
-                 </Typography>
-                 <Typography variant="body2">
-                   4.  Query the new collection "{collectionName}-ner" for NER results (Optional)
-                 </Typography>
-                 <Typography variant="body2">
-                   5. The new collection "{collectionName}-ner" NER results will be automatically link to "{collectionName}".
-                 </Typography>
-               </Alert>
-             </CardContent>
-           </Card>
-         </Stack>
-       )}
-     </Box>
-   </Fade>
- );
+                <Alert severity="success" sx={{ mt: 2 }}>
+                  <Typography variant="body2">
+                    <strong>Next Steps:</strong>
+                  </Typography>
+                  <Typography variant="body2">
+                    1. Run the NER command to process your documents
+                  </Typography>
+                  <Typography variant="body2">
+                    2. Check the cache directory for generated JSONL files
+                  </Typography>
+                  <Typography variant="body2">
+                    3. Run the upload command to load results into Solr
+                  </Typography>
+                  <Typography variant="body2">
+                    4. Query the new collection "{collectionName}-ner" for NER
+                    results (Optional)
+                  </Typography>
+                  <Typography variant="body2">
+                    5. The new collection "{collectionName}-ner" NER results
+                    will be automatically link to "{collectionName}".
+                  </Typography>
+                </Alert>
+              </CardContent>
+            </Card>
+          </Stack>
+        )}
+      </Box>
+    </Fade>
+  );
 };
 
 export default PrecomputeNER;

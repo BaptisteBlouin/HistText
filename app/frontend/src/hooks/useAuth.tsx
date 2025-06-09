@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useRef,
   useState,
-} from 'react';
+} from "react";
 
 const MILLISECONDS_UNTIL_EXPIRY_CHECK = 10 * 1000; // check expiry every 10 seconds
 const REMAINING_TOKEN_EXPIRY_TIME_ALLOWED = 60 * 1000; // 1 minute before token should be refreshed
@@ -31,7 +31,7 @@ class Permissions {
 
   constructor(roles: string[], perms: Permission[]) {
     this.rolesArray = roles;
-    this.permissionsArray = perms.map(p => p.permission);
+    this.permissionsArray = perms.map((p) => p.permission);
 
     this.rolesSet = new Set(this.rolesArray);
     this.permissionsSet = new Set(this.permissionsArray);
@@ -108,11 +108,14 @@ export const AuthProvider = (props: AuthWrapperProps) => {
 };
 
 // Helper function to extract user info from token claims
-const extractUserInfo = (claims: ExtendedAccessTokenClaims, fallbackEmail?: string) => {
+const extractUserInfo = (
+  claims: ExtendedAccessTokenClaims,
+  fallbackEmail?: string,
+) => {
   return {
-    email: claims.email || claims.preferred_username || fallbackEmail || '',
-    firstname: claims.firstname || claims.given_name || '',
-    lastname: claims.lastname || claims.family_name || '',
+    email: claims.email || claims.preferred_username || fallbackEmail || "",
+    firstname: claims.firstname || claims.given_name || "",
+    lastname: claims.lastname || claims.family_name || "",
   };
 };
 
@@ -122,20 +125,25 @@ export const useAuth = () => {
   const login = async (email: string, password: string): Promise<boolean> => {
     context.setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
-      
+
       if (response.ok) {
         const responseJson = await response.json();
-        const parsedToken = parseJwt(responseJson.access_token) as ExtendedAccessTokenClaims;
-        const permissions = new Permissions(parsedToken.roles, parsedToken.permissions);
+        const parsedToken = parseJwt(
+          responseJson.access_token,
+        ) as ExtendedAccessTokenClaims;
+        const permissions = new Permissions(
+          parsedToken.roles,
+          parsedToken.permissions,
+        );
         const userInfo = extractUserInfo(parsedToken, email);
-        
+
         context.setAccessToken(responseJson.access_token);
         context.setSession({
           userId: parsedToken.sub,
@@ -153,7 +161,7 @@ export const useAuth = () => {
         return false;
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       context.setAccessToken(undefined);
       context.setSession(undefined);
       return false;
@@ -164,15 +172,17 @@ export const useAuth = () => {
 
   const loginOIDC = async (
     provider: string,
-    options?: { redirectUrl?: 'current-url' | string },
+    options?: { redirectUrl?: "current-url" | string },
   ) => {
     if (options?.redirectUrl) {
       localStorage.setItem(
-        'create_rust_app_oauth_redirect',
-        options?.redirectUrl === 'current-url' ? window.location.href : options.redirectUrl,
+        "create_rust_app_oauth_redirect",
+        options?.redirectUrl === "current-url"
+          ? window.location.href
+          : options.redirectUrl,
       );
     } else {
-      localStorage.removeItem('create_rust_app_oauth_redirect');
+      localStorage.removeItem("create_rust_app_oauth_redirect");
     }
 
     window.location.href = `/api/auth/oidc/${provider}`;
@@ -180,7 +190,7 @@ export const useAuth = () => {
 
   const completeOIDCLogin = (): boolean => {
     const params = new URLSearchParams(window.location.search);
-    const access_token = params.get('access_token');
+    const access_token = params.get("access_token");
     if (!access_token) {
       context.setAccessToken(undefined);
       context.setSession(undefined);
@@ -188,9 +198,12 @@ export const useAuth = () => {
       return false;
     } else {
       const parsedToken = parseJwt(access_token) as ExtendedAccessTokenClaims;
-      const permissions = new Permissions(parsedToken.roles, parsedToken.permissions);
+      const permissions = new Permissions(
+        parsedToken.roles,
+        parsedToken.permissions,
+      );
       const userInfo = extractUserInfo(parsedToken);
-      
+
       context.setAccessToken(access_token);
       context.setSession({
         userId: parsedToken.sub,
@@ -203,8 +216,10 @@ export const useAuth = () => {
       });
       context.setIsLoading(false);
 
-      if (localStorage.getItem('create_rust_app_oauth_redirect')) {
-        window.location.href = localStorage.getItem('create_rust_app_oauth_redirect') as string;
+      if (localStorage.getItem("create_rust_app_oauth_redirect")) {
+        window.location.href = localStorage.getItem(
+          "create_rust_app_oauth_redirect",
+        ) as string;
       }
 
       return true;
@@ -217,32 +232,35 @@ export const useAuth = () => {
     try {
       // Always clear local state first to prevent UI inconsistencies
       const currentToken = context.accessToken;
-      
+
       // Clear state immediately to prevent loops
       context.setAccessToken(undefined);
       context.setSession(undefined);
-      
+
       // Then try to notify the server (but don't fail if this doesn't work)
       if (currentToken) {
         try {
-          await fetch('/api/auth/logout', {
-            method: 'POST',
+          await fetch("/api/auth/logout", {
+            method: "POST",
             headers: {
-              'Authorization': `Bearer ${currentToken}`,
-              'Content-Type': 'application/json',
+              Authorization: `Bearer ${currentToken}`,
+              "Content-Type": "application/json",
             },
           });
         } catch (error) {
-          console.warn('Server logout failed, but local logout succeeded:', error);
+          console.warn(
+            "Server logout failed, but local logout succeeded:",
+            error,
+          );
         }
       }
-      
+
       // Clear any stored tokens
-      localStorage.removeItem('create_rust_app_oauth_redirect');
-      
+      localStorage.removeItem("create_rust_app_oauth_redirect");
+
       return true;
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       // Ensure state is cleared even if there's an error
       context.setAccessToken(undefined);
       context.setSession(undefined);
@@ -280,7 +298,9 @@ export const useAuthCheck = () => {
         const expireTimeMS = context.session.expiresOnUTC * 1000;
         const currentTimeMS = Date.now();
 
-        return expireTimeMS - currentTimeMS <= REMAINING_TOKEN_EXPIRY_TIME_ALLOWED;
+        return (
+          expireTimeMS - currentTimeMS <= REMAINING_TOKEN_EXPIRY_TIME_ALLOWED
+        );
       }
 
       return true;
@@ -289,14 +309,19 @@ export const useAuthCheck = () => {
     try {
       if (!context.accessToken || isExpiringSoon()) {
         // console.log('Restoring session')
-        const response = await fetch('/api/auth/refresh', {
-          method: 'POST',
+        const response = await fetch("/api/auth/refresh", {
+          method: "POST",
         });
 
         if (response.ok) {
           const responseJson = await response.json();
-          const parsedToken = parseJwt(responseJson.access_token) as ExtendedAccessTokenClaims;
-          const permissions = new Permissions(parsedToken.roles, parsedToken.permissions);
+          const parsedToken = parseJwt(
+            responseJson.access_token,
+          ) as ExtendedAccessTokenClaims;
+          const permissions = new Permissions(
+            parsedToken.roles,
+            parsedToken.permissions,
+          );
           const userInfo = extractUserInfo(parsedToken);
 
           context.setAccessToken(responseJson.access_token);
@@ -315,7 +340,7 @@ export const useAuthCheck = () => {
         }
       }
     } catch (error) {
-      console.error('Auth refresh error:', error);
+      console.error("Auth refresh error:", error);
       context.setAccessToken(undefined);
       context.setSession(undefined);
     } finally {
@@ -343,15 +368,15 @@ export const useAuthCheck = () => {
 
 // https://stackoverflow.com/a/38552302
 const parseJwt = (token: string) => {
-  const base64Url = token.split('.')[1];
-  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const base64Url = token.split(".")[1];
+  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
   const jsonPayload = decodeURIComponent(
     atob(base64)
-      .split('')
+      .split("")
       .map(function (c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
       })
-      .join(''),
+      .join(""),
   );
 
   return JSON.parse(jsonPayload);

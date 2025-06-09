@@ -1,19 +1,19 @@
-import React, { useRef, useEffect, useMemo, useCallback } from 'react';
-import { Box, Container, Paper, Fade } from '@mui/material';
-import { FullscreenContainer } from '../../../components/ui';
-import DatabaseSelector from '../DatabaseSelector';
-import TabNavigation, { FullscreenMode } from '../TabNavigation';
-import LoadingOverlay from '../LoadingOverlay';
-import QuickActions from '../QuickActions';
-import NotificationSystem from '../NotificationSystem';
-import FullscreenInfo from './FullscreenInfo';
-import MainContent from './MainContent';
-import { useHistTextLayoutState } from './hooks/useHistTextLayoutState';
-import { useKeyboardHandlers } from './hooks/useKeyboardHandlers';
+import React, { useRef, useEffect, useMemo, useCallback } from "react";
+import { Box, Container, Paper, Fade } from "@mui/material";
+import { FullscreenContainer } from "../../../components/ui";
+import DatabaseSelector from "../DatabaseSelector";
+import TabNavigation, { FullscreenMode } from "../TabNavigation";
+import LoadingOverlay from "../LoadingOverlay";
+import QuickActions from "../QuickActions";
+import NotificationSystem from "../NotificationSystem";
+import FullscreenInfo from "./FullscreenInfo";
+import MainContent from "./MainContent";
+import { useHistTextLayoutState } from "./hooks/useHistTextLayoutState";
+import { useKeyboardHandlers } from "./hooks/useKeyboardHandlers";
 
 /**
  * Props for the HistTextLayoutContainer component.
- * 
+ *
  * @property data - All relevant data, results, and loading states for the app.
  * @property actions - Functions for data handling and tab actions.
  * @property activeTab - The current tab index.
@@ -39,7 +39,10 @@ interface HistTextLayoutContainerProps {
   notification: any;
   setNotification: (notification: any) => void;
   onSolrDatabaseChange: (database: any) => void;
-  showNotification: (message: string, severity?: 'success' | 'error' | 'warning' | 'info') => void;
+  showNotification: (
+    message: string,
+    severity?: "success" | "error" | "warning" | "info",
+  ) => void;
 }
 
 /**
@@ -58,7 +61,7 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
   notification,
   setNotification,
   onSolrDatabaseChange,
-  showNotification
+  showNotification,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mainPaperRef = useRef<HTMLDivElement>(null);
@@ -66,25 +69,26 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
   // Fullscreen state calculation (native or browser)
   const fullscreenState = useMemo(() => {
     const isNativeFullscreen = Boolean(document.fullscreenElement);
-    const isBrowserFullscreen = fullscreenMode === 'browser';
+    const isBrowserFullscreen = fullscreenMode === "browser";
     const isAnyFullscreen = isNativeFullscreen || isBrowserFullscreen;
-    
+
     return {
       isNativeFullscreen,
       isBrowserFullscreen,
-      isAnyFullscreen
+      isAnyFullscreen,
     };
   }, [fullscreenMode]);
 
   // Custom layout and keyboard handler hooks
-  const { containerConfig, paperStyles } = useHistTextLayoutState(fullscreenState);
+  const { containerConfig, paperStyles } =
+    useHistTextLayoutState(fullscreenState);
   const { quickActionsHandlers, notificationHandlers } = useKeyboardHandlers(
     fullscreenMode,
     setFullscreenMode,
     setQuickActions,
     setNotification,
     actions,
-    showNotification
+    showNotification,
   );
 
   return (
@@ -94,11 +98,12 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
       isNativeFullscreen={fullscreenState.isNativeFullscreen}
     >
       <LoadingOverlay loading={data.loading} progress={data.progress} />
-      
+
       <Container
         {...{
           ...containerConfig,
-          maxWidth: containerConfig.maxWidth === true ? "xl" : containerConfig.maxWidth
+          maxWidth:
+            containerConfig.maxWidth === true ? "xl" : containerConfig.maxWidth,
         }}
       >
         {/* Database Selector - Hidden in fullscreen */}

@@ -1,6 +1,6 @@
-import React from 'react';
-import { Alert, Box, Typography, LinearProgress, Button } from '@mui/material';
-import { Warning, Cancel } from '@mui/icons-material';
+import React from "react";
+import { Alert, Box, Typography, LinearProgress, Button } from "@mui/material";
+import { Warning, Cancel } from "@mui/icons-material";
 
 interface ProcessingStatusProps {
   isProcessing: boolean;
@@ -17,17 +17,18 @@ const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
   isProcessing,
   processingState,
   onCancel,
-  showCancelButton = true
+  showCancelButton = true,
 }) => {
   if (!isProcessing) return null;
 
   // Detect if processing is stuck: no progress change for 30 seconds
-  const isStuck = processingState.progress === processingState.lastProgress && 
-                 Date.now() - processingState.lastUpdate > 30000;
+  const isStuck =
+    processingState.progress === processingState.lastProgress &&
+    Date.now() - processingState.lastUpdate > 30000;
 
   return (
-    <Alert 
-      severity={isStuck ? "warning" : "info"} 
+    <Alert
+      severity={isStuck ? "warning" : "info"}
       sx={{ mb: 2 }}
       action={
         showCancelButton && onCancel ? (
@@ -42,16 +43,18 @@ const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
         ) : undefined
       }
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
         {isStuck && <Warning />}
         <Typography variant="subtitle2">
-          {isStuck ? 'Processing seems stuck - you can cancel if needed' : processingState.currentTask}
+          {isStuck
+            ? "Processing seems stuck - you can cancel if needed"
+            : processingState.currentTask}
         </Typography>
       </Box>
-      
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <LinearProgress 
-          variant="determinate" 
+
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <LinearProgress
+          variant="determinate"
           value={processingState.progress}
           sx={{ flexGrow: 1, height: 6, borderRadius: 3 }}
         />
@@ -59,10 +62,11 @@ const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
           {processingState.progress.toFixed(0)}%
         </Typography>
       </Box>
-      
+
       {isStuck && (
         <Typography variant="body2" sx={{ mt: 1 }}>
-          Large datasets may take longer to process. Consider canceling and using a smaller sample.
+          Large datasets may take longer to process. Consider canceling and
+          using a smaller sample.
         </Typography>
       )}
     </Alert>

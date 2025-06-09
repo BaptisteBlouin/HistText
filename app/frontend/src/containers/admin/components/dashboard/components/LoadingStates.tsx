@@ -1,5 +1,11 @@
-import React from 'react';
-import { Box, CircularProgress, Typography, Alert, Button } from '@mui/material';
+import React from "react";
+import {
+  Box,
+  CircularProgress,
+  Typography,
+  Alert,
+  Button,
+} from "@mui/material";
 
 /**
  * Props for LoadingWrapper component.
@@ -21,10 +27,23 @@ interface LoadingProps {
  * - Shows an error alert with retry on error.
  * - Shows children if neither loading nor error.
  */
-export const LoadingWrapper: React.FC<LoadingProps> = ({ loading, error, onRetry, children }) => {
+export const LoadingWrapper: React.FC<LoadingProps> = ({
+  loading,
+  error,
+  onRetry,
+  children,
+}) => {
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, py: 8 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 3,
+          py: 8,
+        }}
+      >
         <CircularProgress size={60} />
         <Typography variant="h6" color="text.secondary">
           Loading dashboard data...
@@ -35,8 +54,8 @@ export const LoadingWrapper: React.FC<LoadingProps> = ({ loading, error, onRetry
 
   if (error) {
     return (
-      <Alert 
-        severity="error" 
+      <Alert
+        severity="error"
         action={
           <Button color="inherit" size="small" onClick={onRetry}>
             Retry

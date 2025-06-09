@@ -1,5 +1,5 @@
-import { buildQueryString } from '../../buildQueryString';
-import config from '../../../../../config.json';
+import { buildQueryString } from "../../buildQueryString";
+import config from "../../../../../config.json";
 
 /**
  * Generate a cURL command string to execute the current API query.
@@ -22,17 +22,17 @@ export const generateCurlCommand = (
   getNER: boolean,
   downloadOnly: boolean,
   statsLevel: string,
-  accessToken: string
+  accessToken: string,
 ): string => {
   const queryString = buildQueryString(formData, dateRange);
   if (!queryString) {
-    throw new Error('Query string is empty.');
+    throw new Error("Query string is empty.");
   }
-  
+
   const batchSize = config.batch_size;
   const baseUrl = window.location.origin;
   const url = `${baseUrl}/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(queryString)}&start=0&rows=${batchSize}&get_ner=${getNER}&download_only=${downloadOnly}&stats_level=${statsLevel}&solr_database_id=${solrDatabaseId}&is_first=true`;
-  
+
   return `curl -H "Authorization: Bearer ${accessToken}" "${url}"`;
 };
 
@@ -57,13 +57,13 @@ export const generatePythonScript = (
   getNER: boolean,
   downloadOnly: boolean,
   statsLevel: string,
-  accessToken: string
+  accessToken: string,
 ): string => {
   const queryString = buildQueryString(formData, dateRange);
   const batchSize = config.batch_size;
   const baseUrl = window.location.origin;
   const url = `${baseUrl}/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(queryString)}&start=0&rows=${batchSize}&get_ner=${getNER}&download_only=${downloadOnly}&stats_level=${statsLevel}&solr_database_id=${solrDatabaseId}&is_first=true`;
-  
+
   return `
 import requests
 import pandas as pd
@@ -100,13 +100,13 @@ export const generateRScript = (
   getNER: boolean,
   downloadOnly: boolean,
   statsLevel: string,
-  accessToken: string
+  accessToken: string,
 ): string => {
   const queryString = buildQueryString(formData, dateRange);
   const batchSize = config.batch_size;
   const baseUrl = window.location.origin;
   const url = `${baseUrl}/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(queryString)}&start=0&rows=${batchSize}&get_ner=${getNER}&download_only=${downloadOnly}&stats_level=${statsLevel}&solr_database_id=${solrDatabaseId}&is_first=true`;
-  
+
   return `
 library(httr)
 library(jsonlite)

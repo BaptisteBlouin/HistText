@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { Box, Paper, useTheme, useMediaQuery } from '@mui/material';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import React, { useEffect } from "react";
+import { AgGridReact } from "ag-grid-react";
+import { Box, Paper, useTheme, useMediaQuery } from "@mui/material";
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-alpine.css";
 
 /**
  * Props for DataGridMain, the main AG Grid table wrapper.
@@ -18,7 +18,7 @@ interface DataGridMainProps {
 }
 
 /**
- * Main data grid component using AG Grid and MUI Paper.  
+ * Main data grid component using AG Grid and MUI Paper.
  * Dynamically applies column highlight styles, handles responsive height,
  * and sets up side panels and AG Grid options.
  *
@@ -32,16 +32,16 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
   components,
   onGridReady,
   showConcordance,
-  fullscreen
+  fullscreen,
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   /**
    * Injects custom styles for main and ID columns.
    */
   useEffect(() => {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.innerHTML = `
       .main-column-header {
         background-color: #e8f4f8 !important;
@@ -64,7 +64,7 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
       }
     `;
     document.head.appendChild(style);
-    
+
     return () => {
       if (document.head.contains(style)) {
         document.head.removeChild(style);
@@ -73,22 +73,27 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
   }, []);
 
   return (
-    <Paper 
-      elevation={2} 
-      sx={{ 
-        height: fullscreen ? '90vh' : (isMobile ? '50vh' : '70vh'),
+    <Paper
+      elevation={2}
+      sx={{
+        height: fullscreen ? "90vh" : isMobile ? "50vh" : "70vh",
         borderRadius: 2,
-        overflow: 'hidden'
+        overflow: "hidden",
       }}
     >
-      <Box className="ag-theme-alpine" style={{ height: '100%', width: '100%' }}>
+      <Box
+        className="ag-theme-alpine"
+        style={{ height: "100%", width: "100%" }}
+      >
         <AgGridReact
           rowData={rowData}
           columnDefs={columnDefs}
           onGridReady={onGridReady}
           pagination={true}
-          paginationPageSize={showConcordance ? 100 : (isMobile ? 25 : 50)}
-          paginationPageSizeSelector={showConcordance ? [50, 100, 200] : [25, 50, 100]}
+          paginationPageSize={showConcordance ? 100 : isMobile ? 25 : 50}
+          paginationPageSizeSelector={
+            showConcordance ? [50, 100, 200] : [25, 50, 100]
+          }
           defaultColDef={defaultColDef}
           components={components}
           suppressCellFocus={true}
@@ -103,21 +108,21 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
           sideBar={{
             toolPanels: [
               {
-                id: 'columns',
-                labelDefault: 'Columns',
-                labelKey: 'columns',
-                iconKey: 'columns',
-                toolPanel: 'agColumnsToolPanel',
+                id: "columns",
+                labelDefault: "Columns",
+                labelKey: "columns",
+                iconKey: "columns",
+                toolPanel: "agColumnsToolPanel",
               },
               {
-                id: 'filters',
-                labelDefault: 'Filters',
-                labelKey: 'filters',
-                iconKey: 'filter',
-                toolPanel: 'agFiltersToolPanel',
+                id: "filters",
+                labelDefault: "Filters",
+                labelKey: "filters",
+                iconKey: "filter",
+                toolPanel: "agFiltersToolPanel",
               },
             ],
-            defaultToolPanel: 'columns', 
+            defaultToolPanel: "columns",
           }}
         />
       </Box>

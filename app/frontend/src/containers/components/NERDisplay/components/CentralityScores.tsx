@@ -1,33 +1,48 @@
-import React from 'react';
-import { Card, CardContent, Typography, List, ListItem, ListItemText, Box, Chip, LinearProgress, Tooltip } from '@mui/material';
-import { Hub } from '@mui/icons-material';
+import React from "react";
+import {
+  Card,
+  CardContent,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  Box,
+  Chip,
+  LinearProgress,
+  Tooltip,
+} from "@mui/material";
+import { Hub } from "@mui/icons-material";
 
 interface CentralityScoresProps {
-  centralityScores: Array<{ entity: string; score: number; connections: number }>;
+  centralityScores: Array<{
+    entity: string;
+    score: number;
+    connections: number;
+  }>;
 }
 
 /**
  * CentralityScores component displays the top entities with the most
  * connections in the entity relationship network.
- * 
+ *
  * Shows a list of normalized entities with a connection count and
  * a visual linear progress bar indicating their centrality score.
- * 
+ *
  * @param centralityScores - Array of entity centrality score objects.
  */
-const CentralityScores: React.FC<CentralityScoresProps> = ({ centralityScores }) => {
+const CentralityScores: React.FC<CentralityScoresProps> = ({
+  centralityScores,
+}) => {
   return (
     <Card>
       <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-          <Typography variant="h6">
-            Most Connected Entities
-          </Typography>
-          <Chip 
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <Typography variant="h6">Most Connected Entities</Typography>
+          <Chip
             icon={<Hub />}
-            label="Network Analysis" 
-            size="small" 
-            color="secondary" 
+            label="Network Analysis"
+            size="small"
+            color="secondary"
             variant="outlined"
           />
         </Box>
@@ -39,30 +54,39 @@ const CentralityScores: React.FC<CentralityScoresProps> = ({ centralityScores })
             <ListItem key={index} sx={{ px: 0 }}>
               <ListItemText
                 primary={
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
                     <Tooltip title={`Full entity: ${entity.entity}`}>
-                      <Typography variant="body2" sx={{ 
-                        fontWeight: 500,
-                        maxWidth: '150px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 500,
+                          maxWidth: "150px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {entity.entity}
                       </Typography>
                     </Tooltip>
-                    <Chip 
-                      label={entity.connections} 
-                      size="small" 
-                      color="secondary" 
+                    <Chip
+                      label={entity.connections}
+                      size="small"
+                      color="secondary"
                     />
                   </Box>
                 }
                 secondary={
                   <Box>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={entity.score * 100} 
+                    <LinearProgress
+                      variant="determinate"
+                      value={entity.score * 100}
                       sx={{ mt: 0.5, mb: 0.5 }}
                     />
                     <Typography variant="caption" color="success.main">

@@ -1,19 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
   Typography,
   Grid,
   Box,
-  CircularProgress
-} from '@mui/material';
-import { Storage } from '@mui/icons-material';
-import axios from 'axios';
+  CircularProgress,
+} from "@mui/material";
+import { Storage } from "@mui/icons-material";
+import axios from "axios";
 
-import { GradientPaper, StatusChip } from '../../../components/ui';
-import AliasSelector from '../AliasSelector';
-import SolrDatabaseSelector from '../SolrDatabaseSelector';
-import StatusIndicators from './StatusIndicators';
+import { GradientPaper, StatusChip } from "../../../components/ui";
+import AliasSelector from "../AliasSelector";
+import SolrDatabaseSelector from "../SolrDatabaseSelector";
+import StatusIndicators from "./StatusIndicators";
 
 /**
  * Info about a collection within a Solr database.
@@ -69,34 +69,42 @@ const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
   isNERLoading,
   statsReady,
   stats,
-  totalEntities
+  totalEntities,
 }) => {
-  const [collectionDescriptions, setCollectionDescriptions] = useState<Record<string, string>>({});
+  const [collectionDescriptions, setCollectionDescriptions] = useState<
+    Record<string, string>
+  >({});
   const [isLoadingDescriptions, setIsLoadingDescriptions] = useState(false);
 
   // Fetch collection descriptions when the selected Solr database changes
   useEffect(() => {
     if (selectedSolrDatabase && selectedSolrDatabase.id) {
       setIsLoadingDescriptions(true);
-      console.log('Fetching descriptions for database ID:', selectedSolrDatabase.id);
-      
+      console.log(
+        "Fetching descriptions for database ID:",
+        selectedSolrDatabase.id,
+      );
+
       axios
-        .get(`/api/solr_database_info?solr_database_id=${selectedSolrDatabase.id}`)
-        .then(response => {
-          console.log('Collection info response:', response.data);
-          
+        .get(
+          `/api/solr_database_info?solr_database_id=${selectedSolrDatabase.id}`,
+        )
+        .then((response) => {
+          console.log("Collection info response:", response.data);
+
           const mapping: Record<string, string> = {};
           if (Array.isArray(response.data)) {
             response.data.forEach((info: CollectionInfo) => {
-              mapping[info.collection_name] = info.description || 'No description available';
+              mapping[info.collection_name] =
+                info.description || "No description available";
             });
           }
-          
-          console.log('Created description mapping:', mapping);
+
+          console.log("Created description mapping:", mapping);
           setCollectionDescriptions(mapping);
         })
-        .catch(error => {
-          console.error('Failed to fetch collection descriptions:', error);
+        .catch((error) => {
+          console.error("Failed to fetch collection descriptions:", error);
           setCollectionDescriptions({});
         })
         .finally(() => {
@@ -108,16 +116,22 @@ const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
   }, [selectedSolrDatabase]);
 
   return (
-    <GradientPaper 
-      gradient="primary" 
-      sx={{ mb: 3, overflow: 'visible' }}
-    >
-      <CardContent sx={{ color: 'white' }}>
-        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
+    <GradientPaper gradient="primary" sx={{ mb: 3, overflow: "visible" }}>
+      <CardContent sx={{ color: "white" }}>
+        <Typography
+          variant="h6"
+          gutterBottom
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            fontWeight: 600,
+          }}
+        >
           <Storage />
           Data Source Configuration
         </Typography>
-        
+
         <Grid container spacing={3} alignItems="flex-start">
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle2" gutterBottom sx={{ opacity: 0.9 }}>
@@ -129,17 +143,14 @@ const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
               onSolrDatabaseChange={onSolrDatabaseChange}
             />
           </Grid>
-          
+
           <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
               <Typography variant="subtitle2" sx={{ opacity: 0.9 }}>
                 Collection
               </Typography>
               {isLoadingDescriptions && (
-                <CircularProgress 
-                  size={12} 
-                  sx={{ color: 'white' }} 
-                />
+                <CircularProgress size={12} sx={{ color: "white" }} />
               )}
             </Box>
             <AliasSelector
@@ -150,7 +161,7 @@ const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
             />
           </Grid>
         </Grid>
-        
+
         <StatusIndicators
           selectedSolrDatabase={selectedSolrDatabase}
           selectedAlias={selectedAlias}

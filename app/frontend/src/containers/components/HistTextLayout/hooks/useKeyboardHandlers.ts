@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback } from "react";
 
 /**
  * Hook providing keyboard and UI handlers for fullscreen and quick actions.
@@ -23,51 +23,60 @@ export const useKeyboardHandlers = (
   setQuickActions: any,
   setNotification: any,
   actions: any,
-  showNotification: any
+  showNotification: any,
 ) => {
   /**
    * Handles the Escape key:
    * - If in browser fullscreen, exits fullscreen.
    * - Otherwise, resets fullscreenMode to 'normal' if not already.
    */
-  const handleKeyPress = useCallback((event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else if (fullscreenMode !== 'normal') {
-        setFullscreenMode('normal');
+  const handleKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else if (fullscreenMode !== "normal") {
+          setFullscreenMode("normal");
+        }
       }
-    }
-  }, [fullscreenMode, setFullscreenMode]);
+    },
+    [fullscreenMode, setFullscreenMode],
+  );
 
   useEffect(() => {
-    document.addEventListener('keydown', handleKeyPress);
+    document.addEventListener("keydown", handleKeyPress);
     return () => {
-      document.removeEventListener('keydown', handleKeyPress);
+      document.removeEventListener("keydown", handleKeyPress);
     };
   }, [handleKeyPress]);
 
   /**
    * Handlers for quick actions UI (open/close/actions).
    */
-  const quickActionsHandlers = useMemo(() => ({
-    onOpen: () => setQuickActions(true),
-    onClose: () => setQuickActions(false),
-    onExportData: actions.exportAllData,
-    onRefreshData: actions.refreshData,
-    onShareQuery: actions.shareQuery,
-    onOpenSettings: actions.openSettings,
-  }), [setQuickActions, actions]);
+  const quickActionsHandlers = useMemo(
+    () => ({
+      onOpen: () => setQuickActions(true),
+      onClose: () => setQuickActions(false),
+      onExportData: actions.exportAllData,
+      onRefreshData: actions.refreshData,
+      onShareQuery: actions.shareQuery,
+      onOpenSettings: actions.openSettings,
+    }),
+    [setQuickActions, actions],
+  );
 
   /**
    * Handlers for notifications (close notification).
    */
-  const notificationHandlers = useMemo(() => ({
-    onClose: () => setNotification((prev: any) => ({ ...prev, open: false }))
-  }), [setNotification]);
+  const notificationHandlers = useMemo(
+    () => ({
+      onClose: () => setNotification((prev: any) => ({ ...prev, open: false })),
+    }),
+    [setNotification],
+  );
 
   return {
     quickActionsHandlers,
-    notificationHandlers
+    notificationHandlers,
   };
 };

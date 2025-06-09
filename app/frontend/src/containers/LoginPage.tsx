@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import {
   Container,
   Paper,
@@ -15,8 +15,8 @@ import {
   Card,
   CardContent,
   InputAdornment,
-  IconButton
-} from '@mui/material';
+  IconButton,
+} from "@mui/material";
 import {
   Person, // Changed from Email to Person
   Lock,
@@ -24,22 +24,22 @@ import {
   VisibilityOff,
   Login as LoginIcon,
   PersonAdd,
-  LockReset
-} from '@mui/icons-material';
+  LockReset,
+} from "@mui/icons-material";
 
 // Update the LoginPage to handle authentication state properly
 export const LoginPage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [processing, setProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
   // Get the intended destination from state, or default to home
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || "/";
 
   const login = async () => {
     setProcessing(true);
@@ -50,10 +50,10 @@ export const LoginPage = () => {
         // Navigate to intended destination or home
         navigate(from, { replace: true });
       } else {
-        setError('Invalid credentials. Please try again.');
+        setError("Invalid credentials. Please try again.");
       }
     } catch (err) {
-      setError('Invalid credentials. Please try again.');
+      setError("Invalid credentials. Please try again.");
     } finally {
       setProcessing(false);
     }
@@ -68,7 +68,7 @@ export const LoginPage = () => {
   // This allows error messages to be displayed
   if (auth.isAuthenticated && !error && !processing) {
     return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
         <Alert severity="info">
           Already logged in. Redirecting you to the home page...
         </Alert>
@@ -78,23 +78,28 @@ export const LoginPage = () => {
 
   return (
     <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Card 
-        sx={{ 
+      <Card
+        sx={{
           borderRadius: 3,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-          overflow: 'hidden'
+          boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+          overflow: "hidden",
         }}
       >
-        <Box 
-          sx={{ 
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
+        <Box
+          sx={{
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
             p: 4,
-            textAlign: 'center'
+            textAlign: "center",
           }}
         >
           <LoginIcon sx={{ fontSize: 48, mb: 2 }} />
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            sx={{ fontWeight: 600 }}
+          >
             Welcome Back
           </Typography>
           <Typography variant="body1" sx={{ opacity: 0.9 }}>
@@ -125,7 +130,7 @@ export const LoginPage = () => {
             <TextField
               fullWidth
               label="Password"
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -158,7 +163,8 @@ export const LoginPage = () => {
 
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body2">
-                <strong>Free Access:</strong> Create an account to access our free collections.
+                <strong>Free Access:</strong> Create an account to access our
+                free collections.
               </Typography>
             </Alert>
 
@@ -171,17 +177,24 @@ export const LoginPage = () => {
               sx={{
                 py: 1.5,
                 mb: 3,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                "&:hover": {
+                  background:
+                    "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
                 },
-                '&:disabled': {
-                  background: 'rgba(0,0,0,0.12)',
-                }
+                "&:disabled": {
+                  background: "rgba(0,0,0,0.12)",
+                },
               }}
-              startIcon={processing ? <CircularProgress size={20} color="inherit" /> : <LoginIcon />}
+              startIcon={
+                processing ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <LoginIcon />
+                )
+              }
             >
-              {processing ? 'Signing In...' : 'Sign In'}
+              {processing ? "Signing In..." : "Sign In"}
             </Button>
 
             <Divider sx={{ mb: 3 }}>
@@ -190,11 +203,11 @@ export const LoginPage = () => {
               </Typography>
             </Divider>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <Button
                 fullWidth
                 variant="outlined"
-                onClick={() => navigate('/register')}
+                onClick={() => navigate("/register")}
                 startIcon={<PersonAdd />}
                 sx={{ py: 1.2 }}
               >
@@ -204,7 +217,7 @@ export const LoginPage = () => {
               <Button
                 fullWidth
                 variant="text"
-                onClick={() => navigate('/recovery')}
+                onClick={() => navigate("/recovery")}
                 startIcon={<LockReset />}
                 sx={{ py: 1 }}
               >
@@ -215,12 +228,12 @@ export const LoginPage = () => {
         </CardContent>
       </Card>
 
-      <Box sx={{ mt: 3, textAlign: 'center' }}>
+      <Box sx={{ mt: 3, textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">
-          New to HistText?{' '}
-          <Link 
-            onClick={() => navigate('/register')} 
-            sx={{ cursor: 'pointer', fontWeight: 600 }}
+          New to HistText?{" "}
+          <Link
+            onClick={() => navigate("/register")}
+            sx={{ cursor: "pointer", fontWeight: 600 }}
           >
             Create an account
           </Link>

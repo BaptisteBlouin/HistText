@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
-import { useAuth } from '../hooks/useAuth';
-import { useQueryParam } from '../hooks/useQueryParam';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
+import { useAuth } from "../hooks/useAuth";
+import { useQueryParam } from "../hooks/useQueryParam";
 import {
   Container,
   TextField,
@@ -17,7 +17,7 @@ import {
   InputAdornment,
   IconButton,
   Stack,
-} from '@mui/material';
+} from "@mui/material";
 import {
   VpnKey,
   Visibility,
@@ -26,12 +26,12 @@ import {
   Login as LoginIcon,
   PersonAdd,
   Refresh,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 export const ActivationPage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
-  const tokenFromUrl = useQueryParam('token') || '';
+  const tokenFromUrl = useQueryParam("token") || "";
   const [activationToken, setActivationToken] = useState<string>(tokenFromUrl);
   const [processing, setProcessing] = useState<boolean>(false);
   const [success, setSuccess] = useState<boolean>(false);
@@ -47,7 +47,7 @@ export const ActivationPage = () => {
 
   const activate = async () => {
     if (!activationToken.trim()) {
-      setError('Please enter your activation token');
+      setError("Please enter your activation token");
       return;
     }
 
@@ -55,25 +55,31 @@ export const ActivationPage = () => {
     setError(null);
 
     try {
-      const response = await fetch(`/api/auth/activate?activation_token=${activationToken}`, {
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `/api/auth/activate?activation_token=${activationToken}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (response.ok) {
         setSuccess(true);
         // Redirect after a short delay to show success message
         setTimeout(() => {
-          navigate('/login');
+          navigate("/login");
         }, 2000);
       } else {
         const data = await response.json();
-        setError(data.message || 'Invalid or expired activation token. Please try again.');
+        setError(
+          data.message ||
+            "Invalid or expired activation token. Please try again.",
+        );
       }
     } catch (error) {
-      console.error('Activation failed:', error);
-      setError('Network error. Please check your connection and try again.');
+      console.error("Activation failed:", error);
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setProcessing(false);
     }
@@ -87,7 +93,7 @@ export const ActivationPage = () => {
   // Only redirect if authenticated and no errors and not processing
   if (auth.isAuthenticated && !error && !processing) {
     return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
         <Alert severity="info">
           Already logged in. Redirecting you to the home page...
         </Alert>
@@ -98,23 +104,28 @@ export const ActivationPage = () => {
   if (success) {
     return (
       <Container maxWidth="sm" sx={{ mt: 8 }}>
-        <Card 
-          sx={{ 
+        <Card
+          sx={{
             borderRadius: 3,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-            overflow: 'hidden'
+            boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+            overflow: "hidden",
           }}
         >
-          <Box 
-            sx={{ 
-              background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-              color: 'white',
+          <Box
+            sx={{
+              background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
+              color: "white",
               p: 4,
-              textAlign: 'center'
+              textAlign: "center",
             }}
           >
             <CheckCircle sx={{ fontSize: 64, mb: 2 }} />
-            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="h4"
+              component="h1"
+              gutterBottom
+              sx={{ fontWeight: 600 }}
+            >
               Account Activated!
             </Typography>
             <Typography variant="body1" sx={{ opacity: 0.9 }}>
@@ -122,10 +133,10 @@ export const ActivationPage = () => {
             </Typography>
           </Box>
 
-          <CardContent sx={{ p: 4, textAlign: 'center' }}>
+          <CardContent sx={{ p: 4, textAlign: "center" }}>
             <Alert severity="success" sx={{ mb: 3 }}>
               <Typography variant="body2">
-                Congratulations! Your account is now active and ready to use. 
+                Congratulations! Your account is now active and ready to use.
                 You will be redirected to the login page shortly.
               </Typography>
             </Alert>
@@ -133,14 +144,15 @@ export const ActivationPage = () => {
             <Button
               fullWidth
               variant="contained"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate("/login")}
               startIcon={<LoginIcon />}
               sx={{
                 py: 1.5,
-                background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
-                }
+                background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
+                "&:hover": {
+                  background:
+                    "linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)",
+                },
               }}
             >
               Continue to Sign In
@@ -153,23 +165,28 @@ export const ActivationPage = () => {
 
   return (
     <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Card 
-        sx={{ 
+      <Card
+        sx={{
           borderRadius: 3,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-          overflow: 'hidden'
+          boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+          overflow: "hidden",
         }}
       >
-        <Box 
-          sx={{ 
-            background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-            color: 'white',
+        <Box
+          sx={{
+            background: "linear-gradient(135deg, #2196f3 0%, #1976d2 100%)",
+            color: "white",
             p: 4,
-            textAlign: 'center'
+            textAlign: "center",
           }}
         >
           <VpnKey sx={{ fontSize: 48, mb: 2 }} />
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            sx={{ fontWeight: 600 }}
+          >
             Activate Account
           </Typography>
           <Typography variant="body1" sx={{ opacity: 0.9 }}>
@@ -182,7 +199,7 @@ export const ActivationPage = () => {
             <TextField
               fullWidth
               label="Activation Token"
-              type={showToken ? 'text' : 'password'}
+              type={showToken ? "text" : "password"}
               value={activationToken}
               onChange={(e) => setActivationToken(e.target.value)}
               required
@@ -215,7 +232,7 @@ export const ActivationPage = () => {
 
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body2">
-                Check your email for the activation token. If you can't find it, 
+                Check your email for the activation token. If you can't find it,
                 check your spam folder or contact support.
               </Typography>
             </Alert>
@@ -229,17 +246,24 @@ export const ActivationPage = () => {
               sx={{
                 py: 1.5,
                 mb: 3,
-                background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                background: "linear-gradient(135deg, #2196f3 0%, #1976d2 100%)",
+                "&:hover": {
+                  background:
+                    "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
                 },
-                '&:disabled': {
-                  background: 'rgba(0,0,0,0.12)',
-                }
+                "&:disabled": {
+                  background: "rgba(0,0,0,0.12)",
+                },
               }}
-              startIcon={processing ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+              startIcon={
+                processing ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <CheckCircle />
+                )
+              }
             >
-              {processing ? 'Activating...' : 'Activate Account'}
+              {processing ? "Activating..." : "Activate Account"}
             </Button>
 
             <Divider sx={{ mb: 3 }}>
@@ -252,7 +276,7 @@ export const ActivationPage = () => {
               <Button
                 fullWidth
                 variant="outlined"
-                onClick={() => navigate('/register')}
+                onClick={() => navigate("/register")}
                 startIcon={<Refresh />}
                 sx={{ py: 1.2 }}
               >
@@ -262,7 +286,7 @@ export const ActivationPage = () => {
               <Button
                 fullWidth
                 variant="text"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate("/login")}
                 startIcon={<LoginIcon />}
                 sx={{ py: 1 }}
               >
@@ -273,16 +297,16 @@ export const ActivationPage = () => {
         </CardContent>
       </Card>
 
-      <Box sx={{ mt: 3, textAlign: 'center' }}>
+      <Box sx={{ mt: 3, textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">
-          Having trouble?{' '}
-          <Link 
-            onClick={() => navigate('/register')} 
-            sx={{ cursor: 'pointer', fontWeight: 600 }}
+          Having trouble?{" "}
+          <Link
+            onClick={() => navigate("/register")}
+            sx={{ cursor: "pointer", fontWeight: 600 }}
           >
             Register again
-          </Link>
-          {' '}or contact support
+          </Link>{" "}
+          or contact support
         </Typography>
       </Box>
     </Container>

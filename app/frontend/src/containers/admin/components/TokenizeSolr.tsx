@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Button,
@@ -27,9 +27,9 @@ import {
   useMediaQuery,
   Fade,
   Chip,
-  LinearProgress
-} from '@mui/material';
-import Autocomplete from '@mui/material/Autocomplete';
+  LinearProgress,
+} from "@mui/material";
+import Autocomplete from "@mui/material/Autocomplete";
 import {
   ContentCopy,
   Download,
@@ -39,10 +39,10 @@ import {
   GetApp,
   Code,
   Memory,
-  Translate
-} from '@mui/icons-material';
-import axios, { AxiosHeaders } from 'axios';
-import { useAuth } from '../../../hooks/useAuth';
+  Translate,
+} from "@mui/icons-material";
+import axios, { AxiosHeaders } from "axios";
+import { useAuth } from "../../../hooks/useAuth";
 
 interface SolrDatabase {
   id: number;
@@ -50,19 +50,19 @@ interface SolrDatabase {
 }
 
 const ARG_DESCRIPTIONS: Record<string, string> = {
-  'solr-host': 'Solr host (default: localhost)',
-  'solr-port': 'Solr port (default: 8983)',
-  'cache-dir': 'Root directory where JSONL will be cached',
-  'tokenize-solr': 'Command to tokenize text from a Solr collection',
-  collection: 'Solr collection name',
-  'model-name': 'Model name for tokenization (default: cwseg)',
-  'model-type': 'Type of tokenizer model (default: chinese_segmenter)',
-  'text-field': 'Solr field containing plain text',
-  'filter-query': 'Additional Solr fq to restrict documents',
-  'batch-size': 'Number of Solr docs per batch',
-  nbatches: 'Limit number of batches (None = all)',
-  upload: 'Command to upload processed files to Solr',
-  schema: 'Schema file to use for upload',
+  "solr-host": "Solr host (default: localhost)",
+  "solr-port": "Solr port (default: 8983)",
+  "cache-dir": "Root directory where JSONL will be cached",
+  "tokenize-solr": "Command to tokenize text from a Solr collection",
+  collection: "Solr collection name",
+  "model-name": "Model name for tokenization (default: cwseg)",
+  "model-type": "Type of tokenizer model (default: chinese_segmenter)",
+  "text-field": "Solr field containing plain text",
+  "filter-query": "Additional Solr fq to restrict documents",
+  "batch-size": "Number of Solr docs per batch",
+  nbatches: "Limit number of batches (None = all)",
+  upload: "Command to upload processed files to Solr",
+  schema: "Schema file to use for upload",
 };
 
 /**
@@ -72,7 +72,7 @@ const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
     const instance = axios.create();
-    instance.interceptors.request.use(config => {
+    instance.interceptors.request.use((config) => {
       if (accessToken) {
         config.headers = new AxiosHeaders({
           ...config.headers,
@@ -93,34 +93,36 @@ const useAuthAxios = () => {
 const TokenizeSolr: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [solrDatabases, setSolrDatabases] = useState<SolrDatabase[]>([]);
   const [aliases, setAliases] = useState<string[]>([]);
-  const [selectedSolrDb, setSelectedSolrDb] = useState<SolrDatabase | null>(null);
-  const [collectionName, setCollectionName] = useState('');
+  const [selectedSolrDb, setSelectedSolrDb] = useState<SolrDatabase | null>(
+    null,
+  );
+  const [collectionName, setCollectionName] = useState("");
 
-  const [solrHost, setSolrHost] = useState('localhost');
-  const [solrPort, setSolrPort] = useState<number | ''>(8983);
-  const [cacheDir, setCacheDir] = useState('');
+  const [solrHost, setSolrHost] = useState("localhost");
+  const [solrPort, setSolrPort] = useState<number | "">(8983);
+  const [cacheDir, setCacheDir] = useState("");
 
-  const [modelName, setModelName] = useState('cwseg');
-  const [modelType, setModelType] = useState('chinese_segmenter');
-  const [textField, setTextField] = useState('');
+  const [modelName, setModelName] = useState("cwseg");
+  const [modelType, setModelType] = useState("chinese_segmenter");
+  const [textField, setTextField] = useState("");
   const [availableFields, setAvailableFields] = useState<string[]>([]);
 
-  const [filterQuery, setFilterQuery] = useState('');
-  const [batchSize, setBatchSize] = useState<number | ''>(1000);
-  const [nbatches, setNbatches] = useState<number | ''>('');
+  const [filterQuery, setFilterQuery] = useState("");
+  const [batchSize, setBatchSize] = useState<number | "">(1000);
+  const [nbatches, setNbatches] = useState<number | "">("");
 
-  const [tokenizeCommand, setTokenizeCommand] = useState('');
-  const [uploadCommand, setUploadCommand] = useState('');
+  const [tokenizeCommand, setTokenizeCommand] = useState("");
+  const [uploadCommand, setUploadCommand] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     authAxios
-      .get('/api/solr_databases')
+      .get("/api/solr_databases")
       .then(({ data }) => setSolrDatabases(data))
       .catch(() => setSolrDatabases([]));
   }, [authAxios]);
@@ -128,7 +130,7 @@ const TokenizeSolr: React.FC = () => {
   useEffect(() => {
     if (!selectedSolrDb) {
       setAliases([]);
-      setCollectionName('');
+      setCollectionName("");
       setAvailableFields([]);
       return;
     }
@@ -136,7 +138,7 @@ const TokenizeSolr: React.FC = () => {
       .get<string[]>(`/api/solr/aliases?solr_database_id=${selectedSolrDb.id}`)
       .then(({ data }) => setAliases(Array.isArray(data) ? data : []))
       .catch(() => setAliases([]));
-    setCollectionName('');
+    setCollectionName("");
     setAvailableFields([]);
   }, [selectedSolrDb, authAxios]);
 
@@ -158,11 +160,11 @@ const TokenizeSolr: React.FC = () => {
 
           if (!textField) {
             const textFieldCandidates = fieldNames.filter(
-              field =>
-                field.includes('text') ||
-                field.includes('content') ||
-                field.includes('body') ||
-                field.includes('description'),
+              (field) =>
+                field.includes("text") ||
+                field.includes("content") ||
+                field.includes("body") ||
+                field.includes("description"),
             );
 
             if (textFieldCandidates.length > 0) {
@@ -171,8 +173,8 @@ const TokenizeSolr: React.FC = () => {
           }
         }
       })
-      .catch(error => {
-        console.error('Failed to fetch collection metadata:', error);
+      .catch((error) => {
+        console.error("Failed to fetch collection metadata:", error);
         setAvailableFields([]);
       })
       .finally(() => setLoading(false));
@@ -182,7 +184,13 @@ const TokenizeSolr: React.FC = () => {
    * Checks that all required form fields are present.
    */
   const isFormValid = useMemo(() => {
-    return !!collectionName && !!textField && !!cacheDir && !!solrHost && solrPort !== '';
+    return (
+      !!collectionName &&
+      !!textField &&
+      !!cacheDir &&
+      !!solrHost &&
+      solrPort !== ""
+    );
   }, [collectionName, textField, cacheDir, solrHost, solrPort]);
 
   /**
@@ -201,14 +209,30 @@ const TokenizeSolr: React.FC = () => {
   return (
     <Fade in={true} timeout={600}>
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 4,
+          }}
+        >
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
               <Translate color="primary" />
               Text Tokenization
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Generate commands to tokenize texts in a Solr collection using Chinese segmenter
+              Generate commands to tokenize texts in a Solr collection using
+              Chinese segmenter
             </Typography>
           </Box>
           <Tooltip title="Show CLI Help">
@@ -220,7 +244,11 @@ const TokenizeSolr: React.FC = () => {
 
         <Card sx={{ mb: 4 }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            >
               <Settings />
               Configuration
             </Typography>
@@ -230,20 +258,28 @@ const TokenizeSolr: React.FC = () => {
                 <FormControl fullWidth required error={!selectedSolrDb}>
                   <InputLabel>Solr Database</InputLabel>
                   <Select
-                    value={selectedSolrDb?.id ?? ''}
+                    value={selectedSolrDb?.id ?? ""}
                     label="Solr Database"
-                    onChange={e =>
+                    onChange={(e) =>
                       setSelectedSolrDb(
-                        solrDatabases.find(db => db.id === Number(e.target.value)) || null,
+                        solrDatabases.find(
+                          (db) => db.id === Number(e.target.value),
+                        ) || null,
                       )
                     }
                   >
-                    {solrDatabases.map(db => (
+                    {solrDatabases.map((db) => (
                       <MenuItem key={db.id} value={db.id}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
                           <Memory fontSize="small" />
                           {db.name}
-                          <Chip label={`ID: ${db.id}`} size="small" variant="outlined" />
+                          <Chip
+                            label={`ID: ${db.id}`}
+                            size="small"
+                            variant="outlined"
+                          />
                         </Box>
                       </MenuItem>
                     ))}
@@ -258,14 +294,14 @@ const TokenizeSolr: React.FC = () => {
                   value={collectionName}
                   inputValue={collectionName}
                   onInputChange={(_, v) => setCollectionName(v)}
-                  onChange={(_, v) => setCollectionName(v || '')}
-                  renderInput={params => (
+                  onChange={(_, v) => setCollectionName(v || "")}
+                  renderInput={(params) => (
                     <TextField
                       {...params}
                       label="Collection Name"
                       required
                       error={!collectionName}
-                      helperText={!collectionName && 'Required'}
+                      helperText={!collectionName && "Required"}
                     />
                   )}
                 />
@@ -275,11 +311,11 @@ const TokenizeSolr: React.FC = () => {
                 <TextField
                   label="Solr Host"
                   value={solrHost}
-                  onChange={e => setSolrHost(e.target.value)}
+                  onChange={(e) => setSolrHost(e.target.value)}
                   fullWidth
                   required
                   error={!solrHost}
-                  helperText={!solrHost && 'Required'}
+                  helperText={!solrHost && "Required"}
                 />
               </Grid>
 
@@ -288,11 +324,13 @@ const TokenizeSolr: React.FC = () => {
                   label="Solr Port"
                   type="number"
                   value={solrPort}
-                  onChange={e => setSolrPort(e.target.value === '' ? '' : +e.target.value)}
+                  onChange={(e) =>
+                    setSolrPort(e.target.value === "" ? "" : +e.target.value)
+                  }
                   fullWidth
                   required
-                  error={solrPort === ''}
-                  helperText={solrPort === '' && 'Required'}
+                  error={solrPort === ""}
+                  helperText={solrPort === "" && "Required"}
                 />
               </Grid>
 
@@ -300,11 +338,11 @@ const TokenizeSolr: React.FC = () => {
                 <TextField
                   label="Cache Output Directory"
                   value={cacheDir}
-                  onChange={e => setCacheDir(e.target.value)}
+                  onChange={(e) => setCacheDir(e.target.value)}
                   fullWidth
                   required
                   error={!cacheDir}
-                  helperText={!cacheDir && 'Required'}
+                  helperText={!cacheDir && "Required"}
                 />
               </Grid>
 
@@ -312,7 +350,7 @@ const TokenizeSolr: React.FC = () => {
                 <TextField
                   label="Model Name"
                   value={modelName}
-                  onChange={e => setModelName(e.target.value)}
+                  onChange={(e) => setModelName(e.target.value)}
                   fullWidth
                   required
                   disabled
@@ -324,7 +362,7 @@ const TokenizeSolr: React.FC = () => {
                 <TextField
                   label="Model Type"
                   value={modelType}
-                  onChange={e => setModelType(e.target.value)}
+                  onChange={(e) => setModelType(e.target.value)}
                   fullWidth
                   required
                   disabled
@@ -336,8 +374,8 @@ const TokenizeSolr: React.FC = () => {
                 <FormControl fullWidth>
                   <InputLabel>Text Field</InputLabel>
                   <Select
-                    value={textField || ''}
-                    onChange={e => setTextField(e.target.value)}
+                    value={textField || ""}
+                    onChange={(e) => setTextField(e.target.value)}
                     label="Text Field"
                     disabled={availableFields.length === 0}
                     required
@@ -346,7 +384,7 @@ const TokenizeSolr: React.FC = () => {
                     <MenuItem value="">
                       <em>None</em>
                     </MenuItem>
-                    {availableFields.map(field => (
+                    {availableFields.map((field) => (
                       <MenuItem key={field} value={field}>
                         {field}
                       </MenuItem>
@@ -364,10 +402,12 @@ const TokenizeSolr: React.FC = () => {
                   fullWidth
                   size="large"
                   sx={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                    }
+                    background:
+                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    "&:hover": {
+                      background:
+                        "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                    },
                   }}
                 >
                   Generate Tokenization Commands
@@ -377,8 +417,13 @@ const TokenizeSolr: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="md" fullWidth>
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Dialog
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Help />
             tokenize-solr — Command‐Line Arguments
           </DialogTitle>
@@ -386,16 +431,16 @@ const TokenizeSolr: React.FC = () => {
             <List dense>
               {Object.entries(ARG_DESCRIPTIONS).map(([arg, desc]) => (
                 <ListItem key={arg} alignItems="flex-start">
-                  <ListItemText 
+                  <ListItemText
                     primary={
-                      <Chip 
-                        label={arg} 
-                        variant="outlined" 
-                        size="small" 
-                        sx={{ fontFamily: 'monospace' }} 
+                      <Chip
+                        label={arg}
+                        variant="outlined"
+                        size="small"
+                        sx={{ fontFamily: "monospace" }}
                       />
-                    } 
-                    secondary={desc} 
+                    }
+                    secondary={desc}
                   />
                 </ListItem>
               ))}
@@ -410,23 +455,39 @@ const TokenizeSolr: React.FC = () => {
           <Stack spacing={3}>
             <Card>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 3,
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  >
                     <Code />
                     Tokenize Command
                   </Typography>
                   <Stack direction="row" spacing={1}>
                     <Tooltip title="Copy Tokenize Command">
-                      <IconButton onClick={() => navigator.clipboard.writeText(tokenizeCommand)}>
+                      <IconButton
+                        onClick={() =>
+                          navigator.clipboard.writeText(tokenizeCommand)
+                        }
+                      >
                         <ContentCopy />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Save to File">
                       <IconButton
                         onClick={() => {
-                          const blob = new Blob([tokenizeCommand], { type: 'text/plain' });
+                          const blob = new Blob([tokenizeCommand], {
+                            type: "text/plain",
+                          });
                           const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
+                          const a = document.createElement("a");
                           a.href = url;
                           a.download = `tokenize_command_${collectionName}.sh`;
                           document.body.appendChild(a);
@@ -441,15 +502,22 @@ const TokenizeSolr: React.FC = () => {
                   </Stack>
                 </Box>
 
-                <Paper sx={{ p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200' }}>
+                <Paper
+                  sx={{
+                    p: 2,
+                    bgcolor: "grey.50",
+                    border: "1px solid",
+                    borderColor: "grey.200",
+                  }}
+                >
                   <TextField
                     multiline
                     fullWidth
                     minRows={3}
                     value={tokenizeCommand}
-                    InputProps={{ 
+                    InputProps={{
                       readOnly: true,
-                      sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                      sx: { fontFamily: "monospace", fontSize: "0.875rem" },
                     }}
                     variant="outlined"
                   />
@@ -459,23 +527,39 @@ const TokenizeSolr: React.FC = () => {
 
             <Card>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 3,
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  >
                     <Code />
                     Upload Command
                   </Typography>
                   <Stack direction="row" spacing={1}>
                     <Tooltip title="Copy Upload Command">
-                      <IconButton onClick={() => navigator.clipboard.writeText(uploadCommand)}>
+                      <IconButton
+                        onClick={() =>
+                          navigator.clipboard.writeText(uploadCommand)
+                        }
+                      >
                         <ContentCopy />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Save to File">
                       <IconButton
                         onClick={() => {
-                          const blob = new Blob([uploadCommand], { type: 'text/plain' });
+                          const blob = new Blob([uploadCommand], {
+                            type: "text/plain",
+                          });
                           const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
+                          const a = document.createElement("a");
                           a.href = url;
                           a.download = `upload_command_${collectionName}.sh`;
                           document.body.appendChild(a);
@@ -490,15 +574,22 @@ const TokenizeSolr: React.FC = () => {
                   </Stack>
                 </Box>
 
-                <Paper sx={{ p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200' }}>
+                <Paper
+                  sx={{
+                    p: 2,
+                    bgcolor: "grey.50",
+                    border: "1px solid",
+                    borderColor: "grey.200",
+                  }}
+                >
                   <TextField
                     multiline
                     fullWidth
                     minRows={3}
                     value={uploadCommand}
-                    InputProps={{ 
+                    InputProps={{
                       readOnly: true,
-                      sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                      sx: { fontFamily: "monospace", fontSize: "0.875rem" },
                     }}
                     variant="outlined"
                   />
@@ -506,7 +597,7 @@ const TokenizeSolr: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ display: "flex", justifyContent: "center" }}>
               <Button
                 variant="contained"
                 color="secondary"
@@ -514,9 +605,9 @@ const TokenizeSolr: React.FC = () => {
                 onClick={() => {
                   const fullScript = `#!/bin/bash\n\n# Tokenize Command\n${tokenizeCommand}\n\n# Check if tokenize command was successful\nif [ $? -eq 0 ]; then\n  echo "Tokenization completed successfully. Starting upload..."\n  # Upload Command\n  ${uploadCommand}\nelse\n  echo "Tokenization failed. Upload skipped."\n  exit 1\nfi`;
 
-                  const blob = new Blob([fullScript], { type: 'text/plain' });
+                  const blob = new Blob([fullScript], { type: "text/plain" });
                   const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
+                  const a = document.createElement("a");
                   a.href = url;
                   a.download = `run_tokenize_pipeline_${collectionName}.sh`;
                   document.body.appendChild(a);

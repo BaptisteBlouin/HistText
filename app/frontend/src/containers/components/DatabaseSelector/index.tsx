@@ -1,5 +1,5 @@
-import React from 'react';
-import DatabaseSelectorCard from './DatabaseSelectorCard';
+import React from "react";
+import DatabaseSelectorCard from "./DatabaseSelectorCard";
 
 /**
  * Props for the DatabaseSelector component, forwarding to DatabaseSelectorCard.

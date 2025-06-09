@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Paper,
   Typography,
@@ -12,24 +12,24 @@ import {
   Chip,
   Box,
   Alert,
-  Collapse
-} from '@mui/material';
-import { 
-  Star, 
-  Remove, 
-  Add, 
-  CheckCircle, 
-  Warning, 
+  Collapse,
+} from "@mui/material";
+import {
+  Star,
+  Remove,
+  Add,
+  CheckCircle,
+  Warning,
   Error as ErrorIcon,
   Info,
-  Lightbulb
-} from '@mui/icons-material';
-import ContextHelp from '../../../../components/ui/ContextHelp';
-import { useSmartValidation } from '../../../../hooks/useSmartValidation';
+  Lightbulb,
+} from "@mui/icons-material";
+import ContextHelp from "../../../../components/ui/ContextHelp";
+import { useSmartValidation } from "../../../../hooks/useSmartValidation";
 
 /**
  * Props for the FormField component.
- * 
+ *
  * @property field - Metadata for the field (name, possible values, etc.).
  * @property formData - Current form values for all fields.
  * @property collectionInfo - Information about the collection, including the main text field.
@@ -54,7 +54,11 @@ interface FormFieldProps {
   loadingNeighbors: { [key: string]: boolean };
   metadata: any[];
   onFormChange: (event: any, index: number) => void;
-  onSelectChange: (fieldName: string, newValue: string | null, index: number) => void;
+  onSelectChange: (
+    fieldName: string,
+    newValue: string | null,
+    index: number,
+  ) => void;
   onToggleNot: (name: string, index: number) => void;
   onAddBooleanField: (name: string, operator: string) => void;
   onRemoveBooleanField: (name: string, index: number) => void;
@@ -80,30 +84,34 @@ const FormField: React.FC<FormFieldProps> = ({
   onAddBooleanField,
   onRemoveBooleanField,
   onFetchNeighbors,
-  onRemoveNeighborDropdown
+  onRemoveNeighborDropdown,
 }) => {
-  const { validateField } = useSmartValidation(formData, metadata, collectionInfo);
+  const { validateField } = useSmartValidation(
+    formData,
+    metadata,
+    collectionInfo,
+  );
   const isTextField = collectionInfo?.text_field === field.name;
-  
+
   // Get validation for this field
   const validation = validateField(field.name, formData[field.name] || []);
 
   // Get appropriate help topic based on field type
   const getFieldHelpTopic = () => {
-    if (field.name.toLowerCase().includes('date')) return 'date_range';
-    if (field.possible_values?.length > 0) return 'field_selection';
-    return 'search_terms'; // Default for text fields
+    if (field.name.toLowerCase().includes("date")) return "date_range";
+    if (field.possible_values?.length > 0) return "field_selection";
+    return "search_terms"; // Default for text fields
   };
 
   // Helper function to get validation icon and color
   const getValidationIcon = () => {
     switch (validation.status) {
-      case 'valid':
-        return { icon: <CheckCircle />, color: 'success.main' };
-      case 'warning':
-        return { icon: <Warning />, color: 'warning.main' };
-      case 'error':
-        return { icon: <ErrorIcon />, color: 'error.main' };
+      case "valid":
+        return { icon: <CheckCircle />, color: "success.main" };
+      case "warning":
+        return { icon: <Warning />, color: "warning.main" };
+      case "error":
+        return { icon: <ErrorIcon />, color: "error.main" };
       default:
         return null;
     }
@@ -111,110 +119,138 @@ const FormField: React.FC<FormFieldProps> = ({
 
   // Helper function to get border styles based on validation
   const getInputStyles = (entry: any, index: number) => {
-    let borderColor = 'inherit';
+    let borderColor = "inherit";
     let borderWidth = 1;
-    let backgroundColor = 'transparent';
+    let backgroundColor = "transparent";
 
     // Boolean operator styling (base layer)
     if (entry.not) {
-      borderColor = 'error.main';
+      borderColor = "error.main";
       borderWidth = 2;
-      backgroundColor = 'rgba(244, 67, 54, 0.05)';
-    } else if (entry.operator === 'AND') {
-      borderColor = 'success.main';
+      backgroundColor = "rgba(244, 67, 54, 0.05)";
+    } else if (entry.operator === "AND") {
+      borderColor = "success.main";
       borderWidth = 2;
-      backgroundColor = 'rgba(76, 175, 80, 0.05)';
-    } else if (entry.operator === 'OR') {
-      borderColor = 'info.main';
+      backgroundColor = "rgba(76, 175, 80, 0.05)";
+    } else if (entry.operator === "OR") {
+      borderColor = "info.main";
       borderWidth = 2;
-      backgroundColor = 'rgba(33, 150, 243, 0.05)';
+      backgroundColor = "rgba(33, 150, 243, 0.05)";
     }
 
     // Validation styling
-    if (validation.status === 'error') {
-      borderColor = 'error.main';
+    if (validation.status === "error") {
+      borderColor = "error.main";
       borderWidth = 2;
-      backgroundColor = 'rgba(244, 67, 54, 0.08)';
-    } else if (validation.status === 'valid' && validation.hasValue && !entry.operator && !entry.not) {
-      borderColor = 'success.light';
+      backgroundColor = "rgba(244, 67, 54, 0.08)";
+    } else if (
+      validation.status === "valid" &&
+      validation.hasValue &&
+      !entry.operator &&
+      !entry.not
+    ) {
+      borderColor = "success.light";
       borderWidth = 1;
     }
 
     // Special treatment for primary text field
-    if (isTextField && validation.status !== 'error') {
+    if (isTextField && validation.status !== "error") {
       borderWidth = Math.max(borderWidth, 1);
     }
 
     return {
-      '& .MuiOutlinedInput-root': {
+      "& .MuiOutlinedInput-root": {
         borderColor,
         borderWidth,
         backgroundColor,
-        fontWeight: isTextField ? 600 : 'inherit',
-        transition: 'all 0.2s ease',
-        '&:hover .MuiOutlinedInput-notchedOutline': {
+        fontWeight: isTextField ? 600 : "inherit",
+        transition: "all 0.2s ease",
+        "&:hover .MuiOutlinedInput-notchedOutline": {
           borderColor,
           borderWidth: borderWidth + 1,
         },
-        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
           borderColor,
           borderWidth: borderWidth + 1,
-          boxShadow: `0 0 0 2px ${borderColor === 'error.main' ? 'rgba(244, 67, 54, 0.2)' : 
-                                    borderColor === 'success.main' ? 'rgba(76, 175, 80, 0.2)' : 
-                                    borderColor === 'info.main' ? 'rgba(33, 150, 243, 0.2)' : 
-                                    'rgba(102, 126, 234, 0.2)'}`,
-        }
-      }
+          boxShadow: `0 0 0 2px ${
+            borderColor === "error.main"
+              ? "rgba(244, 67, 54, 0.2)"
+              : borderColor === "success.main"
+                ? "rgba(76, 175, 80, 0.2)"
+                : borderColor === "info.main"
+                  ? "rgba(33, 150, 243, 0.2)"
+                  : "rgba(102, 126, 234, 0.2)"
+          }`,
+        },
+      },
     };
   };
 
   const validationIcon = getValidationIcon();
 
   return (
-    <Paper 
-      variant="outlined" 
-      sx={{ 
-        p: 2, 
-        height: '100%',
-        border: isTextField ? '2px solid' : '1px solid',
-        borderColor: isTextField ? 'primary.main' : 
-                     validation.status === 'error' ? 'error.main' :
-                     validation.status === 'warning' ? 'warning.main' :
-                     validation.status === 'valid' ? 'success.light' : 'divider',
-        position: 'relative',
-        transition: 'all 0.2s ease'
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2,
+        height: "100%",
+        border: isTextField ? "2px solid" : "1px solid",
+        borderColor: isTextField
+          ? "primary.main"
+          : validation.status === "error"
+            ? "error.main"
+            : validation.status === "warning"
+              ? "warning.main"
+              : validation.status === "valid"
+                ? "success.light"
+                : "divider",
+        position: "relative",
+        transition: "all 0.2s ease",
       }}
     >
       {/* Field Header with Help */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 2,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
             {field.name}
           </Typography>
           <ContextHelp topic={getFieldHelpTopic()} size="small" />
           {validationIcon && (
-            <Box sx={{ color: validationIcon.color, display: 'flex', alignItems: 'center' }}>
+            <Box
+              sx={{
+                color: validationIcon.color,
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
               {validationIcon.icon}
             </Box>
           )}
         </Box>
-        
+
         {/* Field Status Indicators */}
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
+        <Box sx={{ display: "flex", gap: 0.5 }}>
           {isTextField && (
-            <Chip 
-              label="Primary Text Field" 
-              size="small" 
-              color="primary" 
+            <Chip
+              label="Primary Text Field"
+              size="small"
+              color="primary"
               variant="outlined"
             />
           )}
           {hasEmbeddings && isTextField && (
             <Tooltip title="Find words with similar meanings using AI. Click ⭐ to get suggestions.">
-              <Chip 
-                label="AI Search" 
-                size="small" 
-                color="secondary" 
+              <Chip
+                label="AI Search"
+                size="small"
+                color="secondary"
                 variant="outlined"
                 icon={<Star />}
               />
@@ -224,10 +260,12 @@ const FormField: React.FC<FormFieldProps> = ({
       </Box>
 
       {/* Validation Message */}
-      <Collapse in={validation.status !== 'empty' && validation.status !== 'valid'}>
-        <Alert 
-          severity={validation.status as any} 
-          sx={{ mb: 2, fontSize: '0.875rem' }}
+      <Collapse
+        in={validation.status !== "empty" && validation.status !== "valid"}
+      >
+        <Alert
+          severity={validation.status as any}
+          sx={{ mb: 2, fontSize: "0.875rem" }}
           icon={false}
         >
           {validation.message}
@@ -235,11 +273,16 @@ const FormField: React.FC<FormFieldProps> = ({
       </Collapse>
 
       {/* Suggestions */}
-      <Collapse in={validation.suggestions && validation.suggestions.length > 0}>
+      <Collapse
+        in={validation.suggestions && validation.suggestions.length > 0}
+      >
         <Box sx={{ mb: 2 }}>
           {validation.suggestions?.map((suggestion, index) => (
-            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Lightbulb sx={{ fontSize: 16, color: 'info.main' }} />
+            <Box
+              key={index}
+              sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}
+            >
+              <Lightbulb sx={{ fontSize: 16, color: "info.main" }} />
               <Typography variant="caption" color="info.main">
                 {suggestion}
               </Typography>
@@ -252,40 +295,53 @@ const FormField: React.FC<FormFieldProps> = ({
       {field.possible_values?.length > 0 ? (
         <Box>
           {formData[field.name]?.map((entry: any, idx: number) => (
-            <Box key={`${field.name}-${idx}`} sx={{ mb: idx < formData[field.name].length - 1 ? 2 : 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Tooltip title={entry.not ? "Exclude this value" : "Include this value"}>
+            <Box
+              key={`${field.name}-${idx}`}
+              sx={{ mb: idx < formData[field.name].length - 1 ? 2 : 0 }}
+            >
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+              >
+                <Tooltip
+                  title={
+                    entry.not ? "Exclude this value" : "Include this value"
+                  }
+                >
                   <Button
                     variant={entry.not ? "contained" : "outlined"}
                     color={entry.not ? "error" : "inherit"}
                     size="small"
                     onClick={() => onToggleNot(field.name, idx)}
-                    sx={{ 
+                    sx={{
                       minWidth: 60,
                       fontWeight: 600,
                       boxShadow: entry.not ? 2 : 0,
-                      backgroundColor: entry.not ? 'error.main' : 'transparent',
-                      borderColor: entry.not ? 'error.main' : 'grey.400',
-                      color: entry.not ? 'white' : 'text.primary',
-                      '&:hover': {
-                        backgroundColor: entry.not ? 'error.dark' : 'error.light',
-                        borderColor: 'error.main',
-                        color: entry.not ? 'white' : 'error.main',
-                        transform: 'translateY(-1px)',
-                        boxShadow: entry.not ? 3 : 1
+                      backgroundColor: entry.not ? "error.main" : "transparent",
+                      borderColor: entry.not ? "error.main" : "grey.400",
+                      color: entry.not ? "white" : "text.primary",
+                      "&:hover": {
+                        backgroundColor: entry.not
+                          ? "error.dark"
+                          : "error.light",
+                        borderColor: "error.main",
+                        color: entry.not ? "white" : "error.main",
+                        transform: "translateY(-1px)",
+                        boxShadow: entry.not ? 3 : 1,
                       },
-                      transition: 'all 0.2s ease'
+                      transition: "all 0.2s ease",
                     }}
                   >
                     NOT
                   </Button>
                 </Tooltip>
-                
+
                 <Box sx={{ flexGrow: 1 }}>
                   <Autocomplete
                     options={field.possible_values}
                     value={entry.value || null}
-                    onChange={(_, newValue) => onSelectChange(field.name, newValue, idx)}
+                    onChange={(_, newValue) =>
+                      onSelectChange(field.name, newValue, idx)
+                    }
                     renderInput={(params) => (
                       <TextField
                         {...params}
@@ -298,13 +354,13 @@ const FormField: React.FC<FormFieldProps> = ({
                 </Box>
 
                 {idx > 0 && (
-                  <IconButton 
+                  <IconButton
                     onClick={() => onRemoveBooleanField(field.name, idx)}
                     size="small"
                     color="error"
-                    sx={{ 
-                      bgcolor: 'error.light',
-                      '&:hover': { bgcolor: 'error.main', color: 'white' }
+                    sx={{
+                      bgcolor: "error.light",
+                      "&:hover": { bgcolor: "error.main", color: "white" },
                     }}
                   >
                     <Remove />
@@ -315,34 +371,42 @@ const FormField: React.FC<FormFieldProps> = ({
               {idx === formData[field.name].length - 1 && (
                 <ButtonGroup size="small" variant="outlined" sx={{ mt: 1 }}>
                   <Button
-                    onClick={() => onAddBooleanField(field.name, 'AND')}
+                    onClick={() => onAddBooleanField(field.name, "AND")}
                     color="success"
                     startIcon={<Add />}
-                    sx={{ 
+                    sx={{
                       fontWeight: 600,
-                      '&:hover': {
+                      "&:hover": {
                         boxShadow: 2,
-                        transform: 'translateY(-1px)'
-                      }
+                        transform: "translateY(-1px)",
+                      },
                     }}
                   >
                     AND
-                    <ContextHelp topic="and_operator" variant="inline" size="small" />
+                    <ContextHelp
+                      topic="and_operator"
+                      variant="inline"
+                      size="small"
+                    />
                   </Button>
                   <Button
-                    onClick={() => onAddBooleanField(field.name, 'OR')}
+                    onClick={() => onAddBooleanField(field.name, "OR")}
                     color="info"
                     startIcon={<Add />}
-                    sx={{ 
+                    sx={{
                       fontWeight: 600,
-                      '&:hover': {
+                      "&:hover": {
                         boxShadow: 2,
-                        transform: 'translateY(-1px)'
-                      }
+                        transform: "translateY(-1px)",
+                      },
                     }}
                   >
                     OR
-                    <ContextHelp topic="or_operator" variant="inline" size="small" />
+                    <ContextHelp
+                      topic="or_operator"
+                      variant="inline"
+                      size="small"
+                    />
                   </Button>
                 </ButtonGroup>
               )}
@@ -352,79 +416,96 @@ const FormField: React.FC<FormFieldProps> = ({
       ) : (
         <Box>
           {formData[field.name]?.map((entry: any, idx: number) => (
-            <Box key={`${field.name}-${idx}`} sx={{ mb: idx < formData[field.name].length - 1 ? 2 : 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Tooltip title={entry.not ? "Exclude this value" : "Include this value"}>
+            <Box
+              key={`${field.name}-${idx}`}
+              sx={{ mb: idx < formData[field.name].length - 1 ? 2 : 0 }}
+            >
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+              >
+                <Tooltip
+                  title={
+                    entry.not ? "Exclude this value" : "Include this value"
+                  }
+                >
                   <Button
                     variant={entry.not ? "contained" : "outlined"}
                     color={entry.not ? "error" : "inherit"}
                     size="small"
                     onClick={() => onToggleNot(field.name, idx)}
-                    sx={{ 
+                    sx={{
                       minWidth: 60,
                       fontWeight: 600,
                       boxShadow: entry.not ? 2 : 0,
-                      backgroundColor: entry.not ? 'error.main' : 'transparent',
-                      borderColor: entry.not ? 'error.main' : 'grey.400',
-                      color: entry.not ? 'white' : 'text.primary',
-                      '&:hover': {
-                        backgroundColor: entry.not ? 'error.dark' : 'error.light',
-                        borderColor: 'error.main',
-                        color: entry.not ? 'white' : 'error.main',
-                        transform: 'translateY(-1px)',
-                        boxShadow: entry.not ? 3 : 1
+                      backgroundColor: entry.not ? "error.main" : "transparent",
+                      borderColor: entry.not ? "error.main" : "grey.400",
+                      color: entry.not ? "white" : "text.primary",
+                      "&:hover": {
+                        backgroundColor: entry.not
+                          ? "error.dark"
+                          : "error.light",
+                        borderColor: "error.main",
+                        color: entry.not ? "white" : "error.main",
+                        transform: "translateY(-1px)",
+                        boxShadow: entry.not ? 3 : 1,
                       },
-                      transition: 'all 0.2s ease'
+                      transition: "all 0.2s ease",
                     }}
                   >
                     NOT
                   </Button>
                 </Tooltip>
-                
+
                 <Box sx={{ flexGrow: 1 }}>
                   <TextField
                     name={field.name}
                     value={entry.value}
-                    onChange={e => onFormChange(e, idx)}
+                    onChange={(e) => onFormChange(e, idx)}
                     size="small"
                     fullWidth
                     placeholder={`Enter ${field.name}...`}
                     InputProps={{
-                      endAdornment: idx === 0 && hasEmbeddings && isTextField && (
-                        <Tooltip title="Find similar words using AI embeddings">
-                          <IconButton
-                            onClick={() => onFetchNeighbors(entry.value, field.name)}
-                            disabled={loadingNeighbors[field.name] || !entry.value}
-                            size="small"
-                            color="primary"
-                            sx={{
-                              '&:hover': {
-                                bgcolor: 'primary.light',
-                                color: 'white'
+                      endAdornment: idx === 0 &&
+                        hasEmbeddings &&
+                        isTextField && (
+                          <Tooltip title="Find similar words using AI embeddings">
+                            <IconButton
+                              onClick={() =>
+                                onFetchNeighbors(entry.value, field.name)
                               }
-                            }}
-                          >
-                            {loadingNeighbors[field.name] ? (
-                              <CircularProgress size={16} />
-                            ) : (
-                              <Star />
-                            )}
-                          </IconButton>
-                        </Tooltip>
-                      ),
+                              disabled={
+                                loadingNeighbors[field.name] || !entry.value
+                              }
+                              size="small"
+                              color="primary"
+                              sx={{
+                                "&:hover": {
+                                  bgcolor: "primary.light",
+                                  color: "white",
+                                },
+                              }}
+                            >
+                              {loadingNeighbors[field.name] ? (
+                                <CircularProgress size={16} />
+                              ) : (
+                                <Star />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+                        ),
                     }}
                     sx={getInputStyles(entry, idx)}
                   />
                 </Box>
 
                 {idx > 0 && (
-                  <IconButton 
+                  <IconButton
                     onClick={() => onRemoveBooleanField(field.name, idx)}
                     size="small"
                     color="error"
-                    sx={{ 
-                      bgcolor: 'error.light',
-                      '&:hover': { bgcolor: 'error.main', color: 'white' }
+                    sx={{
+                      bgcolor: "error.light",
+                      "&:hover": { bgcolor: "error.main", color: "white" },
                     }}
                   >
                     <Remove />
@@ -434,36 +515,53 @@ const FormField: React.FC<FormFieldProps> = ({
 
               {neighbors[field.name] && idx === 0 && (
                 <Box sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Star sx={{ fontSize: 16, color: 'primary.main' }} />
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
+                    <Star sx={{ fontSize: 16, color: "primary.main" }} />
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 600 }}
+                    >
                       AI Suggestions:
                     </Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                    {neighbors[field.name].map((neighbor: string, index: number) => (
-                      <Chip
-                        key={index}
-                        label={neighbor}
-                        size="small"
-                        clickable
-                        onClick={() => onSelectChange(field.name, neighbor, idx)}
-                        sx={{ 
-                          fontSize: '0.75rem',
-                          '&:hover': {
-                            bgcolor: 'primary.light',
-                            color: 'white',
-                            transform: 'translateY(-1px)'
+                  <Box
+                    sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1 }}
+                  >
+                    {neighbors[field.name].map(
+                      (neighbor: string, index: number) => (
+                        <Chip
+                          key={index}
+                          label={neighbor}
+                          size="small"
+                          clickable
+                          onClick={() =>
+                            onSelectChange(field.name, neighbor, idx)
                           }
-                        }}
-                      />
-                    ))}
+                          sx={{
+                            fontSize: "0.75rem",
+                            "&:hover": {
+                              bgcolor: "primary.light",
+                              color: "white",
+                              transform: "translateY(-1px)",
+                            },
+                          }}
+                        />
+                      ),
+                    )}
                   </Box>
-                  <Button 
-                    size="small" 
+                  <Button
+                    size="small"
                     variant="text"
                     onClick={() => onRemoveNeighborDropdown(field.name)}
-                    sx={{ fontSize: '0.75rem' }}
+                    sx={{ fontSize: "0.75rem" }}
                   >
                     Hide suggestions
                   </Button>
@@ -473,34 +571,42 @@ const FormField: React.FC<FormFieldProps> = ({
               {idx === formData[field.name].length - 1 && (
                 <ButtonGroup size="small" variant="outlined" sx={{ mt: 1 }}>
                   <Button
-                    onClick={() => onAddBooleanField(field.name, 'AND')}
+                    onClick={() => onAddBooleanField(field.name, "AND")}
                     color="success"
                     startIcon={<Add />}
-                    sx={{ 
+                    sx={{
                       fontWeight: 600,
-                      '&:hover': {
+                      "&:hover": {
                         boxShadow: 2,
-                        transform: 'translateY(-1px)'
-                      }
+                        transform: "translateY(-1px)",
+                      },
                     }}
                   >
                     AND
-                    <ContextHelp topic="and_operator" variant="inline" size="small" />
+                    <ContextHelp
+                      topic="and_operator"
+                      variant="inline"
+                      size="small"
+                    />
                   </Button>
                   <Button
-                    onClick={() => onAddBooleanField(field.name, 'OR')}
+                    onClick={() => onAddBooleanField(field.name, "OR")}
                     color="info"
                     startIcon={<Add />}
-                    sx={{ 
+                    sx={{
                       fontWeight: 600,
-                      '&:hover': {
+                      "&:hover": {
                         boxShadow: 2,
-                        transform: 'translateY(-1px)'
-                      }
+                        transform: "translateY(-1px)",
+                      },
                     }}
                   >
                     OR
-                    <ContextHelp topic="or_operator" variant="inline" size="small" />
+                    <ContextHelp
+                      topic="or_operator"
+                      variant="inline"
+                      size="small"
+                    />
                   </Button>
                 </ButtonGroup>
               )}

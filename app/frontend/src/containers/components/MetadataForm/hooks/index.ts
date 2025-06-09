@@ -1,1 +1,1 @@
-export * from './useEmbeddings';
+export * from "./useEmbeddings";

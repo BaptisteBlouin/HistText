@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 /**
  * Custom hook to fetch document details from the backend when dialog is open.
@@ -20,7 +20,7 @@ export const useDocumentFetch = (
   authAxios: any,
   setDocument: (doc: any) => void,
   setLoading: (loading: boolean) => void,
-  setError: (error: string | null) => void
+  setError: (error: string | null) => void,
 ) => {
   useEffect(() => {
     const fetchDocumentDetails = async () => {
@@ -37,16 +37,25 @@ export const useDocumentFetch = (
         if (response.data?.solr_response?.response?.docs?.length > 0) {
           setDocument(response.data.solr_response.response.docs[0]);
         } else {
-          setError('Document not found');
+          setError("Document not found");
         }
       } catch (err) {
-        console.error('Error fetching document details:', err);
-        setError('Failed to fetch document details');
+        console.error("Error fetching document details:", err);
+        setError("Failed to fetch document details");
       } finally {
         setLoading(false);
       }
     };
 
     fetchDocumentDetails();
-  }, [open, documentId, collectionName, solrDatabaseId, authAxios, setDocument, setLoading, setError]);
+  }, [
+    open,
+    documentId,
+    collectionName,
+    solrDatabaseId,
+    authAxios,
+    setDocument,
+    setLoading,
+    setError,
+  ]);
 };

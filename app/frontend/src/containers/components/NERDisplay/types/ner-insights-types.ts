@@ -2,7 +2,7 @@ export interface NERInsightsProps {
   /** Raw NER data keyed by document ID */
   nerData: Record<string, any>;
   /** Display name or alias for the dataset or source */
-  selectedAlias: string;  
+  selectedAlias: string;
   /** Optional callback when a document is clicked, receives document ID */
   onDocumentClick?: (documentId: string) => void;
   /** Optional max number of entities to process */

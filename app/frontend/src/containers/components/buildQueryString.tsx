@@ -1,4 +1,4 @@
-import config from '../../../config.json';
+import config from "../../../config.json";
 
 /**
  * Builds a Solr query string from formData and dateRange, correctly handling
@@ -16,46 +16,52 @@ import config from '../../../config.json';
  * Date ranges are appended as a top-level AND clause if present.
  */
 export const buildQueryString = (
-  formData: Record<string, { value: string; operator?: string; not?: boolean }[]>,
+  formData: Record<
+    string,
+    { value: string; operator?: string; not?: boolean }[]
+  >,
   dateRange: { min: string; max: string } | null,
 ): string => {
   const parts: string[] = [];
 
   for (const [key, entries] of Object.entries(formData)) {
     // Filter out empty values and date fields
-    if (key === 'min_date' || key === 'max_date') continue;
-    
-    const cleaned = entries.filter(e => e.value && e.value.trim() !== '');
+    if (key === "min_date" || key === "max_date") continue;
+
+    const cleaned = entries.filter((e) => e.value && e.value.trim() !== "");
     if (!cleaned.length) continue;
 
     const encKey = encodeURIComponent(key);
 
     // Build positive clauses (not=false)
-    const posEntries = cleaned.filter(e => !e.not);
+    const posEntries = cleaned.filter((e) => !e.not);
     const posClause = posEntries.length
       ? (() => {
           const clauses = posEntries.map((e, idx) => {
             const term = `${encKey}:${encodeURIComponent(`"${e.value}"`)}`;
             if (idx === 0) return term;
-            const op = e.operator || 'AND';
+            const op = e.operator || "AND";
             return `${op} ${term}`;
           });
-          return clauses.length > 1 ? `(${clauses.join(' ')})` : clauses[0];
+          return clauses.length > 1 ? `(${clauses.join(" ")})` : clauses[0];
         })()
-      : '';
+      : "";
 
     // Build negative clauses (not=true)
-    const negEntries = cleaned.filter(e => e.not);
+    const negEntries = cleaned.filter((e) => e.not);
     const negClause = negEntries.length
       ? (() => {
-          const terms = negEntries.map(e => `${encKey}:${encodeURIComponent(`"${e.value}"`)}`);
-          const orGroup = terms.length > 1 ? `(${terms.join(' OR ')})` : terms[0];
+          const terms = negEntries.map(
+            (e) => `${encKey}:${encodeURIComponent(`"${e.value}"`)}`,
+          );
+          const orGroup =
+            terms.length > 1 ? `(${terms.join(" OR ")})` : terms[0];
           return `NOT ${orGroup}`;
         })()
-      : '';
+      : "";
 
     // Combine pos + neg for this field
-    let fieldPart = '';
+    let fieldPart = "";
     if (posClause && negClause) {
       fieldPart = `(${posClause} AND ${negClause})`;
     } else {
@@ -66,12 +72,16 @@ export const buildQueryString = (
   }
 
   // Handle date range if present
-  if (dateRange && formData.min_date?.[0]?.value && formData.max_date?.[0]?.value) {
+  if (
+    dateRange &&
+    formData.min_date?.[0]?.value &&
+    formData.max_date?.[0]?.value
+  ) {
     parts.push(
       `${config.default_date_name}:[${formData.min_date[0].value}T00:00:00Z TO ${formData.max_date[0].value}T23:59:59Z]`,
     );
   }
 
   // Join all field parts with AND
-  return parts.join(' AND ').trim();
+  return parts.join(" AND ").trim();
 };

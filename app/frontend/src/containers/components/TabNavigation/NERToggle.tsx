@@ -1,6 +1,6 @@
-import React from 'react';
-import { Tooltip, Fab } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import React from "react";
+import { Tooltip, Fab } from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 
 interface NERToggleProps {
   activeTab: number;
@@ -17,23 +17,25 @@ const NERToggle: React.FC<NERToggleProps> = ({
   viewNER,
   onToggleNER,
   isAnyFullscreen,
-  tabsConstant
+  tabsConstant,
 }) => {
   if (activeTab !== tabsConstant.PARTIAL_RESULTS || !isNERVisible) {
     return null;
   }
 
   return (
-    <Tooltip title={viewNER ? 'Hide NER highlighting' : 'Show NER highlighting'}>
+    <Tooltip
+      title={viewNER ? "Hide NER highlighting" : "Show NER highlighting"}
+    >
       <Fab
         onClick={onToggleNER}
         size="medium"
         sx={{
-          position: 'absolute',
+          position: "absolute",
           bottom: -28,
           right: isAnyFullscreen ? 80 : 24,
-          bgcolor: viewNER ? 'error.main' : 'primary.main',
-          '&:hover': { bgcolor: viewNER ? 'error.dark' : 'primary.dark' },
+          bgcolor: viewNER ? "error.main" : "primary.main",
+          "&:hover": { bgcolor: viewNER ? "error.dark" : "primary.dark" },
           zIndex: 1000,
         }}
       >

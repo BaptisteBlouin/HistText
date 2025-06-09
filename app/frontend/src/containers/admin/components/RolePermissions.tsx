@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Button,
@@ -21,9 +21,13 @@ import {
   Tooltip,
   IconButton,
   Grid,
-  Paper
-} from '@mui/material';
-import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from "@mui/material";
+import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import {
   Add,
   Delete,
@@ -31,11 +35,11 @@ import {
   Security,
   VpnKey,
   Shield,
-  Refresh
-} from '@mui/icons-material';
-import Autocomplete from '@mui/material/Autocomplete';
-import axios, { AxiosHeaders } from 'axios';
-import { useAuth } from '../../../hooks/useAuth';
+  Refresh,
+} from "@mui/icons-material";
+import Autocomplete from "@mui/material/Autocomplete";
+import axios, { AxiosHeaders } from "axios";
+import { useAuth } from "../../../hooks/useAuth";
 
 /** Role-permission mapping record */
 interface RolePermission {
@@ -48,7 +52,7 @@ interface RolePermission {
 interface NotificationState {
   open: boolean;
   message: string;
-  severity: 'success' | 'error' | 'warning' | 'info';
+  severity: "success" | "error" | "warning" | "info";
 }
 
 /**
@@ -58,7 +62,7 @@ const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
     const instance = axios.create();
-    instance.interceptors.request.use(config => {
+    instance.interceptors.request.use((config) => {
       if (accessToken) {
         config.headers = new AxiosHeaders({
           ...config.headers,
@@ -82,19 +86,23 @@ const useAuthAxios = () => {
 const RolePermissions: React.FC = () => {
   const authAxios = useAuthAxios();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   // Main data and UI state
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
-  const [availablePermissions, setAvailablePermissions] = useState<string[]>([]);
-  const [formState, setFormState] = useState<Partial<RolePermission>>({});
-  const [search, setSearch] = useState('');
+  const [availablePermissions, setAvailablePermissions] = useState<string[]>(
+    [],
+  );
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<NotificationState>({
     open: false,
-    message: '',
-    severity: 'info'
+    message: "",
+    severity: "info",
   });
 
   // On mount, fetch all required data for dropdowns and grid
@@ -105,20 +113,26 @@ const RolePermissions: React.FC = () => {
   }, []);
 
   /** Show a notification/alert (auto-hides after 5s) */
-  const showNotification = (message: string, severity: NotificationState['severity'] = 'info') => {
+  const showNotification = (
+    message: string,
+    severity: NotificationState["severity"] = "info",
+  ) => {
     setNotification({ open: true, message, severity });
-    setTimeout(() => setNotification(prev => ({ ...prev, open: false })), 5000);
+    setTimeout(
+      () => setNotification((prev) => ({ ...prev, open: false })),
+      5000,
+    );
   };
 
   /** Fetch all role-permission pairs */
   const fetchPermissions = async () => {
     try {
       setLoading(true);
-      const { data } = await authAxios.get('/api/role_permissions');
+      const { data } = await authAxios.get("/api/role_permissions");
       setPermissions(data);
     } catch (err) {
-      console.error('Fetch role permissions failed', err);
-      showNotification('Failed to fetch role permissions', 'error');
+      console.error("Fetch role permissions failed", err);
+      showNotification("Failed to fetch role permissions", "error");
     } finally {
       setLoading(false);
     }
@@ -127,88 +141,197 @@ const RolePermissions: React.FC = () => {
   /** Fetch all unique roles in the system */
   const fetchRoles = async () => {
     try {
-      const { data } = await authAxios.get('/api/user_roles');
-      const roleList = [...new Set((data as {role: string}[]).map(item => item.role))];
+      const { data } = await authAxios.get("/api/user_roles");
+      const roleList = [
+        ...new Set((data as { role: string }[]).map((item) => item.role)),
+      ];
       setRoles(roleList);
-      if (!formState.role && roleList.length > 0) {
-        setFormState(prev => ({ ...prev, role: roleList[0] }));
+      if (selectedRoles.length === 0 && roleList.length > 0) {
+        setSelectedRoles([roleList[0]]);
       }
     } catch (err) {
-      console.error('Fetch roles failed', err);
-      showNotification('Failed to fetch roles', 'error');
+      console.error("Fetch roles failed", err);
+      showNotification("Failed to fetch roles", "error");
     }
   };
 
   /** Fetch all unique permissions in the system */
   const fetchAvailablePermissions = async () => {
     try {
-      const { data } = await authAxios.get('/api/solr_database_permissions');
-      const perms = [...new Set((data as {permission: string}[]).map(item => item.permission))];
+      const { data } = await authAxios.get("/api/solr_database_permissions");
+      const perms = [
+        ...new Set(
+          (data as { permission: string }[]).map((item) => item.permission),
+        ),
+      ];
       setAvailablePermissions(perms);
-      if (!formState.permission && perms.length > 0) {
-        setFormState(prev => ({ ...prev, permission: perms[0] }));
+      if (selectedPermissions.length === 0 && perms.length > 0) {
+        setSelectedPermissions([perms[0]]);
       }
     } catch (err) {
-      console.error('Fetch permissions failed', err);
-      showNotification('Failed to fetch available permissions', 'error');
+      console.error("Fetch permissions failed", err);
+      showNotification("Failed to fetch available permissions", "error");
     }
   };
 
-  /** Assign a permission to a role (calls API, reloads grid) */
+  /**
+   * Check if a role-permission combination already exists
+   */
+  const rolePermissionExists = (role: string, permission: string) => {
+    return permissions.some(p => p.role === role && p.permission === permission);
+  };
+
+  /**
+   * Validate role permission assignment
+   */
+  const validatePermissionAssignment = () => {
+    const errors: string[] = [];
+    
+    if (selectedRoles.length === 0) {
+      errors.push("Please select at least one role");
+    }
+    
+    if (selectedPermissions.length === 0) {
+      errors.push("Please select at least one permission");
+    }
+    
+    // Check for existing assignments
+    const existingAssignments = [];
+    for (const role of selectedRoles) {
+      for (const permission of selectedPermissions) {
+        if (rolePermissionExists(role, permission)) {
+          existingAssignments.push(`Role "${role}" already has permission "${permission}"`);
+        }
+      }
+    }
+    
+    if (existingAssignments.length > 0) {
+      errors.push(...existingAssignments.slice(0, 3)); // Show max 3 conflicts
+      if (existingAssignments.length > 3) {
+        errors.push(`... and ${existingAssignments.length - 3} more conflicts`);
+      }
+    }
+    
+    return errors;
+  };
+
+  /** Assign multiple permissions to multiple roles with enhanced validation */
   const handleAdd = async () => {
-    if (!formState.role || !formState.permission) {
-      showNotification('Role and Permission are required', 'warning');
+    const validationErrors = validatePermissionAssignment();
+    
+    if (validationErrors.length > 0) {
+      showNotification(validationErrors[0], "warning");
       return;
     }
+    
     try {
-      await authAxios.post('/api/role_permissions', formState);
-      showNotification('Permission added to role successfully', 'success');
+      const assignments = [];
+      const newAssignments = [];
+      
+      for (const role of selectedRoles) {
+        for (const permission of selectedPermissions) {
+          if (!rolePermissionExists(role, permission)) {
+            assignments.push(
+              authAxios.post("/api/role_permissions", { role, permission })
+            );
+            newAssignments.push(`${role} → ${permission}`);
+          }
+        }
+      }
+      
+      if (assignments.length === 0) {
+        showNotification("All selected permission assignments already exist", "warning");
+        return;
+      }
+      
+      await Promise.all(assignments);
+      setSelectedRoles([]);
+      setSelectedPermissions([]);
       fetchPermissions();
-      setFormState({ role: formState.role, permission: '' });
-    } catch (err) {
-      showNotification('Failed to add role permission', 'error');
+      
+      const successMessage = newAssignments.length === 1 ? 
+        `Successfully assigned: ${newAssignments[0]}` :
+        `Successfully assigned ${newAssignments.length} permission assignments`;
+      
+      showNotification(successMessage, "success");
+    } catch (err: any) {
+      console.error("Add role permissions failed:", err);
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error occurred";
+      
+      if (err.response?.status === 409 || errorMessage.includes("already exists")) {
+        showNotification("Some permission assignments already exist. Please refresh and try again.", "error");
+      } else if (err.response?.status === 404) {
+        showNotification("Role or permission not found. Please refresh and try again.", "error");
+      } else if (err.response?.status === 403) {
+        showNotification("You don't have permission to assign role permissions", "error");
+      } else {
+        showNotification(`Failed to assign permissions: ${errorMessage}`, "error");
+      }
+      fetchPermissions(); // Refresh data
     }
   };
 
-  /** Remove a permission from a role (calls API, reloads grid) */
+  /** Remove a permission from a role with enhanced error handling */
   const handleDelete = async (role: string, permission: string) => {
     try {
       await authAxios.delete(
         `/api/role_permissions/${encodeURIComponent(role)}/${encodeURIComponent(permission)}`,
       );
-      showNotification('Permission removed from role successfully', 'success');
+      showNotification(`Successfully removed permission "${permission}" from role "${role}"`, "success");
       fetchPermissions();
-    } catch (err) {
-      showNotification('Failed to remove permission', 'error');
+    } catch (err: any) {
+      console.error("Delete role permission failed:", err);
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error occurred";
+      
+      if (err.response?.status === 404) {
+        showNotification("Permission assignment not found. It may have already been removed.", "error");
+        fetchPermissions(); // Refresh to sync with server
+      } else if (err.response?.status === 403) {
+        showNotification("You don't have permission to remove this role permission", "error");
+      } else if (err.response?.status === 409 || errorMessage.includes("constraint")) {
+        showNotification("Cannot remove permission: it may be required for this role", "error");
+      } else {
+        showNotification(`Failed to remove permission: ${errorMessage}`, "error");
+      }
     }
   };
 
   // Filter the table rows according to current search
-  const filteredPermissions = permissions.filter(p =>
+  const filteredPermissions = permissions.filter((p) =>
     `${p.role} ${p.permission}`.toLowerCase().includes(search.toLowerCase()),
   );
 
   // Utility for consistent coloring of role chips
   const getRoleColor = (role: string) => {
-    const colors = ['primary', 'secondary', 'success', 'warning', 'error', 'info'];
+    const colors = [
+      "primary",
+      "secondary",
+      "success",
+      "warning",
+      "error",
+      "info",
+    ];
     const index = role.length % colors.length;
     return colors[index] as any;
   };
 
   // Utility for consistent coloring of permission chips
   const getPermissionColor = (permission: string) => {
-    if (permission.includes('read') || permission.includes('view')) return 'info';
-    if (permission.includes('write') || permission.includes('create')) return 'success';
-    if (permission.includes('delete') || permission.includes('remove')) return 'error';
-    if (permission.includes('admin')) return 'warning';
-    return 'default';
+    if (permission.includes("read") || permission.includes("view"))
+      return "info";
+    if (permission.includes("write") || permission.includes("create"))
+      return "success";
+    if (permission.includes("delete") || permission.includes("remove"))
+      return "error";
+    if (permission.includes("admin")) return "warning";
+    return "default";
   };
 
   // Table columns for the DataGrid
   const columns: GridColDef[] = [
-    { 
-      field: 'role', 
-      headerName: 'Role', 
+    {
+      field: "role",
+      headerName: "Role",
       width: 200,
       renderCell: (params) => (
         <Chip
@@ -218,14 +341,14 @@ const RolePermissions: React.FC = () => {
           size="small"
           sx={{ fontWeight: 600 }}
         />
-      )
+      ),
     },
-    { 
-      field: 'permission', 
-      headerName: 'Permission', 
+    {
+      field: "permission",
+      headerName: "Permission",
       flex: 1,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <VpnKey fontSize="small" color="action" />
           <Chip
             label={params.value}
@@ -234,11 +357,11 @@ const RolePermissions: React.FC = () => {
             size="small"
           />
         </Box>
-      )
+      ),
     },
     {
-      field: 'created_at',
-      headerName: 'Created Date',
+      field: "created_at",
+      headerName: "Created Date",
       width: 180,
       renderCell: (params) => (
         <Typography variant="body2" color="text.secondary">
@@ -247,8 +370,8 @@ const RolePermissions: React.FC = () => {
       ),
     },
     {
-      field: 'actions',
-      headerName: 'Actions',
+      field: "actions",
+      headerName: "Actions",
       width: 120,
       sortable: false,
       filterable: false,
@@ -271,19 +394,36 @@ const RolePermissions: React.FC = () => {
       <Box>
         {/* Inline notification (alert) */}
         {notification.open && (
-          <Alert 
-            severity={notification.severity} 
+          <Alert
+            severity={notification.severity}
             sx={{ mb: 3 }}
-            onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+            onClose={() =>
+              setNotification((prev) => ({ ...prev, open: false }))
+            }
           >
             {notification.message}
           </Alert>
         )}
 
         {/* Page Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 4,
+          }}
+        >
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
               <Security color="primary" />
               Role Permissions
             </Typography>
@@ -291,77 +431,28 @@ const RolePermissions: React.FC = () => {
               Configure permissions for each role in the system
             </Typography>
           </Box>
-          <Tooltip title="Refresh Data">
-            <IconButton onClick={fetchPermissions} color="primary">
-              <Refresh />
-            </IconButton>
-          </Tooltip>
+          <Stack direction="row" spacing={1}>
+            <Tooltip title="Refresh Data">
+              <IconButton onClick={fetchPermissions} color="primary">
+                <Refresh />
+              </IconButton>
+            </Tooltip>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => setOpenAddDialog(true)}
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                },
+              }}
+            >
+              Assign Permissions
+            </Button>
+          </Stack>
         </Box>
 
-        {/* Assign permission to role */}
-        <Card sx={{ mb: 4 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Add />
-              Assign Permission to Role
-            </Typography>
-            <Grid container spacing={3} alignItems="center">
-              <Grid item xs={12} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Select Role</InputLabel>
-                  <Select
-                    value={formState.role ?? ''}
-                    onChange={e => setFormState({ ...formState, role: e.target.value })}
-                    label="Select Role"
-                  >
-                    {roles.map(role => (
-                      <MenuItem key={role} value={role}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Shield fontSize="small" />
-                          {role}
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <Autocomplete
-                  freeSolo
-                  options={availablePermissions}
-                  value={formState.permission || ''}
-                  onInputChange={(_, value) => setFormState({ ...formState, permission: value })}
-                  renderInput={params => (
-                    <TextField 
-                      {...params} 
-                      label="Permission" 
-                      placeholder="Enter or select permission..."
-                    />
-                  )}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <Button
-                  variant="contained"
-                  onClick={handleAdd}
-                  disabled={!formState.role || !formState.permission}
-                  startIcon={<Add />}
-                  fullWidth
-                  sx={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                    }
-                  }}
-                >
-                  Add Permission
-                </Button>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
 
         {/* Search field */}
         <Card sx={{ mb: 3 }}>
@@ -383,29 +474,181 @@ const RolePermissions: React.FC = () => {
         </Card>
 
         {/* Permissions grid */}
-        <Paper sx={{ height: 600, borderRadius: 3, overflow: 'hidden' }}>
+        <Paper sx={{ height: 600, borderRadius: 3, overflow: "hidden" }}>
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100%",
+              }}
+            >
               <CircularProgress />
             </Box>
           ) : (
             <DataGrid
               rows={filteredPermissions}
               columns={columns}
-              pageSize={10}
-              rowsPerPageOptions={[10, 25, 50]}
-              getRowId={row => `${row.role}-${row.permission}`}
-              disableSelectionOnClick
+              initialState={{
+                pagination: {
+                  paginationModel: { page: 0, pageSize: 10 },
+                },
+              }}
+              pageSizeOptions={[10, 25, 50, 100]}
+              getRowId={(row) => `${row.role}-${row.permission}`}
+              disableRowSelectionOnClick
+              checkboxSelection={false}
               sx={{
-                border: 'none',
-                '& .MuiDataGrid-cell': { outline: 'none' },
-                '& .MuiDataGrid-row:hover': {
-                  backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                border: "none",
+                "& .MuiDataGrid-cell": {
+                  outline: "none",
+                  borderBottom: "1px solid rgba(224, 224, 224, 0.4)",
+                },
+                "& .MuiDataGrid-columnHeaders": {
+                  backgroundColor: "rgba(156, 39, 176, 0.08)",
+                  borderBottom: "2px solid rgba(156, 39, 176, 0.2)",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                },
+                "& .MuiDataGrid-row": {
+                  transition: "background-color 0.2s ease, transform 0.1s ease",
+                  "&:hover": {
+                    backgroundColor: "rgba(156, 39, 176, 0.08)",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 4px 12px rgba(156, 39, 176, 0.15)",
+                  },
+                },
+                "& .MuiDataGrid-footerContainer": {
+                  borderTop: "2px solid rgba(224, 224, 224, 0.3)",
+                  backgroundColor: "rgba(248, 249, 250, 0.8)",
+                },
+                "& .MuiDataGrid-selectedRowCount": {
+                  visibility: "hidden",
                 },
               }}
             />
           )}
         </Paper>
+
+        {/* Assign Permissions Dialog */}
+        <Dialog
+          open={openAddDialog}
+          onClose={() => setOpenAddDialog(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+            }}
+          >
+            <Add />
+            Assign Permissions to Roles
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  multiple
+                  options={roles}
+                  value={selectedRoles}
+                  onChange={(_, newValue) => {
+                    setSelectedRoles(newValue);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select Roles"
+                      placeholder="Choose roles..."
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((role, index) => (
+                      <Chip
+                        variant="outlined"
+                        label={role}
+                        size="small"
+                        color={getRoleColor(role)}
+                        icon={<Shield fontSize="small" />}
+                        {...getTagProps({ index })}
+                      />
+                    ))
+                  }
+                  renderOption={(props, role) => (
+                    <Box component="li" {...props}>
+                      <Shield fontSize="small" sx={{ mr: 1 }} />
+                      {role}
+                    </Box>
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={availablePermissions}
+                  value={selectedPermissions}
+                  onChange={(_, newValue) => {
+                    setSelectedPermissions(newValue.filter(v => typeof v === 'string'));
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select Permissions"
+                      placeholder="Choose or type permissions..."
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((permission, index) => (
+                      <Chip
+                        variant="outlined"
+                        label={permission}
+                        size="small"
+                        color={getPermissionColor(permission)}
+                        icon={<VpnKey fontSize="small" />}
+                        {...getTagProps({ index })}
+                      />
+                    ))
+                  }
+                  renderOption={(props, permission) => (
+                    <Box component="li" {...props}>
+                      <VpnKey fontSize="small" sx={{ mr: 1 }} />
+                      {permission}
+                    </Box>
+                  )}
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ p: 3 }}>
+            <Button onClick={() => setOpenAddDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                handleAdd();
+                setOpenAddDialog(false);
+              }}
+              disabled={selectedRoles.length === 0 || selectedPermissions.length === 0}
+              startIcon={<Add />}
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                },
+              }}
+            >
+              Assign {selectedPermissions.length} Permission{selectedPermissions.length !== 1 ? 's' : ''} to {selectedRoles.length} Role{selectedRoles.length !== 1 ? 's' : ''}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </Fade>
   );

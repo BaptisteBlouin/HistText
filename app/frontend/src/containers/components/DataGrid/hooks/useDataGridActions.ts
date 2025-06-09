@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { contentCache } from '../utils';
+import { useCallback, useState } from "react";
+import { contentCache } from "../utils";
 
 /**
  * Custom hook providing actions and state for AG Grid data table:
@@ -11,9 +11,9 @@ import { contentCache } from '../utils';
  */
 export const useDataGridActions = (
   results: any[],
-  gridRef: React.MutableRefObject<any>
+  gridRef: React.MutableRefObject<any>,
 ) => {
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -24,24 +24,25 @@ export const useDataGridActions = (
     if (results.length === 0) return;
 
     const headers = Object.keys(results[0]).filter(
-      key => !(key.startsWith('_') && key.endsWith('_'))
+      (key) => !(key.startsWith("_") && key.endsWith("_")),
     );
-    const csvRows = [headers.join(',')];
+    const csvRows = [headers.join(",")];
 
-    results.forEach(row => {
-      const values = headers.map(header => {
+    results.forEach((row) => {
+      const values = headers.map((header) => {
         const value = row[header];
-        const stringValue = value !== null && value !== undefined ? String(value) : '';
+        const stringValue =
+          value !== null && value !== undefined ? String(value) : "";
         return `"${stringValue.replace(/"/g, '""')}"`;
       });
-      csvRows.push(values.join(','));
+      csvRows.push(values.join(","));
     });
 
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `histtext-data-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `histtext-data-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }, [results]);
@@ -49,20 +50,23 @@ export const useDataGridActions = (
   /**
    * Set the quick filter (search) in the grid.
    */
-  const handleSearch = useCallback((value: string) => {
-    setSearchText(value);
-    if (gridRef.current?.api) {
-      gridRef.current.api.setQuickFilter(value);
-    }
-  }, [gridRef]);
+  const handleSearch = useCallback(
+    (value: string) => {
+      setSearchText(value);
+      if (gridRef.current?.api) {
+        gridRef.current.api.setQuickFilter(value);
+      }
+    },
+    [gridRef],
+  );
 
   /**
    * Clear all filters and search text in the grid.
    */
   const clearFilters = useCallback(() => {
-    setSearchText('');
+    setSearchText("");
     if (gridRef.current?.api) {
-      gridRef.current.api.setQuickFilter('');
+      gridRef.current.api.setQuickFilter("");
       gridRef.current.api.setFilterModel(null);
     }
     contentCache.clear();
@@ -114,6 +118,6 @@ export const useDataGridActions = (
     selectAll,
     deselectAll,
     autoSizeColumns,
-    clearCache
+    clearCache,
   };
 };

@@ -1,4 +1,4 @@
-declare module 'chinese-tokenizer' {
+declare module "chinese-tokenizer" {
   export interface Token {
     text: string;
     traditional: string;

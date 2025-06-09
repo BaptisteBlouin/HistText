@@ -1,7 +1,7 @@
-import React from 'react';
-import { Box } from '@mui/material';
-import TabPanel from './TabPanel';
-import { useTabContent } from './hooks/useTabContent';
+import React from "react";
+import { Box } from "@mui/material";
+import TabPanel from "./TabPanel";
+import { useTabContent } from "./hooks/useTabContent";
 
 const TABS = {
   QUERY: 0,
@@ -14,7 +14,7 @@ const TABS = {
 
 /**
  * Props for the MainContent component.
- * 
+ *
  * @property activeTab - Index of the currently active tab.
  * @property data - Data and state relevant to the content panels.
  * @property actions - Actions and handlers for content operations.
@@ -35,18 +35,20 @@ const MainContent: React.FC<MainContentProps> = ({
   activeTab,
   data,
   actions,
-  fullscreenState
+  fullscreenState,
 }) => {
   const { renderTabContent } = useTabContent(data, actions, fullscreenState);
 
   return (
-    <Box sx={{ 
-      position: 'relative', 
-      flex: 1,
-      minHeight: 0,
-      overflow: 'auto'
-    }}>
-      {Object.values(TABS).map(tabIndex => (
+    <Box
+      sx={{
+        position: "relative",
+        flex: 1,
+        minHeight: 0,
+        overflow: "auto",
+      }}
+    >
+      {Object.values(TABS).map((tabIndex) => (
         <TabPanel key={tabIndex} value={activeTab} index={tabIndex}>
           {renderTabContent(tabIndex)}
         </TabPanel>

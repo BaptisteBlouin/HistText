@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, BoxProps } from '@mui/material';
+import React from "react";
+import { Box, BoxProps } from "@mui/material";
 
 /**
  * Fullscreen display mode types:
@@ -7,7 +7,7 @@ import { Box, BoxProps } from '@mui/material';
  * - 'browser': Fills browser viewport using fixed positioning.
  * - 'native': Native fullscreen (via browser API, if available).
  */
-export type FullscreenMode = 'normal' | 'browser' | 'native';
+export type FullscreenMode = "normal" | "browser" | "native";
 
 /**
  * Props for FullscreenContainer.
@@ -36,41 +36,41 @@ const FullscreenContainer: React.FC<FullscreenContainerProps> = ({
    */
   const getContainerStyles = () => {
     const baseStyles = {
-      width: '100%',
-      bgcolor: 'background.default',
-      position: 'relative' as const,
+      width: "100%",
+      bgcolor: "background.default",
+      position: "relative" as const,
     };
 
     switch (fullscreenMode) {
-      case 'browser':
+      case "browser":
         return {
-          position: 'fixed' as const,
+          position: "fixed" as const,
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          bgcolor: 'background.default',
+          bgcolor: "background.default",
           zIndex: 9998,
-          overflow: 'auto',
+          overflow: "auto",
         };
-      case 'native':
+      case "native":
         return {
           ...baseStyles,
-          minHeight: '100vh',
+          minHeight: "100vh",
           ...(isNativeFullscreen && {
-            position: 'fixed' as const,
+            position: "fixed" as const,
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
             zIndex: 9999,
-            overflow: 'auto'
-          })
+            overflow: "auto",
+          }),
         };
       default:
         return {
           ...baseStyles,
-          minHeight: '100vh',
+          minHeight: "100vh",
         };
     }
   };
@@ -80,7 +80,7 @@ const FullscreenContainer: React.FC<FullscreenContainerProps> = ({
       {...props}
       sx={{
         ...getContainerStyles(),
-        ...sx
+        ...sx,
       }}
     >
       {children}

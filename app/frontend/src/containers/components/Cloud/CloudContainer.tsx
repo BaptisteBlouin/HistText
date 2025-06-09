@@ -1,13 +1,13 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { Box, useTheme, useMediaQuery } from '@mui/material';
-import CloudHeader from './CloudHeader';
-import CloudControls from './CloudControls';
-import CloudVisualization from './CloudVisualization';
-import CloudStats from './CloudStats';
-import CloudDialogs from './CloudDialogs';
-import { useCloudState } from './hooks/useCloudState';
-import { useCloudData } from './hooks/useCloudData';
-import { CloudEmptyState, CloudLoadingState } from './CloudStates';
+import React, { useState, useRef, useMemo } from "react";
+import { Box, useTheme, useMediaQuery } from "@mui/material";
+import CloudHeader from "./CloudHeader";
+import CloudControls from "./CloudControls";
+import CloudVisualization from "./CloudVisualization";
+import CloudStats from "./CloudStats";
+import CloudDialogs from "./CloudDialogs";
+import { useCloudState } from "./hooks/useCloudState";
+import { useCloudData } from "./hooks/useCloudData";
+import { CloudEmptyState, CloudLoadingState } from "./CloudStates";
 
 /**
  * Props for CloudContainer component.
@@ -33,10 +33,10 @@ interface CloudContainerProps {
 const CloudContainer: React.FC<CloudContainerProps> = ({
   wordFrequency,
   isLoading = false,
-  progress = 0
+  progress = 0,
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const cloudRef = useRef<HTMLDivElement>(null);
 
   // State management for all cloud UI and options
@@ -74,7 +74,7 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
     shareDialogOpen,
     setShareDialogOpen,
     fullscreen,
-    setFullscreen
+    setFullscreen,
   } = useCloudState();
 
   // Data processing for the cloud, using current filters and settings
@@ -85,7 +85,7 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
     maxWords,
     highlightedWord,
     fullscreen,
-    isMobile
+    isMobile,
   });
 
   // Show loading UI
@@ -99,7 +99,7 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
   }
 
   return (
-    <Box sx={{ p: 3, width: '100%' }}>
+    <Box sx={{ p: 3, width: "100%" }}>
       <CloudHeader
         isAnimating={isAnimating}
         stats={stats}
@@ -107,7 +107,15 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
         showControls={showControls}
         onToggleControls={() => setShowControls(!showControls)}
         onShuffleColors={() => {
-          const schemes = ['default', 'warm', 'cool', 'purple', 'forest', 'sunset', 'monochrome'];
+          const schemes = [
+            "default",
+            "warm",
+            "cool",
+            "purple",
+            "forest",
+            "sunset",
+            "monochrome",
+          ];
           const currentIndex = schemes.indexOf(colorScheme);
           const nextIndex = (currentIndex + 1) % schemes.length;
           setColorScheme(schemes[nextIndex]);
@@ -141,11 +149,19 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
         onMaxWordsChange={setMaxWords}
         filterMinFreq={filterMinFreq}
         onFilterMinFreqChange={setFilterMinFreq}
-        onDownloadPng={() => downloadWordCloud('png')}
-        onDownloadSvg={() => downloadWordCloud('svg')}
+        onDownloadPng={() => downloadWordCloud("png")}
+        onDownloadSvg={() => downloadWordCloud("svg")}
         onShare={() => setShareDialogOpen(true)}
         onShuffle={() => {
-          const schemes = ['default', 'warm', 'cool', 'purple', 'forest', 'sunset', 'monochrome'];
+          const schemes = [
+            "default",
+            "warm",
+            "cool",
+            "purple",
+            "forest",
+            "sunset",
+            "monochrome",
+          ];
           const currentIndex = schemes.indexOf(colorScheme);
           const nextIndex = (currentIndex + 1) % schemes.length;
           setColorScheme(schemes[nextIndex]);
@@ -183,7 +199,9 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
         filterMinFreq={filterMinFreq}
         onCloseWordInfo={() => setShowWordInfo(false)}
         onCloseShare={() => setShareDialogOpen(false)}
-        onHighlightWord={(word) => setHighlightedWord(word === highlightedWord ? null : word)}
+        onHighlightWord={(word) =>
+          setHighlightedWord(word === highlightedWord ? null : word)
+        }
         onShare={() => {
           const config = {
             colorScheme,
@@ -193,7 +211,7 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
             maxFontSize,
             rotation,
             padding,
-            shapePattern
+            shapePattern,
           };
           const shareUrl = `${window.location.origin}${window.location.pathname}?cloudConfig=${encodeURIComponent(JSON.stringify(config))}`;
           navigator.clipboard.writeText(shareUrl);
@@ -208,39 +226,41 @@ const CloudContainer: React.FC<CloudContainerProps> = ({
    *
    * @param format - Output file format: 'png' (default) or 'svg'
    */
-  function downloadWordCloud(format: 'png' | 'svg' = 'png') {
-    const svg = cloudRef.current?.querySelector('svg');
+  function downloadWordCloud(format: "png" | "svg" = "png") {
+    const svg = cloudRef.current?.querySelector("svg");
     if (!svg) return;
 
-    if (format === 'svg') {
+    if (format === "svg") {
       const svgData = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([svgData], { type: 'image/svg+xml' });
+      const blob = new Blob([svgData], { type: "image/svg+xml" });
       const url = URL.createObjectURL(blob);
 
-      const link = document.createElement('a');
-      link.download = `wordcloud-${new Date().toISOString().split('T')[0]}.svg`;
+      const link = document.createElement("a");
+      link.download = `wordcloud-${new Date().toISOString().split("T")[0]}.svg`;
       link.href = url;
       link.click();
       URL.revokeObjectURL(url);
     } else {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d")!;
       canvas.width = cloudDimensions.width * 2;
       canvas.height = cloudDimensions.height * 2;
 
       const img = new Image();
       img.onload = () => {
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = "white";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        const link = document.createElement('a');
-        link.download = `wordcloud-${new Date().toISOString().split('T')[0]}.png`;
-        link.href = canvas.toDataURL('image/png');
+        const link = document.createElement("a");
+        link.download = `wordcloud-${new Date().toISOString().split("T")[0]}.png`;
+        link.href = canvas.toDataURL("image/png");
         link.click();
       };
 
-      img.src = 'data:image/svg+xml;base64,' + btoa(new XMLSerializer().serializeToString(svg));
+      img.src =
+        "data:image/svg+xml;base64," +
+        btoa(new XMLSerializer().serializeToString(svg));
     }
   }
 };

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import {
   Container,
   Paper,
@@ -18,7 +18,7 @@ import {
   IconButton,
   Stack,
   LinearProgress,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Person,
   Email,
@@ -29,28 +29,30 @@ import {
   Login as LoginIcon,
   CheckCircle,
   Cancel,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 export const RegistrationPage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    firstname: '',
-    lastname: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    firstname: "",
+    lastname: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
   const [processing, setProcessing] = useState<boolean>(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
   // Helper function to validate an email address
   const validateEmail = (email: string): boolean => {
-    const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@(([^<>()[\]\\.,;:\s@"]+\.)+[^<>()[\]\\.,;:\s@"]{2,})$/i;
+    const re =
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@(([^<>()[\]\\.,;:\s@"]+\.)+[^<>()[\]\\.,;:\s@"]{2,})$/i;
     return re.test(String(email).toLowerCase());
   };
 
@@ -60,10 +62,19 @@ export const RegistrationPage = () => {
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
     const hasNumber = /[0-9]/.test(password);
-    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(
+      password,
+    );
     const hasNoSpaces = !/\s/.test(password); // Check for any whitespace
-    
-    return hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar && hasNoSpaces;
+
+    return (
+      hasMinLength &&
+      hasUppercase &&
+      hasLowercase &&
+      hasNumber &&
+      hasSpecialChar &&
+      hasNoSpaces
+    );
   };
 
   // Calculate password strength - updated special char regex
@@ -73,28 +84,29 @@ export const RegistrationPage = () => {
     if (/[A-Z]/.test(password)) strength += 17;
     if (/[a-z]/.test(password)) strength += 17;
     if (/[0-9]/.test(password)) strength += 17;
-    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password)) strength += 16;
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password))
+      strength += 16;
     if (!/\s/.test(password)) strength += 16; // No spaces
     return strength;
   };
 
   const getPasswordStrengthColor = (strength: number) => {
-    if (strength < 40) return 'error';
-    if (strength < 60) return 'warning';
-    if (strength < 80) return 'info';
-    return 'success';
+    if (strength < 40) return "error";
+    if (strength < 60) return "warning";
+    if (strength < 80) return "info";
+    return "success";
   };
 
   const getPasswordStrengthText = (strength: number) => {
-    if (strength < 40) return 'Very Weak';
-    if (strength < 60) return 'Weak';
-    if (strength < 80) return 'Good';
-    return 'Strong';
+    if (strength < 40) return "Very Weak";
+    if (strength < 60) return "Weak";
+    if (strength < 80) return "Good";
+    return "Strong";
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (field === 'password') {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "password") {
       setPasswordStrength(calculatePasswordStrength(value));
     }
   };
@@ -106,21 +118,21 @@ export const RegistrationPage = () => {
     // Validate inputs
     const validationErrors: string[] = [];
     if (!formData.firstname.trim()) {
-      validationErrors.push('First name cannot be empty.');
+      validationErrors.push("First name cannot be empty.");
     }
     if (!formData.lastname.trim()) {
-      validationErrors.push('Last name cannot be empty.');
+      validationErrors.push("Last name cannot be empty.");
     }
     if (!validateEmail(formData.email)) {
-      validationErrors.push('Please enter a valid email address.');
+      validationErrors.push("Please enter a valid email address.");
     }
     if (!validatePassword(formData.password)) {
       validationErrors.push(
-        'Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character (spaces not allowed).',
+        "Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character (spaces not allowed).",
       );
     }
     if (formData.password !== formData.confirmPassword) {
-      validationErrors.push('Passwords do not match.');
+      validationErrors.push("Passwords do not match.");
     }
 
     // If there are errors, display them and do not proceed
@@ -131,10 +143,10 @@ export const RegistrationPage = () => {
 
     setProcessing(true);
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: formData.email,
@@ -147,10 +159,10 @@ export const RegistrationPage = () => {
 
       const data = await response.json();
       console.log(data);
-      navigate('/login');
+      navigate("/login");
     } catch (error) {
-      console.error('Registration failed', error);
-      setErrors(['Registration failed. Please try again later.']);
+      console.error("Registration failed", error);
+      setErrors(["Registration failed. Please try again later."]);
     } finally {
       setProcessing(false);
     }
@@ -162,9 +174,9 @@ export const RegistrationPage = () => {
   };
 
   if (auth.isAuthenticated && errors.length === 0 && !processing) {
-    navigate('/');
+    navigate("/");
     return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
         <Alert severity="info">
           Already logged in. Redirecting you to the home page...
         </Alert>
@@ -174,33 +186,41 @@ export const RegistrationPage = () => {
 
   // Updated password requirements to match validation function
   const passwordRequirements = [
-    { text: 'At least 8 characters', met: formData.password.length >= 8 },
-    { text: 'Contains uppercase letter', met: /[A-Z]/.test(formData.password) },
-    { text: 'Contains lowercase letter', met: /[a-z]/.test(formData.password) },
-    { text: 'Contains number', met: /[0-9]/.test(formData.password) },
-    { text: 'Contains special character', met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(formData.password) },
-    { text: 'No spaces allowed', met: !/\s/.test(formData.password) },
+    { text: "At least 8 characters", met: formData.password.length >= 8 },
+    { text: "Contains uppercase letter", met: /[A-Z]/.test(formData.password) },
+    { text: "Contains lowercase letter", met: /[a-z]/.test(formData.password) },
+    { text: "Contains number", met: /[0-9]/.test(formData.password) },
+    {
+      text: "Contains special character",
+      met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(formData.password),
+    },
+    { text: "No spaces allowed", met: !/\s/.test(formData.password) },
   ];
 
   return (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
-      <Card 
-        sx={{ 
+      <Card
+        sx={{
           borderRadius: 3,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-          overflow: 'hidden'
+          boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+          overflow: "hidden",
         }}
       >
-        <Box 
-          sx={{ 
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
+        <Box
+          sx={{
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
             p: 4,
-            textAlign: 'center'
+            textAlign: "center",
           }}
         >
           <PersonAdd sx={{ fontSize: 48, mb: 2 }} />
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            sx={{ fontWeight: 600 }}
+          >
             Create Your Account
           </Typography>
           <Typography variant="body1" sx={{ opacity: 0.9 }}>
@@ -224,12 +244,14 @@ export const RegistrationPage = () => {
             )}
 
             <Stack spacing={3}>
-              <Box sx={{ display: 'flex', gap: 2 }}>
+              <Box sx={{ display: "flex", gap: 2 }}>
                 <TextField
                   fullWidth
                   label="First Name"
                   value={formData.firstname}
-                  onChange={(e) => handleInputChange('firstname', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("firstname", e.target.value)
+                  }
                   required
                   placeholder="Enter your first name"
                   InputProps={{
@@ -244,7 +266,9 @@ export const RegistrationPage = () => {
                   fullWidth
                   label="Last Name"
                   value={formData.lastname}
-                  onChange={(e) => handleInputChange('lastname', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("lastname", e.target.value)
+                  }
                   required
                   placeholder="Enter your last name"
                   InputProps={{
@@ -262,7 +286,7 @@ export const RegistrationPage = () => {
                 label="Email Address"
                 type="email"
                 value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
+                onChange={(e) => handleInputChange("email", e.target.value)}
                 required
                 placeholder="Enter your email address"
                 InputProps={{
@@ -277,9 +301,9 @@ export const RegistrationPage = () => {
               <TextField
                 fullWidth
                 label="Password"
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 value={formData.password}
-                onChange={(e) => handleInputChange('password', e.target.value)}
+                onChange={(e) => handleInputChange("password", e.target.value)}
                 required
                 placeholder="Create a strong password"
                 InputProps={{
@@ -303,10 +327,16 @@ export const RegistrationPage = () => {
 
               {formData.password && (
                 <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      mb: 1,
+                    }}
+                  >
                     <Typography variant="body2">Password Strength:</Typography>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       color={`${getPasswordStrengthColor(passwordStrength)}.main`}
                       sx={{ fontWeight: 600 }}
                     >
@@ -322,15 +352,18 @@ export const RegistrationPage = () => {
 
                   <Stack spacing={1}>
                     {passwordRequirements.map((req, index) => (
-                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        key={index}
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
                         {req.met ? (
                           <CheckCircle color="success" fontSize="small" />
                         ) : (
                           <Cancel color="error" fontSize="small" />
                         )}
-                        <Typography 
-                          variant="body2" 
-                          color={req.met ? 'success.main' : 'text.secondary'}
+                        <Typography
+                          variant="body2"
+                          color={req.met ? "success.main" : "text.secondary"}
                         >
                           {req.text}
                         </Typography>
@@ -343,16 +376,22 @@ export const RegistrationPage = () => {
               <TextField
                 fullWidth
                 label="Confirm Password"
-                type={showConfirmPassword ? 'text' : 'password'}
+                type={showConfirmPassword ? "text" : "password"}
                 value={formData.confirmPassword}
-                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("confirmPassword", e.target.value)
+                }
                 required
                 placeholder="Confirm your password"
-                error={formData.confirmPassword !== '' && formData.password !== formData.confirmPassword}
+                error={
+                  formData.confirmPassword !== "" &&
+                  formData.password !== formData.confirmPassword
+                }
                 helperText={
-                  formData.confirmPassword !== '' && formData.password !== formData.confirmPassword
-                    ? 'Passwords do not match'
-                    : ''
+                  formData.confirmPassword !== "" &&
+                  formData.password !== formData.confirmPassword
+                    ? "Passwords do not match"
+                    : ""
                 }
                 InputProps={{
                   startAdornment: (
@@ -363,10 +402,16 @@ export const RegistrationPage = () => {
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                         edge="end"
                       >
-                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                        {showConfirmPassword ? (
+                          <VisibilityOff />
+                        ) : (
+                          <Visibility />
+                        )}
                       </IconButton>
                     </InputAdornment>
                   ),
@@ -379,29 +424,37 @@ export const RegistrationPage = () => {
                 variant="contained"
                 size="large"
                 disabled={
-                  processing || 
-                  !formData.firstname || 
-                  !formData.lastname || 
-                  !formData.email || 
-                  !formData.password || 
+                  processing ||
+                  !formData.firstname ||
+                  !formData.lastname ||
+                  !formData.email ||
+                  !formData.password ||
                   !formData.confirmPassword ||
                   formData.password !== formData.confirmPassword ||
-                  passwordStrength < 100  // Updated to require all 5 criteria (20 * 5 = 100)
+                  passwordStrength < 100 // Updated to require all 5 criteria (20 * 5 = 100)
                 }
                 sx={{
                   py: 1.5,
                   mb: 3,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  "&:hover": {
+                    background:
+                      "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
                   },
-                  '&:disabled': {
-                    background: 'rgba(0,0,0,0.12)',
-                  }
+                  "&:disabled": {
+                    background: "rgba(0,0,0,0.12)",
+                  },
                 }}
-                startIcon={processing ? <CircularProgress size={20} color="inherit" /> : <PersonAdd />}
+                startIcon={
+                  processing ? (
+                    <CircularProgress size={20} color="inherit" />
+                  ) : (
+                    <PersonAdd />
+                  )
+                }
               >
-                {processing ? 'Creating Account...' : 'Create Account'}
+                {processing ? "Creating Account..." : "Create Account"}
               </Button>
 
               <Divider sx={{ mb: 3 }}>
@@ -413,7 +466,7 @@ export const RegistrationPage = () => {
               <Button
                 fullWidth
                 variant="outlined"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate("/login")}
                 startIcon={<LoginIcon />}
                 sx={{ py: 1.2 }}
               >
@@ -424,12 +477,12 @@ export const RegistrationPage = () => {
         </CardContent>
       </Card>
 
-      <Box sx={{ mt: 3, textAlign: 'center' }}>
+      <Box sx={{ mt: 3, textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">
-          Need help activating your account?{' '}
-          <Link 
-            onClick={() => navigate('/activate')} 
-            sx={{ cursor: 'pointer', fontWeight: 600 }}
+          Need help activating your account?{" "}
+          <Link
+            onClick={() => navigate("/activate")}
+            sx={{ cursor: "pointer", fontWeight: 600 }}
           >
             Activate here
           </Link>

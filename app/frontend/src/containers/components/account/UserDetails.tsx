@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -14,7 +14,7 @@ import {
   Fade,
   Zoom,
   CircularProgress,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Person,
   Email,
@@ -24,10 +24,10 @@ import {
   Edit,
   Save,
   Cancel,
-} from '@mui/icons-material';
-import { toast } from 'react-toastify';
-import axios, { AxiosHeaders } from 'axios';
-import { useAuth } from '../../../hooks/useAuth';
+} from "@mui/icons-material";
+import { toast } from "react-toastify";
+import axios, { AxiosHeaders } from "axios";
+import { useAuth } from "../../../hooks/useAuth";
 
 /**
  * Hook that returns an axios instance with the current user's access token attached as a Bearer header.
@@ -36,7 +36,7 @@ const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
     const instance = axios.create();
-    instance.interceptors.request.use(config => {
+    instance.interceptors.request.use((config) => {
       if (accessToken) {
         config.headers = new AxiosHeaders({
           ...config.headers,
@@ -64,17 +64,17 @@ export const UserDetails = ({ auth }: { auth: any }) => {
   // Main profile state
   const [userDetails, setUserDetails] = useState({
     id: null as number | null,
-    firstname: '',
-    lastname: '',
-    email: '',
+    firstname: "",
+    lastname: "",
+    email: "",
     activated: false,
   });
 
   // Form state for editing
   const [formData, setFormData] = useState({
-    firstname: '',
-    lastname: '',
-    email: '',
+    firstname: "",
+    lastname: "",
+    email: "",
   });
 
   /**
@@ -89,14 +89,16 @@ export const UserDetails = ({ auth }: { auth: any }) => {
       }
       try {
         setLoadingUserData(true);
-        const response = await authAxios.get(`/api/users/${auth.session.userId}`);
+        const response = await authAxios.get(
+          `/api/users/${auth.session.userId}`,
+        );
         if (response.data) {
           const userData = response.data;
           const details = {
             id: userData.id,
-            firstname: userData.firstname || '',
-            lastname: userData.lastname || '',
-            email: userData.email || '',
+            firstname: userData.firstname || "",
+            lastname: userData.lastname || "",
+            email: userData.email || "",
             activated: userData.activated || false,
           };
           setUserDetails(details);
@@ -107,12 +109,12 @@ export const UserDetails = ({ auth }: { auth: any }) => {
           });
         }
       } catch (error) {
-        console.error('Error loading user details:', error);
+        console.error("Error loading user details:", error);
         const details = {
           id: auth.session.userId,
-          firstname: '',
-          lastname: '',
-          email: '',
+          firstname: "",
+          lastname: "",
+          email: "",
           activated: true,
         };
         setUserDetails(details);
@@ -121,7 +123,7 @@ export const UserDetails = ({ auth }: { auth: any }) => {
           lastname: details.lastname,
           email: details.email,
         });
-        toast.error('Could not load user details from server');
+        toast.error("Could not load user details from server");
       } finally {
         setLoadingUserData(false);
       }
@@ -140,11 +142,11 @@ export const UserDetails = ({ auth }: { auth: any }) => {
    */
   const handleSave = useCallback(async () => {
     if (!formData.firstname.trim() || !formData.lastname.trim()) {
-      toast.error('First name and last name are required');
+      toast.error("First name and last name are required");
       return;
     }
     if (!userDetails.id) {
-      toast.error('User ID not found');
+      toast.error("User ID not found");
       return;
     }
     setIsLoading(true);
@@ -156,27 +158,27 @@ export const UserDetails = ({ auth }: { auth: any }) => {
         activated: userDetails.activated,
       };
       await authAxios.put(`/api/users/${userDetails.id}`, updateData);
-      setUserDetails(prev => ({
+      setUserDetails((prev) => ({
         ...prev,
         firstname: formData.firstname,
         lastname: formData.lastname,
       }));
       setIsEditing(false);
-      toast.success('Profile updated successfully!');
+      toast.success("Profile updated successfully!");
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error("Error updating profile:", error);
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 404) {
-          toast.error('User not found');
+          toast.error("User not found");
         } else if (error.response?.status === 403) {
-          toast.error('You do not have permission to update this profile');
+          toast.error("You do not have permission to update this profile");
         } else {
-          toast.error('Failed to update profile');
+          toast.error("Failed to update profile");
         }
       } else if (error instanceof Error) {
         toast.error(error.message);
       } else {
-        toast.error('Failed to update profile');
+        toast.error("Failed to update profile");
       }
     } finally {
       setIsLoading(false);
@@ -201,32 +203,46 @@ export const UserDetails = ({ auth }: { auth: any }) => {
    * @param value - New value for the field
    */
   const handleInputChange = useCallback((field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   /** Returns initials for avatar from first and last name, or from email if blank. */
   const getInitials = () => {
-    const first = userDetails.firstname?.charAt(0) || '';
-    const last = userDetails.lastname?.charAt(0) || '';
-    return (first + last).toUpperCase() || userDetails.email?.charAt(0).toUpperCase() || 'U';
+    const first = userDetails.firstname?.charAt(0) || "";
+    const last = userDetails.lastname?.charAt(0) || "";
+    return (
+      (first + last).toUpperCase() ||
+      userDetails.email?.charAt(0).toUpperCase() ||
+      "U"
+    );
   };
 
   /** Returns display name (full name if possible, or email, or "User"). */
   const getDisplayName = () => {
     const fullName = `${userDetails.firstname} ${userDetails.lastname}`.trim();
-    return fullName || userDetails.email || 'User';
+    return fullName || userDetails.email || "User";
   };
 
   /** Returns the roles for the current session. */
   const getRoles = () => {
-    return auth.session?.roles || ['User'];
+    return auth.session?.roles || ["User"];
   };
 
   if (loadingUserData) {
     return (
-      <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+      <Box
+        sx={{
+          p: 4,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
         <CircularProgress size={60} />
-        <Typography variant="h6" sx={{ ml: 2 }}>Loading profile...</Typography>
+        <Typography variant="h6" sx={{ ml: 2 }}>
+          Loading profile...
+        </Typography>
       </Box>
     );
   }
@@ -235,7 +251,14 @@ export const UserDetails = ({ auth }: { auth: any }) => {
     <Box sx={{ p: 4 }}>
       <Fade in={true} timeout={600}>
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 4,
+            }}
+          >
             <Box>
               <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
                 Profile Information
@@ -250,10 +273,12 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                 startIcon={<Edit />}
                 onClick={handleEdit}
                 sx={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                  }
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  "&:hover": {
+                    background:
+                      "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                  },
                 }}
               >
                 Edit Profile
@@ -270,17 +295,21 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                 </Button>
                 <Button
                   variant="contained"
-                  startIcon={isLoading ? <CircularProgress size={16} /> : <Save />}
+                  startIcon={
+                    isLoading ? <CircularProgress size={16} /> : <Save />
+                  }
                   onClick={handleSave}
                   disabled={isLoading}
                   sx={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                    }
+                    background:
+                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    "&:hover": {
+                      background:
+                        "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                    },
                   }}
                 >
-                  {isLoading ? 'Saving...' : 'Save Changes'}
+                  {isLoading ? "Saving..." : "Save Changes"}
                 </Button>
               </Stack>
             )}
@@ -289,30 +318,40 @@ export const UserDetails = ({ auth }: { auth: any }) => {
           <Grid container spacing={4}>
             <Grid item xs={12} md={4}>
               <Zoom in={true} timeout={800}>
-                <Card sx={{ textAlign: 'center', p: 3 }}>
+                <Card sx={{ textAlign: "center", p: 3 }}>
                   <Avatar
                     sx={{
                       width: 120,
                       height: 120,
-                      fontSize: '2rem',
+                      fontSize: "2rem",
                       fontWeight: 600,
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background:
+                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                       mb: 2,
-                      mx: 'auto',
+                      mx: "auto",
                     }}
                   >
                     {getInitials()}
                   </Avatar>
-                  
+
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
                     {getDisplayName()}
                   </Typography>
-                  
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
                     {userDetails.email}
                   </Typography>
 
-                  <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    justifyContent="center"
+                    sx={{ mb: 2 }}
+                  >
                     <Chip
                       icon={<Verified />}
                       label={userDetails.activated ? "Active" : "Inactive"}
@@ -328,8 +367,10 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                   </Stack>
 
                   <Typography variant="body2" color="text.secondary">
-                    <CalendarToday sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
-                    User ID: {userDetails.id || 'Unknown'}
+                    <CalendarToday
+                      sx={{ fontSize: 14, mr: 0.5, verticalAlign: "middle" }}
+                    />
+                    User ID: {userDetails.id || "Unknown"}
                   </Typography>
                 </Card>
               </Zoom>
@@ -343,13 +384,19 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                       <TextField
                         fullWidth
                         label="First Name"
-                        value={isEditing ? formData.firstname : userDetails.firstname}
-                        onChange={(e) => handleInputChange('firstname', e.target.value)}
+                        value={
+                          isEditing ? formData.firstname : userDetails.firstname
+                        }
+                        onChange={(e) =>
+                          handleInputChange("firstname", e.target.value)
+                        }
                         disabled={!isEditing}
                         required
                         placeholder="Enter your first name"
                         InputProps={{
-                          startAdornment: <Person sx={{ color: 'action.active', mr: 1 }} />,
+                          startAdornment: (
+                            <Person sx={{ color: "action.active", mr: 1 }} />
+                          ),
                         }}
                       />
                     </Grid>
@@ -357,13 +404,19 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                       <TextField
                         fullWidth
                         label="Last Name"
-                        value={isEditing ? formData.lastname : userDetails.lastname}
-                        onChange={(e) => handleInputChange('lastname', e.target.value)}
+                        value={
+                          isEditing ? formData.lastname : userDetails.lastname
+                        }
+                        onChange={(e) =>
+                          handleInputChange("lastname", e.target.value)
+                        }
                         disabled={!isEditing}
                         required
                         placeholder="Enter your last name"
                         InputProps={{
-                          startAdornment: <Person sx={{ color: 'action.active', mr: 1 }} />,
+                          startAdornment: (
+                            <Person sx={{ color: "action.active", mr: 1 }} />
+                          ),
                         }}
                       />
                     </Grid>
@@ -374,8 +427,12 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                         value={userDetails.email}
                         disabled={true}
                         InputProps={{
-                          startAdornment: <Email sx={{ color: 'action.active', mr: 1 }} />,
-                          endAdornment: userDetails.activated && <Verified color="success" />,
+                          startAdornment: (
+                            <Email sx={{ color: "action.active", mr: 1 }} />
+                          ),
+                          endAdornment: userDetails.activated && (
+                            <Verified color="success" />
+                          ),
                         }}
                         helperText="Email cannot be changed for security reasons"
                       />
@@ -389,10 +446,19 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                     <Grid container spacing={3}>
                       <Grid item xs={12} sm={6}>
                         <Box>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 1 }}
+                          >
                             Roles
                           </Typography>
-                          <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            flexWrap="wrap"
+                            gap={1}
+                          >
                             {getRoles().map((role: string, index: number) => (
                               <Chip
                                 key={index}
@@ -407,12 +473,20 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <Box>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 1 }}
+                          >
                             Account Status
                           </Typography>
                           <Chip
-                            icon={userDetails.activated ? <Verified /> : <Cancel />}
-                            label={userDetails.activated ? "Active" : "Inactive"}
+                            icon={
+                              userDetails.activated ? <Verified /> : <Cancel />
+                            }
+                            label={
+                              userDetails.activated ? "Active" : "Inactive"
+                            }
                             color={userDetails.activated ? "success" : "error"}
                             size="small"
                           />
@@ -427,8 +501,12 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                     </Typography>
                     <Grid container spacing={3}>
                       <Grid item xs={6} sm={3}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="h4" color="primary" sx={{ fontWeight: 700 }}>
+                        <Box sx={{ textAlign: "center" }}>
+                          <Typography
+                            variant="h4"
+                            color="primary"
+                            sx={{ fontWeight: 700 }}
+                          >
                             {getRoles().length}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -437,9 +515,13 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                         </Box>
                       </Grid>
                       <Grid item xs={6} sm={3}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="h4" color="success.main" sx={{ fontWeight: 700 }}>
-                            {auth.accessToken ? '1' : '0'}
+                        <Box sx={{ textAlign: "center" }}>
+                          <Typography
+                            variant="h4"
+                            color="success.main"
+                            sx={{ fontWeight: 700 }}
+                          >
+                            {auth.accessToken ? "1" : "0"}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
                             Active Token
@@ -447,8 +529,12 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                         </Box>
                       </Grid>
                       <Grid item xs={6} sm={3}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="h4" color="warning.main" sx={{ fontWeight: 700 }}>
+                        <Box sx={{ textAlign: "center" }}>
+                          <Typography
+                            variant="h4"
+                            color="warning.main"
+                            sx={{ fontWeight: 700 }}
+                          >
                             {auth.session?.permissions?.length || 0}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -457,8 +543,12 @@ export const UserDetails = ({ auth }: { auth: any }) => {
                         </Box>
                       </Grid>
                       <Grid item xs={6} sm={3}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="h4" color="info.main" sx={{ fontWeight: 700 }}>
+                        <Box sx={{ textAlign: "center" }}>
+                          <Typography
+                            variant="h4"
+                            color="info.main"
+                            sx={{ fontWeight: 700 }}
+                          >
                             100%
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -471,7 +561,8 @@ export const UserDetails = ({ auth }: { auth: any }) => {
 
                   {isEditing && (
                     <Alert severity="info" sx={{ mt: 3 }}>
-                      Changes will be saved to your profile and updated across all sessions.
+                      Changes will be saved to your profile and updated across
+                      all sessions.
                     </Alert>
                   )}
                 </CardContent>

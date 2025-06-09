@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Card,
   CardContent,
@@ -13,7 +13,7 @@ import {
   Stack,
   Tooltip,
   Button,
-} from '@mui/material';
+} from "@mui/material";
 import {
   ExpandMore,
   ExpandLess,
@@ -23,7 +23,7 @@ import {
   Schedule,
   Error as ErrorIcon,
   CheckCircle,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 /**
  * Tracks async loading state for a dashboard component.
@@ -102,7 +102,7 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
 
     setCountdown(refreshInterval / 1000);
     const interval = setInterval(() => {
-      setCountdown(prev => {
+      setCountdown((prev) => {
         if (prev <= 1) {
           return refreshInterval / 1000;
         }
@@ -111,7 +111,13 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, expanded, state.loading, state.lastUpdated, refreshInterval]);
+  }, [
+    autoRefresh,
+    expanded,
+    state.loading,
+    state.lastUpdated,
+    refreshInterval,
+  ]);
 
   /**
    * Handles expanding/collapsing the card.
@@ -151,21 +157,21 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
    * Returns status text for the current state.
    */
   const getStatusText = () => {
-    if (state.loading) return 'Loading...';
-    if (state.error) return 'Error';
-    if (state.loaded) return 'Loaded';
-    return 'Not loaded';
+    if (state.loading) return "Loading...";
+    if (state.error) return "Error";
+    if (state.loaded) return "Loaded";
+    return "Not loaded";
   };
 
   return (
     <Card sx={{ mb: 4 }}>
       <CardHeader
         title={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               {title}
             </Typography>
-            <Chip 
+            <Chip
               icon={getStatusIcon()}
               label={getStatusText()}
               size="small"
@@ -181,7 +187,7 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
                 Next refresh: {countdown}s
               </Typography>
             )}
-            
+
             {/* Last updated */}
             {state.lastUpdated && (
               <Typography variant="caption" color="text.secondary">
@@ -191,8 +197,8 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
 
             {/* Manual refresh */}
             <Tooltip title="Refresh Data">
-              <IconButton 
-                onClick={handleRefresh} 
+              <IconButton
+                onClick={handleRefresh}
                 size="small"
                 disabled={state.loading}
               >
@@ -223,8 +229,8 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
           )}
 
           {state.error && (
-            <Alert 
-              severity="error" 
+            <Alert
+              severity="error"
               sx={{ mb: 2 }}
               action={
                 <Button color="inherit" size="small" onClick={handleRefresh}>
@@ -237,9 +243,9 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
           )}
 
           {shouldLoad && (
-            <Suspense 
+            <Suspense
               fallback={
-                <Box sx={{ p: 4, textAlign: 'center' }}>
+                <Box sx={{ p: 4, textAlign: "center" }}>
                   <LinearProgress sx={{ mb: 2 }} />
                   <Typography variant="body2" color="text.secondary">
                     Loading component...
@@ -252,12 +258,12 @@ export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
           )}
 
           {!shouldLoad && (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Box sx={{ p: 4, textAlign: "center" }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Component not loaded. Click to expand and load.
               </Typography>
-              <Button 
-                variant="outlined" 
+              <Button
+                variant="outlined"
                 onClick={handleToggle}
                 startIcon={<Visibility />}
               >

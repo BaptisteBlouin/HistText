@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import {
   Container,
   Paper,
@@ -16,60 +16,62 @@ import {
   CardContent,
   InputAdornment,
   Stack,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Email,
   LockReset,
   Login as LoginIcon,
   PersonAdd,
   CheckCircle,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 export const RecoveryPage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState<string>('');
+  const [email, setEmail] = useState<string>("");
   const [processing, setProcessing] = useState<boolean>(false);
   const [success, setSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const recover = async () => {
     if (!email.trim()) {
-      setError('Please enter your email address');
+      setError("Please enter your email address");
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
+      setError("Please enter a valid email address");
       return;
     }
 
     setProcessing(true);
     setError(null);
-    
+
     try {
-      const response = await fetch('/api/auth/forgot', {
-        method: 'POST',
+      const response = await fetch("/api/auth/forgot", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ email }),
       });
-      
+
       const data = await response.json();
       console.log(data);
-      
+
       if (response.ok) {
         setSuccess(true);
-        setEmail('');
+        setEmail("");
       } else {
-        setError(data.message || 'Failed to send recovery email. Please try again.');
+        setError(
+          data.message || "Failed to send recovery email. Please try again.",
+        );
       }
     } catch (error) {
-      console.error('Recovery request failed:', error);
-      setError('Network error. Please check your connection and try again.');
+      console.error("Recovery request failed:", error);
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setProcessing(false);
     }
@@ -83,7 +85,7 @@ export const RecoveryPage = () => {
   // Only redirect if authenticated and no errors and not processing
   if (auth.isAuthenticated && !error && !processing) {
     return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
+      <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
         <Alert severity="info">
           Already logged in. Redirecting you to the home page...
         </Alert>
@@ -94,23 +96,28 @@ export const RecoveryPage = () => {
   if (success) {
     return (
       <Container maxWidth="sm" sx={{ mt: 8 }}>
-        <Card 
-          sx={{ 
+        <Card
+          sx={{
             borderRadius: 3,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-            overflow: 'hidden'
+            boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+            overflow: "hidden",
           }}
         >
-          <Box 
-            sx={{ 
-              background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-              color: 'white',
+          <Box
+            sx={{
+              background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
+              color: "white",
               p: 4,
-              textAlign: 'center'
+              textAlign: "center",
             }}
           >
             <CheckCircle sx={{ fontSize: 64, mb: 2 }} />
-            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="h4"
+              component="h1"
+              gutterBottom
+              sx={{ fontWeight: 600 }}
+            >
               Check Your Email
             </Typography>
             <Typography variant="body1" sx={{ opacity: 0.9 }}>
@@ -118,16 +125,18 @@ export const RecoveryPage = () => {
             </Typography>
           </Box>
 
-          <CardContent sx={{ p: 4, textAlign: 'center' }}>
+          <CardContent sx={{ p: 4, textAlign: "center" }}>
             <Alert severity="success" sx={{ mb: 3 }}>
               <Typography variant="body2">
-                We've sent password recovery instructions to your email address. 
-                Please check your inbox and follow the link to reset your password.
+                We've sent password recovery instructions to your email address.
+                Please check your inbox and follow the link to reset your
+                password.
               </Typography>
             </Alert>
 
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Didn't receive the email? Check your spam folder or try again with a different email address.
+              Didn't receive the email? Check your spam folder or try again with
+              a different email address.
             </Typography>
 
             <Stack spacing={2}>
@@ -142,17 +151,19 @@ export const RecoveryPage = () => {
               >
                 Try Different Email
               </Button>
-              
+
               <Button
                 fullWidth
                 variant="contained"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate("/login")}
                 startIcon={<LoginIcon />}
                 sx={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                  }
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  "&:hover": {
+                    background:
+                      "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                  },
                 }}
               >
                 Back to Sign In
@@ -166,23 +177,28 @@ export const RecoveryPage = () => {
 
   return (
     <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Card 
-        sx={{ 
+      <Card
+        sx={{
           borderRadius: 3,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-          overflow: 'hidden'
+          boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+          overflow: "hidden",
         }}
       >
-        <Box 
-          sx={{ 
-            background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
-            color: 'white',
+        <Box
+          sx={{
+            background: "linear-gradient(135deg, #ff9800 0%, #f57c00 100%)",
+            color: "white",
             p: 4,
-            textAlign: 'center'
+            textAlign: "center",
           }}
         >
           <LockReset sx={{ fontSize: 48, mb: 2 }} />
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            sx={{ fontWeight: 600 }}
+          >
             Forgot Password?
           </Typography>
           <Typography variant="body1" sx={{ opacity: 0.9 }}>
@@ -218,8 +234,8 @@ export const RecoveryPage = () => {
 
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body2">
-                We'll send you a secure link to reset your password. 
-                The link will expire in 1 hour for security.
+                We'll send you a secure link to reset your password. The link
+                will expire in 1 hour for security.
               </Typography>
             </Alert>
 
@@ -232,17 +248,24 @@ export const RecoveryPage = () => {
               sx={{
                 py: 1.5,
                 mb: 3,
-                background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #f57c00 0%, #ef6c00 100%)',
+                background: "linear-gradient(135deg, #ff9800 0%, #f57c00 100%)",
+                "&:hover": {
+                  background:
+                    "linear-gradient(135deg, #f57c00 0%, #ef6c00 100%)",
                 },
-                '&:disabled': {
-                  background: 'rgba(0,0,0,0.12)',
-                }
+                "&:disabled": {
+                  background: "rgba(0,0,0,0.12)",
+                },
               }}
-              startIcon={processing ? <CircularProgress size={20} color="inherit" /> : <LockReset />}
+              startIcon={
+                processing ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <LockReset />
+                )
+              }
             >
-              {processing ? 'Sending...' : 'Send Reset Instructions'}
+              {processing ? "Sending..." : "Send Reset Instructions"}
             </Button>
 
             <Divider sx={{ mb: 3 }}>
@@ -251,11 +274,11 @@ export const RecoveryPage = () => {
               </Typography>
             </Divider>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <Button
                 fullWidth
                 variant="outlined"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate("/login")}
                 startIcon={<LoginIcon />}
                 sx={{ py: 1.2 }}
               >
@@ -265,7 +288,7 @@ export const RecoveryPage = () => {
               <Button
                 fullWidth
                 variant="text"
-                onClick={() => navigate('/register')}
+                onClick={() => navigate("/register")}
                 startIcon={<PersonAdd />}
                 sx={{ py: 1 }}
               >

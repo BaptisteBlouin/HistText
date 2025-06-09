@@ -1,5 +1,5 @@
-import React from 'react';
-import { Badge, BadgeProps } from '@mui/material';
+import React from "react";
+import { Badge, BadgeProps } from "@mui/material";
 
 /**
  * Props for CountBadge component.
@@ -26,7 +26,7 @@ const CountBadge: React.FC<CountBadgeProps> = ({
   ...props
 }) => {
   const shouldShow = count > 0 || showZero;
-  
+
   return (
     <Badge
       {...props}

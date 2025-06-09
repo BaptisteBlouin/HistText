@@ -1,6 +1,6 @@
-import React from 'react';
-import { Box, Typography, useTheme, alpha } from '@mui/material';
-import { LoadingButton } from '../../../components/ui';
+import React from "react";
+import { Box, Typography, useTheme, alpha } from "@mui/material";
+import { LoadingButton } from "../../../components/ui";
 
 /**
  * Props for EmptyStateComponent.
@@ -21,21 +21,21 @@ interface EmptyStateComponentProps {
     icon: React.ReactNode;
     onClick: () => void;
   };
-  variant?: 'default' | 'minimal';
-  size?: 'small' | 'medium' | 'large';
+  variant?: "default" | "minimal";
+  size?: "small" | "medium" | "large";
 }
 
 /**
  * Renders an empty state UI with icon, title, description, and an optional action.
  * Supports customizable size and variant for integration in different contexts.
  */
-const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({ 
-  icon, 
-  title, 
-  description, 
+const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({
+  icon,
+  title,
+  description,
   action,
-  variant = 'default',
-  size = 'medium'
+  variant = "default",
+  size = "medium",
 }) => {
   const theme = useTheme();
 
@@ -44,26 +44,26 @@ const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({
    */
   const getSizeStyles = () => {
     switch (size) {
-      case 'small':
+      case "small":
         return {
           py: 4,
           iconSize: 48,
-          titleVariant: 'h6' as const,
-          descMaxWidth: 300
+          titleVariant: "h6" as const,
+          descMaxWidth: 300,
         };
-      case 'large':
+      case "large":
         return {
           py: 12,
           iconSize: 96,
-          titleVariant: 'h4' as const,
-          descMaxWidth: 600
+          titleVariant: "h4" as const,
+          descMaxWidth: 600,
         };
       default:
         return {
           py: 8,
           iconSize: 80,
-          titleVariant: 'h5' as const,
-          descMaxWidth: 400
+          titleVariant: "h5" as const,
+          descMaxWidth: 400,
         };
     }
   };
@@ -72,15 +72,15 @@ const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({
    * Returns variant-specific styles for background and borders.
    */
   const getVariantStyles = () => {
-    if (variant === 'minimal') {
+    if (variant === "minimal") {
       return {
-        background: 'transparent'
+        background: "transparent",
       };
     }
     return {
-      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+      background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
       borderRadius: 2,
-      border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+      border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
     };
   };
 
@@ -88,55 +88,59 @@ const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({
   const variantStyles = getVariantStyles();
 
   return (
-    <Box sx={{ 
-      textAlign: 'center', 
-      ...variantStyles,
-      ...sizeStyles
-    }}>
-      <Box sx={{ 
-        fontSize: sizeStyles.iconSize, 
-        color: 'text.secondary', 
-        mb: 3, 
-        opacity: 0.6,
-        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
-      }}>
+    <Box
+      sx={{
+        textAlign: "center",
+        ...variantStyles,
+        ...sizeStyles,
+      }}
+    >
+      <Box
+        sx={{
+          fontSize: sizeStyles.iconSize,
+          color: "text.secondary",
+          mb: 3,
+          opacity: 0.6,
+          filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
+        }}
+      >
         {icon}
       </Box>
-      
-      <Typography 
+
+      <Typography
         variant={sizeStyles.titleVariant}
-        color="text.secondary" 
-        gutterBottom 
+        color="text.secondary"
+        gutterBottom
         sx={{ fontWeight: 600 }}
       >
         {title}
       </Typography>
-      
-      <Typography 
-        variant="body1" 
-        color="text.secondary" 
-        sx={{ 
-          maxWidth: sizeStyles.descMaxWidth, 
-          mx: 'auto', 
+
+      <Typography
+        variant="body1"
+        color="text.secondary"
+        sx={{
+          maxWidth: sizeStyles.descMaxWidth,
+          mx: "auto",
           mb: action ? 3 : 0,
-          lineHeight: 1.6
+          lineHeight: 1.6,
         }}
       >
         {description}
       </Typography>
-      
+
       {action && (
         <LoadingButton
-          variant="outlined" 
+          variant="outlined"
           startIcon={action.icon}
           onClick={action.onClick}
-          sx={{ 
-            borderColor: '#667eea',
-            color: '#667eea',
-            '&:hover': { 
-              borderColor: '#5a6fd8',
-              backgroundColor: 'rgba(102, 126, 234, 0.1)'
-            }
+          sx={{
+            borderColor: "#667eea",
+            color: "#667eea",
+            "&:hover": {
+              borderColor: "#5a6fd8",
+              backgroundColor: "rgba(102, 126, 234, 0.1)",
+            },
           }}
         >
           {action.label}

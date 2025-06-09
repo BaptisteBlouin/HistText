@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Dialog,
   DialogTitle,
@@ -8,8 +8,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
-} from '@mui/material';
+  MenuItem,
+} from "@mui/material";
 
 /**
  * Props for the ExportDialog component.
@@ -34,7 +34,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
   exportFormat,
   onClose,
   onFormatChange,
-  onExport
+  onExport,
 }) => {
   return (
     <Dialog open={open} onClose={onClose}>
@@ -54,7 +54,9 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={onExport} variant="contained">Export</Button>
+        <Button onClick={onExport} variant="contained">
+          Export
+        </Button>
       </DialogActions>
     </Dialog>
   );

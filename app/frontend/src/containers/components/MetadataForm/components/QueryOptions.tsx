@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Card,
   CardContent,
@@ -12,10 +12,10 @@ import {
   Select,
   MenuItem,
   Collapse,
-  Box
-} from '@mui/material';
-import { Settings } from '@mui/icons-material';
-import config from '../../../../../config.json';
+  Box,
+} from "@mui/material";
+import { Settings } from "@mui/icons-material";
+import config from "../../../../../config.json";
 
 /**
  * Stats level type, defined by config.
@@ -67,21 +67,26 @@ const QueryOptions: React.FC<QueryOptionsProps> = ({
   docLevel,
   setDocLevel,
   showAdvanced,
-  setShowAdvanced
+  setShowAdvanced,
 }) => {
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="subtitle2">
-            Query Options
-          </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 2,
+          }}
+        >
+          <Typography variant="subtitle2">Query Options</Typography>
           <Button
             startIcon={<Settings />}
             onClick={() => setShowAdvanced(!showAdvanced)}
             size="small"
           >
-            {showAdvanced ? 'Hide' : 'Show'} Advanced
+            {showAdvanced ? "Hide" : "Show"} Advanced
           </Button>
         </Box>
 
@@ -89,9 +94,9 @@ const QueryOptions: React.FC<QueryOptionsProps> = ({
           <Grid item xs={12} md={6}>
             <FormControlLabel
               control={
-                <Switch 
-                  checked={getNER} 
-                  onChange={e => setGetNER(e.target.checked)}
+                <Switch
+                  checked={getNER}
+                  onChange={(e) => setGetNER(e.target.checked)}
                   color="primary"
                 />
               }
@@ -103,7 +108,7 @@ const QueryOptions: React.FC<QueryOptionsProps> = ({
               control={
                 <Switch
                   checked={downloadOnly}
-                  onChange={e => setDownloadOnly(e.target.checked)}
+                  onChange={(e) => setDownloadOnly(e.target.checked)}
                   color="secondary"
                 />
               }
@@ -111,7 +116,7 @@ const QueryOptions: React.FC<QueryOptionsProps> = ({
             />
           </Grid>
 
-          <Collapse in={showAdvanced} sx={{ width: '100%' }}>
+          <Collapse in={showAdvanced} sx={{ width: "100%" }}>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth size="small">
@@ -119,10 +124,14 @@ const QueryOptions: React.FC<QueryOptionsProps> = ({
                   <Select
                     value={statsLevel}
                     label="Statistics Level"
-                    onChange={(e) => setStatsLevel(e.target.value as StatsLevel)}
+                    onChange={(e) =>
+                      setStatsLevel(e.target.value as StatsLevel)
+                    }
                   >
-                    {config.statsLevelOptions.map(option => (
-                      <MenuItem key={option} value={option}>{option}</MenuItem>
+                    {config.statsLevelOptions.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {option}
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -135,8 +144,10 @@ const QueryOptions: React.FC<QueryOptionsProps> = ({
                     label="Document Limit"
                     onChange={(e) => setDocLevel(e.target.value as DocLevel)}
                   >
-                    {config.docLevelOptions.map(option => (
-                      <MenuItem key={option} value={option}>{option}</MenuItem>
+                    {config.docLevelOptions.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {option}
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>

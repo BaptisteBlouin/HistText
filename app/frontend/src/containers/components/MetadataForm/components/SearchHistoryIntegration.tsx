@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 import {
   Box,
   Button,
@@ -13,15 +13,14 @@ import {
   MenuItem,
   Chip,
   Typography,
-  Alert
-} from '@mui/material';
+  Alert,
+} from "@mui/material";
+import { BookmarkAdd, Save, History as HistoryIcon } from "@mui/icons-material";
 import {
-  BookmarkAdd,
-  Save,
-  History as HistoryIcon
-} from '@mui/icons-material';
-import { useSearchHistory, SavedSearch } from '../../../../hooks/useSearchHistory';
-import { buildQueryString } from '../../buildQueryString';
+  useSearchHistory,
+  SavedSearch,
+} from "../../../../hooks/useSearchHistory";
+import { buildQueryString } from "../../buildQueryString";
 
 /**
  * Props for SearchHistoryIntegration component.
@@ -52,24 +51,24 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
   selectedAlias,
   selectedSolrDatabase,
   resultsCount,
-  onShowHistory
+  onShowHistory,
 }) => {
   const { addToHistory, saveAsBookmark, stats } = useSearchHistory();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [searchName, setSearchName] = useState('');
-  const [searchDescription, setSearchDescription] = useState('');
-  const [searchTags, setSearchTags] = useState('');
+  const [searchName, setSearchName] = useState("");
+  const [searchDescription, setSearchDescription] = useState("");
+  const [searchTags, setSearchTags] = useState("");
   const [saveAsBookmarkFlag, setSaveAsBookmarkFlag] = useState(false);
 
   // Detect if current form data has any meaningful values
   const hasSearchContent = Object.values(formData).some((entries: any) =>
-    entries.some((entry: any) => entry.value && entry.value.trim())
+    entries.some((entry: any) => entry.value && entry.value.trim()),
   );
 
   // Generate a default name for saving based on form data and date range
   const generateDefaultName = useCallback(() => {
-    if (!hasSearchContent || !selectedAlias) return '';
-    
+    if (!hasSearchContent || !selectedAlias) return "";
+
     const keyTerms: string[] = [];
     Object.entries(formData).forEach(([field, entries]: [string, any]) => {
       entries.forEach((entry: any) => {
@@ -79,9 +78,9 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
       });
     });
 
-    const termsPart = keyTerms.slice(0, 3).join(', ');
-    const datePart = dateRange ? ` (${dateRange.min} to ${dateRange.max})` : '';
-    
+    const termsPart = keyTerms.slice(0, 3).join(", ");
+    const datePart = dateRange ? ` (${dateRange.min} to ${dateRange.max})` : "";
+
     return `${selectedAlias}: ${termsPart}${datePart}`.slice(0, 100);
   }, [formData, selectedAlias, dateRange, hasSearchContent]);
 
@@ -91,19 +90,24 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
 
     const defaultName = generateDefaultName();
     setSearchName(defaultName);
-    setSearchDescription('');
-    setSearchTags('');
+    setSearchDescription("");
+    setSearchTags("");
     setSaveAsBookmarkFlag(false);
     setSaveDialogOpen(true);
-  }, [hasSearchContent, selectedAlias, selectedSolrDatabase, generateDefaultName]);
+  }, [
+    hasSearchContent,
+    selectedAlias,
+    selectedSolrDatabase,
+    generateDefaultName,
+  ]);
 
   // Confirm saving the search either as bookmark or history
   const handleConfirmSave = useCallback(() => {
     if (!searchName.trim()) return;
 
     const queryString = buildQueryString(formData, dateRange);
-    
-    const searchData: Omit<SavedSearch, 'id' | 'createdAt' | 'lastUsed'> = {
+
+    const searchData: Omit<SavedSearch, "id" | "createdAt" | "lastUsed"> = {
       name: searchName.trim(),
       description: searchDescription.trim() || undefined,
       formData,
@@ -111,12 +115,17 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
       selectedAlias,
       selectedSolrDatabase: {
         id: selectedSolrDatabase.id,
-        name: selectedSolrDatabase.name
+        name: selectedSolrDatabase.name,
       },
       isBookmarked: saveAsBookmarkFlag,
-      tags: searchTags ? searchTags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+      tags: searchTags
+        ? searchTags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+        : [],
       queryString,
-      resultsCount
+      resultsCount,
     };
 
     if (saveAsBookmarkFlag) {
@@ -126,9 +135,9 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
     }
 
     setSaveDialogOpen(false);
-    setSearchName('');
-    setSearchDescription('');
-    setSearchTags('');
+    setSearchName("");
+    setSearchDescription("");
+    setSearchTags("");
   }, [
     searchName,
     searchDescription,
@@ -140,7 +149,7 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
     selectedSolrDatabase,
     resultsCount,
     addToHistory,
-    saveAsBookmark
+    saveAsBookmark,
   ]);
 
   if (!selectedAlias || !selectedSolrDatabase) {
@@ -149,7 +158,9 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
 
   return (
     <>
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Box
+        sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}
+      >
         <Button
           variant="outlined"
           startIcon={<HistoryIcon />}
@@ -157,11 +168,11 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
           sx={{ minWidth: 120 }}
         >
           Search Library
-          {(stats.totalHistory + stats.totalBookmarks) > 0 && (
-            <Chip 
-              label={stats.totalHistory + stats.totalBookmarks} 
-              size="small" 
-              sx={{ ml: 1 }} 
+          {stats.totalHistory + stats.totalBookmarks > 0 && (
+            <Chip
+              label={stats.totalHistory + stats.totalBookmarks}
+              size="small"
+              sx={{ ml: 1 }}
             />
           )}
         </Button>
@@ -179,22 +190,23 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
         )}
       </Box>
 
-      <Dialog 
-        open={saveDialogOpen} 
+      <Dialog
+        open={saveDialogOpen}
         onClose={() => setSaveDialogOpen(false)}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Save />
           Save Search
         </DialogTitle>
-        
+
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
             <Alert severity="info" sx={{ mb: 1 }}>
               <Typography variant="body2">
-                Save this search to quickly reuse it later. Bookmarked searches are organized separately from your recent history.
+                Save this search to quickly reuse it later. Bookmarked searches
+                are organized separately from your recent history.
               </Typography>
             </Alert>
 
@@ -230,8 +242,10 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
             <FormControl fullWidth>
               <InputLabel>Save Location</InputLabel>
               <Select
-                value={saveAsBookmarkFlag ? 'bookmark' : 'history'}
-                onChange={(e) => setSaveAsBookmarkFlag(e.target.value === 'bookmark')}
+                value={saveAsBookmarkFlag ? "bookmark" : "history"}
+                onChange={(e) =>
+                  setSaveAsBookmarkFlag(e.target.value === "bookmark")
+                }
                 label="Save Location"
               >
                 <MenuItem value="history">Recent Searches (temporary)</MenuItem>
@@ -239,14 +253,18 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
               </Select>
             </FormControl>
 
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Box sx={{ mt: 2, p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
                 Search Preview:
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1 }}>
                 <Chip label={selectedAlias} size="small" color="secondary" />
                 {resultsCount && (
-                  <Chip label={`${resultsCount} results`} size="small" color="success" />
+                  <Chip
+                    label={`${resultsCount} results`}
+                    size="small"
+                    color="success"
+                  />
                 )}
               </Box>
               <Typography variant="caption" color="text.secondary">
@@ -257,16 +275,14 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={() => setSaveDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleConfirmSave} 
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleConfirmSave}
             variant="contained"
             disabled={!searchName.trim()}
             startIcon={saveAsBookmarkFlag ? <BookmarkAdd /> : <Save />}
           >
-            {saveAsBookmarkFlag ? 'Save as Bookmark' : 'Save to History'}
+            {saveAsBookmarkFlag ? "Save as Bookmark" : "Save to History"}
           </Button>
         </DialogActions>
       </Dialog>

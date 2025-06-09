@@ -1,27 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 /**
  * React hook to manage interactive state for a word cloud component.
- * 
+ *
  * Provides setters and state for font size, color scheme, controls visibility,
  * rotation, word filtering, highlighting, animation, sharing dialog,
  * fullscreen, and other word cloud UI behaviors.
- * 
+ *
  * @returns Object containing all word cloud state variables and their setters.
  */
 export const useCloudState = () => {
   const [minFontSize, setMinFontSize] = useState(12);
   const [maxFontSize, setMaxFontSize] = useState(60);
-  const [colorScheme, setColorScheme] = useState('default');
+  const [colorScheme, setColorScheme] = useState("default");
   const [showControls, setShowControls] = useState(false);
   const [rotation, setRotation] = useState(true);
   const [padding, setPadding] = useState(2);
   const [maxWords, setMaxWords] = useState(100);
   const [filterMinFreq, setFilterMinFreq] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [highlightedWord, setHighlightedWord] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [shapePattern, setShapePattern] = useState('default');
+  const [shapePattern, setShapePattern] = useState("default");
   const [autoRotate, setAutoRotate] = useState(false);
   const [showWordInfo, setShowWordInfo] = useState(false);
   const [selectedWord, setSelectedWord] = useState<any>(null);
@@ -94,6 +94,6 @@ export const useCloudState = () => {
     setShareDialogOpen,
     /** Fullscreen mode state */
     fullscreen,
-    setFullscreen
+    setFullscreen,
   };
 };

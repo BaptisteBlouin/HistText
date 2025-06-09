@@ -1,16 +1,10 @@
-import React from 'react';
-import {
-  Alert,
-  Typography,
-  Button,
-  IconButton,
-  Box
-} from '@mui/material';
-import { AutoAwesome, Lightbulb, Close } from '@mui/icons-material';
+import React from "react";
+import { Alert, Typography, Button, IconButton, Box } from "@mui/material";
+import { AutoAwesome, Lightbulb, Close } from "@mui/icons-material";
 
 /**
  * Props for the FormHeader component.
- * 
+ *
  * @property hasEmbeddings - Whether the collection has word embeddings enabled.
  * @property showEmbeddingAlert - Whether to show the semantic search alert.
  * @property onShowEmbeddingAlert - Handler to show/hide the alert.
@@ -31,19 +25,19 @@ const FormHeader: React.FC<FormHeaderProps> = ({
   hasEmbeddings,
   showEmbeddingAlert,
   onShowEmbeddingAlert,
-  onOpenEmbeddingModal
+  onOpenEmbeddingModal,
 }) => {
   if (!hasEmbeddings || !showEmbeddingAlert) return null;
 
   return (
-    <Alert 
-      severity="info" 
+    <Alert
+      severity="info"
       icon={<AutoAwesome />}
       action={
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button 
-            color="inherit" 
-            size="small" 
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button
+            color="inherit"
+            size="small"
             onClick={onOpenEmbeddingModal}
             startIcon={<Lightbulb />}
           >
@@ -65,7 +59,8 @@ const FormHeader: React.FC<FormHeaderProps> = ({
         Semantic Search Available
       </Typography>
       <Typography variant="body2">
-        This collection has word embeddings enabled. Use the ⭐ button next to text fields for semantic search and explore advanced tools.
+        This collection has word embeddings enabled. Use the ⭐ button next to
+        text fields for semantic search and explore advanced tools.
       </Typography>
     </Alert>
   );

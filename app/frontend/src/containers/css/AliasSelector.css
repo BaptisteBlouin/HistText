@@ -28,7 +28,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-  font-family: 'palatino', sans-serif;
+  font-family: "palatino", sans-serif;
 }
 
 /* Hover effect for the select element */

@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { Box, Chip } from '@mui/material';
-import { isIdField, processContent } from '../utils';
+import React, { useMemo } from "react";
+import { Box, Chip } from "@mui/material";
+import { isIdField, processContent } from "../utils";
 
 /**
  * Props for the CellRenderer component, which renders table/grid cell values.
@@ -36,7 +36,7 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
     formData,
     onIdClick,
     showConcordance = false,
-    mainTextColumn
+    mainTextColumn,
   } = props;
 
   const field = colDef.field;
@@ -51,9 +51,18 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
       viewNER,
       formData,
       showConcordance,
-      mainTextColumn || ''
+      mainTextColumn || "",
     );
-  }, [value, field, data, nerData, viewNER, formData, showConcordance, mainTextColumn]);
+  }, [
+    value,
+    field,
+    data,
+    nerData,
+    viewNER,
+    formData,
+    showConcordance,
+    mainTextColumn,
+  ]);
 
   if (!value && value !== 0) return null;
 
@@ -62,16 +71,16 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
       <Box
         onClick={() => onIdClick(String(value))}
         sx={{
-          cursor: 'pointer',
-          color: 'primary.main',
-          textDecoration: 'underline',
-          fontWeight: 'bold',
-          padding: '4px',
-          '&:hover': {
-            backgroundColor: 'primary.light',
-            color: 'primary.contrastText',
-            borderRadius: 1
-          }
+          cursor: "pointer",
+          color: "primary.main",
+          textDecoration: "underline",
+          fontWeight: "bold",
+          padding: "4px",
+          "&:hover": {
+            backgroundColor: "primary.light",
+            color: "primary.contrastText",
+            borderRadius: 1,
+          },
         }}
       >
         {String(value)}
@@ -82,16 +91,16 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
   return (
     <Box
       sx={{
-        whiteSpace: 'pre-wrap',
-        overflowWrap: 'break-word',
+        whiteSpace: "pre-wrap",
+        overflowWrap: "break-word",
         lineHeight: 1.4,
-        width: '100%',
-        padding: '6px 8px',
-        fontSize: '0.875rem'
+        width: "100%",
+        padding: "6px 8px",
+        fontSize: "0.875rem",
       }}
     >
       {processedContent?.map((element, index) => {
-        if (element.type === 'ner') {
+        if (element.type === "ner") {
           return (
             <Chip
               key={element.key || `ner-${index}`}
@@ -99,29 +108,29 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
               size="small"
               sx={{
                 backgroundColor: element.color,
-                color: 'white',
-                margin: '2px',
+                color: "white",
+                margin: "2px",
                 fontWeight: 500,
-                fontSize: '0.75rem'
+                fontSize: "0.75rem",
               }}
             />
           );
-        } else if (element.type === 'highlight') {
+        } else if (element.type === "highlight") {
           return (
             <Box
               key={element.key || `highlight-${index}`}
               component="span"
               sx={{
-                backgroundColor: '#fbbf24',
-                color: '#92400e',
-                padding: '2px 6px',
+                backgroundColor: "#fbbf24",
+                color: "#92400e",
+                padding: "2px 6px",
                 borderRadius: 1,
                 fontWeight: 700,
-                border: '1px solid #f59e0b',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                textShadow: '0 1px 1px rgba(255,255,255,0.5)',
-                display: 'inline-block',
-                margin: '0 1px'
+                border: "1px solid #f59e0b",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                textShadow: "0 1px 1px rgba(255,255,255,0.5)",
+                display: "inline-block",
+                margin: "0 1px",
               }}
             >
               {String(element.content)}
@@ -135,6 +144,6 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
   );
 });
 
-CellRenderer.displayName = 'CellRenderer';
+CellRenderer.displayName = "CellRenderer";
 
 export default CellRenderer;

@@ -1,5 +1,5 @@
-import React from 'react';
-import CloudContainer from './CloudContainer';
+import React from "react";
+import CloudContainer from "./CloudContainer";
 
 /**
  * Props for the main Cloud component.

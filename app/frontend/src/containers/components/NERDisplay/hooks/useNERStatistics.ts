@@ -1,8 +1,8 @@
-import { useMemo, useState, useEffect } from 'react';
-import { LightEntity, EntityGroup, NERAdvancedStats } from '../types/ner-types';
-import { EntityNormalizer } from '../utils/EntityNormalizer';
-import { useNERProcessor } from './useNERProcessor';
-import config from '../../../../../config.json';
+import { useMemo, useState, useEffect } from "react";
+import { LightEntity, EntityGroup, NERAdvancedStats } from "../types/ner-types";
+import { EntityNormalizer } from "../utils/EntityNormalizer";
+import { useNERProcessor } from "./useNERProcessor";
+import config from "../../../../../config.json";
 
 interface BasicData {
   entities: LightEntity[];
@@ -20,9 +20,17 @@ interface BasicData {
  * Handles entity filtering, normalization, grouping, and advanced async processing.
  * Returns current stats along with processing state and status.
  */
-export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: number) => {
+export const useNERStatistics = (
+  nerData: Record<string, any>,
+  entityLimit?: number,
+) => {
   const [stats, setStats] = useState<NERAdvancedStats | null>(null);
-  const { processAdvancedStats, processingState, isProcessing, cancelProcessing } = useNERProcessor();
+  const {
+    processAdvancedStats,
+    processingState,
+    isProcessing,
+    cancelProcessing,
+  } = useNERProcessor();
 
   /**
    * Basic preprocessing: filter, normalize, group entities and compute preliminary stats.
@@ -30,8 +38,8 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
   const basicData = useMemo((): BasicData | null => {
     if (!nerData || Object.keys(nerData).length === 0) return null;
 
-    console.time('Basic preprocessing');
-    
+    console.time("Basic preprocessing");
+
     const entities: LightEntity[] = [];
     let totalProcessed = 0;
     type NerLabel = keyof typeof config.NERLABELS2FULL;
@@ -39,12 +47,12 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
     // Extract entities applying filtering and normalization
     for (const [docId, data] of Object.entries(nerData)) {
       if (!Array.isArray(data.t)) continue;
-      
+
       for (let idx = 0; idx < data.t.length; idx++) {
         const originalText = data.t[idx];
         const label = data.l[idx];
         const confidence = data.c[idx];
-        
+
         if (EntityNormalizer.shouldFilter(originalText, label, confidence)) {
           continue;
         }
@@ -52,12 +60,14 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
         const normalizedText = EntityNormalizer.normalize(originalText);
         if (!normalizedText) continue;
 
-        const labelFull = (label in config.NERLABELS2FULL) 
-          ? config.NERLABELS2FULL[label as NerLabel]
-          : label;
-        const color = (label in config.NER_LABELS_COLORS)
-          ? config.NER_LABELS_COLORS[label as NerLabel]
-          : '#grey';
+        const labelFull =
+          label in config.NERLABELS2FULL
+            ? config.NERLABELS2FULL[label as NerLabel]
+            : label;
+        const color =
+          label in config.NER_LABELS_COLORS
+            ? config.NER_LABELS_COLORS[label as NerLabel]
+            : "#grey";
 
         entities.push({
           text: originalText,
@@ -68,13 +78,13 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
           confidence,
           position: data.s[idx],
           originalText,
-          color
+          color,
         });
 
         totalProcessed++;
         if (entityLimit && totalProcessed >= entityLimit) break;
       }
-      
+
       if (entityLimit && totalProcessed >= entityLimit) break;
     }
 
@@ -82,9 +92,12 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
     const entityGroups = new Map<string, EntityGroup>();
     let totalConfidence = 0;
 
-    entities.forEach(entity => {
-      const key = EntityNormalizer.createEntityKey(entity.normalizedText, entity.label);
-      
+    entities.forEach((entity) => {
+      const key = EntityNormalizer.createEntityKey(
+        entity.normalizedText,
+        entity.label,
+      );
+
       if (!entityGroups.has(key)) {
         entityGroups.set(key, {
           displayText: entity.text,
@@ -94,10 +107,10 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
           avgConfidence: 0,
           label: entity.label,
           labelFull: entity.labelFull,
-          color: entity.color
+          color: entity.color,
         });
       }
-      
+
       const group = entityGroups.get(key)!;
       group.entities.push(entity);
       group.totalCount++;
@@ -106,21 +119,24 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
     });
 
     // Compute average confidence per group
-    entityGroups.forEach(group => {
-      group.avgConfidence = group.entities.reduce((sum, e) => sum + e.confidence, 0) / group.entities.length;
+    entityGroups.forEach((group) => {
+      group.avgConfidence =
+        group.entities.reduce((sum, e) => sum + e.confidence, 0) /
+        group.entities.length;
     });
 
-    console.timeEnd('Basic preprocessing');
+    console.timeEnd("Basic preprocessing");
 
     return {
       entities: entities.slice(0, entityLimit || entities.length),
       totalEntities: entities.length,
       totalDocuments: Object.keys(nerData).length,
-      averageConfidence: entities.length > 0 ? totalConfidence / entities.length : 0,
+      averageConfidence:
+        entities.length > 0 ? totalConfidence / entities.length : 0,
       uniqueEntities: entityGroups.size,
       entityGroups,
       isLimited: entityLimit ? entities.length > entityLimit : false,
-      totalEntitiesBeforeLimit: totalProcessed
+      totalEntitiesBeforeLimit: totalProcessed,
     };
   }, [nerData, entityLimit]);
 
@@ -133,17 +149,17 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
 
     const runAdvancedProcessing = async () => {
       try {
-        console.time('Advanced processing');
+        console.time("Advanced processing");
         const advancedStats = await processAdvancedStats(
           basicData.entities,
           basicData.entityGroups,
-          basicData
+          basicData,
         );
-        console.timeEnd('Advanced processing');
+        console.timeEnd("Advanced processing");
         setStats(advancedStats);
       } catch (error) {
-        if (error instanceof Error && error.message !== 'Aborted') {
-          console.error('Advanced processing failed:', error);
+        if (error instanceof Error && error.message !== "Aborted") {
+          console.error("Advanced processing failed:", error);
           setStats(createBasicStats(basicData));
         }
       }
@@ -166,7 +182,7 @@ export const useNERStatistics = (nerData: Record<string, any>, entityLimit?: num
   return {
     stats: stats || (basicData ? createBasicStats(basicData) : null),
     processingState,
-    isProcessing
+    isProcessing,
   };
 };
 
@@ -178,7 +194,8 @@ function createBasicStats(basicData: BasicData): NERAdvancedStats {
   return {
     totalEntities: basicData.totalEntities,
     totalDocuments: basicData.totalDocuments,
-    averageEntitiesPerDocument: basicData.totalEntities / basicData.totalDocuments,
+    averageEntitiesPerDocument:
+      basicData.totalEntities / basicData.totalDocuments,
     entityDensity: basicData.totalEntities / basicData.totalDocuments,
     uniqueEntitiesRatio: basicData.uniqueEntities / basicData.totalEntities,
 
@@ -204,6 +221,6 @@ function createBasicStats(basicData: BasicData): NERAdvancedStats {
     hasAdvancedFeatures: basicData.totalEntities <= 10000,
     isLimited: basicData.isLimited,
     totalEntitiesBeforeLimit: basicData.totalEntitiesBeforeLimit,
-    processedEntities: basicData.totalEntities
+    processedEntities: basicData.totalEntities,
   };
 }

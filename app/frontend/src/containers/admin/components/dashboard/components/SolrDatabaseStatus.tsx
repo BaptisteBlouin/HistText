@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -16,7 +16,7 @@ import {
   TableRow,
   TableCell,
   TableBody,
-} from '@mui/material';
+} from "@mui/material";
 import {
   CloudQueue,
   ExpandMore,
@@ -25,9 +25,9 @@ import {
   Error,
   Warning,
   AccessTime,
-} from '@mui/icons-material';
-import { ComprehensiveStats } from '../types';
-import { formatNumber } from '../utils/formatters';
+} from "@mui/icons-material";
+import { ComprehensiveStats } from "../types";
+import { formatNumber } from "../utils/formatters";
 
 /**
  * Props for SolrDatabaseStatus component.
@@ -41,7 +41,9 @@ interface SolrDatabaseStatusProps {
  * Displays status, metrics, and collection details for all Solr databases.
  * Collapsible for showing/hiding collection details.
  */
-export const SolrDatabaseStatus: React.FC<SolrDatabaseStatusProps> = ({ comprehensiveStats }) => {
+export const SolrDatabaseStatus: React.FC<SolrDatabaseStatusProps> = ({
+  comprehensiveStats,
+}) => {
   const [showSolrDetails, setShowSolrDetails] = useState<boolean>(false);
 
   /**
@@ -49,11 +51,11 @@ export const SolrDatabaseStatus: React.FC<SolrDatabaseStatusProps> = ({ comprehe
    */
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'online':
+      case "online":
         return <CheckCircle color="success" />;
-      case 'offline':
+      case "offline":
         return <Error color="error" />;
-      case 'error':
+      case "error":
         return <Warning color="warning" />;
       default:
         return <Warning color="disabled" />;
@@ -65,22 +67,37 @@ export const SolrDatabaseStatus: React.FC<SolrDatabaseStatusProps> = ({ comprehe
    */
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online':
-        return 'success';
-      case 'offline':
-        return 'error';
-      case 'error':
-        return 'warning';
+      case "online":
+        return "success";
+      case "offline":
+        return "error";
+      case "error":
+        return "warning";
       default:
-        return 'default';
+        return "default";
     }
   };
 
   return (
     <Card sx={{ mb: 4 }}>
       <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
             <CloudQueue />
             Solr Database Status
           </Typography>
@@ -90,30 +107,32 @@ export const SolrDatabaseStatus: React.FC<SolrDatabaseStatusProps> = ({ comprehe
             endIcon={showSolrDetails ? <ExpandLess /> : <ExpandMore />}
             size="small"
           >
-            {showSolrDetails ? 'Hide Details' : 'Show Details'}
+            {showSolrDetails ? "Hide Details" : "Show Details"}
           </Button>
         </Box>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {comprehensiveStats.solr_databases.map((db) => (
             <Grid item xs={12} sm={6} md={4} key={db.id}>
-              <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Paper
+                sx={{ p: 2, display: "flex", alignItems: "center", gap: 2 }}
+              >
                 {getStatusIcon(db.status)}
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     {db.name}
                   </Typography>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Chip 
-                      label={db.status.toUpperCase()} 
-                      size="small" 
+                    <Chip
+                      label={db.status.toUpperCase()}
+                      size="small"
                       color={getStatusColor(db.status) as any}
                     />
                     {db.response_time_ms && (
-                      <Chip 
+                      <Chip
                         icon={<AccessTime />}
-                        label={`${db.response_time_ms}ms`} 
-                        size="small" 
+                        label={`${db.response_time_ms}ms`}
+                        size="small"
                         variant="outlined"
                       />
                     )}
@@ -161,26 +180,30 @@ export const SolrDatabaseStatus: React.FC<SolrDatabaseStatusProps> = ({ comprehe
                           {collection.name}
                         </TableCell>
                         <TableCell align="right">
-                          {collection.document_count !== undefined 
+                          {collection.document_count !== undefined
                             ? formatNumber(collection.document_count)
-                            : 'N/A'
-                          }
+                            : "N/A"}
                         </TableCell>
                         <TableCell align="center">
-                          <Chip 
-                            label={collection.has_embeddings ? 'Yes' : 'No'}
+                          <Chip
+                            label={collection.has_embeddings ? "Yes" : "No"}
                             size="small"
-                            color={collection.has_embeddings ? 'success' : 'default'}
+                            color={
+                              collection.has_embeddings ? "success" : "default"
+                            }
                           />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" sx={{ 
-                            maxWidth: 200, 
-                            overflow: 'hidden', 
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {collection.embedding_path || 'Default'}
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              maxWidth: 200,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {collection.embedding_path || "Default"}
                           </Typography>
                         </TableCell>
                       </TableRow>

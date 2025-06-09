@@ -1,9 +1,37 @@
-import React, { useMemo } from 'react';
-import { Grid, Card, CardContent, Typography, Alert, Box, Chip, Tooltip, IconButton, Collapse } from '@mui/material';
-import { TrendingUp, FilterAlt, DataUsage, ExpandMore, ExpandLess } from '@mui/icons-material';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import TopEntitiesList from '../TopEntitiesList';
-import { COLORS } from '../../constants/chart-colors';
+import React, { useMemo } from "react";
+import {
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Alert,
+  Box,
+  Chip,
+  Tooltip,
+  IconButton,
+  Collapse,
+} from "@mui/material";
+import {
+  TrendingUp,
+  FilterAlt,
+  DataUsage,
+  ExpandMore,
+  ExpandLess,
+} from "@mui/icons-material";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import TopEntitiesList from "../TopEntitiesList";
+import { COLORS } from "../../constants/chart-colors";
 
 interface TopEntitiesTabProps {
   stats: any;
@@ -14,9 +42,9 @@ interface TopEntitiesTabProps {
 /**
  * TopEntitiesTab component displays the most frequent entities in the dataset,
  * along with their type distributions and a detailed list grouped by entity type.
- * 
+ *
  * Includes normalized and filtered entity counts and frequencies.
- * 
+ *
  * @param stats - Statistics object containing entity frequency and type data.
  * @param expandedSections - Set of section keys to control expanded/collapsed UI.
  * @param onToggleSection - Callback to toggle section expansion state.
@@ -24,76 +52,92 @@ interface TopEntitiesTabProps {
 const TopEntitiesTab: React.FC<TopEntitiesTabProps> = ({
   stats,
   expandedSections,
-  onToggleSection
+  onToggleSection,
 }) => {
   // Prepare top entities data for bar chart visualization
-  const topEntitiesChartData = useMemo(() => 
-    stats?.topEntities?.slice(0, 15).map((entity: any) => ({
-      name: entity.text.length > 25 ? entity.text.substring(0, 25) + '...' : entity.text,
-      fullName: entity.text,
-      count: entity.count,
-      documents: entity.documents,
-      frequency: (entity.frequency * 100).toFixed(2)
-    })) || []
-  , [stats]);
+  const topEntitiesChartData = useMemo(
+    () =>
+      stats?.topEntities?.slice(0, 15).map((entity: any) => ({
+        name:
+          entity.text.length > 25
+            ? entity.text.substring(0, 25) + "..."
+            : entity.text,
+        fullName: entity.text,
+        count: entity.count,
+        documents: entity.documents,
+        frequency: (entity.frequency * 100).toFixed(2),
+      })) || [],
+    [stats],
+  );
 
   // Prepare entity type distribution data for pie chart visualization
   const entityTypeDistribution = useMemo(() => {
     if (!stats?.topEntitiesByType) return [];
-    
-    return Object.entries(stats.topEntitiesByType).map(([type, entities]) => {
-      const entitiesArray = entities as any[]; // <-- This fixes the TS error
-      return {
-        name: type,
-        value: entitiesArray.reduce((sum, entity) => sum + entity.count, 0),
-        entities: entitiesArray.length,
-        uniqueEntities: entitiesArray.length
-      };
-    }).slice(0, 10);
-  }, [stats]);
 
+    return Object.entries(stats.topEntitiesByType)
+      .map(([type, entities]) => {
+        const entitiesArray = entities as any[]; // <-- This fixes the TS error
+        return {
+          name: type,
+          value: entitiesArray.reduce((sum, entity) => sum + entity.count, 0),
+          entities: entitiesArray.length,
+          uniqueEntities: entitiesArray.length,
+        };
+      })
+      .slice(0, 10);
+  }, [stats]);
 
   return (
     <Grid container spacing={3}>
       <Grid item xs={12} lg={8}>
         <Card>
           <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
               <TrendingUp color="primary" />
-              <Typography variant="h6">
-                Most Frequent Entities
-              </Typography>
-              <Chip 
+              <Typography variant="h6">Most Frequent Entities</Typography>
+              <Chip
                 icon={<FilterAlt />}
-                label="Normalized & Filtered" 
-                size="small" 
-                color="success" 
+                label="Normalized & Filtered"
+                size="small"
+                color="success"
                 variant="outlined"
               />
             </Box>
             <Alert severity="info" sx={{ mb: 2 }}>
               <Typography variant="body2">
-                Entities have been normalized (e.g., "Mr. Johnson" + "Johnson" = "Johnson") and filtered to remove noise.
+                Entities have been normalized (e.g., "Mr. Johnson" + "Johnson" =
+                "Johnson") and filtered to remove noise.
               </Typography>
             </Alert>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={topEntitiesChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
+                <XAxis
+                  dataKey="name"
                   angle={-45}
                   textAnchor="end"
                   height={100}
                   fontSize={12}
                 />
                 <YAxis />
-                <RechartsTooltip 
+                <RechartsTooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <Box sx={{ bgcolor: 'background.paper', p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                        <Box
+                          sx={{
+                            bgcolor: "background.paper",
+                            p: 2,
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ fontWeight: "bold" }}
+                          >
                             {data.fullName}
                           </Typography>
                           <Typography variant="body2">
@@ -137,19 +181,26 @@ const TopEntitiesTab: React.FC<TopEntitiesTabProps> = ({
                   cy="50%"
                   outerRadius={120}
                   fill="#8884d8"
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name}: ${(percent * 100).toFixed(0)}%`
+                  }
                 >
                   {entityTypeDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
-                <RechartsTooltip 
+                <RechartsTooltip
                   formatter={(value, name) => [
                     `${value} occurrences`,
-                    'Total Count'
+                    "Total Count",
                   ]}
                   labelFormatter={(label) => {
-                    const entry = entityTypeDistribution.find((e: any) => e.name === label);
+                    const entry = entityTypeDistribution.find(
+                      (e: any) => e.name === label,
+                    );
                     return `${label} (${entry?.uniqueEntities || 0} unique entities)`;
                   }}
                 />
@@ -162,25 +213,34 @@ const TopEntitiesTab: React.FC<TopEntitiesTabProps> = ({
       <Grid item xs={12}>
         <Card>
           <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="h6">
-                  Top Entities by Type
-                </Typography>
-                <Chip 
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                mb: 2,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="h6">Top Entities by Type</Typography>
+                <Chip
                   icon={<DataUsage />}
-                  label="Quality Filtered" 
-                  size="small" 
-                  color="primary" 
+                  label="Quality Filtered"
+                  size="small"
+                  color="primary"
                   variant="outlined"
                 />
               </Box>
-              <IconButton onClick={() => onToggleSection('entityTypes')}>
-                {expandedSections.has('entityTypes') ? <ExpandLess /> : <ExpandMore />}
+              <IconButton onClick={() => onToggleSection("entityTypes")}>
+                {expandedSections.has("entityTypes") ? (
+                  <ExpandLess />
+                ) : (
+                  <ExpandMore />
+                )}
               </IconButton>
             </Box>
-            <Collapse in={expandedSections.has('entityTypes')}>
-              <TopEntitiesList 
+            <Collapse in={expandedSections.has("entityTypes")}>
+              <TopEntitiesList
                 topEntitiesByType={stats?.topEntitiesByType || {}}
               />
             </Collapse>

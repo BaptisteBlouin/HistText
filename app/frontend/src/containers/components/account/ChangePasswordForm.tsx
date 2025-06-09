@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -17,7 +17,7 @@ import {
   ListItemIcon,
   ListItemText,
   CircularProgress,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Lock,
   Visibility,
@@ -27,10 +27,10 @@ import {
   Cancel,
   Info,
   Save,
-} from '@mui/icons-material';
-import { toast } from 'react-toastify';
-import axios, { AxiosHeaders } from 'axios';
-import { useAuth } from '../../../hooks/useAuth';
+} from "@mui/icons-material";
+import { toast } from "react-toastify";
+import axios, { AxiosHeaders } from "axios";
+import { useAuth } from "../../../hooks/useAuth";
 
 /**
  * Returns an Axios instance with the current access token in the Authorization header.
@@ -39,7 +39,7 @@ const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
     const instance = axios.create();
-    instance.interceptors.request.use(config => {
+    instance.interceptors.request.use((config) => {
       if (accessToken) {
         config.headers = new AxiosHeaders({
           ...config.headers,
@@ -61,13 +61,15 @@ const useAuthAxios = () => {
 export const ChangePasswordForm = ({ auth }: { auth: any }) => {
   const authAxios = useAuthAxios();
   const [formData, setFormData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
-  
-  type PasswordField = 'current' | 'new' | 'confirm';
-  const [showPasswords, setShowPasswords] = useState<{ [K in PasswordField]: boolean }>({
+
+  type PasswordField = "current" | "new" | "confirm";
+  const [showPasswords, setShowPasswords] = useState<{
+    [K in PasswordField]: boolean;
+  }>({
     current: false,
     new: false,
     confirm: false,
@@ -91,94 +93,104 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
   /**
    * Handles updates to input fields, updates password strength meter.
    */
-  const handleInputChange = useCallback((field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (field === 'newPassword') {
-      setPasswordStrength(calculatePasswordStrength(value));
-    }
-  }, [calculatePasswordStrength]);
+  const handleInputChange = useCallback(
+    (field: string, value: string) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      if (field === "newPassword") {
+        setPasswordStrength(calculatePasswordStrength(value));
+      }
+    },
+    [calculatePasswordStrength],
+  );
 
   /**
    * Toggles the visibility of a password field.
    */
   const togglePasswordVisibility = useCallback((field: PasswordField) => {
-    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+    setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
   }, []);
 
   /**
    * Submits the change password form after validation, updating user password via API.
    */
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (formData.newPassword !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
 
-    if (passwordStrength < 75) {
-      toast.error('Password is too weak. Please choose a stronger password.');
-      return;
-    }
-
-    if (!formData.currentPassword) {
-      toast.error('Current password is required');
-      return;
-    }
-
-    const userId = auth.session?.userId;
-    if (!userId) {
-      toast.error('User ID not found');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Fetch current user fields to preserve other data
-      const userResponse = await authAxios.get(`/api/users/${userId}`);
-      const currentUserData = userResponse.data;
-
-      // Send only changed password and current data
-      const updateData = {
-        firstname: currentUserData.firstname,
-        lastname: currentUserData.lastname,
-        email: currentUserData.email,
-        activated: currentUserData.activated,
-        hash_password: formData.newPassword, // New password
-      };
-
-      await authAxios.put(`/api/users/${userId}`, updateData);
-      
-      setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setPasswordStrength(0);
-      toast.success('Password changed successfully!');
-    } catch (error) {
-      console.error('Error changing password:', error);
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          toast.error('Authentication failed. Please log in again.');
-        } else if (error.response?.status === 404) {
-          toast.error('User not found');
-        } else if (error.response?.status === 403) {
-          toast.error('You do not have permission to change this password');
-        } else {
-          toast.error('Failed to change password. Please try again.');
-        }
-      } else if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('Failed to change password. Please try again.');
+      if (formData.newPassword !== formData.confirmPassword) {
+        toast.error("Passwords do not match");
+        return;
       }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [formData, passwordStrength, auth.session?.userId, authAxios]);
+
+      if (passwordStrength < 75) {
+        toast.error("Password is too weak. Please choose a stronger password.");
+        return;
+      }
+
+      if (!formData.currentPassword) {
+        toast.error("Current password is required");
+        return;
+      }
+
+      const userId = auth.session?.userId;
+      if (!userId) {
+        toast.error("User ID not found");
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        // Fetch current user fields to preserve other data
+        const userResponse = await authAxios.get(`/api/users/${userId}`);
+        const currentUserData = userResponse.data;
+
+        // Send only changed password and current data
+        const updateData = {
+          firstname: currentUserData.firstname,
+          lastname: currentUserData.lastname,
+          email: currentUserData.email,
+          activated: currentUserData.activated,
+          hash_password: formData.newPassword, // New password
+        };
+
+        await authAxios.put(`/api/users/${userId}`, updateData);
+
+        setFormData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setPasswordStrength(0);
+        toast.success("Password changed successfully!");
+      } catch (error) {
+        console.error("Error changing password:", error);
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 401) {
+            toast.error("Authentication failed. Please log in again.");
+          } else if (error.response?.status === 404) {
+            toast.error("User not found");
+          } else if (error.response?.status === 403) {
+            toast.error("You do not have permission to change this password");
+          } else {
+            toast.error("Failed to change password. Please try again.");
+          }
+        } else if (error instanceof Error) {
+          toast.error(error.message);
+        } else {
+          toast.error("Failed to change password. Please try again.");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [formData, passwordStrength, auth.session?.userId, authAxios],
+  );
 
   /**
    * Resets the form fields and password strength meter.
    */
   const handleReset = useCallback(() => {
-    setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     setPasswordStrength(0);
   }, []);
 
@@ -186,28 +198,34 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
    * Returns a color name for password strength LinearProgress.
    */
   const getPasswordStrengthColor = (strength: number) => {
-    if (strength < 25) return 'error';
-    if (strength < 50) return 'warning';
-    if (strength < 75) return 'info';
-    return 'success';
+    if (strength < 25) return "error";
+    if (strength < 50) return "warning";
+    if (strength < 75) return "info";
+    return "success";
   };
 
   /**
    * Returns a text label for password strength.
    */
   const getPasswordStrengthText = (strength: number) => {
-    if (strength < 25) return 'Very Weak';
-    if (strength < 50) return 'Weak';
-    if (strength < 75) return 'Good';
-    return 'Strong';
+    if (strength < 25) return "Very Weak";
+    if (strength < 50) return "Weak";
+    if (strength < 75) return "Good";
+    return "Strong";
   };
 
   // Password requirements for user feedback UI
   const passwordRequirements = [
-    { text: 'At least 8 characters', met: formData.newPassword.length >= 8 },
-    { text: 'Contains uppercase letter', met: /[A-Z]/.test(formData.newPassword) },
-    { text: 'Contains number', met: /[0-9]/.test(formData.newPassword) },
-    { text: 'Contains special character', met: /[^A-Za-z0-9]/.test(formData.newPassword) },
+    { text: "At least 8 characters", met: formData.newPassword.length >= 8 },
+    {
+      text: "Contains uppercase letter",
+      met: /[A-Z]/.test(formData.newPassword),
+    },
+    { text: "Contains number", met: /[0-9]/.test(formData.newPassword) },
+    {
+      text: "Contains special character",
+      met: /[^A-Za-z0-9]/.test(formData.newPassword),
+    },
   ];
 
   return (
@@ -229,8 +247,8 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
             <Grid item xs={12} lg={8}>
               <Card>
                 <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                    <Lock sx={{ mr: 2, color: 'primary.main' }} />
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+                    <Lock sx={{ mr: 2, color: "primary.main" }} />
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       Change Password
                     </Typography>
@@ -241,19 +259,27 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
                       <TextField
                         fullWidth
                         label="Current Password"
-                        type={showPasswords.current ? 'text' : 'password'}
+                        type={showPasswords.current ? "text" : "password"}
                         value={formData.currentPassword}
-                        onChange={(e) => handleInputChange('currentPassword', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("currentPassword", e.target.value)
+                        }
                         required
                         disabled={isLoading}
                         InputProps={{
                           endAdornment: (
                             <IconButton
-                              onClick={() => togglePasswordVisibility('current')}
+                              onClick={() =>
+                                togglePasswordVisibility("current")
+                              }
                               edge="end"
                               disabled={isLoading}
                             >
-                              {showPasswords.current ? <VisibilityOff /> : <Visibility />}
+                              {showPasswords.current ? (
+                                <VisibilityOff />
+                              ) : (
+                                <Visibility />
+                              )}
                             </IconButton>
                           ),
                         }}
@@ -262,19 +288,25 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
                       <TextField
                         fullWidth
                         label="New Password"
-                        type={showPasswords.new ? 'text' : 'password'}
+                        type={showPasswords.new ? "text" : "password"}
                         value={formData.newPassword}
-                        onChange={(e) => handleInputChange('newPassword', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("newPassword", e.target.value)
+                        }
                         required
                         disabled={isLoading}
                         InputProps={{
                           endAdornment: (
                             <IconButton
-                              onClick={() => togglePasswordVisibility('new')}
+                              onClick={() => togglePasswordVisibility("new")}
                               edge="end"
                               disabled={isLoading}
                             >
-                              {showPasswords.new ? <VisibilityOff /> : <Visibility />}
+                              {showPasswords.new ? (
+                                <VisibilityOff />
+                              ) : (
+                                <Visibility />
+                              )}
                             </IconButton>
                           ),
                         }}
@@ -282,10 +314,18 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
 
                       {formData.newPassword && (
                         <Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="body2">Password Strength:</Typography>
-                            <Typography 
-                              variant="body2" 
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              mb: 1,
+                            }}
+                          >
+                            <Typography variant="body2">
+                              Password Strength:
+                            </Typography>
+                            <Typography
+                              variant="body2"
                               color={`${getPasswordStrengthColor(passwordStrength)}.main`}
                               sx={{ fontWeight: 600 }}
                             >
@@ -304,25 +344,37 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
                       <TextField
                         fullWidth
                         label="Confirm New Password"
-                        type={showPasswords.confirm ? 'text' : 'password'}
+                        type={showPasswords.confirm ? "text" : "password"}
                         value={formData.confirmPassword}
-                        onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("confirmPassword", e.target.value)
+                        }
                         required
                         disabled={isLoading}
-                        error={formData.confirmPassword !== '' && formData.newPassword !== formData.confirmPassword}
+                        error={
+                          formData.confirmPassword !== "" &&
+                          formData.newPassword !== formData.confirmPassword
+                        }
                         helperText={
-                          formData.confirmPassword !== '' && formData.newPassword !== formData.confirmPassword
-                            ? 'Passwords do not match'
-                            : ''
+                          formData.confirmPassword !== "" &&
+                          formData.newPassword !== formData.confirmPassword
+                            ? "Passwords do not match"
+                            : ""
                         }
                         InputProps={{
                           endAdornment: (
                             <IconButton
-                              onClick={() => togglePasswordVisibility('confirm')}
+                              onClick={() =>
+                                togglePasswordVisibility("confirm")
+                              }
                               edge="end"
                               disabled={isLoading}
                             >
-                              {showPasswords.confirm ? <VisibilityOff /> : <Visibility />}
+                              {showPasswords.confirm ? (
+                                <VisibilityOff />
+                              ) : (
+                                <Visibility />
+                              )}
                             </IconButton>
                           ),
                         }}
@@ -341,18 +393,28 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
                             passwordStrength < 75 ||
                             isLoading
                           }
-                          startIcon={isLoading ? <CircularProgress size={16} /> : <Save />}
+                          startIcon={
+                            isLoading ? (
+                              <CircularProgress size={16} />
+                            ) : (
+                              <Save />
+                            )
+                          }
                           sx={{
                             py: 1.5,
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            '&:hover': {
-                              background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                            }
+                            background:
+                              "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            "&:hover": {
+                              background:
+                                "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                            },
                           }}
                         >
-                          {isLoading ? 'Changing Password...' : 'Change Password'}
+                          {isLoading
+                            ? "Changing Password..."
+                            : "Change Password"}
                         </Button>
-                        
+
                         <Button
                           type="button"
                           variant="outlined"
@@ -376,13 +438,13 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
                 {/* Password Requirements */}
                 <Card>
                   <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Security sx={{ mr: 1, color: 'primary.main' }} />
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                      <Security sx={{ mr: 1, color: "primary.main" }} />
                       <Typography variant="h6" sx={{ fontWeight: 600 }}>
                         Password Requirements
                       </Typography>
                     </Box>
-                    
+
                     <List dense>
                       {passwordRequirements.map((req, index) => (
                         <ListItem key={index} sx={{ px: 0 }}>
@@ -393,11 +455,13 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
                               <Cancel color="error" fontSize="small" />
                             )}
                           </ListItemIcon>
-                          <ListItemText 
+                          <ListItemText
                             primary={req.text}
                             primaryTypographyProps={{
-                              variant: 'body2',
-                              color: req.met ? 'success.main' : 'text.secondary'
+                              variant: "body2",
+                              color: req.met
+                                ? "success.main"
+                                : "text.secondary",
                             }}
                           />
                         </ListItem>
@@ -409,22 +473,23 @@ export const ChangePasswordForm = ({ auth }: { auth: any }) => {
                 {/* Security Tips */}
                 <Card>
                   <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Info sx={{ mr: 1, color: 'info.main' }} />
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                      <Info sx={{ mr: 1, color: "info.main" }} />
                       <Typography variant="h6" sx={{ fontWeight: 600 }}>
                         Security Tips
                       </Typography>
                     </Box>
-                    
+
                     <Stack spacing={2}>
-                      <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
+                      <Alert severity="info" sx={{ fontSize: "0.875rem" }}>
                         Use a unique password that you don't use anywhere else
                       </Alert>
-                      <Alert severity="warning" sx={{ fontSize: '0.875rem' }}>
+                      <Alert severity="warning" sx={{ fontSize: "0.875rem" }}>
                         Avoid using personal information in your password
                       </Alert>
-                      <Alert severity="success" sx={{ fontSize: '0.875rem' }}>
-                        Consider using a password manager to generate and store secure passwords
+                      <Alert severity="success" sx={{ fontSize: "0.875rem" }}>
+                        Consider using a password manager to generate and store
+                        secure passwords
                       </Alert>
                     </Stack>
                   </CardContent>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -19,7 +19,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Analytics,
   ExpandMore,
@@ -28,11 +28,11 @@ import {
   TrendingUp,
   TrendingDown,
   Timeline,
-} from '@mui/icons-material';
-import { useAuth } from '../../../../../hooks/useAuth';
-import { RequestAnalytics } from '../types';
-import { formatNumber } from '../utils/formatters';
-import { useAnalytics } from '../hooks/useAnalytics';
+} from "@mui/icons-material";
+import { useAuth } from "../../../../../hooks/useAuth";
+import { RequestAnalytics } from "../types";
+import { formatNumber } from "../utils/formatters";
+import { useAnalytics } from "../hooks/useAnalytics";
 
 /**
  * Props for ApiAnalytics component.
@@ -64,17 +64,19 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
 }) => {
   const { accessToken } = useAuth();
   const [internalIsVisible, setInternalIsVisible] = useState(false);
-  const [previousData, setPreviousData] = useState<RequestAnalytics | null>(null);
+  const [previousData, setPreviousData] = useState<RequestAnalytics | null>(
+    null,
+  );
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use prop visibility if provided, otherwise use internal state
-  const isVisible = propIsVisible !== undefined ? propIsVisible : internalIsVisible;
+  const isVisible =
+    propIsVisible !== undefined ? propIsVisible : internalIsVisible;
 
-  const {
-    analytics,
-    analyticsLoading,
-    fetchAnalytics,
-  } = useAnalytics(accessToken || null, isVisible);
+  const { analytics, analyticsLoading, fetchAnalytics } = useAnalytics(
+    accessToken || null,
+    isVisible,
+  );
 
   // Auto-refresh logic for analytics polling
   useEffect(() => {
@@ -89,7 +91,13 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
         }
       };
     }
-  }, [autoRefresh, isVisible, analyticsLoading, refreshInterval, fetchAnalytics]);
+  }, [
+    autoRefresh,
+    isVisible,
+    analyticsLoading,
+    refreshInterval,
+    fetchAnalytics,
+  ]);
 
   // Track analytics for trend comparisons
   useEffect(() => {
@@ -112,8 +120,8 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
     return (
       <Chip
         icon={change > 0 ? <TrendingUp /> : <TrendingDown />}
-        label={`${change > 0 ? '+' : ''}${change.toFixed(1)}%`}
-        color={change > 0 ? 'success' : 'error'}
+        label={`${change > 0 ? "+" : ""}${change.toFixed(1)}%`}
+        color={change > 0 ? "success" : "error"}
         size="small"
         variant="outlined"
       />
@@ -140,12 +148,27 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
   return (
     <Card sx={{ mb: 4 }}>
       <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
             <Analytics />
             API Usage Analytics
             {autoRefresh && isVisible && (
-              <Chip 
+              <Chip
                 icon={<Timeline />}
                 label="Live"
                 color="success"
@@ -165,7 +188,7 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
               endIcon={isVisible ? <ExpandLess /> : <ExpandMore />}
               size="small"
             >
-              {isVisible ? 'Hide Analytics' : 'Show Analytics'}
+              {isVisible ? "Hide Analytics" : "Show Analytics"}
             </Button>
           </Stack>
         </Box>
@@ -174,7 +197,11 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
           {analyticsLoading ? (
             <Box>
               <LinearProgress sx={{ my: 2 }} />
-              <Typography variant="body2" color="text.secondary" textAlign="center">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                textAlign="center"
+              >
                 Loading API analytics...
               </Typography>
             </Box>
@@ -189,43 +216,83 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                      <Typography variant="h6">{formatNumber(analytics.total_requests_24h)}</Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        bgcolor: "primary.light",
+                        color: "primary.contrastText",
+                      }}
+                    >
+                      <Typography variant="h6">
+                        {formatNumber(analytics.total_requests_24h)}
+                      </Typography>
                       <Typography variant="body2">Total Requests</Typography>
-                      {previousData && getTrendIndicator(
-                        analytics.total_requests_24h, 
-                        previousData.total_requests_24h
-                      )}
+                      {previousData &&
+                        getTrendIndicator(
+                          analytics.total_requests_24h,
+                          previousData.total_requests_24h,
+                        )}
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'success.light', color: 'success.contrastText' }}>
-                      <Typography variant="h6">{analytics.average_response_time_ms.toFixed(1)} ms</Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        bgcolor: "success.light",
+                        color: "success.contrastText",
+                      }}
+                    >
+                      <Typography variant="h6">
+                        {analytics.average_response_time_ms.toFixed(1)} ms
+                      </Typography>
                       <Typography variant="body2">Avg Response Time</Typography>
-                      {previousData && getTrendIndicator(
-                        analytics.average_response_time_ms, 
-                        previousData.average_response_time_ms
-                      )}
+                      {previousData &&
+                        getTrendIndicator(
+                          analytics.average_response_time_ms,
+                          previousData.average_response_time_ms,
+                        )}
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ 
-                      p: 2, 
-                      textAlign: 'center', 
-                      bgcolor: analytics.error_rate_percent > 5 ? 'error.light' : 'warning.light', 
-                      color: analytics.error_rate_percent > 5 ? 'error.contrastText' : 'warning.contrastText' 
-                    }}>
-                      <Typography variant="h6">{analytics.error_rate_percent.toFixed(1)}%</Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        bgcolor:
+                          analytics.error_rate_percent > 5
+                            ? "error.light"
+                            : "warning.light",
+                        color:
+                          analytics.error_rate_percent > 5
+                            ? "error.contrastText"
+                            : "warning.contrastText",
+                      }}
+                    >
+                      <Typography variant="h6">
+                        {analytics.error_rate_percent.toFixed(1)}%
+                      </Typography>
                       <Typography variant="body2">Error Rate</Typography>
-                      {previousData && getTrendIndicator(
-                        analytics.error_rate_percent, 
-                        previousData.error_rate_percent
-                      )}
+                      {previousData &&
+                        getTrendIndicator(
+                          analytics.error_rate_percent,
+                          previousData.error_rate_percent,
+                        )}
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'info.light', color: 'info.contrastText' }}>
-                      <Typography variant="h6">{Object.keys(analytics.endpoint_stats).length}</Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        bgcolor: "info.light",
+                        color: "info.contrastText",
+                      }}
+                    >
+                      <Typography variant="h6">
+                        {Object.keys(analytics.endpoint_stats).length}
+                      </Typography>
                       <Typography variant="body2">Active Endpoints</Typography>
                     </Paper>
                   </Grid>
@@ -254,28 +321,51 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                       .map((endpoint, index) => (
                         <TableRow key={index}>
                           <TableCell>
-                            <Chip 
-                              label={endpoint.method} 
+                            <Chip
+                              label={endpoint.method}
                               size="small"
-                              color={endpoint.method === 'GET' ? 'success' : endpoint.method === 'POST' ? 'primary' : 'default'}
+                              color={
+                                endpoint.method === "GET"
+                                  ? "success"
+                                  : endpoint.method === "POST"
+                                    ? "primary"
+                                    : "default"
+                              }
                             />
                           </TableCell>
-                          <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                          <TableCell
+                            sx={{
+                              fontFamily: "monospace",
+                              fontSize: "0.875rem",
+                            }}
+                          >
                             {endpoint.path_pattern}
                           </TableCell>
-                          <TableCell align="right">{formatNumber(endpoint.request_count)}</TableCell>
                           <TableCell align="right">
-                            <Typography 
-                              variant="body2" 
-                              color={endpoint.average_response_time_ms > 1000 ? 'error' : endpoint.average_response_time_ms > 500 ? 'warning.main' : 'inherit'}
+                            {formatNumber(endpoint.request_count)}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography
+                              variant="body2"
+                              color={
+                                endpoint.average_response_time_ms > 1000
+                                  ? "error"
+                                  : endpoint.average_response_time_ms > 500
+                                    ? "warning.main"
+                                    : "inherit"
+                              }
                             >
                               {endpoint.average_response_time_ms.toFixed(1)}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
-                            <Typography 
-                              variant="body2" 
-                              color={endpoint.success_rate_percent < 95 ? 'error' : 'inherit'}
+                            <Typography
+                              variant="body2"
+                              color={
+                                endpoint.success_rate_percent < 95
+                                  ? "error"
+                                  : "inherit"
+                              }
                             >
                               {endpoint.success_rate_percent.toFixed(1)}%
                             </Typography>
@@ -289,7 +379,11 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
               {/* Slowest Endpoints */}
               {analytics.top_slow_endpoints.length > 0 && (
                 <Box>
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'warning.main' }}>
+                  <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{ fontWeight: 600, color: "warning.main" }}
+                  >
                     Slowest Endpoints (Needs Attention)
                   </Typography>
                   <Table size="small">
@@ -302,29 +396,51 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {analytics.top_slow_endpoints.slice(0, 5).map((endpoint, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <Chip label={endpoint.method} size="small" color="warning" />
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
-                            {endpoint.path}
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" color="error" sx={{ fontWeight: 600 }}>
-                              {endpoint.average_response_time_ms.toFixed(1)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">{formatNumber(endpoint.request_count)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {analytics.top_slow_endpoints
+                        .slice(0, 5)
+                        .map((endpoint, index) => (
+                          <TableRow key={index}>
+                            <TableCell>
+                              <Chip
+                                label={endpoint.method}
+                                size="small"
+                                color="warning"
+                              />
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontFamily: "monospace",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              {endpoint.path}
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography
+                                variant="body2"
+                                color="error"
+                                sx={{ fontWeight: 600 }}
+                              >
+                                {endpoint.average_response_time_ms.toFixed(1)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              {formatNumber(endpoint.request_count)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </Box>
               )}
 
-              <Typography variant="caption" display="block" sx={{ textAlign: 'center', color: 'text.secondary' }}>
-                Last updated: {new Date(analytics.last_updated * 1000).toLocaleString()}
+              <Typography
+                variant="caption"
+                display="block"
+                sx={{ textAlign: "center", color: "text.secondary" }}
+              >
+                Last updated:{" "}
+                {new Date(analytics.last_updated * 1000).toLocaleString()}
                 {autoRefresh && ` • Auto-refresh: ${refreshInterval / 1000}s`}
               </Typography>
             </Stack>

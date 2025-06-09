@@ -1,5 +1,5 @@
-import React from 'react';
-import NERDisplayContainer from './NERDisplayContainer';
+import React from "react";
+import NERDisplayContainer from "./NERDisplayContainer";
 
 interface NERDisplayProps {
   nerData: Record<string, any>;

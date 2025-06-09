@@ -1,9 +1,9 @@
-import React from 'react';
-import { Box, Typography } from '@mui/material';
+import React from "react";
+import { Box, Typography } from "@mui/material";
 
 /**
  * Props for the FullscreenInfo component.
- * 
+ *
  * @property isAnyFullscreen - Whether any fullscreen mode is active.
  * @property selectedAlias - Name of the selected collection/alias.
  * @property selectedSolrDatabase - Object representing the selected database.
@@ -19,14 +19,14 @@ interface FullscreenInfoProps {
 }
 
 const FULLSCREEN_INFO_STYLES = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
   px: 2,
   py: 1,
-  bgcolor: 'primary.main',
-  color: 'white',
-  mb: 0
+  bgcolor: "primary.main",
+  color: "white",
+  mb: 0,
 } as const;
 
 /**
@@ -38,7 +38,7 @@ const FullscreenInfo: React.FC<FullscreenInfoProps> = ({
   selectedAlias,
   selectedSolrDatabase,
   allResults,
-  fullscreenMode
+  fullscreenMode,
 }) => {
   if (!isAnyFullscreen || !selectedAlias) {
     return null;
@@ -49,14 +49,17 @@ const FullscreenInfo: React.FC<FullscreenInfoProps> = ({
       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
         {selectedSolrDatabase?.name} › {selectedAlias}
       </Typography>
-      <Box sx={{ display: 'flex', gap: 1 }}>
+      <Box sx={{ display: "flex", gap: 1 }}>
         {allResults.length > 0 && (
           <Typography variant="caption">
             {allResults.length} documents
           </Typography>
         )}
         <Typography variant="caption" sx={{ opacity: 0.8 }}>
-          {fullscreenMode === 'browser' ? 'Browser Fullscreen' : 'Native Fullscreen'} - ESC to exit
+          {fullscreenMode === "browser"
+            ? "Browser Fullscreen"
+            : "Native Fullscreen"}{" "}
+          - ESC to exit
         </Typography>
       </Box>
     </Box>

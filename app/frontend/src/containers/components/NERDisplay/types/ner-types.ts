@@ -65,12 +65,18 @@ export interface EntityPattern {
   /** Normalized textual pattern representation */
   pattern: string;
   /** Pattern type (bigram, trigram, or quadrigram) */
-  type: 'bigram' | 'trigram' | 'quadrigram';
+  type: "bigram" | "trigram" | "quadrigram";
 }
 
 export interface ProcessingState {
   /** Current processing phase */
-  phase: 'idle' | 'preprocessing' | 'basic_stats' | 'relationships' | 'patterns' | 'complete';
+  phase:
+    | "idle"
+    | "preprocessing"
+    | "basic_stats"
+    | "relationships"
+    | "patterns"
+    | "complete";
   /** Completion percentage (0-100) */
   progress: number;
   /** Description of the current task */
@@ -99,36 +105,56 @@ export interface NERAdvancedStats {
   averageEntitiesPerDocument: number;
   entityDensity: number;
   uniqueEntitiesRatio: number;
-  
+
   // Top entities summary
-  topEntities: Array<{ text: string; count: number; documents: number; frequency: number }>;
-  topEntitiesByType: Record<string, Array<{ text: string; count: number; documents: number }>>;
-  
+  topEntities: Array<{
+    text: string;
+    count: number;
+    documents: number;
+    frequency: number;
+  }>;
+  topEntitiesByType: Record<
+    string,
+    Array<{ text: string; count: number; documents: number }>
+  >;
+
   // Advanced feature data
   entityCooccurrences: EntityCooccurrence[];
   strongestPairs: EntityCooccurrence[];
   bigramPatterns: EntityPattern[];
   trigramPatterns: EntityPattern[];
   quadrigramPatterns: EntityPattern[];
-  centralityScores: Array<{ entity: string; score: number; connections: number }>;
+  centralityScores: Array<{
+    entity: string;
+    score: number;
+    connections: number;
+  }>;
   anomalyScores: Array<{ documentId: string; score: number; reason: string }>;
-  
+
   // Distributions
-  confidenceDistribution: Array<{ range: string; count: number; percentage: number }>;
-  entityLengthDistribution: Array<{ length: number; count: number; percentage: number }>;
-  
+  confidenceDistribution: Array<{
+    range: string;
+    count: number;
+    percentage: number;
+  }>;
+  entityLengthDistribution: Array<{
+    length: number;
+    count: number;
+    percentage: number;
+  }>;
+
   // Document-level analysis
   documentStats: DocumentStats[];
   documentsWithMostEntities: DocumentStats[];
   documentsWithHighestDiversity: DocumentStats[];
-  
+
   // Processing metadata
   processingComplete: boolean;
   hasAdvancedFeatures: boolean;
   isLimited?: boolean;
   totalEntitiesBeforeLimit?: number;
   processedEntities?: number;
-  
+
   // Additional placeholders for future data
   commonPatterns: EntityPattern[];
   communityGroups: any[];

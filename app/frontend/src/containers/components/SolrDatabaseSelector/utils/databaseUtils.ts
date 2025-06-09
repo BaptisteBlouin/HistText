@@ -5,19 +5,22 @@ interface SolrDatabase {
   description?: string;
 }
 
-export const truncateDescription = (description: string, maxLength: number = 80): string => {
+export const truncateDescription = (
+  description: string,
+  maxLength: number = 80,
+): string => {
   if (description.length <= maxLength) return description;
-  return description.substring(0, maxLength) + '...';
+  return description.substring(0, maxLength) + "...";
 };
 
 export const getDatabaseInitials = (name: string): string => {
   return name
     .split(/[-_\s]/)
-    .map(word => word.charAt(0).toUpperCase())
+    .map((word) => word.charAt(0).toUpperCase())
     .slice(0, 2)
-    .join('');
+    .join("");
 };
 
 export const getDatabaseDescription = (database: SolrDatabase): string => {
-  return database.description || 'No description available';
+  return database.description || "No description available";
 };

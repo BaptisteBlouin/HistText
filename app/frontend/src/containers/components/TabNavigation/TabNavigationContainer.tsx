@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
-import { Box, useTheme, useMediaQuery } from '@mui/material';
-import { FullscreenMode } from './index';
-import TabsHeader from './TabsHeader';
-import FullscreenControls from './FullscreenControls';
-import NERToggle from './NERToggle';
+import React, { useEffect } from "react";
+import { Box, useTheme, useMediaQuery } from "@mui/material";
+import { FullscreenMode } from "./index";
+import TabsHeader from "./TabsHeader";
+import FullscreenControls from "./FullscreenControls";
+import NERToggle from "./NERToggle";
 
 interface TabNavigationContainerProps {
   activeTab: number;
@@ -53,34 +53,45 @@ const TabNavigationContainer: React.FC<TabNavigationContainerProps> = ({
   isNERVisible,
   viewNER,
   onToggleNER,
-  containerRef
+  containerRef,
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isAnyFullscreen = fullscreenMode === 'browser' || fullscreenMode === 'native';
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isAnyFullscreen =
+    fullscreenMode === "browser" || fullscreenMode === "native";
 
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isCurrentlyNativeFullscreen = Boolean(document.fullscreenElement);
-      if (!isCurrentlyNativeFullscreen && fullscreenMode === 'native') {
-        onFullscreenModeChange('normal');
+      if (!isCurrentlyNativeFullscreen && fullscreenMode === "native") {
+        onFullscreenModeChange("normal");
       }
     };
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, [fullscreenMode, onFullscreenModeChange]);
 
   return (
-    <Box sx={{ 
-      borderBottom: 1, 
-      borderColor: 'divider',
-      background: 'linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%)',
-      position: 'relative'
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1 }}>
+    <Box
+      sx={{
+        borderBottom: 1,
+        borderColor: "divider",
+        background: "linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%)",
+        position: "relative",
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1,
+        }}
+      >
         <TabsHeader
           activeTab={activeTab}
           onTabChange={onTabChange}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -24,7 +24,7 @@ import {
   ListItemIcon,
   ListItemText,
   ListItemAvatar,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Security,
   ExpandMore,
@@ -39,9 +39,9 @@ import {
   Error as ErrorIcon,
   CheckCircle,
   AccountCircle,
-} from '@mui/icons-material';
-import { UserActivity } from '../types';
-import { formatNumber } from '../utils/formatters';
+} from "@mui/icons-material";
+import { UserActivity } from "../types";
+import { formatNumber } from "../utils/formatters";
 
 /**
  * Props for UserActivityMonitoring component.
@@ -72,15 +72,15 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
    */
   const getSecurityEventIcon = (eventType: string) => {
     switch (eventType) {
-      case 'password_change':
+      case "password_change":
         return <VpnKey color="success" />;
-      case 'password_reset':
+      case "password_reset":
         return <VpnKey color="warning" />;
-      case 'account_activation':
+      case "account_activation":
         return <CheckCircle color="success" />;
-      case 'failed_login':
+      case "failed_login":
         return <ErrorIcon color="error" />;
-      case 'suspicious_activity':
+      case "suspicious_activity":
         return <Warning color="error" />;
       default:
         return <Shield color="info" />;
@@ -92,14 +92,14 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
    */
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high':
-        return 'error';
-      case 'medium':
-        return 'warning';
-      case 'low':
-        return 'success';
+      case "high":
+        return "error";
+      case "medium":
+        return "warning";
+      case "low":
+        return "success";
       default:
-        return 'default';
+        return "default";
     }
   };
 
@@ -114,7 +114,7 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${diffDays}d ago`;
@@ -130,8 +130,23 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
   return (
     <Card sx={{ mb: 4 }}>
       <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
             <Security />
             User Activity & Security Monitoring
           </Typography>
@@ -141,7 +156,7 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
             endIcon={isVisible ? <ExpandLess /> : <ExpandMore />}
             size="small"
           >
-            {isVisible ? 'Hide Activity' : 'Show Activity'}
+            {isVisible ? "Hide Activity" : "Show Activity"}
           </Button>
         </Box>
 
@@ -159,32 +174,90 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6} md={2.4}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'success.light', color: 'success.contrastText' }}>
-                      <Typography variant="h6">{formatNumber(userActivity.session_statistics.total_active_sessions)}</Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        bgcolor: "success.light",
+                        color: "success.contrastText",
+                      }}
+                    >
+                      <Typography variant="h6">
+                        {formatNumber(
+                          userActivity.session_statistics.total_active_sessions,
+                        )}
+                      </Typography>
                       <Typography variant="body2">Active Sessions</Typography>
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={2.4}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                      <Typography variant="h6">{formatNumber(userActivity.session_statistics.sessions_last_24h)}</Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        bgcolor: "primary.light",
+                        color: "primary.contrastText",
+                      }}
+                    >
+                      <Typography variant="h6">
+                        {formatNumber(
+                          userActivity.session_statistics.sessions_last_24h,
+                        )}
+                      </Typography>
                       <Typography variant="body2">Sessions (24h)</Typography>
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={2.4}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'info.light', color: 'info.contrastText' }}>
-                      <Typography variant="h6">{formatNumber(userActivity.session_statistics.sessions_last_week)}</Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        bgcolor: "info.light",
+                        color: "info.contrastText",
+                      }}
+                    >
+                      <Typography variant="h6">
+                        {formatNumber(
+                          userActivity.session_statistics.sessions_last_week,
+                        )}
+                      </Typography>
                       <Typography variant="body2">Sessions (7d)</Typography>
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={2.4}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'secondary.light', color: 'secondary.contrastText' }}>
-                      <Typography variant="h6">{formatNumber(userActivity.session_statistics.unique_users_24h)}</Typography>
-                      <Typography variant="body2">Unique Users (24h)</Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        bgcolor: "secondary.light",
+                        color: "secondary.contrastText",
+                      }}
+                    >
+                      <Typography variant="h6">
+                        {formatNumber(
+                          userActivity.session_statistics.unique_users_24h,
+                        )}
+                      </Typography>
+                      <Typography variant="body2">
+                        Unique Users (24h)
+                      </Typography>
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={2.4}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'warning.light', color: 'warning.contrastText' }}>
-                      <Typography variant="h6">{userActivity.session_statistics.average_session_duration_minutes.toFixed(0)}m</Typography>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        bgcolor: "warning.light",
+                        color: "warning.contrastText",
+                      }}
+                    >
+                      <Typography variant="h6">
+                        {userActivity.session_statistics.average_session_duration_minutes.toFixed(
+                          0,
+                        )}
+                        m
+                      </Typography>
                       <Typography variant="body2">Avg Session</Typography>
                     </Paper>
                   </Grid>
@@ -195,33 +268,62 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                 {/* Recent Logins */}
                 <Grid item xs={12} md={6}>
                   <Box>
-                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography
+                      variant="h6"
+                      gutterBottom
+                      sx={{
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
                       <Person />
                       Recent Logins (24h)
                     </Typography>
-                    <Paper sx={{ maxHeight: 400, overflow: 'auto' }}>
+                    <Paper sx={{ maxHeight: 400, overflow: "auto" }}>
                       <List dense>
-                        {userActivity.recent_logins.slice(0, 10).map((login, index) => (
-                          <ListItem key={index} divider>
-                            <ListItemAvatar>
-                              <Avatar sx={{ bgcolor: 'primary.main' }}>
-                                {getUserInitials(login.firstname, login.lastname)}
-                              </Avatar>
-                            </ListItemAvatar>
-                            <ListItemText
-                              primary={`${login.firstname} ${login.lastname}`}
-                              secondary={
-                                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                                  <Typography variant="caption">{login.email}</Typography>
-                                  <Chip size="small" label={formatTimeAgo(login.login_time)} />
-                                  {login.device && (
-                                    <Chip size="small" icon={<Computer />} label={login.device} variant="outlined" />
+                        {userActivity.recent_logins
+                          .slice(0, 10)
+                          .map((login, index) => (
+                            <ListItem key={index} divider>
+                              <ListItemAvatar>
+                                <Avatar sx={{ bgcolor: "primary.main" }}>
+                                  {getUserInitials(
+                                    login.firstname,
+                                    login.lastname,
                                   )}
-                                </Stack>
-                              }
-                            />
-                          </ListItem>
-                        ))}
+                                </Avatar>
+                              </ListItemAvatar>
+                              <ListItemText
+                                primary={`${login.firstname} ${login.lastname}`}
+                                secondary={
+                                  <Stack
+                                    direction="row"
+                                    spacing={1}
+                                    alignItems="center"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    <Typography variant="caption">
+                                      {login.email}
+                                    </Typography>
+                                    <Chip
+                                      size="small"
+                                      label={formatTimeAgo(login.login_time)}
+                                    />
+                                    {login.device && (
+                                      <Chip
+                                        size="small"
+                                        icon={<Computer />}
+                                        label={login.device}
+                                        variant="outlined"
+                                      />
+                                    )}
+                                  </Stack>
+                                }
+                              />
+                            </ListItem>
+                          ))}
                         {userActivity.recent_logins.length === 0 && (
                           <ListItem>
                             <ListItemText primary="No recent logins" />
@@ -235,35 +337,75 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                 {/* Recent Registrations */}
                 <Grid item xs={12} md={6}>
                   <Box>
-                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography
+                      variant="h6"
+                      gutterBottom
+                      sx={{
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
                       <PersonAdd />
                       Recent Registrations (7d)
                     </Typography>
-                    <Paper sx={{ maxHeight: 400, overflow: 'auto' }}>
+                    <Paper sx={{ maxHeight: 400, overflow: "auto" }}>
                       <List dense>
-                        {userActivity.user_registrations.map((registration, index) => (
-                          <ListItem key={index} divider>
-                            <ListItemAvatar>
-                              <Avatar sx={{ bgcolor: registration.activated ? 'success.main' : 'warning.main' }}>
-                                {getUserInitials(registration.firstname, registration.lastname)}
-                              </Avatar>
-                            </ListItemAvatar>
-                            <ListItemText
-                              primary={`${registration.firstname} ${registration.lastname}`}
-                              secondary={
-                                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                                  <Typography variant="caption">{registration.email}</Typography>
-                                  <Chip 
-                                    size="small" 
-                                    label={registration.activated ? 'Activated' : 'Pending'} 
-                                    color={registration.activated ? 'success' : 'warning'}
-                                  />
-                                  <Chip size="small" label={formatTimeAgo(registration.registration_time)} />
-                                </Stack>
-                              }
-                            />
-                          </ListItem>
-                        ))}
+                        {userActivity.user_registrations.map(
+                          (registration, index) => (
+                            <ListItem key={index} divider>
+                              <ListItemAvatar>
+                                <Avatar
+                                  sx={{
+                                    bgcolor: registration.activated
+                                      ? "success.main"
+                                      : "warning.main",
+                                  }}
+                                >
+                                  {getUserInitials(
+                                    registration.firstname,
+                                    registration.lastname,
+                                  )}
+                                </Avatar>
+                              </ListItemAvatar>
+                              <ListItemText
+                                primary={`${registration.firstname} ${registration.lastname}`}
+                                secondary={
+                                  <Stack
+                                    direction="row"
+                                    spacing={1}
+                                    alignItems="center"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    <Typography variant="caption">
+                                      {registration.email}
+                                    </Typography>
+                                    <Chip
+                                      size="small"
+                                      label={
+                                        registration.activated
+                                          ? "Activated"
+                                          : "Pending"
+                                      }
+                                      color={
+                                        registration.activated
+                                          ? "success"
+                                          : "warning"
+                                      }
+                                    />
+                                    <Chip
+                                      size="small"
+                                      label={formatTimeAgo(
+                                        registration.registration_time,
+                                      )}
+                                    />
+                                  </Stack>
+                                }
+                              />
+                            </ListItem>
+                          ),
+                        )}
                         {userActivity.user_registrations.length === 0 && (
                           <ListItem>
                             <ListItemText primary="No recent registrations" />
@@ -277,7 +419,16 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
 
               {/* Security Events */}
               <Box>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
                   <Shield />
                   Security Events
                 </Typography>
@@ -291,18 +442,32 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                         <ListItemText
                           primary={event.description}
                           secondary={
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="center"
+                              sx={{ mt: 0.5 }}
+                            >
                               {event.user_email && (
-                                <Typography variant="caption">{event.user_email}</Typography>
+                                <Typography variant="caption">
+                                  {event.user_email}
+                                </Typography>
                               )}
-                              <Chip 
-                                size="small" 
-                                label={event.severity.toUpperCase()} 
+                              <Chip
+                                size="small"
+                                label={event.severity.toUpperCase()}
                                 color={getSeverityColor(event.severity) as any}
                               />
-                              <Chip size="small" label={formatTimeAgo(event.timestamp)} />
+                              <Chip
+                                size="small"
+                                label={formatTimeAgo(event.timestamp)}
+                              />
                               {event.ip_address && (
-                                <Chip size="small" label={event.ip_address} variant="outlined" />
+                                <Chip
+                                  size="small"
+                                  label={event.ip_address}
+                                  variant="outlined"
+                                />
                               )}
                             </Stack>
                           }
@@ -324,7 +489,17 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
               {/* Failed Login Attempts */}
               {userActivity.failed_login_attempts.length > 0 && (
                 <Box>
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{
+                      fontWeight: 600,
+                      color: "error.main",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                    }}
+                  >
                     <Warning />
                     Failed Login Attempts
                   </Typography>
@@ -340,25 +515,40 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {userActivity.failed_login_attempts.map((attempt, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{attempt.email}</TableCell>
-                            <TableCell>{formatTimeAgo(attempt.attempt_time)}</TableCell>
-                            <TableCell>{attempt.ip_address || 'N/A'}</TableCell>
-                            <TableCell>{attempt.reason}</TableCell>
-                            <TableCell align="right">
-                              <Chip size="small" label={attempt.count} color="error" />
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {userActivity.failed_login_attempts.map(
+                          (attempt, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{attempt.email}</TableCell>
+                              <TableCell>
+                                {formatTimeAgo(attempt.attempt_time)}
+                              </TableCell>
+                              <TableCell>
+                                {attempt.ip_address || "N/A"}
+                              </TableCell>
+                              <TableCell>{attempt.reason}</TableCell>
+                              <TableCell align="right">
+                                <Chip
+                                  size="small"
+                                  label={attempt.count}
+                                  color="error"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ),
+                        )}
                       </TableBody>
                     </Table>
                   </Paper>
                 </Box>
               )}
 
-              <Typography variant="caption" display="block" sx={{ textAlign: 'center', color: 'text.secondary' }}>
-                Last updated: {new Date(userActivity.last_updated).toLocaleString()}
+              <Typography
+                variant="caption"
+                display="block"
+                sx={{ textAlign: "center", color: "text.secondary" }}
+              >
+                Last updated:{" "}
+                {new Date(userActivity.last_updated).toLocaleString()}
               </Typography>
             </Stack>
           )}

@@ -1,60 +1,60 @@
-import { useApolloClient } from '@apollo/client';
-import { useAuth, useAuthCheck, AuthProvider } from './hooks/useAuth';
-import { AccountPage } from './containers/AccountPage';
-import { LoginPage } from './containers/LoginPage';
-import { OauthLoginResultPage } from './containers/OauthLoginResultPage';
-import { ActivationPage } from './containers/ActivationPage';
-import { RegistrationPage } from './containers/RegistrationPage';
-import { RecoveryPage } from './containers/RecoveryPage';
-import { ResetPage } from './containers/ResetPage';
-import { ProtectedRoute, PublicRoute } from './components/RouteGuards';
-import { LogoutButton } from './components/LogoutButton';
-import React, { useState } from 'react';
-import './App.css';
-import { Home } from './containers/Home';
-import { Route, useNavigate, Routes } from 'react-router-dom';
-import HistText from './containers/HistText';
-import AdminPanel from './containers/admin/AdminPanel';
+import { useApolloClient } from "@apollo/client";
+import { useAuth, useAuthCheck, AuthProvider } from "./hooks/useAuth";
+import { AccountPage } from "./containers/AccountPage";
+import { LoginPage } from "./containers/LoginPage";
+import { OauthLoginResultPage } from "./containers/OauthLoginResultPage";
+import { ActivationPage } from "./containers/ActivationPage";
+import { RegistrationPage } from "./containers/RegistrationPage";
+import { RecoveryPage } from "./containers/RecoveryPage";
+import { ResetPage } from "./containers/ResetPage";
+import { ProtectedRoute, PublicRoute } from "./components/RouteGuards";
+import { LogoutButton } from "./components/LogoutButton";
+import React, { useState } from "react";
+import "./App.css";
+import { Home } from "./containers/Home";
+import { Route, useNavigate, Routes } from "react-router-dom";
+import HistText from "./containers/HistText";
+import AdminPanel from "./containers/admin/AdminPanel";
 
-import { 
-  Box, 
-  Drawer, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
-  ListItemText, 
-  IconButton, 
-  useTheme, 
-  useMediaQuery, 
-  Avatar, 
-  Menu, 
+import {
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
+  useTheme,
+  useMediaQuery,
+  Avatar,
+  Menu,
   MenuItem,
   Divider,
   Typography,
   Button,
   Fab,
   Tooltip,
-} from '@mui/material';
-import { 
-  Home as HomeIcon, 
-  Description, 
-  AdminPanelSettings, 
-  AccountCircle, 
-  Login, 
+} from "@mui/material";
+import {
+  Home as HomeIcon,
+  Description,
+  AdminPanelSettings,
+  AccountCircle,
+  Login,
   Menu as MenuIcon,
   Close as CloseIcon,
   ChevronLeft,
   ChevronRight,
-  GitHub
-} from '@mui/icons-material';
-import HistLogo from './images/HistTextLogoC.png';
+  GitHub,
+} from "@mui/icons-material";
+import HistLogo from "./images/HistTextLogoC.png";
 
 const AppContent = () => {
   useAuthCheck();
   const auth = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // Add proper typing
@@ -77,38 +77,53 @@ const AppContent = () => {
   };
 
   const navigationItems = [
-    { text: 'Home', icon: <HomeIcon />, path: '/', public: true },
-    { text: 'HistText Analysis', icon: <Description />, path: '/histtext', auth: true },
+    { text: "Home", icon: <HomeIcon />, path: "/", public: true },
+    {
+      text: "HistText Analysis",
+      icon: <Description />,
+      path: "/histtext",
+      auth: true,
+    },
   ];
 
   const adminItems = [
-    { text: 'Admin Panel', icon: <AdminPanelSettings />, path: '/Admin', role: 'Admin' },
+    {
+      text: "Admin Panel",
+      icon: <AdminPanelSettings />,
+      path: "/Admin",
+      role: "Admin",
+    },
   ];
 
   const drawerWidth = 280;
   const collapsedWidth = 64;
 
   const drawer = (collapsed = false) => (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Toggle Button - Desktop Only */}
       {!isMobile && (
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: collapsed ? 'center' : 'flex-end',
-          p: 1,
-          borderBottom: '1px solid',
-          borderColor: 'divider'
-        }}>
-          <Tooltip title={collapsed ? "Expand sidebar" : "Collapse sidebar"} placement="right">
-            <IconButton 
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: collapsed ? "center" : "flex-end",
+            p: 1,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Tooltip
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            placement="right"
+          >
+            <IconButton
               onClick={handleSidebarToggle}
               sx={{
-                backgroundColor: 'background.paper',
+                backgroundColor: "background.paper",
                 boxShadow: 1,
-                '&:hover': {
-                  backgroundColor: 'primary.light',
-                  color: 'white'
-                }
+                "&:hover": {
+                  backgroundColor: "primary.light",
+                  color: "white",
+                },
               }}
             >
               {collapsed ? <ChevronRight /> : <ChevronLeft />}
@@ -118,34 +133,36 @@ const AppContent = () => {
       )}
 
       {/* Logo Section */}
-      <Box sx={{ 
-        p: collapsed ? 1 : 3, 
-        textAlign: 'center', 
-        borderBottom: '1px solid', 
-        borderColor: 'divider' 
-      }}>
+      <Box
+        sx={{
+          p: collapsed ? 1 : 3,
+          textAlign: "center",
+          borderBottom: "1px solid",
+          borderColor: "divider",
+        }}
+      >
         {collapsed ? (
           <Tooltip title="HistText" placement="right">
-            <Avatar 
-              sx={{ 
-                width: 40, 
-                height: 40, 
-                bgcolor: 'primary.main',
-                cursor: 'pointer',
-                margin: '0 auto'
+            <Avatar
+              sx={{
+                width: 40,
+                height: 40,
+                bgcolor: "primary.main",
+                cursor: "pointer",
+                margin: "0 auto",
               }}
-              onClick={() => navigate('/histtext')}
+              onClick={() => navigate("/histtext")}
             >
               <Description />
             </Avatar>
           </Tooltip>
         ) : (
           <>
-            <img 
-              src={HistLogo} 
-              alt="HistText Logo" 
-              style={{ height: '50px', cursor: 'pointer', marginBottom: '8px' }} 
-              onClick={() => navigate('/histtext')}
+            <img
+              src={HistLogo}
+              alt="HistText Logo"
+              style={{ height: "50px", cursor: "pointer", marginBottom: "8px" }}
+              onClick={() => navigate("/histtext")}
             />
             <br />
             <Typography variant="caption" color="text.secondary">
@@ -161,16 +178,16 @@ const AppContent = () => {
           {navigationItems.map((item) => {
             if (item.auth && !auth.isAuthenticated) return null;
             if (item.public === false && !auth.isAuthenticated) return null;
-            
+
             return (
-              <Tooltip 
+              <Tooltip
                 key={item.text}
-                title={collapsed ? item.text : ''} 
+                title={collapsed ? item.text : ""}
                 placement="right"
                 disableHoverListener={!collapsed}
               >
-                <ListItem 
-                  button 
+                <ListItem
+                  button
                   onClick={() => {
                     navigate(item.path);
                     if (isMobile) setMobileOpen(false);
@@ -179,28 +196,28 @@ const AppContent = () => {
                     borderRadius: 2,
                     mx: collapsed ? 1 : 2,
                     mb: 1,
-                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    justifyContent: collapsed ? "center" : "flex-start",
                     px: collapsed ? 1 : 2,
-                    '&:hover': {
-                      backgroundColor: 'primary.light',
-                      color: 'white',
-                      '& .MuiListItemIcon-root': {
-                        color: 'white',
-                      }
+                    "&:hover": {
+                      backgroundColor: "primary.light",
+                      color: "white",
+                      "& .MuiListItemIcon-root": {
+                        color: "white",
+                      },
                     },
                   }}
                 >
-                  <ListItemIcon 
-                    sx={{ 
-                      color: 'primary.main',
-                      minWidth: collapsed ? 'auto' : 40,
-                      justifyContent: 'center'
+                  <ListItemIcon
+                    sx={{
+                      color: "primary.main",
+                      minWidth: collapsed ? "auto" : 40,
+                      justifyContent: "center",
                     }}
                   >
                     {item.icon}
                   </ListItemIcon>
                   {!collapsed && (
-                    <ListItemText 
+                    <ListItemText
                       primary={item.text}
                       primaryTypographyProps={{ fontWeight: 500 }}
                     />
@@ -209,57 +226,58 @@ const AppContent = () => {
               </Tooltip>
             );
           })}
-          
-          {auth.isAuthenticated && adminItems.map((item) => {
-            if (item.role && !auth.session?.hasRole(item.role)) return null;
-            
-            return (
-              <Tooltip 
-                key={item.text}
-                title={collapsed ? item.text : ''} 
-                placement="right"
-                disableHoverListener={!collapsed}
-              >
-                <ListItem 
-                  button 
-                  onClick={() => {
-                    navigate(item.path);
-                    if (isMobile) setMobileOpen(false);
-                  }}
-                  sx={{
-                    borderRadius: 2,
-                    mx: collapsed ? 1 : 2,
-                    mb: 1,
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                    px: collapsed ? 1 : 2,
-                    '&:hover': {
-                      backgroundColor: 'secondary.light',
-                      color: 'white',
-                      '& .MuiListItemIcon-root': {
-                        color: 'white',
-                      }
-                    },
-                  }}
+
+          {auth.isAuthenticated &&
+            adminItems.map((item) => {
+              if (item.role && !auth.session?.hasRole(item.role)) return null;
+
+              return (
+                <Tooltip
+                  key={item.text}
+                  title={collapsed ? item.text : ""}
+                  placement="right"
+                  disableHoverListener={!collapsed}
                 >
-                  <ListItemIcon 
-                    sx={{ 
-                      color: 'secondary.main',
-                      minWidth: collapsed ? 'auto' : 40,
-                      justifyContent: 'center'
+                  <ListItem
+                    button
+                    onClick={() => {
+                      navigate(item.path);
+                      if (isMobile) setMobileOpen(false);
+                    }}
+                    sx={{
+                      borderRadius: 2,
+                      mx: collapsed ? 1 : 2,
+                      mb: 1,
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      px: collapsed ? 1 : 2,
+                      "&:hover": {
+                        backgroundColor: "secondary.light",
+                        color: "white",
+                        "& .MuiListItemIcon-root": {
+                          color: "white",
+                        },
+                      },
                     }}
                   >
-                    {item.icon}
-                  </ListItemIcon>
-                  {!collapsed && (
-                    <ListItemText 
-                      primary={item.text}
-                      primaryTypographyProps={{ fontWeight: 500 }}
-                    />
-                  )}
-                </ListItem>
-              </Tooltip>
-            );
-          })}
+                    <ListItemIcon
+                      sx={{
+                        color: "secondary.main",
+                        minWidth: collapsed ? "auto" : 40,
+                        justifyContent: "center",
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    {!collapsed && (
+                      <ListItemText
+                        primary={item.text}
+                        primaryTypographyProps={{ fontWeight: 500 }}
+                      />
+                    )}
+                  </ListItem>
+                </Tooltip>
+              );
+            })}
         </List>
       </Box>
 
@@ -270,50 +288,60 @@ const AppContent = () => {
           {collapsed ? (
             <Tooltip title="View on GitHub" placement="right">
               <IconButton
-                onClick={() => window.open('https://github.com/BaptisteBlouin/HistText', '_blank')}
+                onClick={() =>
+                  window.open(
+                    "https://github.com/BaptisteBlouin/HistText",
+                    "_blank",
+                  )
+                }
                 sx={{
-                  width: '100%',
+                  width: "100%",
                   height: 48,
                   borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
+                  border: "1px solid",
+                  borderColor: "divider",
                   mb: 1,
-                  '&:hover': {
-                    backgroundColor: 'secondary.light',
-                    borderColor: 'secondary.main',
-                    color: 'white'
-                  }
+                  "&:hover": {
+                    backgroundColor: "secondary.light",
+                    borderColor: "secondary.main",
+                    color: "white",
+                  },
                 }}
               >
-                <GitHub sx={{ color: 'secondary.main' }} />
+                <GitHub sx={{ color: "secondary.main" }} />
               </IconButton>
             </Tooltip>
           ) : (
-            <ListItem 
+            <ListItem
               button
-              onClick={() => window.open('https://github.com/BaptisteBlouin/HistText', '_blank')}
+              onClick={() =>
+                window.open(
+                  "https://github.com/BaptisteBlouin/HistText",
+                  "_blank",
+                )
+              }
               sx={{
                 borderRadius: 2,
-                border: '1px solid',
-                borderColor: 'divider',
+                border: "1px solid",
+                borderColor: "divider",
                 mb: 1,
-                '&:hover': {
-                  backgroundColor: 'secondary.light',
-                  borderColor: 'secondary.main',
-                  color: 'white',
-                  '& .MuiListItemIcon-root': {
-                    color: 'white',
-                  }
-                }
+                "&:hover": {
+                  backgroundColor: "secondary.light",
+                  borderColor: "secondary.main",
+                  color: "white",
+                  "& .MuiListItemIcon-root": {
+                    color: "white",
+                  },
+                },
               }}
             >
               <ListItemIcon>
-                <GitHub sx={{ color: 'secondary.main' }} />
+                <GitHub sx={{ color: "secondary.main" }} />
               </ListItemIcon>
-              <ListItemText 
+              <ListItemText
                 primary="View on GitHub"
                 secondary="Source code"
-                secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                secondaryTypographyProps={{ fontSize: "0.75rem" }}
               />
             </ListItem>
           )}
@@ -325,52 +353,56 @@ const AppContent = () => {
                 <IconButton
                   onClick={handleProfileMenuOpen}
                   sx={{
-                    width: '100%',
+                    width: "100%",
                     height: 48,
                     borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'divider',
+                    border: "1px solid",
+                    borderColor: "divider",
                     mb: 1,
-                    '&:hover': {
-                      backgroundColor: 'action.hover',
-                    }
+                    "&:hover": {
+                      backgroundColor: "action.hover",
+                    },
                   }}
                 >
-                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                  <Avatar
+                    sx={{ width: 32, height: 32, bgcolor: "primary.main" }}
+                  >
                     <AccountCircle />
                   </Avatar>
                 </IconButton>
               </Tooltip>
             ) : (
-              <ListItem 
+              <ListItem
                 button
                 onClick={handleProfileMenuOpen}
                 sx={{
                   borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
+                  border: "1px solid",
+                  borderColor: "divider",
                   mb: 1,
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  }
+                  "&:hover": {
+                    backgroundColor: "action.hover",
+                  },
                 }}
               >
                 <ListItemIcon>
-                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                  <Avatar
+                    sx={{ width: 32, height: 32, bgcolor: "primary.main" }}
+                  >
                     <AccountCircle />
                   </Avatar>
                 </ListItemIcon>
-                <ListItemText 
+                <ListItemText
                   primary="Account"
                   secondary="Manage settings"
-                  secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                  secondaryTypographyProps={{ fontSize: "0.75rem" }}
                 />
               </ListItem>
             )}
 
             {/* Use the new LogoutButton component */}
-            <LogoutButton 
-              variant={collapsed ? 'icon' : 'button'}
+            <LogoutButton
+              variant={collapsed ? "icon" : "button"}
               collapsed={collapsed}
               onComplete={() => {
                 if (isMobile) setMobileOpen(false);
@@ -381,14 +413,16 @@ const AppContent = () => {
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
               onClose={handleProfileMenuClose}
-              transformOrigin={{ horizontal: 'left', vertical: 'bottom' }}
-              anchorOrigin={{ horizontal: 'left', vertical: 'top' }}
+              transformOrigin={{ horizontal: "left", vertical: "bottom" }}
+              anchorOrigin={{ horizontal: "left", vertical: "top" }}
             >
-              <MenuItem onClick={() => { 
-                navigate('/account'); 
-                handleProfileMenuClose(); 
-                if (isMobile) setMobileOpen(false);
-              }}>
+              <MenuItem
+                onClick={() => {
+                  navigate("/account");
+                  handleProfileMenuClose();
+                  if (isMobile) setMobileOpen(false);
+                }}
+              >
                 <AccountCircle sx={{ mr: 1 }} /> Account Settings
               </MenuItem>
             </Menu>
@@ -400,18 +434,20 @@ const AppContent = () => {
                 <IconButton
                   color="primary"
                   onClick={() => {
-                    navigate('/login');
+                    navigate("/login");
                     if (isMobile) setMobileOpen(false);
                   }}
-                  sx={{ 
-                    width: '100%',
+                  sx={{
+                    width: "100%",
                     height: 40,
                     borderRadius: 2,
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                    }
+                    background:
+                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    color: "white",
+                    "&:hover": {
+                      background:
+                        "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                    },
                   }}
                 >
                   <Login />
@@ -423,14 +459,16 @@ const AppContent = () => {
                 variant="contained"
                 startIcon={<Login />}
                 onClick={() => {
-                  navigate('/login');
+                  navigate("/login");
                   if (isMobile) setMobileOpen(false);
                 }}
-                sx={{ 
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                  }
+                sx={{
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  "&:hover": {
+                    background:
+                      "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                  },
                 }}
               >
                 Sign In
@@ -442,10 +480,14 @@ const AppContent = () => {
     </Box>
   );
 
-  const currentDrawerWidth = isMobile ? drawerWidth : (sidebarCollapsed ? collapsedWidth : drawerWidth);
+  const currentDrawerWidth = isMobile
+    ? drawerWidth
+    : sidebarCollapsed
+      ? collapsedWidth
+      : drawerWidth;
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
       {/* Mobile Menu Button */}
       {isMobile && (
         <Fab
@@ -453,7 +495,7 @@ const AppContent = () => {
           aria-label="menu"
           onClick={handleDrawerToggle}
           sx={{
-            position: 'fixed',
+            position: "fixed",
             top: 16,
             left: 16,
             zIndex: theme.zIndex.speedDial,
@@ -471,10 +513,10 @@ const AppContent = () => {
           onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
           sx={{
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
+            "& .MuiDrawer-paper": {
+              boxSizing: "border-box",
               width: drawerWidth,
-              background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)',
+              background: "linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)",
             },
           }}
         >
@@ -486,21 +528,21 @@ const AppContent = () => {
           sx={{
             width: currentDrawerWidth,
             flexShrink: 0,
-            transition: theme.transitions.create('width', {
+            transition: theme.transitions.create("width", {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.enteringScreen,
             }),
-            '& .MuiDrawer-paper': {
+            "& .MuiDrawer-paper": {
               width: currentDrawerWidth,
-              boxSizing: 'border-box',
-              borderRight: '1px solid',
-              borderColor: 'divider',
-              background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)',
-              transition: theme.transitions.create('width', {
+              boxSizing: "border-box",
+              borderRight: "1px solid",
+              borderColor: "divider",
+              background: "linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)",
+              transition: theme.transitions.create("width", {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
               }),
-              overflowX: 'hidden',
+              overflowX: "hidden",
             },
           }}
         >
@@ -509,14 +551,14 @@ const AppContent = () => {
       )}
 
       {/* Main Content */}
-      <Box 
-        component="main" 
-        sx={{ 
-          flexGrow: 1, 
-          backgroundColor: '#f5f7fa',
-          minHeight: '100vh',
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          backgroundColor: "#f5f7fa",
+          minHeight: "100vh",
           pt: isMobile ? 8 : 0,
-          transition: theme.transitions.create('margin', {
+          transition: theme.transitions.create("margin", {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
@@ -524,43 +566,43 @@ const AppContent = () => {
       >
         <Routes>
           {/* Public routes - only accessible when NOT authenticated */}
-           <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegistrationPage />} />
           <Route path="/recovery" element={<RecoveryPage />} />
           <Route path="/activate" element={<ActivationPage />} />
           <Route path="/reset" element={<ResetPage />} />
-          
+
           {/* OAuth routes - these need special handling */}
           <Route path="/oauth/success" element={<OauthLoginResultPage />} />
           <Route path="/oauth/error" element={<OauthLoginResultPage />} />
-          
+
           {/* Public/Mixed routes */}
           <Route path="/" element={<Home />} />
-          
+
           {/* Protected routes - only accessible when authenticated */}
-          <Route 
-            path="/account" 
+          <Route
+            path="/account"
             element={
               <ProtectedRoute>
                 <AccountPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/histtext" 
+          <Route
+            path="/histtext"
             element={
               <ProtectedRoute>
                 <HistText />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/Admin" 
+          <Route
+            path="/Admin"
             element={
               <ProtectedRoute>
                 <AdminPanel />
               </ProtectedRoute>
-            } 
+            }
           />
         </Routes>
       </Box>

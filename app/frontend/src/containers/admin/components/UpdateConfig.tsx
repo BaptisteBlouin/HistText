@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Box, TextField, Button, Grid } from '@mui/material';
+import React, { useState, useEffect } from "react";
+import { Box, TextField, Button, Grid } from "@mui/material";
 
 /**
  * Fetches the configuration for the update form.
@@ -7,8 +7,8 @@ import { Box, TextField, Button, Grid } from '@mui/material';
  */
 const fetchConfig = async () => {
   return {
-    statsLevelOptions: ['All', 'Medium', 'None'],
-    docLevelOptions: ['100', '500', '5000', '20000'],
+    statsLevelOptions: ["All", "Medium", "None"],
+    docLevelOptions: ["100", "500", "5000", "20000"],
   };
 };
 
@@ -17,7 +17,7 @@ const fetchConfig = async () => {
  * Replace this logic with a real API call to persist the configuration.
  */
 const saveConfig = async (updatedConfig: any) => {
-  console.log('Saving Config:', updatedConfig);
+  console.log("Saving Config:", updatedConfig);
 };
 
 /**
@@ -40,7 +40,7 @@ const UpdateConfig: React.FC = () => {
 
   const handleSave = async () => {
     await saveConfig(config);
-    alert('Configuration saved successfully!');
+    alert("Configuration saved successfully!");
   };
 
   if (loading) {
@@ -56,11 +56,13 @@ const UpdateConfig: React.FC = () => {
         <Grid item xs={12}>
           <TextField
             label="Stats Level Options (comma-separated)"
-            value={config.statsLevelOptions.join(', ')}
-            onChange={e =>
+            value={config.statsLevelOptions.join(", ")}
+            onChange={(e) =>
               setConfig({
                 ...config,
-                statsLevelOptions: e.target.value.split(',').map(v => v.trim()),
+                statsLevelOptions: e.target.value
+                  .split(",")
+                  .map((v) => v.trim()),
               })
             }
             fullWidth
@@ -69,11 +71,11 @@ const UpdateConfig: React.FC = () => {
         <Grid item xs={12}>
           <TextField
             label="Doc Level Options (comma-separated)"
-            value={config.docLevelOptions.join(', ')}
-            onChange={e =>
+            value={config.docLevelOptions.join(", ")}
+            onChange={(e) =>
               setConfig({
                 ...config,
-                docLevelOptions: e.target.value.split(',').map(v => v.trim()),
+                docLevelOptions: e.target.value.split(",").map((v) => v.trim()),
               })
             }
             fullWidth

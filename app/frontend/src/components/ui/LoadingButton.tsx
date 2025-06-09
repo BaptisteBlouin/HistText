@@ -1,5 +1,5 @@
-import React from 'react';
-import { Button, CircularProgress, ButtonProps } from '@mui/material';
+import React from "react";
+import { Button, CircularProgress, ButtonProps } from "@mui/material";
 
 /**
  * Props for LoadingButton component.

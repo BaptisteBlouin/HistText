@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Typography, Chip } from '@mui/material';
+import React from "react";
+import { Box, Typography, Chip } from "@mui/material";
 
 /**
  * Props for CloudSearchResults, showing quick links to found words.
@@ -26,19 +26,21 @@ const CloudSearchResults: React.FC<CloudSearchResultsProps> = ({
   searchTerm,
   processedData,
   highlightedWord,
-  onWordHighlight
+  onWordHighlight,
 }) => {
   if (!searchTerm) return null;
 
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
       {processedData.slice(0, 10).map((word) => (
         <Chip
           key={word.text}
           label={`${word.text} (${word.value})`}
           size="small"
           clickable
-          onClick={() => onWordHighlight(word.text === highlightedWord ? null : word.text)}
+          onClick={() =>
+            onWordHighlight(word.text === highlightedWord ? null : word.text)
+          }
           color={highlightedWord === word.text ? "primary" : "default"}
         />
       ))}

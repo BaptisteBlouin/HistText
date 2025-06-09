@@ -1,7 +1,7 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { CircularProgress, Box, Typography } from '@mui/material';
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { CircularProgress, Box, Typography } from "@mui/material";
 
 /**
  * Props for ProtectedRoute and PublicRoute components.
@@ -23,14 +23,14 @@ export const ProtectedRoute = ({ children }: RouteGuardProps) => {
   // Show loading while checking authentication
   if (isLoading) {
     return (
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          gap: 2
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          gap: 2,
         }}
       >
         <CircularProgress size={60} />
@@ -60,14 +60,14 @@ export const PublicRoute = ({ children }: RouteGuardProps) => {
   // Show loading while checking authentication
   if (isLoading) {
     return (
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          gap: 2
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          gap: 2,
         }}
       >
         <CircularProgress size={60} />

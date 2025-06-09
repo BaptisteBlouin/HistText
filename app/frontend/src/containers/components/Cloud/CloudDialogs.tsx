@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Dialog,
   DialogTitle,
@@ -7,9 +7,9 @@ import {
   Button,
   Box,
   Typography,
-  Grid
-} from '@mui/material';
-import { Info } from '@mui/icons-material';
+  Grid,
+} from "@mui/material";
+import { Info } from "@mui/icons-material";
 
 /**
  * Props for the CloudDialogs component, controlling info and share dialogs.
@@ -31,13 +31,13 @@ interface CloudDialogsProps {
  * Label mapping for supported color schemes.
  */
 const COLOR_SCHEMES = {
-  default: { name: 'Default' },
-  warm: { name: 'Warm Sunset' },
-  cool: { name: 'Ocean Breeze' },
-  purple: { name: 'Purple Haze' },
-  forest: { name: 'Forest' },
-  sunset: { name: 'Sunset' },
-  monochrome: { name: 'Monochrome' }
+  default: { name: "Default" },
+  warm: { name: "Warm Sunset" },
+  cool: { name: "Ocean Breeze" },
+  purple: { name: "Purple Haze" },
+  forest: { name: "Forest" },
+  sunset: { name: "Sunset" },
+  monochrome: { name: "Monochrome" },
 };
 
 /**
@@ -57,13 +57,13 @@ const CloudDialogs: React.FC<CloudDialogsProps> = ({
   onCloseWordInfo,
   onCloseShare,
   onHighlightWord,
-  onShare
+  onShare,
 }) => {
   return (
     <>
       {/* Word Info Dialog */}
       <Dialog open={showWordInfo} onClose={onCloseWordInfo}>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Info />
           Word Information
         </DialogTitle>
@@ -75,31 +75,50 @@ const CloudDialogs: React.FC<CloudDialogsProps> = ({
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Frequency</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Frequency
+                  </Typography>
                   <Typography variant="h6">{selectedWord.value}</Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Rank</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Rank
+                  </Typography>
                   <Typography variant="h6">#{selectedWord.rank}</Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Length</Typography>
-                  <Typography variant="h6">{selectedWord.text.length} chars</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Length
+                  </Typography>
+                  <Typography variant="h6">
+                    {selectedWord.text.length} chars
+                  </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Font Size</Typography>
-                  <Typography variant="h6">{Math.round(selectedWord.size)}px</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Font Size
+                  </Typography>
+                  <Typography variant="h6">
+                    {Math.round(selectedWord.size)}px
+                  </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant="body2" color="text.secondary">Type</Typography>
-                  <Typography variant="h6">{selectedWord.isChinese ? 'Chinese' : 'English'}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Type
+                  </Typography>
+                  <Typography variant="h6">
+                    {selectedWord.isChinese ? "Chinese" : "English"}
+                  </Typography>
                 </Grid>
               </Grid>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => onHighlightWord(selectedWord?.text)} color="primary">
+          <Button
+            onClick={() => onHighlightWord(selectedWord?.text)}
+            color="primary"
+          >
             Highlight
           </Button>
           <Button onClick={onCloseWordInfo}>Close</Button>
@@ -113,17 +132,20 @@ const CloudDialogs: React.FC<CloudDialogsProps> = ({
           <Typography variant="body2" sx={{ mb: 2 }}>
             Share your current word cloud settings with others!
           </Typography>
-          <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+          <Box sx={{ p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
             <Typography variant="caption" color="text.secondary">
-              Theme: {COLOR_SCHEMES[colorScheme as keyof typeof COLOR_SCHEMES]?.name || colorScheme} • 
-              Words: {maxWords} • 
-              Min Freq: {filterMinFreq}
+              Theme:{" "}
+              {COLOR_SCHEMES[colorScheme as keyof typeof COLOR_SCHEMES]?.name ||
+                colorScheme}{" "}
+              • Words: {maxWords} • Min Freq: {filterMinFreq}
             </Typography>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={onCloseShare}>Cancel</Button>
-          <Button onClick={onShare} variant="contained">Copy Link</Button>
+          <Button onClick={onShare} variant="contained">
+            Copy Link
+          </Button>
         </DialogActions>
       </Dialog>
     </>

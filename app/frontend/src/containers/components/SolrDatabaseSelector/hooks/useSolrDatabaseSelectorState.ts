@@ -1,20 +1,20 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
 
 export const useSolrDatabaseSelectorState = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const toggleDropdown = useCallback(() => {
-    setIsOpen(prev => !prev);
+    setIsOpen((prev) => !prev);
     if (isOpen) {
-      setSearchTerm('');
+      setSearchTerm("");
     }
   }, [isOpen]);
 
   const closeDropdown = useCallback(() => {
     setIsOpen(false);
-    setSearchTerm('');
+    setSearchTerm("");
   }, []);
 
   const openDropdown = useCallback(() => {
@@ -22,7 +22,7 @@ export const useSolrDatabaseSelectorState = () => {
   }, []);
 
   const clearSearch = useCallback(() => {
-    setSearchTerm('');
+    setSearchTerm("");
   }, []);
 
   return {
@@ -34,6 +34,6 @@ export const useSolrDatabaseSelectorState = () => {
     toggleDropdown,
     closeDropdown,
     openDropdown,
-    clearSearch
+    clearSearch,
   };
 };

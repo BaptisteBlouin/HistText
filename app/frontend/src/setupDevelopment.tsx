@@ -4,14 +4,14 @@
 
 /* require() this file in development mode to enable development hints */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import ReactDOM from 'react-dom/client';
-import ReconnectingWebsocket from 'reconnecting-websocket';
-import Ansi from 'ansi-to-react';
+import { useCallback, useEffect, useRef, useState } from "react";
+import ReactDOM from "react-dom/client";
+import ReconnectingWebsocket from "reconnecting-websocket";
+import Ansi from "ansi-to-react";
 
 interface Migration {
   name: string;
-  status: 'Applied' | 'AppliedButMissingLocally' | 'Pending' | 'Unknown';
+  status: "Applied" | "AppliedButMissingLocally" | "Pending" | "Unknown";
   version: string;
 }
 
@@ -20,7 +20,9 @@ const useWebsocketConnection = () => {
   const [backendCompileState, setBackendCompileState] = useState(true);
   const [backendCompilingState, setBackendCompilingState] = useState(false);
   const [backendRestartingState, setBackendRestartingState] = useState(false);
-  const [backendCompilerMessages, setBackendCompilerMessages] = useState<CompilerMessage[]>([]);
+  const [backendCompilerMessages, setBackendCompilerMessages] = useState<
+    CompilerMessage[]
+  >([]);
   const [backendOnlineState, setBackendOnlineState] = useState(true);
   const [wsConnected, setWsConnected] = useState(false);
   const [viteStatus, setViteStatus] = useState(true);
@@ -38,7 +40,9 @@ const useWebsocketConnection = () => {
         wsRef.current.close();
       }
 
-      const ws = new ReconnectingWebsocket(`ws://localhost:${import.meta.env.DEV_SERVER_PORT}/ws`);
+      const ws = new ReconnectingWebsocket(
+        `ws://localhost:${import.meta.env.DEV_SERVER_PORT}/ws`,
+      );
 
       wsRef.current = ws;
 
@@ -48,33 +52,33 @@ const useWebsocketConnection = () => {
       ws.onclose = () => {
         setWsConnected(false);
       };
-      ws.onerror = err => {
-        console.error('plugin_dev: Websocket error', err);
+      ws.onerror = (err) => {
+        console.error("plugin_dev: Websocket error", err);
         ws.close();
       };
-      ws.onmessage = payload => {
+      ws.onmessage = (payload) => {
         const data = JSON.parse(payload.data);
 
         // console.log("DEV MESSAGE", data)
 
-        if (data.type === 'featuresList') {
+        if (data.type === "featuresList") {
           setFeaturesList(new Set(data.features));
-        } else if (data.type === 'backendCompiling') {
+        } else if (data.type === "backendCompiling") {
           setBackendCompilingState(data.compiling);
-        } else if (data.type === 'compileStatus') {
+        } else if (data.type === "compileStatus") {
           setBackendCompileState(data.compiled);
-        } else if (data.type === 'backendStatus') {
+        } else if (data.type === "backendStatus") {
           setBackendOnlineState(data.status);
-        } else if (data.type === 'compilerMessages') {
+        } else if (data.type === "compilerMessages") {
           setBackendCompilerMessages(data.messages);
-        } else if (data.type === 'viteStatus') {
+        } else if (data.type === "viteStatus") {
           setViteStatus(data.status);
-        } else if (data.type === 'backendRestarting') {
+        } else if (data.type === "backendRestarting") {
           setBackendRestartingState(data.status);
-        } else if (data.type === 'migrationsPending') {
+        } else if (data.type === "migrationsPending") {
           setMigrationPending(data.status);
           setMigrations(data.migrations);
-        } else if (data.type === 'migrateResponse') {
+        } else if (data.type === "migrateResponse") {
           setMigrationSuccess(data.status);
           setMigrationError(data.error);
           setMigrating(false);
@@ -96,22 +100,22 @@ const useWebsocketConnection = () => {
   }
 
   interface OpenRequest extends RequestBase {
-    type: 'open';
+    type: "open";
     file: string;
   }
   interface MigrateRequest extends RequestBase {
-    type: 'migrate';
+    type: "migrate";
   }
 
   type WebsocketRequest = MigrateRequest | OpenRequest;
 
   const send = useCallback(
     (message: WebsocketRequest) => {
-      let msg = '';
+      let msg = "";
 
-      if (message.type === 'open') {
+      if (message.type === "open") {
         msg = `open:${message.file}`;
-      } else if (message.type === 'migrate') {
+      } else if (message.type === "migrate") {
         msg = `migrate`;
         setMigrating(true);
       }
@@ -159,36 +163,42 @@ const DevBox = () => {
     isWeirdMigrationState;
 
   useEffect(() => {
-    if (state.migrations?.find(m => m.status === 'AppliedButMissingLocally')) {
+    if (
+      state.migrations?.find((m) => m.status === "AppliedButMissingLocally")
+    ) {
       setWeirdMigrationState(true);
     }
   }, [state.migrations]);
 
-  const compilerErrors = state.backendCompilerMessages?.filter(m => m?.message?.level === 'error');
+  const compilerErrors = state.backendCompilerMessages?.filter(
+    (m) => m?.message?.level === "error",
+  );
 
   return (
     <div
       style={{
-        display: shouldDisplay ? 'block' : 'none',
-        margin: '1px',
-        padding: '4px',
-        backgroundColor: 'black',
-        color: 'white',
-        overflow: 'scroll',
-        maxHeight: 'calc(100vh - 200px)',
+        display: shouldDisplay ? "block" : "none",
+        margin: "1px",
+        padding: "4px",
+        backgroundColor: "black",
+        color: "white",
+        overflow: "scroll",
+        maxHeight: "calc(100vh - 200px)",
         zIndex: 9999999999999999,
       }}
     >
       {/* 
         DEV SERVER CONNECTION
       */}
-      {state.wsConnected === false && <div>Connecting to development server...</div>}
+      {state.wsConnected === false && (
+        <div>Connecting to development server...</div>
+      )}
       {state.viteStatus === false && (
         <div>
-          Vite dev server is down...{' '}
+          Vite dev server is down...{" "}
           <a
             href="#"
-            onClick={e => {
+            onClick={(e) => {
               e.preventDefault();
               window.location.reload();
             }}
@@ -203,26 +213,30 @@ const DevBox = () => {
       */}
       {isWeirdMigrationState && (
         <div>
-          <span style={{ color: 'tomato' }}>Migrations are in a strange state...</span>{' '}
+          <span style={{ color: "tomato" }}>
+            Migrations are in a strange state...
+          </span>{" "}
           <a href="#" onClick={() => setWeirdMigrationState(false)}>
             ok, thanks!
           </a>
         </div>
       )}
-      {state.migrationSuccess === false && <div>⚠️ Migration failed ({state.migrationError}).</div>}
+      {state.migrationSuccess === false && (
+        <div>⚠️ Migration failed ({state.migrationError}).</div>
+      )}
       {state.migrationsPending === true && (
         <div>
-          <span style={{ color: 'goldenrod' }}>Migrations are pending...</span>{' '}
+          <span style={{ color: "goldenrod" }}>Migrations are pending...</span>{" "}
           <a
             href="#"
-            onClick={e => {
+            onClick={(e) => {
               e.preventDefault();
               if (!state.migrating) {
-                send({ type: 'migrate' });
+                send({ type: "migrate" });
               }
             }}
           >
-            {state.migrating === false ? 'migrate?' : 'migrating...'}
+            {state.migrating === false ? "migrate?" : "migrating..."}
           </a>
         </div>
       )}
@@ -231,24 +245,24 @@ const DevBox = () => {
         <div>
           {state.migrations
             ?.sort((a, b) => b.version.localeCompare(a.version))
-            .map(m => (
+            .map((m) => (
               <div
                 style={{
-                  display: 'flex',
+                  display: "flex",
                   color:
-                    m.status === 'Applied'
-                      ? 'white'
-                      : m.status === 'Pending'
-                        ? 'goldenrod'
-                        : 'tomato',
+                    m.status === "Applied"
+                      ? "white"
+                      : m.status === "Pending"
+                        ? "goldenrod"
+                        : "tomato",
                 }}
               >
                 <span>{m.name}</span>
                 <span
                   style={{
                     flex: 1,
-                    border: '0px dotted white',
-                    borderBottomWidth: '1px',
+                    border: "0px dotted white",
+                    borderBottomWidth: "1px",
                   }}
                 />
                 <span>{m.status}</span>
@@ -260,16 +274,20 @@ const DevBox = () => {
       {/*
         COMPILATION
       */}
-      {state.backendCompileState === false && <div>The last compilation failed.</div>}
+      {state.backendCompileState === false && (
+        <div>The last compilation failed.</div>
+      )}
       {state.backendOnlineState === false && <div>The backend is offline!</div>}
       {state.backendCompilingState && <div>🔨 Compiling backend...</div>}
-      {state.backendRestartingState === true && <div>♻️ Restarting backend...</div>}
+      {state.backendRestartingState === true && (
+        <div>♻️ Restarting backend...</div>
+      )}
       {compilerErrors.length > 0 && (
         <pre>
-          {compilerErrors.map(m => (
+          {compilerErrors.map((m) => (
             <CompilerMessage
-              onOpenFile={path => {
-                send({ type: 'open', file: path });
+              onOpenFile={(path) => {
+                send({ type: "open", file: path });
               }}
               m={m}
             />
@@ -286,7 +304,7 @@ interface CompilerMessage {
   };
   target: {
     name: string;
-    kind: Array<'bin' | 'example' | 'test' | 'bench' | 'lib' | 'custom-build'>;
+    kind: Array<"bin" | "example" | "test" | "bench" | "lib" | "custom-build">;
     crate_types: Array<string>;
     required_features: Array<string>;
     src_path: string;
@@ -303,12 +321,12 @@ interface CompilerMessage {
     };
     /// "error: internal compiler error", "error", "warning", "note", "help"
     level:
-      | 'error: internal compiler error'
-      | 'error'
-      | 'warning'
-      | 'note'
-      | 'help'
-      | 'failure-note';
+      | "error: internal compiler error"
+      | "error"
+      | "warning"
+      | "note"
+      | "help"
+      | "failure-note";
     /// A list of source code spans this diagnostic is associated with.
     spans: Array<{
       file_name: string;
@@ -339,27 +357,28 @@ interface CompilerMessageProps {
   onOpenFile: (f: string) => void;
 }
 const CompilerMessage = ({ m, onOpenFile }: CompilerMessageProps) => {
-  const primarySpan = m.message.spans.filter(s => s.is_primary)[0];
+  const primarySpan = m.message.spans.filter((s) => s.is_primary)[0];
 
   if (!primarySpan) return <></>; // <div>no primary span, <pre>{JSON.stringify(m)}</pre></div>
 
   return (
-    <pre style={{ overflow: 'hidden' }}>
+    <pre style={{ overflow: "hidden" }}>
       <div>
         <strong>
-          <span className={m.message.level}>{m.message.level}</span>: {m.message.message}
+          <span className={m.message.level}>{m.message.level}</span>:{" "}
+          {m.message.message}
         </strong>
       </div>
       <div>
         <span className="guide">&nbsp;&nbsp;--&gt;&nbsp;</span>
         <span
           className="file"
-          onClick={e => {
+          onClick={(e) => {
             e.preventDefault();
             onOpenFile(`${primarySpan.file_name}`);
           }}
         >
-          {primarySpan.file_name}{' '}
+          {primarySpan.file_name}{" "}
           {/* the following svg was taken from https://iconmonstr.com/cursor-2-svg/ and does not belong to the project */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -374,14 +393,14 @@ const CompilerMessage = ({ m, onOpenFile }: CompilerMessageProps) => {
           </svg>
         </span>
       </div>
-      <div style={{ whiteSpace: 'pre' }}>
-        <Ansi>{m.message.rendered?.split('\n').slice(2).join('\n')}</Ansi>
+      <div style={{ whiteSpace: "pre" }}>
+        <Ansi>{m.message.rendered?.split("\n").slice(2).join("\n")}</Ansi>
       </div>
     </pre>
   );
 };
 
-const DEVBOX_ID = 'create-rust-app-devbox';
+const DEVBOX_ID = "create-rust-app-devbox";
 const existingDevBoxes = document.getElementsByClassName(DEVBOX_ID);
 if (existingDevBoxes.length > 0) {
   for (let i = 0; i < existingDevBoxes.length; i++) {
@@ -390,10 +409,10 @@ if (existingDevBoxes.length > 0) {
   }
 }
 
-const devBox = document.createElement('div');
+const devBox = document.createElement("div");
 devBox.id = DEVBOX_ID;
 devBox.className = DEVBOX_ID;
-const devBoxStyle = document.createElement('style');
+const devBoxStyle = document.createElement("style");
 devBoxStyle.innerHTML = `
 .${DEVBOX_ID} {
   position: fixed;
@@ -444,7 +463,7 @@ pre {
 }
 `;
 devBox.appendChild(devBoxStyle);
-devBox.appendChild(document.createElement('div'));
+devBox.appendChild(document.createElement("div"));
 document.body.appendChild(devBox);
 
 ReactDOM.createRoot(devBox.children[1]).render(<DevBox />);

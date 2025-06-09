@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Fab,
   Dialog,
@@ -16,9 +16,9 @@ import {
   Alert,
   Chip,
   Box,
-  Zoom
-} from '@mui/material';
-import { AutoAwesome, PlayArrow } from '@mui/icons-material';
+  Zoom,
+} from "@mui/material";
+import { AutoAwesome, PlayArrow } from "@mui/icons-material";
 
 /**
  * Props for the EmbeddingTools component.
@@ -55,14 +55,14 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
   onGetSimilarity,
   onGetAnalogy,
   externalModalOpen = false,
-  onExternalModalClose
+  onExternalModalClose,
 }) => {
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false);
-  const [similarityWord1, setSimilarityWord1] = useState('');
-  const [similarityWord2, setSimilarityWord2] = useState('');
-  const [analogyWordA, setAnalogyWordA] = useState('');
-  const [analogyWordB, setAnalogyWordB] = useState('');
-  const [analogyWordC, setAnalogyWordC] = useState('');
+  const [similarityWord1, setSimilarityWord1] = useState("");
+  const [similarityWord2, setSimilarityWord2] = useState("");
+  const [analogyWordA, setAnalogyWordA] = useState("");
+  const [analogyWordB, setAnalogyWordB] = useState("");
+  const [analogyWordC, setAnalogyWordC] = useState("");
 
   // Sync modal state with external controls if provided
   useEffect(() => {
@@ -98,7 +98,7 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
           aria-label="embedding tools"
           onClick={() => setEmbeddingModalOpen(true)}
           sx={{
-            position: 'fixed',
+            position: "fixed",
             bottom: 24,
             right: 24,
             zIndex: 1000,
@@ -108,13 +108,13 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
         </Fab>
       </Zoom>
 
-      <Dialog 
-        open={embeddingModalOpen} 
-        onClose={handleCloseModal} 
-        fullWidth 
+      <Dialog
+        open={embeddingModalOpen}
+        onClose={handleCloseModal}
+        fullWidth
         maxWidth="md"
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <AutoAwesome />
           Semantic Analysis Tools
         </DialogTitle>
@@ -122,7 +122,11 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
           <Stack spacing={3}>
             <Card variant="outlined">
               <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                >
                   Word Similarity Analysis
                 </Typography>
                 <Grid container spacing={2} alignItems="center">
@@ -148,9 +152,17 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
                     <Button
                       variant="contained"
                       onClick={handleComputeSimilarity}
-                      disabled={!similarityWord1 || !similarityWord2 || embeddingLoading}
+                      disabled={
+                        !similarityWord1 || !similarityWord2 || embeddingLoading
+                      }
                       fullWidth
-                      startIcon={embeddingLoading ? <CircularProgress size={16} /> : <PlayArrow />}
+                      startIcon={
+                        embeddingLoading ? (
+                          <CircularProgress size={16} />
+                        ) : (
+                          <PlayArrow />
+                        )
+                      }
                     >
                       Compare
                     </Button>
@@ -159,8 +171,13 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
                 {similarityResult && (
                   <Alert severity="info" sx={{ mt: 2 }}>
                     <Typography variant="body2">
-                      Similarity between <strong>"{similarityResult.word1}"</strong> and <strong>"{similarityResult.word2}"</strong>: 
-                      <strong> {(similarityResult.similarity * 100).toFixed(1)}%</strong>
+                      Similarity between{" "}
+                      <strong>"{similarityResult.word1}"</strong> and{" "}
+                      <strong>"{similarityResult.word2}"</strong>:
+                      <strong>
+                        {" "}
+                        {(similarityResult.similarity * 100).toFixed(1)}%
+                      </strong>
                     </Typography>
                     {!similarityResult.both_found && (
                       <Typography variant="caption" color="warning.main">
@@ -177,7 +194,11 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
                 <Typography variant="h6" gutterBottom>
                   Word Analogy Solver
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 2 }}
+                >
                   Find relationships: A is to B as C is to ?
                 </Typography>
                 <Grid container spacing={2} alignItems="center">
@@ -209,15 +230,28 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
                     />
                   </Grid>
                   <Grid item xs={6} sm={2}>
-                    <Typography variant="body2" sx={{ textAlign: 'center' }}>?</Typography>
+                    <Typography variant="body2" sx={{ textAlign: "center" }}>
+                      ?
+                    </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <Button
                       variant="contained"
                       onClick={handleComputeAnalogy}
-                      disabled={!analogyWordA || !analogyWordB || !analogyWordC || embeddingLoading}
+                      disabled={
+                        !analogyWordA ||
+                        !analogyWordB ||
+                        !analogyWordC ||
+                        embeddingLoading
+                      }
                       fullWidth
-                      startIcon={embeddingLoading ? <CircularProgress size={16} /> : <PlayArrow />}
+                      startIcon={
+                        embeddingLoading ? (
+                          <CircularProgress size={16} />
+                        ) : (
+                          <PlayArrow />
+                        )
+                      }
                     >
                       Solve
                     </Button>
@@ -229,16 +263,25 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
                       <strong>{analogyResult.analogy}</strong>
                     </Typography>
                     {analogyResult.candidates.length > 0 ? (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                        {analogyResult.candidates.map((candidate: any, index: number) => (
-                          <Chip
-                            key={index}
-                            label={`${candidate.word}${candidate.similarity ? ` (${(candidate.similarity * 100).toFixed(1)}%)` : ''}`}
-                            variant={index === 0 ? 'filled' : 'outlined'}
-                            color={index === 0 ? 'primary' : 'default'}
-                            size="small"
-                          />
-                        ))}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 1,
+                          mt: 1,
+                        }}
+                      >
+                        {analogyResult.candidates.map(
+                          (candidate: any, index: number) => (
+                            <Chip
+                              key={index}
+                              label={`${candidate.word}${candidate.similarity ? ` (${(candidate.similarity * 100).toFixed(1)}%)` : ""}`}
+                              variant={index === 0 ? "filled" : "outlined"}
+                              color={index === 0 ? "primary" : "default"}
+                              size="small"
+                            />
+                          ),
+                        )}
                       </Box>
                     ) : (
                       <Alert severity="warning" sx={{ mt: 1 }}>

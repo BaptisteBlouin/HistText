@@ -1,6 +1,6 @@
-import { useMemo, useCallback, useRef } from 'react';
-import { calculateColumnSizes, createColumnDefs } from '../utils';
-import CellRenderer from '../components/CellRenderer';
+import { useMemo, useCallback, useRef } from "react";
+import { calculateColumnSizes, createColumnDefs } from "../utils";
+import CellRenderer from "../components/CellRenderer";
 
 const CONCORDANCE_THRESHOLD = 100;
 
@@ -30,35 +30,48 @@ export const useDataGridConfig = (
   selectedSolrDatabase: any,
   authAxios: any,
   isAllResultsTab: boolean = false,
-  onIdClick: (id: string) => void
+  onIdClick: (id: string) => void,
 ) => {
   const gridRef = useRef<any>(null);
 
   /**
    * Whether to enable concordance display mode.
    */
-  const showConcordance = isAllResultsTab && results.length > CONCORDANCE_THRESHOLD;
+  const showConcordance =
+    isAllResultsTab && results.length > CONCORDANCE_THRESHOLD;
 
   /**
    * Calculate main column and column sizes based on data.
    */
-  const { mainTextColumn, columnSizes } = useMemo(() => 
-    calculateColumnSizes(results), [results]
+  const { mainTextColumn, columnSizes } = useMemo(
+    () => calculateColumnSizes(results),
+    [results],
   );
 
   /**
    * Process row data and ensure each row has an ID.
    */
-  const rowData = useMemo(() => 
-    results.map((row, i) => ({ ...row, id: row.id || i })), 
-    [results]
+  const rowData = useMemo(
+    () => results.map((row, i) => ({ ...row, id: row.id || i })),
+    [results],
   );
 
   /**
    * Generate AG Grid column definitions for current data and state.
    */
-  const columnDefs = useMemo(() => 
-    createColumnDefs(
+  const columnDefs = useMemo(
+    () =>
+      createColumnDefs(
+        results,
+        columnSizes,
+        mainTextColumn,
+        showConcordance,
+        nerData,
+        viewNER,
+        formData,
+        onIdClick,
+      ),
+    [
       results,
       columnSizes,
       mainTextColumn,
@@ -66,8 +79,8 @@ export const useDataGridConfig = (
       nerData,
       viewNER,
       formData,
-      onIdClick
-    ), [results, columnSizes, mainTextColumn, showConcordance, nerData, viewNER, formData, onIdClick]
+      onIdClick,
+    ],
   );
 
   /**
@@ -84,19 +97,25 @@ export const useDataGridConfig = (
   /**
    * Default column options for AG Grid columns.
    */
-  const defaultColDef = useMemo(() => ({
-    filter: true,
-    resizable: true,
-    sortable: true,
-    suppressSizeToFit: false,
-  }), []);
+  const defaultColDef = useMemo(
+    () => ({
+      filter: true,
+      resizable: true,
+      sortable: true,
+      suppressSizeToFit: false,
+    }),
+    [],
+  );
 
   /**
    * Map cellRenderer to custom CellRenderer component.
    */
-  const components = useMemo(() => ({
-    cellRenderer: CellRenderer,
-  }), []);
+  const components = useMemo(
+    () => ({
+      cellRenderer: CellRenderer,
+    }),
+    [],
+  );
 
   return {
     gridRef,
@@ -107,6 +126,6 @@ export const useDataGridConfig = (
     onGridReady,
     showConcordance,
     mainTextColumn,
-    columnSizes
+    columnSizes,
   };
 };

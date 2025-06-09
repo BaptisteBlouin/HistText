@@ -1,5 +1,5 @@
-import React from 'react';
-import HistTextLayoutContainer from './HistTextLayoutContainer';
+import React from "react";
+import HistTextLayoutContainer from "./HistTextLayoutContainer";
 
 /**
  * Props for the HistTextLayout component.
@@ -29,7 +29,10 @@ interface HistTextLayoutProps {
   notification: any;
   setNotification: (notification: any) => void;
   onSolrDatabaseChange: (database: any) => void;
-  showNotification: (message: string, severity?: 'success' | 'error' | 'warning' | 'info') => void;
+  showNotification: (
+    message: string,
+    severity?: "success" | "error" | "warning" | "info",
+  ) => void;
 }
 
 /**

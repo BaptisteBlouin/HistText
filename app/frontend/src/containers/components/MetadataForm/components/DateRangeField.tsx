@@ -1,11 +1,5 @@
-import React from 'react';
-import {
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  TextField
-} from '@mui/material';
+import React from "react";
+import { Card, CardContent, Typography, Grid, TextField } from "@mui/material";
 
 /**
  * Props for the DateRangeField component.
@@ -27,7 +21,7 @@ interface DateRangeFieldProps {
 const DateRangeField: React.FC<DateRangeFieldProps> = ({
   dateRange,
   formData,
-  onFormChange
+  onFormChange,
 }) => {
   if (!dateRange) return null;
 
@@ -43,8 +37,10 @@ const DateRangeField: React.FC<DateRangeFieldProps> = ({
               label="Start Date"
               type="date"
               name="min_date"
-              value={formData.min_date?.[0]?.value || dateRange.min.split('T')[0]}
-              onChange={e => onFormChange(e, 0)}
+              value={
+                formData.min_date?.[0]?.value || dateRange.min.split("T")[0]
+              }
+              onChange={(e) => onFormChange(e, 0)}
               InputLabelProps={{ shrink: true }}
               fullWidth
               size="small"
@@ -55,8 +51,10 @@ const DateRangeField: React.FC<DateRangeFieldProps> = ({
               label="End Date"
               type="date"
               name="max_date"
-              value={formData.max_date?.[0]?.value || dateRange.max.split('T')[0]}
-              onChange={e => onFormChange(e, 0)}
+              value={
+                formData.max_date?.[0]?.value || dateRange.max.split("T")[0]
+              }
+              onChange={(e) => onFormChange(e, 0)}
               InputLabelProps={{ shrink: true }}
               fullWidth
               size="small"

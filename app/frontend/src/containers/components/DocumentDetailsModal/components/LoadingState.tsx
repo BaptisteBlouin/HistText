@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import React from "react";
+import { Box, CircularProgress, Typography } from "@mui/material";
 
 /**
  * Displays a centered loading spinner and message for document loading state.
@@ -7,11 +7,11 @@ import { Box, CircularProgress, Typography } from '@mui/material';
  * @returns Loading UI with spinner and "Loading document..." message.
  */
 const LoadingState: React.FC = React.memo(() => (
-  <Box 
-    display="flex" 
+  <Box
+    display="flex"
     flexDirection="column"
-    justifyContent="center" 
-    alignItems="center" 
+    justifyContent="center"
+    alignItems="center"
     minHeight="400px"
     gap={2}
   >
@@ -22,6 +22,6 @@ const LoadingState: React.FC = React.memo(() => (
   </Box>
 ));
 
-LoadingState.displayName = 'LoadingState';
+LoadingState.displayName = "LoadingState";
 
 export default LoadingState;

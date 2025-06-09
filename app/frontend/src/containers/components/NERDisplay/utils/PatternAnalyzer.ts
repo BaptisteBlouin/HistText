@@ -1,6 +1,6 @@
-import { LightEntity, EntityPattern } from '../types/ner-types';
-import { ChunkedProcessor } from './ChunkedProcessor';
-import { EntityNormalizer } from './EntityNormalizer';
+import { LightEntity, EntityPattern } from "../types/ner-types";
+import { ChunkedProcessor } from "./ChunkedProcessor";
+import { EntityNormalizer } from "./EntityNormalizer";
 
 /**
  * Class to analyze and extract frequent entity patterns (n-grams) from entity sequences.
@@ -10,7 +10,7 @@ export class PatternAnalyzer {
   /**
    * Computes bigram, trigram, and quadrigram patterns from entity data.
    * Limits processing on large datasets for performance.
-   * 
+   *
    * @param entities - List of entities with position info
    * @param signal - Optional abort signal to cancel processing
    * @param onProgress - Optional callback for progress reporting (0-100%)
@@ -19,22 +19,27 @@ export class PatternAnalyzer {
   static async computePatterns(
     entities: LightEntity[],
     signal?: AbortSignal,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): Promise<{
     bigrams: EntityPattern[];
     trigrams: EntityPattern[];
     quadrigrams: EntityPattern[];
   }> {
-    console.log('Starting pattern analysis with', entities.length, 'entities');
-    
+    console.log("Starting pattern analysis with", entities.length, "entities");
+
     if (entities.length > 20000) {
-      console.log('Dataset too large for pattern analysis, returning empty results');
+      console.log(
+        "Dataset too large for pattern analysis, returning empty results",
+      );
       return { bigrams: [], trigrams: [], quadrigrams: [] };
     }
 
     // Group entities by document with limits to avoid explosion of patterns
-    const docEntityMap = new Map<string, Array<{ normalizedText: string; position: number; displayText: string }>>();
-    entities.forEach(entity => {
+    const docEntityMap = new Map<
+      string,
+      Array<{ normalizedText: string; position: number; displayText: string }>
+    >();
+    entities.forEach((entity) => {
       if (!docEntityMap.has(entity.documentId)) {
         docEntityMap.set(entity.documentId, []);
       }
@@ -43,7 +48,7 @@ export class PatternAnalyzer {
         docEntities.push({
           normalizedText: entity.normalizedText,
           position: entity.position,
-          displayText: entity.text
+          displayText: entity.text,
         });
       }
     });
@@ -54,8 +59,8 @@ export class PatternAnalyzer {
 
     const documents = Array.from(docEntityMap.entries());
     const config = ChunkedProcessor.getConfig();
-    
-    console.log('Processing', documents.length, 'documents for patterns');
+
+    console.log("Processing", documents.length, "documents for patterns");
 
     try {
       await ChunkedProcessor.processInChunks(
@@ -72,14 +77,23 @@ export class PatternAnalyzer {
               const distance = sorted[i + 1].position - sorted[i].position;
               if (distance > 500) continue;
 
-              const entities = [sorted[i].normalizedText, sorted[i + 1].normalizedText];
-              const displayTexts = [sorted[i].displayText, sorted[i + 1].displayText];
+              const entities = [
+                sorted[i].normalizedText,
+                sorted[i + 1].normalizedText,
+              ];
+              const displayTexts = [
+                sorted[i].displayText,
+                sorted[i + 1].displayText,
+              ];
 
               if (new Set(entities).size !== entities.length) continue;
-              if (entities.some(e => EntityNormalizer.shouldFilter(e, '', 1.0))) continue;
+              if (
+                entities.some((e) => EntityNormalizer.shouldFilter(e, "", 1.0))
+              )
+                continue;
 
-              const key = entities.sort().join('|||');
-              const pattern = displayTexts.join(' → ');
+              const key = entities.sort().join("|||");
+              const pattern = displayTexts.join(" → ");
 
               if (!bigrams.has(key)) {
                 bigrams.set(key, {
@@ -87,7 +101,7 @@ export class PatternAnalyzer {
                   count: 0,
                   documents: [],
                   pattern,
-                  type: 'bigram'
+                  type: "bigram",
                 });
               }
 
@@ -105,18 +119,31 @@ export class PatternAnalyzer {
               for (let i = 0; i < Math.min(sorted.length - 2, 20); i++) {
                 const maxDistance = Math.max(
                   sorted[i + 1].position - sorted[i].position,
-                  sorted[i + 2].position - sorted[i + 1].position
+                  sorted[i + 2].position - sorted[i + 1].position,
                 );
                 if (maxDistance > 300) continue;
 
-                const entities = [sorted[i].normalizedText, sorted[i + 1].normalizedText, sorted[i + 2].normalizedText];
-                const displayTexts = [sorted[i].displayText, sorted[i + 1].displayText, sorted[i + 2].displayText];
+                const entities = [
+                  sorted[i].normalizedText,
+                  sorted[i + 1].normalizedText,
+                  sorted[i + 2].normalizedText,
+                ];
+                const displayTexts = [
+                  sorted[i].displayText,
+                  sorted[i + 1].displayText,
+                  sorted[i + 2].displayText,
+                ];
 
                 if (new Set(entities).size !== entities.length) continue;
-                if (entities.some(e => EntityNormalizer.shouldFilter(e, '', 1.0))) continue;
+                if (
+                  entities.some((e) =>
+                    EntityNormalizer.shouldFilter(e, "", 1.0),
+                  )
+                )
+                  continue;
 
-                const key = entities.sort().join('|||');
-                const pattern = displayTexts.join(' → ');
+                const key = entities.sort().join("|||");
+                const pattern = displayTexts.join(" → ");
 
                 if (!trigrams.has(key)) {
                   trigrams.set(key, {
@@ -124,7 +151,7 @@ export class PatternAnalyzer {
                     count: 0,
                     documents: [],
                     pattern,
-                    type: 'trigram'
+                    type: "trigram",
                   });
                 }
 
@@ -142,23 +169,28 @@ export class PatternAnalyzer {
             if (sorted.length <= 20) {
               for (let i = 0; i < Math.min(sorted.length - 3, 10); i++) {
                 const entities = [
-                  sorted[i].normalizedText, 
-                  sorted[i + 1].normalizedText, 
-                  sorted[i + 2].normalizedText, 
-                  sorted[i + 3].normalizedText
+                  sorted[i].normalizedText,
+                  sorted[i + 1].normalizedText,
+                  sorted[i + 2].normalizedText,
+                  sorted[i + 3].normalizedText,
                 ];
                 const displayTexts = [
-                  sorted[i].displayText, 
-                  sorted[i + 1].displayText, 
-                  sorted[i + 2].displayText, 
-                  sorted[i + 3].displayText
+                  sorted[i].displayText,
+                  sorted[i + 1].displayText,
+                  sorted[i + 2].displayText,
+                  sorted[i + 3].displayText,
                 ];
 
                 if (new Set(entities).size !== entities.length) continue;
-                if (entities.some(e => EntityNormalizer.shouldFilter(e, '', 1.0))) continue;
+                if (
+                  entities.some((e) =>
+                    EntityNormalizer.shouldFilter(e, "", 1.0),
+                  )
+                )
+                  continue;
 
-                const key = entities.sort().join('|||');
-                const pattern = displayTexts.join(' → ');
+                const key = entities.sort().join("|||");
+                const pattern = displayTexts.join(" → ");
 
                 if (!quadrigrams.has(key)) {
                   quadrigrams.set(key, {
@@ -166,7 +198,7 @@ export class PatternAnalyzer {
                     count: 0,
                     documents: [],
                     pattern,
-                    type: 'quadrigram'
+                    type: "quadrigram",
                   });
                 }
 
@@ -188,10 +220,10 @@ export class PatternAnalyzer {
           console.log(`Pattern analysis progress: ${progress.toFixed(1)}%`);
           onProgress?.(progress);
         },
-        signal
+        signal,
       );
     } catch (error) {
-      console.error('Error in pattern processing:', error);
+      console.error("Error in pattern processing:", error);
       if (signal?.aborted) {
         throw error;
       }
@@ -199,23 +231,23 @@ export class PatternAnalyzer {
 
     const result = {
       bigrams: Array.from(bigrams.values())
-        .filter(pattern => pattern.count >= 2)
+        .filter((pattern) => pattern.count >= 2)
         .sort((a, b) => b.count - a.count)
         .slice(0, 20),
       trigrams: Array.from(trigrams.values())
-        .filter(pattern => pattern.count >= 2)
+        .filter((pattern) => pattern.count >= 2)
         .sort((a, b) => b.count - a.count)
         .slice(0, 10),
       quadrigrams: Array.from(quadrigrams.values())
-        .filter(pattern => pattern.count >= 2)
+        .filter((pattern) => pattern.count >= 2)
         .sort((a, b) => b.count - a.count)
-        .slice(0, 5)
+        .slice(0, 5),
     };
 
-    console.log('Pattern analysis complete:', {
+    console.log("Pattern analysis complete:", {
       bigrams: result.bigrams.length,
       trigrams: result.trigrams.length,
-      quadrigrams: result.quadrigrams.length
+      quadrigrams: result.quadrigrams.length,
     });
 
     return result;

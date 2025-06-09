@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+} from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,19 +16,15 @@ import {
   ArcElement,
   PointElement,
   LineElement,
-} from 'chart.js/auto';
-import {
-  Box,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
-import { useStatisticsData } from '../../hooks/useStatisticsData';
-import { useChartData } from './Statistics/hooks/useChartData';
-import { useStatisticsCategories } from './Statistics/hooks/useStatisticsCategories';
-import { useStatisticsNavigation } from './Statistics/hooks/useStatisticsNavigation';
-import { getRecommendedChartType } from './Statistics/utils/chartUtils';
-import StatisticsSidebar from './Statistics/components/StatisticsSidebar';
-import StatisticsMainContent from './Statistics/components/StatisticsMainContent';
+} from "chart.js/auto";
+import { Box, useTheme, useMediaQuery } from "@mui/material";
+import { useStatisticsData } from "../../hooks/useStatisticsData";
+import { useChartData } from "./Statistics/hooks/useChartData";
+import { useStatisticsCategories } from "./Statistics/hooks/useStatisticsCategories";
+import { useStatisticsNavigation } from "./Statistics/hooks/useStatisticsNavigation";
+import { getRecommendedChartType } from "./Statistics/utils/chartUtils";
+import StatisticsSidebar from "./Statistics/components/StatisticsSidebar";
+import StatisticsMainContent from "./Statistics/components/StatisticsMainContent";
 
 ChartJS.register(
   CategoryScale,
@@ -45,16 +47,20 @@ interface StatisticsDisplayProps {
 const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
   ({ stats, selectedStat, onStatChange }) => {
     const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const isMobile = useMediaQuery(theme.breakpoints.down("md"));
     const [gridApi, setGridApi] = useState<any>(null);
     const chartRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    
+
     // Local state
-    const [manualChartType, setManualChartType] = useState<'bar' | 'pie' | 'line' | null>(null);
-    const [activeCategory, setActiveCategory] = useState<string>('overview');
-    const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['overview']));
-    const [searchTerm, setSearchTerm] = useState<string>('');
+    const [manualChartType, setManualChartType] = useState<
+      "bar" | "pie" | "line" | null
+    >(null);
+    const [activeCategory, setActiveCategory] = useState<string>("overview");
+    const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+      new Set(["overview"]),
+    );
+    const [searchTerm, setSearchTerm] = useState<string>("");
     const [showChart, setShowChart] = useState<boolean>(true);
 
     // Custom hooks
@@ -64,7 +70,7 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
       statCategories,
       stats,
       selectedStat,
-      onStatChange
+      onStatChange,
     );
 
     // Get current chart type (auto or manual)
@@ -73,7 +79,12 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
     }, [manualChartType, selectedStat]);
 
     // Chart data
-    const { chartData, chartOptions } = useChartData(stats, selectedStat, rowData, currentChartType);
+    const { chartData, chartOptions } = useChartData(
+      stats,
+      selectedStat,
+      rowData,
+      currentChartType,
+    );
 
     // Reset manual chart type when stat changes
     useEffect(() => {
@@ -82,9 +93,9 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
 
     // Update active category when selectedStat changes
     useEffect(() => {
-      if (!selectedStat || selectedStat === 'Select Statistics') {
-        onStatChange('corpus_overview');
-        setActiveCategory('overview');
+      if (!selectedStat || selectedStat === "Select Statistics") {
+        onStatChange("corpus_overview");
+        setActiveCategory("overview");
         return;
       }
 
@@ -99,44 +110,50 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
     // Keyboard navigation
     useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
-        if (document.activeElement?.tagName === 'INPUT' || 
-            document.activeElement?.tagName === 'TEXTAREA') {
+        if (
+          document.activeElement?.tagName === "INPUT" ||
+          document.activeElement?.tagName === "TEXTAREA"
+        ) {
           return;
         }
 
-        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
           event.preventDefault();
-          navigateToStat('prev');
-        } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+          navigateToStat("prev");
+        } else if (event.key === "ArrowRight" || event.key === "ArrowDown") {
           event.preventDefault();
-          navigateToStat('next');
+          navigateToStat("next");
         }
       };
 
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }, [navigateToStat]);
 
     // Memoized filtered categories
     const filteredCategories = useMemo(() => {
       if (!searchTerm) return statCategories;
-      
+
       const filtered: any = {};
-      Object.entries(statCategories).forEach(([categoryKey, category]: [string, any]) => {
-        const matchingStats = category.stats.filter((stat: string) => {
-          const displayName = stat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          return displayName.toLowerCase().includes(searchTerm.toLowerCase());
-        });
-        if (matchingStats.length > 0) {
-          filtered[categoryKey] = { ...category, stats: matchingStats };
-        }
-      });
+      Object.entries(statCategories).forEach(
+        ([categoryKey, category]: [string, any]) => {
+          const matchingStats = category.stats.filter((stat: string) => {
+            const displayName = stat
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, (l) => l.toUpperCase());
+            return displayName.toLowerCase().includes(searchTerm.toLowerCase());
+          });
+          if (matchingStats.length > 0) {
+            filtered[categoryKey] = { ...category, stats: matchingStats };
+          }
+        },
+      );
       return filtered;
     }, [statCategories, searchTerm]);
 
     // Handlers
     const toggleCategoryExpansion = useCallback((categoryKey: string) => {
-      setExpandedCategories(prev => {
+      setExpandedCategories((prev) => {
         const newExpanded = new Set(prev);
         if (newExpanded.has(categoryKey)) {
           newExpanded.delete(categoryKey);
@@ -147,7 +164,7 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
       });
     }, []);
 
-    const onGridReady = useCallback(params => {
+    const onGridReady = useCallback((params) => {
       setGridApi(params.api);
       params.api.sizeColumnsToFit();
     }, []);
@@ -155,7 +172,7 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
     const downloadCsv = useCallback(() => {
       if (gridApi) {
         gridApi.exportDataAsCsv({
-          fileName: `${selectedStat}_data_${new Date().toISOString().split('T')[0]}.csv`,
+          fileName: `${selectedStat}_data_${new Date().toISOString().split("T")[0]}.csv`,
         });
       }
     }, [gridApi, selectedStat]);
@@ -163,9 +180,9 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
     const downloadChart = useCallback(() => {
       if (chartRef.current) {
         const url = chartRef.current.toBase64Image();
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = url;
-        link.download = `${selectedStat}_chart_${new Date().toISOString().split('T')[0]}.png`;
+        link.download = `${selectedStat}_chart_${new Date().toISOString().split("T")[0]}.png`;
         link.click();
       }
     }, [selectedStat]);
@@ -173,17 +190,17 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
     const shouldDisplayChart = chartData !== null;
 
     return (
-      <Box 
+      <Box
         ref={containerRef}
         tabIndex={0}
-        sx={{ 
-          display: 'flex', 
-          height: '100%', 
-          bgcolor: 'background.default',
-          flexDirection: isMobile ? 'column' : 'row',
+        sx={{
+          display: "flex",
+          height: "100%",
+          bgcolor: "background.default",
+          flexDirection: isMobile ? "column" : "row",
           gap: 3,
           p: 3,
-          outline: 'none'
+          outline: "none",
         }}
       >
         <StatisticsSidebar
@@ -198,7 +215,7 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
           onCategoryToggle={toggleCategoryExpansion}
           onSearchChange={setSearchTerm}
         />
-        
+
         <StatisticsMainContent
           stats={stats}
           selectedStat={selectedStat}
@@ -222,6 +239,6 @@ const StatisticsDisplay: React.FC<StatisticsDisplayProps> = React.memo(
   },
 );
 
-StatisticsDisplay.displayName = 'StatisticsDisplay';
+StatisticsDisplay.displayName = "StatisticsDisplay";
 
 export default StatisticsDisplay;

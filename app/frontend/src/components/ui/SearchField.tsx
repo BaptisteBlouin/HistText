@@ -1,11 +1,11 @@
-import React from 'react';
+import React from "react";
 import {
   TextField,
   InputAdornment,
   IconButton,
-  TextFieldProps
-} from '@mui/material';
-import { Search, Close } from '@mui/icons-material';
+  TextFieldProps,
+} from "@mui/material";
+import { Search, Close } from "@mui/icons-material";
 
 /**
  * Props for SearchField component.
@@ -15,7 +15,7 @@ import { Search, Close } from '@mui/icons-material';
  * - `placeholder`: Input placeholder text.
  * - All TextFieldProps (except 'onChange') are supported.
  */
-interface SearchFieldProps extends Omit<TextFieldProps, 'onChange'> {
+interface SearchFieldProps extends Omit<TextFieldProps, "onChange"> {
   value: string;
   onChange: (value: string) => void;
   onClear?: () => void;
@@ -36,7 +36,7 @@ const SearchField: React.FC<SearchFieldProps> = ({
   ...props
 }) => {
   const handleClear = () => {
-    onChange('');
+    onChange("");
     onClear?.();
   };
 
@@ -59,7 +59,7 @@ const SearchField: React.FC<SearchFieldProps> = ({
             </IconButton>
           </InputAdornment>
         ),
-        ...props.InputProps
+        ...props.InputProps,
       }}
     />
   );

@@ -40,7 +40,7 @@ button:disabled {
   cursor: not-allowed;
 }
 
-input[type='password'] {
+input[type="password"] {
   padding: 8px;
   margin-bottom: 10px;
   width: 100%;

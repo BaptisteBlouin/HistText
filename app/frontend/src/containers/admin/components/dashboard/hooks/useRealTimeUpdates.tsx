@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from "react";
 
 /**
  * Configuration for useRealTimeUpdates.
@@ -32,7 +32,7 @@ interface RealTimeConfig {
 export const useRealTimeUpdates = (
   accessToken: string | null,
   enabled: boolean,
-  config: RealTimeConfig = {}
+  config: RealTimeConfig = {},
 ) => {
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -51,18 +51,18 @@ export const useRealTimeUpdates = (
 
     try {
       // Use WebSocket for real-time updates (adjust URL as needed)
-      const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/dashboard`;
+      const wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws/dashboard`;
       wsRef.current = new WebSocket(`${wsUrl}?token=${accessToken}`);
 
       wsRef.current.onopen = () => {
-        console.log('Dashboard WebSocket connected');
+        console.log("Dashboard WebSocket connected");
         setIsConnected(true);
         setError(null);
-        
+
         // Start heartbeat
         heartbeatIntervalRef.current = setInterval(() => {
           if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'ping' }));
+            wsRef.current.send(JSON.stringify({ type: "ping" }));
           }
         }, 30000);
       };
@@ -74,33 +74,33 @@ export const useRealTimeUpdates = (
 
           // Handle different types of updates
           switch (data.type) {
-            case 'stats_update':
+            case "stats_update":
               config.onStatsUpdate?.();
               break;
-            case 'embedding_update':
+            case "embedding_update":
               config.onEmbeddingUpdate?.();
               break;
-            case 'analytics_update':
+            case "analytics_update":
               config.onAnalyticsUpdate?.();
               break;
-            case 'user_activity_update':
+            case "user_activity_update":
               config.onUserActivityUpdate?.();
               break;
-            case 'pong':
+            case "pong":
               // Heartbeat response
               break;
             default:
-              console.log('Unknown WebSocket message type:', data.type);
+              console.log("Unknown WebSocket message type:", data.type);
           }
         } catch (err) {
-          console.error('Failed to parse WebSocket message:', err);
+          console.error("Failed to parse WebSocket message:", err);
         }
       };
 
       wsRef.current.onclose = () => {
-        console.log('Dashboard WebSocket disconnected');
+        console.log("Dashboard WebSocket disconnected");
         setIsConnected(false);
-        
+
         // Clear heartbeat
         if (heartbeatIntervalRef.current) {
           clearInterval(heartbeatIntervalRef.current);
@@ -116,13 +116,12 @@ export const useRealTimeUpdates = (
       };
 
       wsRef.current.onerror = (err) => {
-        console.error('Dashboard WebSocket error:', err);
-        setError('WebSocket connection error');
+        console.error("Dashboard WebSocket error:", err);
+        setError("WebSocket connection error");
       };
-
     } catch (err) {
-      console.error('Failed to create WebSocket connection:', err);
-      setError('Failed to establish real-time connection');
+      console.error("Failed to create WebSocket connection:", err);
+      setError("Failed to establish real-time connection");
     }
   }, [accessToken, enabled, config]);
 
@@ -134,17 +133,17 @@ export const useRealTimeUpdates = (
       wsRef.current.close();
       wsRef.current = null;
     }
-    
+
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
-    
+
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
     }
-    
+
     setIsConnected(false);
   }, []);
 

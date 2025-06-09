@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box } from '@mui/material';
+import React from "react";
+import { Box } from "@mui/material";
 
 interface DocumentLinkProps {
   /** The unique identifier of the document to link to */
@@ -14,25 +14,25 @@ interface DocumentLinkProps {
  * DocumentLink component renders a clickable styled span that
  * triggers a callback with the document ID when clicked.
  */
-const DocumentLink: React.FC<DocumentLinkProps> = ({ 
-  documentId, 
+const DocumentLink: React.FC<DocumentLinkProps> = ({
+  documentId,
   children,
-  onDocumentClick 
+  onDocumentClick,
 }) => (
   <Box
     component="span"
     onClick={() => onDocumentClick(documentId)}
     sx={{
-      cursor: 'pointer',
-      color: 'primary.main',
-      textDecoration: 'underline',
-      fontWeight: 'bold',
-      '&:hover': {
-        backgroundColor: 'primary.light',
-        color: 'primary.contrastText',
+      cursor: "pointer",
+      color: "primary.main",
+      textDecoration: "underline",
+      fontWeight: "bold",
+      "&:hover": {
+        backgroundColor: "primary.light",
+        color: "primary.contrastText",
         borderRadius: 1,
-        padding: '2px 4px'
-      }
+        padding: "2px 4px",
+      },
     }}
   >
     {children}

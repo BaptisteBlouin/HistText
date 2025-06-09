@@ -1,7 +1,7 @@
-import React from 'react';
-import { Box, Typography, Badge, CircularProgress } from '@mui/material';
-import { Insights, CleaningServices } from '@mui/icons-material';
-import FeatureAvailabilityIndicator from './FeatureAvailabilityIndicator';
+import React from "react";
+import { Box, Typography, Badge, CircularProgress } from "@mui/material";
+import { Insights, CleaningServices } from "@mui/icons-material";
+import FeatureAvailabilityIndicator from "./FeatureAvailabilityIndicator";
 
 interface NERInsightsHeaderProps {
   selectedAlias: string;
@@ -17,11 +17,14 @@ interface NERInsightsHeaderProps {
 const NERInsightsHeader: React.FC<NERInsightsHeaderProps> = ({
   selectedAlias,
   isProcessing,
-  stats
+  stats,
 }) => {
   return (
     <Box sx={{ mb: 4 }}>
-      <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+      <Typography
+        variant="h4"
+        sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}
+      >
         <Insights color="primary" />
         Advanced Entity Analytics
         <Badge badgeContent="Enhanced" color="success" variant="dot">
@@ -29,26 +32,27 @@ const NERInsightsHeader: React.FC<NERInsightsHeaderProps> = ({
         </Badge>
         {isProcessing && <CircularProgress size={24} />}
       </Typography>
-      
+
       <Typography variant="subtitle1" color="text.secondary">
-        Progressive analysis with normalized and filtered entities from {selectedAlias}
+        Progressive analysis with normalized and filtered entities from{" "}
+        {selectedAlias}
       </Typography>
-      
-      <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <FeatureAvailabilityIndicator 
-          feature="Basic Stats" 
-          available={!!stats} 
+
+      <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
+        <FeatureAvailabilityIndicator
+          feature="Basic Stats"
+          available={!!stats}
           description="Entity counts, types, and basic distributions"
         />
-        <FeatureAvailabilityIndicator 
-          feature="Relationships" 
+        <FeatureAvailabilityIndicator
+          feature="Relationships"
           available={stats?.strongestPairs?.length > 0}
           loading={isProcessing}
           limited={!stats?.hasAdvancedFeatures}
           description="Entity co-occurrence and relationship analysis"
         />
-        <FeatureAvailabilityIndicator 
-          feature="Patterns" 
+        <FeatureAvailabilityIndicator
+          feature="Patterns"
           available={stats?.bigramPatterns?.length > 0}
           loading={isProcessing}
           limited={!stats?.hasAdvancedFeatures}

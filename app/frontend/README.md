@@ -35,6 +35,7 @@ npm start
 This will launch the Vite development server (often on http://localhost:3000). It should automatically open your default browser to the app. If not, open the URL manually.
 
 While the dev server is running:
+
 - The app will live-reload on changes. Edit source files in src/ and see the changes immediately in the browser.
 - API calls from the frontend (to the backend) should be proxied to the backend server. The dev server is likely configured to proxy requests starting with e.g. /api to localhost:8000 (check vite.config.ts or similar). If the proxy is not set, you might experience CORS issues – you can configure a proxy or set environment variables for API URL.
 - Ensure the backend is running on the expected port (default 8000) for API calls to succeed. See the backend README for running the backend alongside the frontend dev server.
@@ -46,6 +47,7 @@ npm run build
 ```
 
 This creates an optimized production build in the dist/ directory. It includes:
+
 - Bundled JavaScript files (likely with hashes in filenames for caching)
 - CSS files
 - assets/ (images, fonts, etc. if any)
@@ -71,8 +73,6 @@ npm run format
 (These scripts depend on whether they've been set up in package.json.)
 
 Ensure your code follows the style guidelines (e.g., no unused variables, proper spacing, etc.). Typically, the project might include a default ESLint/Prettier config from the template.
-
-
 
 ## Using the Frontend
 
@@ -104,10 +104,10 @@ proxy: {
 
 This would send any request starting with /api to the backend. If the API endpoints aren't all under a common prefix, the proxy might be configured for specific paths or the frontend code might specify the full URL.
 
-
 ## Building for Production
 
 After running `npm run build`, the dist/ folder will contain everything needed for the frontend. In a production deployment:
+
 - These files can be served by a static web server (e.g., Nginx, or GitHub Pages for documentation).
 - In our case, the Rust backend is capable of serving these static files. Typically, the backend (with create-rust-app) will use the CRA_MANIFEST_PATH and CRA_FRONTEND_DIR environment variables to locate the dist files and serve them on requests to the web root. This means you might not need a separate web server; the backend can act as one.
 
@@ -116,6 +116,7 @@ If you open the app in production mode (through the backend on port 8000, after 
 ## Testing the Frontend
 
 If tests are set up, run `npm test`. If not, it's recommended to add tests for complex components or logic:
+
 - Use React Testing Library to render components and simulate user interactions.
 - Test critical flows like login form (enter username/password, click submit, see that api/login was called and that on success, the app state updates).
 - Test that key components (document upload form, search form) validate inputs and handle responses correctly (you can mock fetch calls using Jest mocks).
@@ -133,6 +134,7 @@ If tests are set up, run `npm test`. If not, it's recommended to add tests for c
 ## Deployment
 
 For production deployment of the frontend:
+
 - If using the Rust backend to serve static files: simply ensure `npm run build` has been run, and the dist folder is in place. When you run the backend in release mode, it should serve the files. Verify by hitting the backend's root URL (e.g., http://yourserver:8000) and see if the app loads.
 - If using an external server (like serving via Nginx/Apache or a CDN): upload the contents of dist/ to the server and configure it to serve index.html for the app's base path. Also set up redirect rules so that deep links (e.g., /admin or /search) all serve index.html (since this is a SPA that manages routing client-side). Alternatively, use the HTML5 history mode fallback – Nginx snippet example:
   ```
@@ -149,12 +151,14 @@ Typically, you'll run the backend on some port (or behind a reverse proxy on a p
 ## Contributing (Frontend)
 
 We welcome contributions to improve the frontend:
+
 - UI/UX improvements (better layout, responsive design, accessibility)
 - New features (e.g., advanced filtering UI, result highlighting, interactive charts)
 - Internationalization (the app could support multiple languages in the UI text)
 - Bug fixes (if you find any UI bugs or inconsistencies)
 
 Before submitting changes:
+
 - Ensure `npm run build` still produces a working app.
 - If you introduce new npm packages, make sure they are necessary and lightweight.
 - Follow the code style of existing components (consistent use of hooks, functional components, etc.).

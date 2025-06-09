@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 /**
  * A hook that returns the top position of the sidebar based on the current
@@ -18,9 +18,9 @@ const useScrollPosition = (initialTop: number = 5) => {
       setSidebarTop(newTop);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener("scroll", handleScroll);
     };
   }, [initialTop]);
 

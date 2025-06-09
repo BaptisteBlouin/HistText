@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { SpeedDial, SpeedDialIcon, SpeedDialAction } from '@mui/material';
-import { Download, Refresh, Settings, Share } from '@mui/icons-material';
+import React, { useMemo } from "react";
+import { SpeedDial, SpeedDialIcon, SpeedDialAction } from "@mui/material";
+import { Download, Refresh, Settings, Share } from "@mui/icons-material";
 
 interface QuickAction {
   icon: React.ReactNode;
@@ -25,14 +25,17 @@ const QuickActionsComponent: React.FC<QuickActionsComponentProps> = ({
   onExportData,
   onRefreshData,
   onShareQuery,
-  onOpenSettings
+  onOpenSettings,
 }) => {
-  const quickActionItems: QuickAction[] = useMemo(() => [
-    { icon: <Download />, name: 'Export Data', action: onExportData },
-    { icon: <Refresh />, name: 'Refresh', action: onRefreshData },
-    { icon: <Share />, name: 'Share Query', action: onShareQuery },
-    { icon: <Settings />, name: 'Settings', action: onOpenSettings }
-  ], [onExportData, onRefreshData, onShareQuery, onOpenSettings]);
+  const quickActionItems: QuickAction[] = useMemo(
+    () => [
+      { icon: <Download />, name: "Export Data", action: onExportData },
+      { icon: <Refresh />, name: "Refresh", action: onRefreshData },
+      { icon: <Share />, name: "Share Query", action: onShareQuery },
+      { icon: <Settings />, name: "Settings", action: onOpenSettings },
+    ],
+    [onExportData, onRefreshData, onShareQuery, onOpenSettings],
+  );
 
   const handleActionClick = (action: () => void) => {
     action();
@@ -42,16 +45,16 @@ const QuickActionsComponent: React.FC<QuickActionsComponentProps> = ({
   return (
     <SpeedDial
       ariaLabel="Quick Actions"
-      sx={{ 
-        position: 'fixed', 
-        bottom: 24, 
+      sx={{
+        position: "fixed",
+        bottom: 24,
         right: 24,
-        '& .MuiFab-primary': {
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          '&:hover': {
-            background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-          }
-        }
+        "& .MuiFab-primary": {
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          "&:hover": {
+            background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+          },
+        },
       }}
       icon={<SpeedDialIcon />}
       open={open}
@@ -65,9 +68,9 @@ const QuickActionsComponent: React.FC<QuickActionsComponentProps> = ({
           tooltipTitle={action.name}
           onClick={() => handleActionClick(action.action)}
           sx={{
-            '&:hover': {
-              backgroundColor: 'primary.light',
-            }
+            "&:hover": {
+              backgroundColor: "primary.light",
+            },
           }}
         />
       ))}

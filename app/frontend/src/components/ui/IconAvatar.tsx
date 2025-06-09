@@ -1,5 +1,5 @@
-import React from 'react';
-import { Avatar, AvatarProps } from '@mui/material';
+import React from "react";
+import { Avatar, AvatarProps } from "@mui/material";
 
 /**
  * Props for IconAvatar component.
@@ -11,7 +11,7 @@ import { Avatar, AvatarProps } from '@mui/material';
 interface IconAvatarProps extends AvatarProps {
   icon?: React.ReactNode;
   text?: string;
-  color?: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info';
+  color?: "primary" | "secondary" | "success" | "warning" | "error" | "info";
 }
 
 /**
@@ -22,7 +22,7 @@ interface IconAvatarProps extends AvatarProps {
 const IconAvatar: React.FC<IconAvatarProps> = ({
   icon,
   text,
-  color = 'primary',
+  color = "primary",
   sx,
   ...props
 }) => {
@@ -32,9 +32,9 @@ const IconAvatar: React.FC<IconAvatarProps> = ({
   const getInitials = (text: string) => {
     return text
       .split(/[-_\s]/)
-      .map(word => word.charAt(0).toUpperCase())
+      .map((word) => word.charAt(0).toUpperCase())
       .slice(0, 2)
-      .join('');
+      .join("");
   };
 
   return (
@@ -42,12 +42,12 @@ const IconAvatar: React.FC<IconAvatarProps> = ({
       {...props}
       sx={{
         bgcolor: `${color}.main`,
-        color: 'white',
+        color: "white",
         fontWeight: 600,
-        ...sx
+        ...sx,
       }}
     >
-      {icon || (text ? getInitials(text) : '?')}
+      {icon || (text ? getInitials(text) : "?")}
     </Avatar>
   );
 };

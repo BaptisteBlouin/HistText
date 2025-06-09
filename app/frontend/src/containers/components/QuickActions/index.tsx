@@ -1,5 +1,5 @@
-import React from 'react';
-import QuickActionsComponent from './QuickActionsComponent';
+import React from "react";
+import QuickActionsComponent from "./QuickActionsComponent";
 
 interface QuickActionsProps {
   open: boolean;

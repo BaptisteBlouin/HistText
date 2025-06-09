@@ -16,7 +16,7 @@ interface QueryTerm {
  */
 export const parseFormDataToTerms = (formData: any): QueryTerm[] => {
   const terms: QueryTerm[] = [];
-  
+
   Object.entries(formData).forEach(([field, entries]: [string, any]) => {
     if (Array.isArray(entries)) {
       entries.forEach((entry: any) => {
@@ -24,14 +24,14 @@ export const parseFormDataToTerms = (formData: any): QueryTerm[] => {
           terms.push({
             field,
             value: entry.value.trim(),
-            operator: entry.operator || 'AND',
-            not: entry.not || false
+            operator: entry.operator || "AND",
+            not: entry.not || false,
           });
         }
       });
     }
   });
-  
+
   return terms;
 };
 
@@ -43,21 +43,22 @@ export const parseFormDataToTerms = (formData: any): QueryTerm[] => {
  */
 const isDateField = (fieldName: string): boolean => {
   const dateFieldPatterns = [
-    'date',
-    'date_rdt', 
-    'min_date',
-    'max_date',
-    'created_at',
-    'updated_at',
-    'timestamp'
+    "date",
+    "date_rdt",
+    "min_date",
+    "max_date",
+    "created_at",
+    "updated_at",
+    "timestamp",
   ];
-  
+
   const lowerFieldName = fieldName.toLowerCase();
-  return dateFieldPatterns.some(pattern => 
-    lowerFieldName.includes(pattern) || 
-    lowerFieldName.endsWith('_date') ||
-    lowerFieldName.endsWith('_dt') ||
-    lowerFieldName.endsWith('_rdt')
+  return dateFieldPatterns.some(
+    (pattern) =>
+      lowerFieldName.includes(pattern) ||
+      lowerFieldName.endsWith("_date") ||
+      lowerFieldName.endsWith("_dt") ||
+      lowerFieldName.endsWith("_rdt"),
   );
 };
 
@@ -68,16 +69,19 @@ const isDateField = (fieldName: string): boolean => {
  * @param fieldName - The field to extract terms for.
  * @returns Array of terms (strings) for this field.
  */
-export const getSearchTermsForField = (formData: any, fieldName: string): string[] => {
+export const getSearchTermsForField = (
+  formData: any,
+  fieldName: string,
+): string[] => {
   if (isDateField(fieldName)) {
     return [];
   }
-  
+
   const terms = parseFormDataToTerms(formData);
   return terms
-    .filter(term => term.field === fieldName && !term.not)
-    .map(term => term.value)
-    .filter(value => value && value.length > 0);
+    .filter((term) => term.field === fieldName && !term.not)
+    .map((term) => term.value)
+    .filter((value) => value && value.length > 0);
 };
 
 /**
@@ -89,9 +93,9 @@ export const getSearchTermsForField = (formData: any, fieldName: string): string
 export const getAllSearchTermsFromQuery = (formData: any): string[] => {
   const terms = parseFormDataToTerms(formData);
   const allTerms = terms
-    .filter(term => !term.not && !isDateField(term.field))
-    .map(term => term.value)
-    .filter(value => value && value.length > 0);
+    .filter((term) => !term.not && !isDateField(term.field))
+    .map((term) => term.value)
+    .filter((value) => value && value.length > 0);
   return [...new Set(allTerms)];
 };
 
@@ -103,15 +107,18 @@ export const getAllSearchTermsFromQuery = (formData: any): string[] => {
  * @param fieldName - The field to extract highlight terms for.
  * @returns Array of unique highlight terms for this field.
  */
-export const getHighlightTermsForField = (formData: any, fieldName: string): string[] => {
+export const getHighlightTermsForField = (
+  formData: any,
+  fieldName: string,
+): string[] => {
   if (isDateField(fieldName)) {
     return [];
   }
-  
+
   const fieldTerms = getSearchTermsForField(formData, fieldName);
   const allTerms = getAllSearchTermsFromQuery(formData);
   const combinedTerms = [...new Set([...fieldTerms, ...allTerms])];
-  
+
   console.log(`Highlight terms for field "${fieldName}":`, combinedTerms);
   return combinedTerms;
 };
@@ -132,23 +139,23 @@ export const getAllSearchTerms = (formData: any): string[] => {
  * @param formData - The form state.
  */
 export const debugFormData = (formData: any): void => {
-  console.log('=== FORM DATA DEBUG ===');
-  console.log('Raw formData:', formData);
-  
+  console.log("=== FORM DATA DEBUG ===");
+  console.log("Raw formData:", formData);
+
   const terms = parseFormDataToTerms(formData);
-  console.log('Parsed terms:', terms);
-  
+  console.log("Parsed terms:", terms);
+
   const allTerms = getAllSearchTermsFromQuery(formData);
-  console.log('All search terms for highlighting:', allTerms);
-  
-  Object.keys(formData).forEach(field => {
+  console.log("All search terms for highlighting:", allTerms);
+
+  Object.keys(formData).forEach((field) => {
     const fieldTerms = getSearchTermsForField(formData, field);
     const highlightTerms = getHighlightTermsForField(formData, field);
     console.log(`Field "${field}":`, {
       isDateField: isDateField(field),
       fieldSpecificTerms: fieldTerms,
-      allHighlightTerms: highlightTerms
+      allHighlightTerms: highlightTerms,
     });
   });
-  console.log('=== END DEBUG ===');
+  console.log("=== END DEBUG ===");
 };

@@ -1,7 +1,7 @@
-import React from 'react';
-import TabNavigationContainer from './TabNavigationContainer';
+import React from "react";
+import TabNavigationContainer from "./TabNavigationContainer";
 
-export type FullscreenMode = 'normal' | 'browser' | 'native';
+export type FullscreenMode = "normal" | "browser" | "native";
 
 interface TabNavigationProps {
   activeTab: number;

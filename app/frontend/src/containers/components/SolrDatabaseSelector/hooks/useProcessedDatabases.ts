@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo } from "react";
 
 interface SolrDatabase {
   id: number;
@@ -16,26 +16,28 @@ interface DatabaseInfo {
 export const useProcessedDatabases = (
   solrDatabases: SolrDatabase[],
   selectedSolrDatabase: SolrDatabase | null,
-  searchTerm: string
+  searchTerm: string,
 ) => {
   const processedDatabases = useMemo(() => {
-    const databases: DatabaseInfo[] = solrDatabases.map(db => ({
+    const databases: DatabaseInfo[] = solrDatabases.map((db) => ({
       database: db,
       isSelected: db.id === selectedSolrDatabase?.id,
-      matchesSearch: !searchTerm || 
+      matchesSearch:
+        !searchTerm ||
         db.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (db.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (db.description || "").toLowerCase().includes(searchTerm.toLowerCase()),
     }));
 
-    return databases.filter(db => db.matchesSearch);
+    return databases.filter((db) => db.matchesSearch);
   }, [solrDatabases, selectedSolrDatabase, searchTerm]);
 
-  const selectedDatabase = useMemo(() => 
-    processedDatabases.find(db => db.isSelected) || null
-  , [processedDatabases]);
+  const selectedDatabase = useMemo(
+    () => processedDatabases.find((db) => db.isSelected) || null,
+    [processedDatabases],
+  );
 
   return {
     processedDatabases,
-    selectedDatabase
+    selectedDatabase,
   };
 };

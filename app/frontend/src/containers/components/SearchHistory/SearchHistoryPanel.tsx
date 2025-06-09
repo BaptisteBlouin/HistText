@@ -1,5 +1,5 @@
 // app/frontend/src/containers/components/SearchHistory/SearchHistoryPanel.tsx
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from "react";
 import {
   Box,
   Card,
@@ -28,8 +28,8 @@ import {
   Avatar,
   Badge,
   Paper,
-  CircularProgress
-} from '@mui/material';
+  CircularProgress,
+} from "@mui/material";
 import {
   History,
   Bookmark,
@@ -48,11 +48,11 @@ import {
   AccessTime,
   Folder,
   Warning,
-  Block
-} from '@mui/icons-material';
-import { useSearchHistory, SavedSearch } from '../../../hooks/useSearchHistory';
-import { formatDistanceToNow } from 'date-fns';
-import { GradientPaper } from '../../../components/ui';
+  Block,
+} from "@mui/icons-material";
+import { useSearchHistory, SavedSearch } from "../../../hooks/useSearchHistory";
+import { formatDistanceToNow } from "date-fns";
+import { GradientPaper } from "../../../components/ui";
 
 interface SearchHistoryPanelProps {
   open: boolean;
@@ -63,7 +63,7 @@ interface SearchHistoryPanelProps {
   currentAlias?: string;
   currentSolrDatabase?: any;
   onSaveCurrentSearch?: () => void;
-  availableDatabases?: Array<{ id: number; name: string; }>;
+  availableDatabases?: Array<{ id: number; name: string }>;
   availableCollections?: Record<number, string[]>; // database_id -> collections[]
   onSwitchAndApply?: (search: SavedSearch) => Promise<void>;
   canSwitchCollections?: boolean;
@@ -81,7 +81,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
   availableDatabases = [],
   availableCollections = {},
   onSwitchAndApply,
-  canSwitchCollections = false
+  canSwitchCollections = false,
 }) => {
   const {
     searchHistory,
@@ -98,43 +98,60 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
     searchInSaved,
     exportSearches,
     importSearches,
-    stats
+    stats,
   } = useSearchHistory();
 
   const [activeTab, setActiveTab] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<SavedSearch | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [editingSearch, setEditingSearch] = useState<SavedSearch | null>(null);
   const [incompatibleDialogOpen, setIncompatibleDialogOpen] = useState(false);
-  const [incompatibleSearch, setIncompatibleSearch] = useState<SavedSearch | null>(null);
+  const [incompatibleSearch, setIncompatibleSearch] =
+    useState<SavedSearch | null>(null);
   const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
-  const [switchingSearch, setSwitchingSearch] = useState<SavedSearch | null>(null);
+  const [switchingSearch, setSwitchingSearch] = useState<SavedSearch | null>(
+    null,
+  );
   const [isSwitching, setIsSwitching] = useState(false);
 
-  const canSwitchToSearch = useCallback((search: SavedSearch) => {
-    if (!canSwitchCollections || !onSwitchAndApply) return false;
-    
-    // Check if the database is available
-    const databaseExists = availableDatabases.some(db => db.id === search.selectedSolrDatabase.id);
-    if (!databaseExists) return false;
+  const canSwitchToSearch = useCallback(
+    (search: SavedSearch) => {
+      if (!canSwitchCollections || !onSwitchAndApply) return false;
 
-    // Check if the collection is available for that database
-    const collectionsForDb = availableCollections[search.selectedSolrDatabase.id] || [];
-    const collectionExists = collectionsForDb.includes(search.selectedAlias);
-    
-    return collectionExists;
-  }, [canSwitchCollections, onSwitchAndApply, availableDatabases, availableCollections]);
+      // Check if the database is available
+      const databaseExists = availableDatabases.some(
+        (db) => db.id === search.selectedSolrDatabase.id,
+      );
+      if (!databaseExists) return false;
+
+      // Check if the collection is available for that database
+      const collectionsForDb =
+        availableCollections[search.selectedSolrDatabase.id] || [];
+      const collectionExists = collectionsForDb.includes(search.selectedAlias);
+
+      return collectionExists;
+    },
+    [
+      canSwitchCollections,
+      onSwitchAndApply,
+      availableDatabases,
+      availableCollections,
+    ],
+  );
 
   // Handle switching to a different collection and applying search
-  const handleSwitchAndApply = useCallback(async (search: SavedSearch) => {
-    if (!onSwitchAndApply || !canSwitchToSearch(search)) return;
+  const handleSwitchAndApply = useCallback(
+    async (search: SavedSearch) => {
+      if (!onSwitchAndApply || !canSwitchToSearch(search)) return;
 
-    setSwitchingSearch(search);
-    setSwitchDialogOpen(true);
-  }, [onSwitchAndApply, canSwitchToSearch]);
+      setSwitchingSearch(search);
+      setSwitchDialogOpen(true);
+    },
+    [onSwitchAndApply, canSwitchToSearch],
+  );
 
   const handleConfirmSwitch = useCallback(async () => {
     if (!switchingSearch || !onSwitchAndApply) return;
@@ -146,7 +163,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
       setSwitchingSearch(null);
       onClose(); // Close the search history panel after successful switch
     } catch (error) {
-      console.error('Error switching collection and applying search:', error);
+      console.error("Error switching collection and applying search:", error);
       // Could show error notification here
     } finally {
       setIsSwitching(false);
@@ -154,14 +171,17 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
   }, [switchingSearch, onSwitchAndApply, onClose]);
 
   // Check if a search is compatible with current collection
-  const isSearchCompatible = useCallback((search: SavedSearch) => {
-    if (!currentSolrDatabase || !currentAlias) return false;
-    
-    return (
-      search.selectedSolrDatabase.id === currentSolrDatabase.id &&
-      search.selectedAlias === currentAlias
-    );
-  }, [currentSolrDatabase, currentAlias]);
+  const isSearchCompatible = useCallback(
+    (search: SavedSearch) => {
+      if (!currentSolrDatabase || !currentAlias) return false;
+
+      return (
+        search.selectedSolrDatabase.id === currentSolrDatabase.id &&
+        search.selectedAlias === currentAlias
+      );
+    },
+    [currentSolrDatabase, currentAlias],
+  );
 
   // Filter searches based on query and compatibility
   const filteredData = useMemo(() => {
@@ -177,42 +197,58 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
 
     // Separate compatible and incompatible searches
     const compatibleHistory = historyResults.filter(isSearchCompatible);
-    const incompatibleHistory = historyResults.filter(search => !isSearchCompatible(search));
-    
+    const incompatibleHistory = historyResults.filter(
+      (search) => !isSearchCompatible(search),
+    );
+
     const compatibleBookmarks = bookmarkResults.filter(isSearchCompatible);
-    const incompatibleBookmarks = bookmarkResults.filter(search => !isSearchCompatible(search));
+    const incompatibleBookmarks = bookmarkResults.filter(
+      (search) => !isSearchCompatible(search),
+    );
 
     return {
       compatible: {
         history: compatibleHistory,
-        bookmarks: compatibleBookmarks
+        bookmarks: compatibleBookmarks,
       },
       incompatible: {
         history: incompatibleHistory,
-        bookmarks: incompatibleBookmarks
-      }
+        bookmarks: incompatibleBookmarks,
+      },
     };
-  }, [searchQuery, searchHistory, bookmarks, searchInSaved, isSearchCompatible]);
+  }, [
+    searchQuery,
+    searchHistory,
+    bookmarks,
+    searchInSaved,
+    isSearchCompatible,
+  ]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
-  const handleApplySearch = useCallback((search: SavedSearch) => {
-    // Double-check compatibility before applying
-    if (!isSearchCompatible(search)) {
-      setIncompatibleSearch(search);
-      setIncompatibleDialogOpen(true);
-      return;
-    }
+  const handleApplySearch = useCallback(
+    (search: SavedSearch) => {
+      // Double-check compatibility before applying
+      if (!isSearchCompatible(search)) {
+        setIncompatibleSearch(search);
+        setIncompatibleDialogOpen(true);
+        return;
+      }
 
-    updateSearchUsage(search.id);
-    onApplySearch(search);
-    onClose();
-  }, [isSearchCompatible, updateSearchUsage, onApplySearch, onClose]);
+      updateSearchUsage(search.id);
+      onApplySearch(search);
+      onClose();
+    },
+    [isSearchCompatible, updateSearchUsage, onApplySearch, onClose],
+  );
 
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, item: SavedSearch) => {
+  const handleMenuClick = (
+    event: React.MouseEvent<HTMLElement>,
+    item: SavedSearch,
+  ) => {
     event.stopPropagation();
     setSelectedItem(item);
     setMenuAnchor(event.currentTarget);
@@ -275,52 +311,68 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
           // Success notification would go here
         })
         .catch((error) => {
-          console.error('Import failed:', error);
+          console.error("Import failed:", error);
         });
     }
   };
 
-  const renderSearchItem = (search: SavedSearch, isBookmark: boolean, isCompatible: boolean) => {
+  const renderSearchItem = (
+    search: SavedSearch,
+    isBookmark: boolean,
+    isCompatible: boolean,
+  ) => {
     const isCurrentCollection = isCompatible;
     const canSwitch = !isCompatible && canSwitchToSearch(search);
-    
+
     return (
-      <Card 
+      <Card
         key={search.id}
-        sx={{ 
-          mb: 2, 
-          cursor: isCompatible ? 'pointer' : 'default',
-          transition: 'all 0.2s ease',
+        sx={{
+          mb: 2,
+          cursor: isCompatible ? "pointer" : "default",
+          transition: "all 0.2s ease",
           opacity: isCompatible ? 1 : 0.7,
-          border: isCompatible ? '1px solid transparent' : '1px solid',
-          borderColor: isCompatible ? 'transparent' : (canSwitch ? 'info.main' : 'warning.main'),
-          '&:hover': isCompatible ? {
-            transform: 'translateY(-2px)',
-            boxShadow: 4
-          } : {},
-          position: 'relative'
+          border: isCompatible ? "1px solid transparent" : "1px solid",
+          borderColor: isCompatible
+            ? "transparent"
+            : canSwitch
+              ? "info.main"
+              : "warning.main",
+          "&:hover": isCompatible
+            ? {
+                transform: "translateY(-2px)",
+                boxShadow: 4,
+              }
+            : {},
+          position: "relative",
         }}
       >
         {!isCompatible && (
           <Box
             sx={{
-              position: 'absolute',
+              position: "absolute",
               top: 8,
               right: 8,
-              zIndex: 1
+              zIndex: 1,
             }}
           >
-            <Tooltip title={canSwitch ? "Can switch to this collection" : "Collection not available"}>
+            <Tooltip
+              title={
+                canSwitch
+                  ? "Can switch to this collection"
+                  : "Collection not available"
+              }
+            >
               {canSwitch ? (
-                <Badge 
-                  badgeContent="!" 
+                <Badge
+                  badgeContent="!"
                   color="info"
                   sx={{
-                    '& .MuiBadge-badge': {
-                      fontSize: '10px',
-                      height: '16px',
-                      minWidth: '16px'
-                    }
+                    "& .MuiBadge-badge": {
+                      fontSize: "10px",
+                      height: "16px",
+                      minWidth: "16px",
+                    },
                   }}
                 >
                   <Block color="info" />
@@ -331,63 +383,85 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
             </Tooltip>
           </Box>
         )}
-        
-        <CardContent 
+
+        <CardContent
           sx={{ p: 2 }}
           onClick={isCompatible ? () => handleApplySearch(search) : undefined}
         >
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-            <Avatar sx={{ 
-              bgcolor: isCompatible 
-                ? (isBookmark ? 'warning.main' : 'secondary.main')
-                : (canSwitch ? 'info.main' : 'grey.400')
-            }}>
+          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+            <Avatar
+              sx={{
+                bgcolor: isCompatible
+                  ? isBookmark
+                    ? "warning.main"
+                    : "secondary.main"
+                  : canSwitch
+                    ? "info.main"
+                    : "grey.400",
+              }}
+            >
               {isBookmark ? <Bookmark /> : <History />}
             </Avatar>
-            
+
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 600, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
                   mb: 1,
-                  color: isCompatible ? 'text.primary' : 'text.secondary'
+                  color: isCompatible ? "text.primary" : "text.secondary",
                 }}
               >
                 {search.name}
               </Typography>
-              
+
               {search.description && (
-                <Typography 
-                  variant="body2" 
-                  color={isCompatible ? 'text.secondary' : 'text.disabled'} 
+                <Typography
+                  variant="body2"
+                  color={isCompatible ? "text.secondary" : "text.disabled"}
                   sx={{ mb: 1 }}
                 >
                   {search.description}
                 </Typography>
               )}
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-                <Chip 
-                  label={search.selectedAlias} 
-                  size="small" 
-                  color={isCurrentCollection && search.selectedAlias === currentAlias ? "secondary" : "default"}
-                  variant={isCurrentCollection && search.selectedAlias === currentAlias ? "filled" : "outlined"}
+
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  mb: 1,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Chip
+                  label={search.selectedAlias}
+                  size="small"
+                  color={
+                    isCurrentCollection && search.selectedAlias === currentAlias
+                      ? "secondary"
+                      : "default"
+                  }
+                  variant={
+                    isCurrentCollection && search.selectedAlias === currentAlias
+                      ? "filled"
+                      : "outlined"
+                  }
                 />
                 {search.resultsCount && (
-                  <Chip 
+                  <Chip
                     label={`${search.resultsCount} results`}
-                    size="small" 
+                    size="small"
                     color={isCompatible ? "success" : "default"}
                     variant="outlined"
                   />
                 )}
               </Box>
-              
+
               {!isCompatible && (
-                <Alert 
-                  severity={canSwitch ? "info" : "warning"} 
-                  sx={{ mt: 1, mb: 1 }} 
+                <Alert
+                  severity={canSwitch ? "info" : "warning"}
+                  sx={{ mt: 1, mb: 1 }}
                   variant="outlined"
                   action={
                     canSwitch ? (
@@ -409,54 +483,71 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                     {canSwitch ? (
                       <>Switch to {search.selectedAlias} to use this search</>
                     ) : (
-                      <>This search is for {search.selectedAlias}
-                      {currentSolrDatabase && currentAlias && 
-                        `, but you're currently in ${currentAlias}`
-                      }</>
+                      <>
+                        This search is for {search.selectedAlias}
+                        {currentSolrDatabase &&
+                          currentAlias &&
+                          `, but you're currently in ${currentAlias}`}
+                      </>
                     )}
                   </Typography>
                 </Alert>
               )}
-              
+
               {search.tags.length > 0 && (
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 1 }}>
-                  {search.tags.map(tag => (
-                    <Chip 
+                <Box
+                  sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mb: 1 }}
+                >
+                  {search.tags.map((tag) => (
+                    <Chip
                       key={tag}
-                      label={tag} 
-                      size="small" 
+                      label={tag}
+                      size="small"
                       icon={<Label />}
-                      sx={{ 
-                        fontSize: '0.75rem',
-                        opacity: isCompatible ? 1 : 0.7
+                      sx={{
+                        fontSize: "0.75rem",
+                        opacity: isCompatible ? 1 : 0.7,
                       }}
                     />
                   ))}
                 </Box>
               )}
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                <AccessTime sx={{ 
-                  fontSize: 16, 
-                  color: isCompatible ? 'text.secondary' : 'text.disabled' 
-                }} />
-                <Typography 
-                  variant="caption" 
-                  color={isCompatible ? 'text.secondary' : 'text.disabled'}
+
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}
+              >
+                <AccessTime
+                  sx={{
+                    fontSize: 16,
+                    color: isCompatible ? "text.secondary" : "text.disabled",
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  color={isCompatible ? "text.secondary" : "text.disabled"}
                 >
-                  {formatDistanceToNow(new Date(search.lastUsed), { addSuffix: true })}
+                  {formatDistanceToNow(new Date(search.lastUsed), {
+                    addSuffix: true,
+                  })}
                 </Typography>
               </Box>
             </Box>
-            
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
               <IconButton
                 size="small"
                 onClick={(e) => handleMenuClick(e, search)}
               >
                 <MoreVert />
               </IconButton>
-              
+
               {isCompatible && (
                 <Tooltip title="Apply Search">
                   <IconButton
@@ -471,7 +562,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                   </IconButton>
                 </Tooltip>
               )}
-              
+
               {!isCompatible && canSwitch && (
                 <Tooltip title="Switch collection and apply">
                   <IconButton
@@ -486,7 +577,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                   </IconButton>
                 </Tooltip>
               )}
-              
+
               {!isCompatible && !canSwitch && (
                 <Tooltip title="Collection not available">
                   <IconButton
@@ -509,55 +600,76 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
     );
   };
 
-  const renderSearchList = (searches: SavedSearch[], isBookmark: boolean, isCompatible: boolean, title: string) => {
+  const renderSearchList = (
+    searches: SavedSearch[],
+    isBookmark: boolean,
+    isCompatible: boolean,
+    title: string,
+  ) => {
     if (searches.length === 0) return null;
 
     return (
       <Box sx={{ mb: 3 }}>
-        <Typography variant="subtitle1" sx={{ 
-          mb: 2, 
-          fontWeight: 600,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1
-        }}>
+        <Typography
+          variant="subtitle1"
+          sx={{
+            mb: 2,
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
           {!isCompatible && <Warning color="warning" />}
           {title}
           <Chip label={searches.length} size="small" />
         </Typography>
-        {searches.map(search => renderSearchItem(search, isBookmark, isCompatible))}
+        {searches.map((search) =>
+          renderSearchItem(search, isBookmark, isCompatible),
+        )}
       </Box>
     );
   };
 
   if (!open) return null;
 
-  const currentData = activeTab === 0 ? filteredData.compatible.history : filteredData.compatible.bookmarks;
-  const incompatibleData = activeTab === 0 ? filteredData.incompatible.history : filteredData.incompatible.bookmarks;
+  const currentData =
+    activeTab === 0
+      ? filteredData.compatible.history
+      : filteredData.compatible.bookmarks;
+  const incompatibleData =
+    activeTab === 0
+      ? filteredData.incompatible.history
+      : filteredData.incompatible.bookmarks;
   const hasCompatible = currentData.length > 0;
   const hasIncompatible = incompatibleData.length > 0;
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
       fullWidth
       PaperProps={{
-        sx: { height: '80vh', borderRadius: 3 }
+        sx: { height: "80vh", borderRadius: 3 },
       }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
+      <DialogTitle
+        sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}
+      >
         <Folder color="primary" />
         <Typography variant="h6" sx={{ fontWeight: 600 }}>
           Search Library
         </Typography>
-        <Badge badgeContent={stats.totalHistory + stats.totalBookmarks} color="primary">
+        <Badge
+          badgeContent={stats.totalHistory + stats.totalBookmarks}
+          color="primary"
+        >
           <Box />
         </Badge>
         {currentSolrDatabase && currentAlias && (
-          <Box sx={{ ml: 'auto' }}>
-            <Chip 
+          <Box sx={{ ml: "auto" }}>
+            <Chip
               label={`${currentAlias}`}
               size="small"
               color="primary"
@@ -566,35 +678,48 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
           </Box>
         )}
       </DialogTitle>
-      
+
       <DialogContent sx={{ p: 0 }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={activeTab} onChange={handleTabChange} variant="fullWidth">
-            <Tab 
-              icon={<History />} 
-              label={`Recent (${filteredData.compatible.history.length}${filteredData.incompatible.history.length > 0 ? `+${filteredData.incompatible.history.length}` : ''})`} 
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            variant="fullWidth"
+          >
+            <Tab
+              icon={<History />}
+              label={`Recent (${filteredData.compatible.history.length}${filteredData.incompatible.history.length > 0 ? `+${filteredData.incompatible.history.length}` : ""})`}
               iconPosition="start"
             />
-            <Tab 
-              icon={<Bookmark />} 
-              label={`Bookmarks (${filteredData.compatible.bookmarks.length}${filteredData.incompatible.bookmarks.length > 0 ? `+${filteredData.incompatible.bookmarks.length}` : ''})`} 
+            <Tab
+              icon={<Bookmark />}
+              label={`Bookmarks (${filteredData.compatible.bookmarks.length}${filteredData.incompatible.bookmarks.length > 0 ? `+${filteredData.incompatible.bookmarks.length}` : ""})`}
               iconPosition="start"
             />
           </Tabs>
         </Box>
-        
+
         <Box sx={{ p: 2 }}>
           {/* Current Collection Info */}
           {(!currentSolrDatabase || !currentAlias) && (
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body2">
-                Select a database and collection to see compatible saved searches.
+                Select a database and collection to see compatible saved
+                searches.
               </Typography>
             </Alert>
           )}
 
           {/* Search and Controls */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              mb: 3,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
             <TextField
               placeholder="Search saved queries..."
               size="small"
@@ -605,11 +730,11 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                   <InputAdornment position="start">
                     <Search />
                   </InputAdornment>
-                )
+                ),
               }}
               sx={{ flexGrow: 1, minWidth: 200 }}
             />
-            
+
             <Button
               variant="outlined"
               startIcon={<Download />}
@@ -618,7 +743,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
             >
               Export
             </Button>
-            
+
             <Button
               variant="outlined"
               startIcon={<Upload />}
@@ -633,7 +758,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                 onChange={handleImportFile}
               />
             </Button>
-            
+
             <Button
               variant="outlined"
               startIcon={<Clear />}
@@ -644,40 +769,58 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
               Clear All
             </Button>
           </Box>
-          
 
-          
           {/* Search Results */}
-          <Box sx={{ maxHeight: 'calc(80vh - 350px)', overflow: 'auto' }}>
+          <Box sx={{ maxHeight: "calc(80vh - 350px)", overflow: "auto" }}>
             {isLoading ? (
               <Typography>Loading...</Typography>
             ) : (
               <>
                 {/* Compatible Searches */}
-                {hasCompatible && renderSearchList(
-                  currentData, 
-                  activeTab === 1, 
-                  true, 
-                  currentSolrDatabase && currentAlias ? `Compatible with ${currentAlias}` : "Compatible Searches"
-                )}
-                
+                {hasCompatible &&
+                  renderSearchList(
+                    currentData,
+                    activeTab === 1,
+                    true,
+                    currentSolrDatabase && currentAlias
+                      ? `Compatible with ${currentAlias}`
+                      : "Compatible Searches",
+                  )}
+
                 {/* Incompatible Searches */}
-                {hasIncompatible && renderSearchList(
-                  incompatibleData, 
-                  activeTab === 1, 
-                  false, 
-                  "Other Collections"
-                )}
-                
+                {hasIncompatible &&
+                  renderSearchList(
+                    incompatibleData,
+                    activeTab === 1,
+                    false,
+                    "Other Collections",
+                  )}
+
                 {/* Empty State */}
                 {!hasCompatible && !hasIncompatible && (
-                  <Paper sx={{ p: 4, textAlign: 'center' }}>
-                    {activeTab === 0 ? <History sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} /> : <Bookmark sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />}
+                  <Paper sx={{ p: 4, textAlign: "center" }}>
+                    {activeTab === 0 ? (
+                      <History
+                        sx={{ fontSize: 48, color: "text.secondary", mb: 2 }}
+                      />
+                    ) : (
+                      <Bookmark
+                        sx={{ fontSize: 48, color: "text.secondary", mb: 2 }}
+                      />
+                    )}
                     <Typography variant="h6" color="text.secondary">
-                      {searchQuery ? 'No matching searches found' : (activeTab === 0 ? 'No recent searches' : 'No bookmarks saved')}
+                      {searchQuery
+                        ? "No matching searches found"
+                        : activeTab === 0
+                          ? "No recent searches"
+                          : "No bookmarks saved"}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {searchQuery ? 'Try different search terms' : (activeTab === 0 ? 'Your recent searches will appear here' : 'Save important searches to bookmark them')}
+                      {searchQuery
+                        ? "Try different search terms"
+                        : activeTab === 0
+                          ? "Your recent searches will appear here"
+                          : "Save important searches to bookmark them"}
                     </Typography>
                   </Paper>
                 )}
@@ -686,19 +829,19 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
           </Box>
         </Box>
       </DialogContent>
-      
-      <DialogActions sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+
+      <DialogActions sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
 
       {/* Switch Collection Confirmation Dialog */}
-      <Dialog 
-        open={switchDialogOpen} 
+      <Dialog
+        open={switchDialogOpen}
         onClose={() => !isSwitching && setSwitchDialogOpen(false)}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <PlayArrow color="info" />
           Switch Collection & Apply Search
         </DialogTitle>
@@ -707,11 +850,12 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
             <Box>
               <Alert severity="info" sx={{ mb: 2 }}>
                 <Typography variant="body2">
-                  This will switch your current database and collection, then apply the saved search.
+                  This will switch your current database and collection, then
+                  apply the saved search.
                 </Typography>
               </Alert>
-              
-              <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+
+              <Box sx={{ mt: 2, p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Search to Apply:
                 </Typography>
@@ -724,62 +868,72 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                   </Typography>
                 )}
                 <Typography variant="body2" gutterBottom>
-                  <strong>Target:</strong>  {switchingSearch.selectedAlias}
+                  <strong>Target:</strong> {switchingSearch.selectedAlias}
                 </Typography>
                 {switchingSearch.resultsCount && (
                   <Typography variant="body2">
-                    <strong>Previous Results:</strong> {switchingSearch.resultsCount} documents
+                    <strong>Previous Results:</strong>{" "}
+                    {switchingSearch.resultsCount} documents
                   </Typography>
                 )}
               </Box>
-              
+
               {currentSolrDatabase && currentAlias && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'warning.light', borderRadius: 1, opacity: 0.8 }}>
+                <Box
+                  sx={{
+                    mt: 2,
+                    p: 2,
+                    bgcolor: "warning.light",
+                    borderRadius: 1,
+                    opacity: 0.8,
+                  }}
+                >
                   <Typography variant="subtitle2" gutterBottom>
                     Current Selection (will be changed):
                   </Typography>
-                  <Typography variant="body2">
-                     {currentAlias}
-                  </Typography>
+                  <Typography variant="body2">{currentAlias}</Typography>
                 </Box>
               )}
-              
+
               <Alert severity="warning" sx={{ mt: 2 }}>
                 <Typography variant="body2">
-                  <strong>Note:</strong> Any unsaved changes in your current search form will be lost. 
-                  Make sure to save your current search first if you want to keep it.
+                  <strong>Note:</strong> Any unsaved changes in your current
+                  search form will be lost. Make sure to save your current
+                  search first if you want to keep it.
                 </Typography>
               </Alert>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button 
-            onClick={() => setSwitchDialogOpen(false)} 
+          <Button
+            onClick={() => setSwitchDialogOpen(false)}
             disabled={isSwitching}
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleConfirmSwitch} 
-            variant="contained" 
+          <Button
+            onClick={handleConfirmSwitch}
+            variant="contained"
             color="info"
             disabled={isSwitching}
-            startIcon={isSwitching ? <CircularProgress size={16} /> : <PlayArrow />}
+            startIcon={
+              isSwitching ? <CircularProgress size={16} /> : <PlayArrow />
+            }
           >
-            {isSwitching ? 'Switching...' : 'Switch & Apply'}
+            {isSwitching ? "Switching..." : "Switch & Apply"}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Incompatible Search Dialog */}
-      <Dialog 
-        open={incompatibleDialogOpen} 
+      <Dialog
+        open={incompatibleDialogOpen}
         onClose={() => setIncompatibleDialogOpen(false)}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Warning color="warning" />
           Incompatible Search
         </DialogTitle>
@@ -787,10 +941,11 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
           {incompatibleSearch && (
             <Box>
               <Typography gutterBottom>
-                This search was created for a different collection and cannot be applied to your current selection.
+                This search was created for a different collection and cannot be
+                applied to your current selection.
               </Typography>
-              
-              <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+
+              <Box sx={{ mt: 2, p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Search Details:
                 </Typography>
@@ -798,7 +953,8 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                   <strong>Name:</strong> {incompatibleSearch.name}
                 </Typography>
                 <Typography variant="body2" gutterBottom>
-                  <strong>Created for:</strong>  {incompatibleSearch.selectedAlias}
+                  <strong>Created for:</strong>{" "}
+                  {incompatibleSearch.selectedAlias}
                 </Typography>
                 {currentSolrDatabase && currentAlias && (
                   <Typography variant="body2">
@@ -806,10 +962,11 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                   </Typography>
                 )}
               </Box>
-              
+
               <Alert severity="info" sx={{ mt: 2 }}>
                 <Typography variant="body2">
-                  To use this search, please switch to the {incompatibleSearch.selectedAlias} collection first.
+                  To use this search, please switch to the{" "}
+                  {incompatibleSearch.selectedAlias} collection first.
                 </Typography>
               </Alert>
             </Box>
@@ -821,7 +978,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* Context Menu */}
       <Menu
         anchorEl={menuAnchor}
@@ -842,15 +999,19 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
             </>
           )}
         </MenuItem>
-        <MenuItem onClick={() => navigator.clipboard.writeText(selectedItem?.queryString || '')}>
+        <MenuItem
+          onClick={() =>
+            navigator.clipboard.writeText(selectedItem?.queryString || "")
+          }
+        >
           <Share sx={{ mr: 1 }} /> Copy Query
         </MenuItem>
         <Divider />
-        <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+        <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
           <Delete sx={{ mr: 1 }} /> Delete
         </MenuItem>
       </Menu>
-      
+
       {/* Edit Dialog */}
       {editDialogOpen && editingSearch && (
         <EditSearchDialog
@@ -860,18 +1021,26 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
           onSave={handleSaveEdit}
         />
       )}
-      
+
       {/* Delete Confirmation */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+      >
         <DialogTitle>Delete Search</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete "{selectedItem?.name}"? This action cannot be undone.
+            Are you sure you want to delete "{selectedItem?.name}"? This action
+            cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
-          <Button onClick={handleConfirmDelete} color="error" variant="contained">
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+          >
             Delete
           </Button>
         </DialogActions>
@@ -888,15 +1057,18 @@ const EditSearchDialog: React.FC<{
   onSave: (updates: Partial<SavedSearch>) => void;
 }> = ({ open, search, onClose, onSave }) => {
   const [name, setName] = useState(search.name);
-  const [description, setDescription] = useState(search.description || '');
-  const [tags, setTags] = useState(search.tags.join(', '));
+  const [description, setDescription] = useState(search.description || "");
+  const [tags, setTags] = useState(search.tags.join(", "));
 
   const handleSave = () => {
     onSave({
       name,
       description,
       description,
-      tags: tags.split(',').map(tag => tag.trim()).filter(Boolean)
+      tags: tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
     });
   };
 
@@ -904,7 +1076,7 @@ const EditSearchDialog: React.FC<{
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Edit Search</DialogTitle>
       <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
           <TextField
             label="Name"
             value={name}
@@ -931,7 +1103,11 @@ const EditSearchDialog: React.FC<{
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSave} variant="contained" disabled={!name.trim()}>
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={!name.trim()}
+        >
           Save
         </Button>
       </DialogActions>

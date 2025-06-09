@@ -1,4 +1,4 @@
-import { ProcessingConfig } from '../types/ner-types';
+import { ProcessingConfig } from "../types/ner-types";
 
 const PROCESSING_CONFIG: ProcessingConfig = {
   CHUNK_SIZE: 500,
@@ -7,7 +7,7 @@ const PROCESSING_CONFIG: ProcessingConfig = {
   MAX_COOCCURRENCE_PAIRS: 1000,
   MAX_PATTERNS_PER_TYPE: 100,
   RELATIONSHIP_BATCH_SIZE: 50,
-  PATTERN_BATCH_SIZE: 25
+  PATTERN_BATCH_SIZE: 25,
 };
 
 /**
@@ -29,7 +29,7 @@ export class ChunkedProcessor {
     processor: (chunk: T[]) => Promise<R[]> | R[],
     chunkSize: number = PROCESSING_CONFIG.CHUNK_SIZE,
     onProgress?: (progress: number, current: string) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<R[]> {
     if (!items || items.length === 0) {
       return [];
@@ -39,29 +39,39 @@ export class ChunkedProcessor {
     const totalChunks = Math.ceil(items.length / chunkSize);
     let processedItems = 0;
 
-    console.log(`Starting chunked processing: ${items.length} items in ${totalChunks} chunks`);
+    console.log(
+      `Starting chunked processing: ${items.length} items in ${totalChunks} chunks`,
+    );
 
     for (let i = 0; i < items.length; i += chunkSize) {
       if (signal?.aborted) {
-        console.log('Processing cancelled by signal');
-        throw new Error('Processing cancelled');
+        console.log("Processing cancelled by signal");
+        throw new Error("Processing cancelled");
       }
 
       try {
         const chunk = items.slice(i, i + chunkSize);
         const currentChunk = Math.floor(i / chunkSize) + 1;
 
-        console.log(`Processing chunk ${currentChunk}/${totalChunks} (${chunk.length} items)`);
+        console.log(
+          `Processing chunk ${currentChunk}/${totalChunks} (${chunk.length} items)`,
+        );
 
         const progress = Math.min((processedItems / items.length) * 100, 100);
-        onProgress?.(progress, `Processing chunk ${currentChunk}/${totalChunks}`);
+        onProgress?.(
+          progress,
+          `Processing chunk ${currentChunk}/${totalChunks}`,
+        );
 
         // Protect chunk processing with a 10-second timeout
         const chunkResults = await Promise.race([
           Promise.resolve(processor(chunk)),
           new Promise<R[]>((_, reject) =>
-            setTimeout(() => reject(new Error('Chunk processing timeout')), 10000)
-          )
+            setTimeout(
+              () => reject(new Error("Chunk processing timeout")),
+              10000,
+            ),
+          ),
         ]);
 
         if (Array.isArray(chunkResults)) {
@@ -72,17 +82,24 @@ export class ChunkedProcessor {
 
         // Yield to event loop with delay to avoid blocking UI
         if (i + chunkSize < items.length) {
-          await new Promise(resolve => setTimeout(resolve, PROCESSING_CONFIG.DELAY_BETWEEN_CHUNKS));
+          await new Promise((resolve) =>
+            setTimeout(resolve, PROCESSING_CONFIG.DELAY_BETWEEN_CHUNKS),
+          );
         }
-
       } catch (error) {
-        console.error(`Error processing chunk ${Math.floor(i / chunkSize) + 1}:`, error);
+        console.error(
+          `Error processing chunk ${Math.floor(i / chunkSize) + 1}:`,
+          error,
+        );
 
-        if (error instanceof Error && error.message === 'Processing cancelled') {
+        if (
+          error instanceof Error &&
+          error.message === "Processing cancelled"
+        ) {
           throw error;
         }
 
-        console.warn('Skipping failed chunk and continuing...');
+        console.warn("Skipping failed chunk and continuing...");
         processedItems += Math.min(chunkSize, items.length - i);
       }
     }

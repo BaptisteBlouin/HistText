@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo } from "react";
 
 interface CollectionInfo {
   name: string;
@@ -23,27 +23,31 @@ export const useProcessedCollections = (
   aliases: string[],
   descriptions: Record<string, string>,
   selectedAlias: string,
-  searchTerm: string
+  searchTerm: string,
 ) => {
   const processedCollections = useMemo(() => {
-    const collections: CollectionInfo[] = aliases.map(alias => ({
+    const collections: CollectionInfo[] = aliases.map((alias) => ({
       name: alias,
-      description: descriptions[alias] || 'No description available',
+      description: descriptions[alias] || "No description available",
       isSelected: alias === selectedAlias,
-      matchesSearch: !searchTerm || 
+      matchesSearch:
+        !searchTerm ||
         alias.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (descriptions[alias] || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (descriptions[alias] || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()),
     }));
 
-    return collections.filter(col => col.matchesSearch);
+    return collections.filter((col) => col.matchesSearch);
   }, [aliases, descriptions, selectedAlias, searchTerm]);
 
-  const selectedCollection = useMemo(() => 
-    processedCollections.find(col => col.isSelected) || null
-  , [processedCollections]);
+  const selectedCollection = useMemo(
+    () => processedCollections.find((col) => col.isSelected) || null,
+    [processedCollections],
+  );
 
   return {
     processedCollections,
-    selectedCollection
+    selectedCollection,
   };
 };

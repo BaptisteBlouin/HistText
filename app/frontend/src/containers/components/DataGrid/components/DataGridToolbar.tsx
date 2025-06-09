@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Paper,
   Toolbar,
@@ -12,8 +12,8 @@ import {
   Stack,
   Menu,
   MenuItem,
-  Box
-} from '@mui/material';
+  Box,
+} from "@mui/material";
 import {
   TableChart,
   Download,
@@ -21,8 +21,8 @@ import {
   FilterList,
   Close,
   Fullscreen,
-  MoreVert
-} from '@mui/icons-material';
+  MoreVert,
+} from "@mui/icons-material";
 
 /**
  * Props for the DataGridToolbar component.
@@ -69,33 +69,33 @@ const DataGridToolbar: React.FC<DataGridToolbarProps> = ({
   onSelectAll,
   onDeselectAll,
   onAutoSizeColumns,
-  onClearCache
+  onClearCache,
 }) => {
   return (
     <Paper elevation={1} sx={{ mb: 2 }}>
-      <Toolbar sx={{ gap: 2, flexWrap: 'wrap' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+      <Toolbar sx={{ gap: 2, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
           <TableChart color="primary" />
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Data Grid {showConcordance && '(Concordance)'}
+            Data Grid {showConcordance && "(Concordance)"}
           </Typography>
-          <Chip 
-            label={`${resultsLength.toLocaleString()} records`} 
-            size="small" 
+          <Chip
+            label={`${resultsLength.toLocaleString()} records`}
+            size="small"
             color={showConcordance ? "warning" : "primary"}
             variant="outlined"
           />
           {mainTextColumn && (
-            <Chip 
+            <Chip
               label={`Main: ${mainTextColumn}`}
-              size="small" 
+              size="small"
               color="secondary"
               variant="outlined"
             />
           )}
-          <Chip 
+          <Chip
             label={`Cache: ${cacheSize}`}
-            size="small" 
+            size="small"
             color="info"
             variant="outlined"
           />
@@ -119,7 +119,7 @@ const DataGridToolbar: React.FC<DataGridToolbarProps> = ({
                     <Close />
                   </IconButton>
                 </InputAdornment>
-              )
+              ),
             }}
             sx={{ minWidth: 200 }}
           />
@@ -151,16 +151,36 @@ const DataGridToolbar: React.FC<DataGridToolbarProps> = ({
           open={Boolean(menuAnchor)}
           onClose={onMenuClose}
         >
-          <MenuItem onClick={() => { onSelectAll(); onMenuClose(); }}>
+          <MenuItem
+            onClick={() => {
+              onSelectAll();
+              onMenuClose();
+            }}
+          >
             Select All
           </MenuItem>
-          <MenuItem onClick={() => { onDeselectAll(); onMenuClose(); }}>
+          <MenuItem
+            onClick={() => {
+              onDeselectAll();
+              onMenuClose();
+            }}
+          >
             Deselect All
           </MenuItem>
-          <MenuItem onClick={() => { onAutoSizeColumns(); onMenuClose(); }}>
+          <MenuItem
+            onClick={() => {
+              onAutoSizeColumns();
+              onMenuClose();
+            }}
+          >
             Auto-size Columns
           </MenuItem>
-          <MenuItem onClick={() => { onClearCache(); onMenuClose(); }}>
+          <MenuItem
+            onClick={() => {
+              onClearCache();
+              onMenuClose();
+            }}
+          >
             Clear Cache
           </MenuItem>
         </Menu>

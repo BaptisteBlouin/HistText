@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -13,7 +13,7 @@ import {
   Slider,
   Tooltip,
   Chip,
-} from '@mui/material';
+} from "@mui/material";
 import {
   MoreVert,
   Refresh,
@@ -22,7 +22,7 @@ import {
   PlayArrow,
   Settings,
   Speed,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 /**
  * Props for RefreshController component.
@@ -84,7 +84,7 @@ export const RefreshController: React.FC<RefreshControllerProps> = ({
   };
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
       {/* Auto-refresh status */}
       {autoRefresh && (
         <Chip
@@ -98,18 +98,20 @@ export const RefreshController: React.FC<RefreshControllerProps> = ({
 
       {/* Manual refresh button */}
       <Tooltip title="Refresh All Data">
-        <IconButton 
-          onClick={onRefreshAll} 
+        <IconButton
+          onClick={onRefreshAll}
           color="primary"
           disabled={isRefreshing}
         >
-          <Refresh sx={{ 
-            animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
-            '@keyframes spin': {
-              '0%': { transform: 'rotate(0deg)' },
-              '100%': { transform: 'rotate(360deg)' },
-            }
-          }} />
+          <Refresh
+            sx={{
+              animation: isRefreshing ? "spin 1s linear infinite" : "none",
+              "@keyframes spin": {
+                "0%": { transform: "rotate(0deg)" },
+                "100%": { transform: "rotate(360deg)" },
+              },
+            }}
+          />
         </IconButton>
       </Tooltip>
 
@@ -123,13 +125,11 @@ export const RefreshController: React.FC<RefreshControllerProps> = ({
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
         PaperProps={{
-          sx: { minWidth: 280 }
+          sx: { minWidth: 280 },
         }}
       >
         <MenuItem>
-          <ListItemIcon>
-            {autoRefresh ? <Pause /> : <PlayArrow />}
-          </ListItemIcon>
+          <ListItemIcon>{autoRefresh ? <Pause /> : <PlayArrow />}</ListItemIcon>
           <ListItemText>
             <FormControlLabel
               control={
@@ -161,11 +161,11 @@ export const RefreshController: React.FC<RefreshControllerProps> = ({
               max={300}
               step={10}
               marks={[
-                { value: 10, label: '10s' },
-                { value: 30, label: '30s' },
-                { value: 60, label: '1m' },
-                { value: 180, label: '3m' },
-                { value: 300, label: '5m' },
+                { value: 10, label: "10s" },
+                { value: 30, label: "30s" },
+                { value: 60, label: "1m" },
+                { value: 180, label: "3m" },
+                { value: 300, label: "5m" },
               ]}
               disabled={!autoRefresh}
               sx={{ mt: 1 }}

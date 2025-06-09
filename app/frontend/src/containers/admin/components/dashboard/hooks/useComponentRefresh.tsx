@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from "react";
 
 /**
  * Represents the refresh/loading/error state for a set of components.
@@ -31,85 +31,96 @@ export const useComponentRefresh = () => {
   /**
    * Updates the refresh state for a single component.
    */
-  const updateRefreshState = useCallback((componentId: string, updates: Partial<RefreshState[string]>) => {
-    setRefreshStates(prev => ({
-      ...prev,
-      [componentId]: {
-        ...prev[componentId],
-        ...updates,
-      },
-    }));
-  }, []);
+  const updateRefreshState = useCallback(
+    (componentId: string, updates: Partial<RefreshState[string]>) => {
+      setRefreshStates((prev) => ({
+        ...prev,
+        [componentId]: {
+          ...prev[componentId],
+          ...updates,
+        },
+      }));
+    },
+    [],
+  );
 
   /**
    * Triggers a refresh for the specified component.
    * Handles aborting any previous refresh and updates loading/error state.
    */
-  const refreshComponent = useCallback(async (
-    componentId: string,
-    refreshFn: () => Promise<void>
-  ) => {
-    // Cancel any existing refresh for this component
-    if (abortControllersRef.current[componentId]) {
-      abortControllersRef.current[componentId].abort();
-    }
-
-    // Create new abort controller
-    const controller = new AbortController();
-    abortControllersRef.current[componentId] = controller;
-
-    updateRefreshState(componentId, { 
-      loading: true, 
-      error: null 
-    });
-
-    try {
-      await refreshFn();
-      
-      // Only update if not aborted
-      if (!controller.signal.aborted) {
-        updateRefreshState(componentId, {
-          loading: false,
-          lastRefresh: new Date(),
-        });
+  const refreshComponent = useCallback(
+    async (componentId: string, refreshFn: () => Promise<void>) => {
+      // Cancel any existing refresh for this component
+      if (abortControllersRef.current[componentId]) {
+        abortControllersRef.current[componentId].abort();
       }
-    } catch (error) {
-      if (!controller.signal.aborted) {
-        updateRefreshState(componentId, {
-          loading: false,
-          error: error instanceof Error ? error.message : 'Refresh failed',
-        });
+
+      // Create new abort controller
+      const controller = new AbortController();
+      abortControllersRef.current[componentId] = controller;
+
+      updateRefreshState(componentId, {
+        loading: true,
+        error: null,
+      });
+
+      try {
+        await refreshFn();
+
+        // Only update if not aborted
+        if (!controller.signal.aborted) {
+          updateRefreshState(componentId, {
+            loading: false,
+            lastRefresh: new Date(),
+          });
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          updateRefreshState(componentId, {
+            loading: false,
+            error: error instanceof Error ? error.message : "Refresh failed",
+          });
+        }
+      } finally {
+        // Clean up controller
+        if (abortControllersRef.current[componentId] === controller) {
+          delete abortControllersRef.current[componentId];
+        }
       }
-    } finally {
-      // Clean up controller
-      if (abortControllersRef.current[componentId] === controller) {
-        delete abortControllersRef.current[componentId];
-      }
-    }
-  }, [updateRefreshState]);
+    },
+    [updateRefreshState],
+  );
 
   /**
    * Cancels the refresh process for a given component.
    */
-  const cancelRefresh = useCallback((componentId: string) => {
-    if (abortControllersRef.current[componentId]) {
-      abortControllersRef.current[componentId].abort();
-      delete abortControllersRef.current[componentId];
-    }
-    
-    updateRefreshState(componentId, { loading: false });
-  }, [updateRefreshState]);
+  const cancelRefresh = useCallback(
+    (componentId: string) => {
+      if (abortControllersRef.current[componentId]) {
+        abortControllersRef.current[componentId].abort();
+        delete abortControllersRef.current[componentId];
+      }
+
+      updateRefreshState(componentId, { loading: false });
+    },
+    [updateRefreshState],
+  );
 
   /**
    * Returns the refresh state for a given component.
    */
-  const getRefreshState = useCallback((componentId: string) => {
-    return refreshStates[componentId] || {
-      loading: false,
-      lastRefresh: null,
-      error: null,
-    };
-  }, [refreshStates]);
+  const getRefreshState = useCallback(
+    (componentId: string) => {
+      return (
+        refreshStates[componentId] || {
+          loading: false,
+          lastRefresh: null,
+          error: null,
+        }
+      );
+    },
+    [refreshStates],
+  );
 
   return {
     refreshComponent,

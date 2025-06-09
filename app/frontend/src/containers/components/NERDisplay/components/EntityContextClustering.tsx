@@ -1,10 +1,10 @@
 // app/frontend/src/containers/components/NERDisplay/components/EntityContextClustering.tsx
-import React, { useMemo, useState } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  Typography, 
-  Box, 
+import React, { useMemo, useState } from "react";
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
   FormControl,
   InputLabel,
   Select,
@@ -19,10 +19,27 @@ import {
   AccordionSummary,
   AccordionDetails,
   IconButton,
-  Collapse
-} from '@mui/material';
-import { Psychology, Group, ExpandMore, Info, Settings } from '@mui/icons-material';
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+  Collapse,
+} from "@mui/material";
+import {
+  Psychology,
+  Group,
+  ExpandMore,
+  Info,
+  Settings,
+} from "@mui/icons-material";
+import {
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+} from "recharts";
 
 interface EntityCluster {
   id: number;
@@ -32,7 +49,7 @@ interface EntityCluster {
   cohesionScore: number;
   size: number;
   representative: string;
-  clusterType: 'cooccurrence' | 'document' | 'semantic';
+  clusterType: "cooccurrence" | "document" | "semantic";
   internalConnections: number;
   externalConnections: number;
   isolationScore: number;
@@ -47,21 +64,23 @@ interface EntityContextClusteringProps {
 /**
  * EntityContextClustering component performs enhanced clustering of entities based on
  * their contextual relationships, cooccurrences, and document overlaps.
- * 
+ *
  * Clustering methods supported:
  * - cooccurrence: uses strong cooccurrence relationships only
  * - document: groups entities appearing in the same documents
  * - hybrid: combines cooccurrence and document-based relationships
- * 
+ *
  * Displays scatter plot for cluster analysis, pie chart for cluster type distribution,
  * and detailed expandable lists for cluster contents and metrics.
  */
 const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
   stats,
-  onDocumentClick
+  onDocumentClick,
 }) => {
   const [selectedCluster, setSelectedCluster] = useState<number | null>(null);
-  const [clusteringMethod, setClusteringMethod] = useState<'cooccurrence' | 'document' | 'hybrid'>('hybrid');
+  const [clusteringMethod, setClusteringMethod] = useState<
+    "cooccurrence" | "document" | "hybrid"
+  >("hybrid");
   const [showExplanation, setShowExplanation] = useState(false);
 
   /**
@@ -72,16 +91,16 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
   const entityClusters = useMemo((): EntityCluster[] => {
     if (!stats?.strongestPairs || !stats?.topEntitiesByType) return [];
 
-    console.time('Computing entity context clusters');
-    
+    console.time("Computing entity context clusters");
+
     // Map entities to connected entities and their cooccurrence strengths
     const entityConnections = new Map<string, Set<string>>();
     const entityStrengths = new Map<string, Map<string, number>>();
-    
+
     stats.strongestPairs.forEach((pair: any) => {
       const entity1 = pair.entity1;
       const entity2 = pair.entity2;
-      
+
       if (!entityConnections.has(entity1)) {
         entityConnections.set(entity1, new Set());
         entityStrengths.set(entity1, new Map());
@@ -90,10 +109,10 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
         entityConnections.set(entity2, new Set());
         entityStrengths.set(entity2, new Map());
       }
-      
+
       entityConnections.get(entity1)!.add(entity2);
       entityConnections.get(entity2)!.add(entity1);
-      
+
       entityStrengths.get(entity1)!.set(entity2, pair.strength || 1);
       entityStrengths.get(entity2)!.set(entity1, pair.strength || 1);
     });
@@ -116,7 +135,7 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
     const allEntities = new Set<string>();
     entityConnections.forEach((connections, entity) => {
       allEntities.add(entity);
-      connections.forEach(connected => allEntities.add(connected));
+      connections.forEach((connected) => allEntities.add(connected));
     });
     if (stats.topEntities) {
       stats.topEntities.forEach((entity: any) => {
@@ -130,30 +149,31 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
     let clusterId = 0;
 
     // Perform graph traversal and clustering with method-specific thresholds and expansions
-    entityArray.forEach(startEntity => {
+    entityArray.forEach((startEntity) => {
       if (clusteredEntities.has(startEntity)) return;
 
       const cluster: string[] = [startEntity];
       const queue = [startEntity];
       clusteredEntities.add(startEntity);
-      
+
       while (queue.length > 0) {
         const currentEntity = queue.shift()!;
         const connections = entityConnections.get(currentEntity) || new Set();
-        
-        connections.forEach(connectedEntity => {
+
+        connections.forEach((connectedEntity) => {
           if (!clusteredEntities.has(connectedEntity)) {
-            const strength = entityStrengths.get(currentEntity)?.get(connectedEntity) || 0;
-            
+            const strength =
+              entityStrengths.get(currentEntity)?.get(connectedEntity) || 0;
+
             let threshold = 1;
-            if (clusteringMethod === 'cooccurrence') {
+            if (clusteringMethod === "cooccurrence") {
               threshold = 2;
-            } else if (clusteringMethod === 'document') {
+            } else if (clusteringMethod === "document") {
               threshold = 0.5;
             } else {
               threshold = 1.5;
             }
-            
+
             if (strength >= threshold) {
               cluster.push(connectedEntity);
               queue.push(connectedEntity);
@@ -162,24 +182,30 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
           }
         });
 
-        if (clusteringMethod === 'document' || clusteringMethod === 'hybrid') {
+        if (clusteringMethod === "document" || clusteringMethod === "hybrid") {
           documentEntityMap.forEach((docEntities) => {
             if (docEntities.has(currentEntity)) {
-              docEntities.forEach(docEntity => {
-                if (!clusteredEntities.has(docEntity) && docEntity !== currentEntity) {
+              docEntities.forEach((docEntity) => {
+                if (
+                  !clusteredEntities.has(docEntity) &&
+                  docEntity !== currentEntity
+                ) {
                   let shouldAdd = false;
-                  if (clusteringMethod === 'document') {
+                  if (clusteringMethod === "document") {
                     shouldAdd = true;
                   } else {
                     let coDocumentCount = 0;
                     documentEntityMap.forEach((otherDocEntities) => {
-                      if (otherDocEntities.has(currentEntity) && otherDocEntities.has(docEntity)) {
+                      if (
+                        otherDocEntities.has(currentEntity) &&
+                        otherDocEntities.has(docEntity)
+                      ) {
                         coDocumentCount++;
                       }
                     });
                     shouldAdd = coDocumentCount >= 2;
                   }
-                  
+
                   if (shouldAdd) {
                     cluster.push(docEntity);
                     queue.push(docEntity);
@@ -196,7 +222,7 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
         // Identify documents containing cluster entities
         const commonDocuments: string[] = [];
         documentEntityMap.forEach((docEntities, docId) => {
-          if (cluster.some(entity => docEntities.has(entity))) {
+          if (cluster.some((entity) => docEntities.has(entity))) {
             commonDocuments.push(docId);
           }
         });
@@ -205,10 +231,11 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
         let totalStrength = 0;
         let internalConnections = 0;
         let connectionCount = 0;
-        
+
         for (let i = 0; i < cluster.length; i++) {
           for (let j = i + 1; j < cluster.length; j++) {
-            const strength = entityStrengths.get(cluster[i])?.get(cluster[j]) || 0;
+            const strength =
+              entityStrengths.get(cluster[i])?.get(cluster[j]) || 0;
             if (strength > 0) {
               totalStrength += strength;
               internalConnections++;
@@ -217,14 +244,19 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
           }
         }
 
-        const avgCooccurrenceStrength = connectionCount > 0 ? totalStrength / connectionCount : 0;
-        const maxPossibleConnections = (cluster.length * (cluster.length - 1)) / 2;
-        const cohesionScore = maxPossibleConnections > 0 ? internalConnections / maxPossibleConnections : 0;
+        const avgCooccurrenceStrength =
+          connectionCount > 0 ? totalStrength / connectionCount : 0;
+        const maxPossibleConnections =
+          (cluster.length * (cluster.length - 1)) / 2;
+        const cohesionScore =
+          maxPossibleConnections > 0
+            ? internalConnections / maxPossibleConnections
+            : 0;
 
         let externalConnections = 0;
-        cluster.forEach(entity => {
+        cluster.forEach((entity) => {
           const connections = entityConnections.get(entity) || new Set();
-          connections.forEach(connectedEntity => {
+          connections.forEach((connectedEntity) => {
             if (!cluster.includes(connectedEntity)) {
               externalConnections++;
             }
@@ -232,26 +264,33 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
         });
 
         const totalConnections = internalConnections + externalConnections;
-        const isolationScore = totalConnections > 0 ? internalConnections / totalConnections : 0;
+        const isolationScore =
+          totalConnections > 0 ? internalConnections / totalConnections : 0;
 
         // Diversity: ratio of entity types in cluster to total types
         const entityTypes = new Set<string>();
-        cluster.forEach(entity => {
-          Object.entries(stats.topEntitiesByType || {}).forEach(([type, entities]: [string, any]) => {
-            if (entities.some((e: any) => e.text === entity)) {
-              entityTypes.add(type);
-            }
-          });
+        cluster.forEach((entity) => {
+          Object.entries(stats.topEntitiesByType || {}).forEach(
+            ([type, entities]: [string, any]) => {
+              if (entities.some((e: any) => e.text === entity)) {
+                entityTypes.add(type);
+              }
+            },
+          );
         });
-        const maxPossibleTypes = Object.keys(stats.topEntitiesByType || {}).length;
-        const diversityIndex = maxPossibleTypes > 0 ? entityTypes.size / maxPossibleTypes : 0;
+        const maxPossibleTypes = Object.keys(
+          stats.topEntitiesByType || {},
+        ).length;
+        const diversityIndex =
+          maxPossibleTypes > 0 ? entityTypes.size / maxPossibleTypes : 0;
 
         // Representative entity: most connected within cluster
         let representative = cluster[0];
         let maxConnections = 0;
-        cluster.forEach(entity => {
-          const connectionsInCluster = cluster.filter(other => 
-            other !== entity && entityConnections.get(entity)?.has(other)
+        cluster.forEach((entity) => {
+          const connectionsInCluster = cluster.filter(
+            (other) =>
+              other !== entity && entityConnections.get(entity)?.has(other),
           ).length;
           if (connectionsInCluster > maxConnections) {
             maxConnections = connectionsInCluster;
@@ -260,11 +299,11 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
         });
 
         // Determine cluster type heuristically
-        let clusterType: 'cooccurrence' | 'document' | 'semantic' = 'semantic';
+        let clusterType: "cooccurrence" | "document" | "semantic" = "semantic";
         if (avgCooccurrenceStrength > 3) {
-          clusterType = 'cooccurrence';
+          clusterType = "cooccurrence";
         } else if (diversityIndex < 0.3) {
-          clusterType = 'document';
+          clusterType = "document";
         }
 
         clusters.push({
@@ -279,20 +318,22 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
           internalConnections,
           externalConnections,
           isolationScore,
-          diversityIndex
+          diversityIndex,
         });
       }
     });
 
-    console.timeEnd('Computing entity context clusters');
-    console.log(`Found ${clusters.length} entity clusters using ${clusteringMethod} method`);
-    
+    console.timeEnd("Computing entity context clusters");
+    console.log(
+      `Found ${clusters.length} entity clusters using ${clusteringMethod} method`,
+    );
+
     return clusters.sort((a, b) => b.cohesionScore - a.cohesionScore);
   }, [stats, clusteringMethod]);
 
   // Scatter plot data for cluster analysis visualization
   const scatterData = useMemo(() => {
-    return entityClusters.map(cluster => ({
+    return entityClusters.map((cluster) => ({
       id: cluster.id,
       size: cluster.size,
       cohesion: cluster.cohesionScore * 100,
@@ -300,23 +341,34 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
       diversity: cluster.diversityIndex * 100,
       representative: cluster.representative,
       type: cluster.clusterType,
-      color: cluster.clusterType === 'cooccurrence' ? '#FF6B6B' : 
-             cluster.clusterType === 'document' ? '#4ECDC4' : '#45B7D1'
+      color:
+        cluster.clusterType === "cooccurrence"
+          ? "#FF6B6B"
+          : cluster.clusterType === "document"
+            ? "#4ECDC4"
+            : "#45B7D1",
     }));
   }, [entityClusters]);
 
   // Pie chart data for cluster type distribution
   const clusterTypeData = useMemo(() => {
-    const typeCounts = entityClusters.reduce((acc, cluster) => {
-      acc[cluster.clusterType] = (acc[cluster.clusterType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const typeCounts = entityClusters.reduce(
+      (acc, cluster) => {
+        acc[cluster.clusterType] = (acc[cluster.clusterType] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return Object.entries(typeCounts).map(([type, count]) => ({
       name: type.charAt(0).toUpperCase() + type.slice(1),
       value: count,
-      color: type === 'cooccurrence' ? '#FF6B6B' : 
-             type === 'document' ? '#4ECDC4' : '#45B7D1'
+      color:
+        type === "cooccurrence"
+          ? "#FF6B6B"
+          : type === "document"
+            ? "#4ECDC4"
+            : "#45B7D1",
     }));
   }, [entityClusters]);
 
@@ -326,7 +378,8 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
         <CardContent>
           <Typography variant="h6">Entity Context Clustering</Typography>
           <Alert severity="info">
-            Need entity relationship data to perform context clustering analysis.
+            Need entity relationship data to perform context clustering
+            analysis.
           </Alert>
         </CardContent>
       </Card>
@@ -336,17 +389,18 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
   return (
     <Card>
       <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
           <Psychology color="primary" />
-          <Typography variant="h6">
-            Entity Context Clustering
-          </Typography>
-          <Chip 
+          <Typography variant="h6">Entity Context Clustering</Typography>
+          <Chip
             label={`${entityClusters.length} clusters found`}
-            size="small" 
-            color="primary" 
+            size="small"
+            color="primary"
           />
-          <IconButton size="small" onClick={() => setShowExplanation(!showExplanation)}>
+          <IconButton
+            size="small"
+            onClick={() => setShowExplanation(!showExplanation)}
+          >
             <Info />
           </IconButton>
         </Box>
@@ -356,20 +410,27 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
             <Typography variant="body2">
               <strong>How Context Clustering is Computed:</strong>
               <br />
-              1. <strong>Relationship Graph:</strong> Builds entity connections from cooccurrence data
+              1. <strong>Relationship Graph:</strong> Builds entity connections
+              from cooccurrence data
               <br />
-              2. <strong>Document Overlap:</strong> Adds connections for entities in same documents
+              2. <strong>Document Overlap:</strong> Adds connections for
+              entities in same documents
               <br />
-              3. <strong>Connected Components:</strong> Groups entities using graph traversal
+              3. <strong>Connected Components:</strong> Groups entities using
+              graph traversal
               <br />
-              4. <strong>Cohesion Score:</strong> Internal connections ÷ Max possible connections
+              4. <strong>Cohesion Score:</strong> Internal connections ÷ Max
+              possible connections
               <br />
-              5. <strong>Isolation Score:</strong> Internal ÷ (Internal + External connections)
+              5. <strong>Isolation Score:</strong> Internal ÷ (Internal +
+              External connections)
               <br />
-              6. <strong>Diversity Index:</strong> Number of entity types ÷ Total possible types
+              6. <strong>Diversity Index:</strong> Number of entity types ÷
+              Total possible types
               <br />
               <br />
-              <strong>Cluster Types:</strong> Cooccurrence (strong relationships), Document (same docs), Semantic (mixed)
+              <strong>Cluster Types:</strong> Cooccurrence (strong
+              relationships), Document (same docs), Semantic (mixed)
             </Typography>
           </Alert>
         </Collapse>
@@ -398,22 +459,38 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
             <ResponsiveContainer width="100%" height={350}>
               <ScatterChart data={scatterData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="size" 
+                <XAxis
+                  dataKey="size"
                   name="Cluster Size"
-                  label={{ value: 'Cluster Size (# entities)', position: 'insideBottom', offset: -5 }}
+                  label={{
+                    value: "Cluster Size (# entities)",
+                    position: "insideBottom",
+                    offset: -5,
+                  }}
                 />
-                <YAxis 
+                <YAxis
                   dataKey="cohesion"
                   name="Cohesion"
-                  label={{ value: 'Cohesion Score (%)', angle: -90, position: 'insideLeft' }}
+                  label={{
+                    value: "Cohesion Score (%)",
+                    angle: -90,
+                    position: "insideLeft",
+                  }}
                 />
-                <RechartsTooltip 
+                <RechartsTooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <Box sx={{ bgcolor: 'background.paper', p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                        <Box
+                          sx={{
+                            bgcolor: "background.paper",
+                            p: 2,
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
                           <Typography variant="subtitle2">
                             Cluster #{data.id} ({data.type})
                           </Typography>
@@ -438,11 +515,11 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
                     return null;
                   }}
                 />
-                <Scatter 
-                  dataKey="cohesion" 
+                <Scatter
+                  dataKey="cohesion"
                   fill="#8884d8"
                   onClick={(data) => setSelectedCluster(data.id)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: "pointer" }}
                 >
                   {scatterData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -451,7 +528,7 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
               </ScatterChart>
             </ResponsiveContainer>
           </Grid>
- 
+
           {/* Cluster Type Distribution */}
           <Grid item xs={12} md={4}>
             <Typography variant="subtitle2" gutterBottom>
@@ -475,72 +552,117 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
                 <RechartsTooltip />
               </PieChart>
             </ResponsiveContainer>
-            
+
             <Box sx={{ mt: 2 }}>
               <Typography variant="caption" display="block" gutterBottom>
                 <strong>Cluster Types:</strong>
               </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 12, height: 12, bgcolor: '#FF6B6B', borderRadius: '50%' }} />
-                  <Typography variant="caption">Cooccurrence: Strong entity relationships</Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      bgcolor: "#FF6B6B",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <Typography variant="caption">
+                    Cooccurrence: Strong entity relationships
+                  </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 12, height: 12, bgcolor: '#4ECDC4', borderRadius: '50%' }} />
-                  <Typography variant="caption">Document: Same document entities</Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      bgcolor: "#4ECDC4",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <Typography variant="caption">
+                    Document: Same document entities
+                  </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 12, height: 12, bgcolor: '#45B7D1', borderRadius: '50%' }} />
-                  <Typography variant="caption">Semantic: Mixed contextual grouping</Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      bgcolor: "#45B7D1",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <Typography variant="caption">
+                    Semantic: Mixed contextual grouping
+                  </Typography>
                 </Box>
               </Box>
             </Box>
           </Grid>
         </Grid>
- 
+
         {/* Cluster Details */}
         <Box sx={{ mt: 3 }}>
           <Typography variant="subtitle2" gutterBottom>
             Cluster Details
           </Typography>
           {entityClusters.slice(0, 8).map((cluster) => (
-            <Accordion 
+            <Accordion
               key={cluster.id}
               expanded={selectedCluster === cluster.id}
-              onChange={() => setSelectedCluster(selectedCluster === cluster.id ? null : cluster.id)}
+              onChange={() =>
+                setSelectedCluster(
+                  selectedCluster === cluster.id ? null : cluster.id,
+                )
+              }
             >
               <AccordionSummary expandIcon={<ExpandMore />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                  <Box 
-                    sx={{ 
-                      width: 12, 
-                      height: 12, 
-                      bgcolor: cluster.clusterType === 'cooccurrence' ? '#FF6B6B' : 
-                               cluster.clusterType === 'document' ? '#4ECDC4' : '#45B7D1',
-                      borderRadius: '50%' 
-                    }} 
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    width: "100%",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      bgcolor:
+                        cluster.clusterType === "cooccurrence"
+                          ? "#FF6B6B"
+                          : cluster.clusterType === "document"
+                            ? "#4ECDC4"
+                            : "#45B7D1",
+                      borderRadius: "50%",
+                    }}
                   />
                   <Group />
                   <Typography variant="body1" sx={{ fontWeight: 500 }}>
                     Cluster #{cluster.id}: {cluster.representative}
                   </Typography>
-                  <Chip 
+                  <Chip
                     label={`${cluster.size} entities`}
                     size="small"
                     color="primary"
                   />
-                  <Chip 
+                  <Chip
                     label={`${(cluster.cohesionScore * 100).toFixed(0)}% cohesion`}
                     size="small"
                     color="secondary"
                     variant="outlined"
                   />
-                  <Chip 
+                  <Chip
                     label={cluster.clusterType}
                     size="small"
                     color={
-                      cluster.clusterType === 'cooccurrence' ? 'error' :
-                      cluster.clusterType === 'document' ? 'info' : 'success'
+                      cluster.clusterType === "cooccurrence"
+                        ? "error"
+                        : cluster.clusterType === "document"
+                          ? "info"
+                          : "success"
                     }
                     variant="outlined"
                   />
@@ -552,57 +674,71 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
                     <Typography variant="subtitle2" gutterBottom>
                       Entities in Cluster
                     </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                       {cluster.entities.map((entity, index) => (
                         <Chip
                           key={index}
                           label={entity}
                           size="small"
-                          variant={entity === cluster.representative ? 'filled' : 'outlined'}
-                          color={entity === cluster.representative ? 'primary' : 'default'}
+                          variant={
+                            entity === cluster.representative
+                              ? "filled"
+                              : "outlined"
+                          }
+                          color={
+                            entity === cluster.representative
+                              ? "primary"
+                              : "default"
+                          }
                         />
                       ))}
                     </Box>
                   </Grid>
-                  
+
                   <Grid item xs={12} md={6}>
                     <Typography variant="subtitle2" gutterBottom>
                       Common Documents ({cluster.commonDocuments.length})
                     </Typography>
-                    <List dense sx={{ maxHeight: 150, overflow: 'auto' }}>
-                      {cluster.commonDocuments.slice(0, 8).map((docId, index) => (
-                        <ListItem 
-                          key={index}
-                          button
-                          onClick={() => onDocumentClick(docId)}
-                          sx={{ py: 0.5 }}
-                        >
-                          <ListItemText
-                            primary={docId.substring(0, 40) + '...'}
-                            primaryTypographyProps={{ variant: 'body2' }}
-                          />
-                        </ListItem>
-                      ))}
+                    <List dense sx={{ maxHeight: 150, overflow: "auto" }}>
+                      {cluster.commonDocuments
+                        .slice(0, 8)
+                        .map((docId, index) => (
+                          <ListItem
+                            key={index}
+                            button
+                            onClick={() => onDocumentClick(docId)}
+                            sx={{ py: 0.5 }}
+                          >
+                            <ListItemText
+                              primary={docId.substring(0, 40) + "..."}
+                              primaryTypographyProps={{ variant: "body2" }}
+                            />
+                          </ListItem>
+                        ))}
                       {cluster.commonDocuments.length > 8 && (
                         <ListItem>
                           <ListItemText
                             primary={`... and ${cluster.commonDocuments.length - 8} more documents`}
-                            primaryTypographyProps={{ variant: 'caption', style: { fontStyle: 'italic' } }}
+                            primaryTypographyProps={{
+                              variant: "caption",
+                              style: { fontStyle: "italic" },
+                            }}
                           />
                         </ListItem>
                       )}
                     </List>
                   </Grid>
                 </Grid>
-                
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+
+                <Box sx={{ mt: 2, p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
                   <Typography variant="subtitle2" gutterBottom>
                     Cluster Metrics
                   </Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={6} sm={3}>
                       <Typography variant="body2" color="text.secondary">
-                        <strong>Cohesion Score:</strong> {(cluster.cohesionScore * 100).toFixed(1)}%
+                        <strong>Cohesion Score:</strong>{" "}
+                        {(cluster.cohesionScore * 100).toFixed(1)}%
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Internal connectivity
@@ -610,7 +746,8 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
                     </Grid>
                     <Grid item xs={6} sm={3}>
                       <Typography variant="body2" color="text.secondary">
-                        <strong>Isolation Score:</strong> {(cluster.isolationScore * 100).toFixed(1)}%
+                        <strong>Isolation Score:</strong>{" "}
+                        {(cluster.isolationScore * 100).toFixed(1)}%
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Internal vs external connections
@@ -618,7 +755,8 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
                     </Grid>
                     <Grid item xs={6} sm={3}>
                       <Typography variant="body2" color="text.secondary">
-                        <strong>Diversity Index:</strong> {(cluster.diversityIndex * 100).toFixed(1)}%
+                        <strong>Diversity Index:</strong>{" "}
+                        {(cluster.diversityIndex * 100).toFixed(1)}%
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Entity type variety
@@ -626,7 +764,8 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
                     </Grid>
                     <Grid item xs={6} sm={3}>
                       <Typography variant="body2" color="text.secondary">
-                        <strong>Avg Cooccurrence:</strong> {cluster.avgCooccurrenceStrength.toFixed(2)}
+                        <strong>Avg Cooccurrence:</strong>{" "}
+                        {cluster.avgCooccurrenceStrength.toFixed(2)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Relationship strength
@@ -634,7 +773,8 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
                     </Grid>
                     <Grid item xs={6} sm={3}>
                       <Typography variant="body2" color="text.secondary">
-                        <strong>Internal Links:</strong> {cluster.internalConnections}
+                        <strong>Internal Links:</strong>{" "}
+                        {cluster.internalConnections}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Within cluster
@@ -642,7 +782,8 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
                     </Grid>
                     <Grid item xs={6} sm={3}>
                       <Typography variant="body2" color="text.secondary">
-                        <strong>External Links:</strong> {cluster.externalConnections}
+                        <strong>External Links:</strong>{" "}
+                        {cluster.externalConnections}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         To other clusters
@@ -650,7 +791,8 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
                     </Grid>
                     <Grid item xs={6} sm={3}>
                       <Typography variant="body2" color="text.secondary">
-                        <strong>Document Reach:</strong> {cluster.commonDocuments.length}
+                        <strong>Document Reach:</strong>{" "}
+                        {cluster.commonDocuments.length}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Documents containing cluster entities
@@ -670,9 +812,9 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
             </Accordion>
           ))}
         </Box>
- 
+
         {/* Clustering Summary */}
-        <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+        <Box sx={{ mt: 3, p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
           <Typography variant="subtitle2" gutterBottom>
             Clustering Summary
           </Typography>
@@ -684,23 +826,35 @@ const EntityContextClustering: React.FC<EntityContextClusteringProps> = ({
             </Grid>
             <Grid item xs={6} sm={3}>
               <Typography variant="body2" color="text.secondary">
-                <strong>Avg Cluster Size:</strong> {entityClusters.length > 0 
-                  ? (entityClusters.reduce((sum, c) => sum + c.size, 0) / entityClusters.length).toFixed(1)
-                  : '0'
-                }
+                <strong>Avg Cluster Size:</strong>{" "}
+                {entityClusters.length > 0
+                  ? (
+                      entityClusters.reduce((sum, c) => sum + c.size, 0) /
+                      entityClusters.length
+                    ).toFixed(1)
+                  : "0"}
               </Typography>
             </Grid>
             <Grid item xs={6} sm={3}>
               <Typography variant="body2" color="text.secondary">
-                <strong>Avg Cohesion:</strong> {entityClusters.length > 0 
-                  ? (entityClusters.reduce((sum, c) => sum + c.cohesionScore, 0) / entityClusters.length * 100).toFixed(1) + '%'
-                  : '0%'
-                }
+                <strong>Avg Cohesion:</strong>{" "}
+                {entityClusters.length > 0
+                  ? (
+                      (entityClusters.reduce(
+                        (sum, c) => sum + c.cohesionScore,
+                        0,
+                      ) /
+                        entityClusters.length) *
+                      100
+                    ).toFixed(1) + "%"
+                  : "0%"}
               </Typography>
             </Grid>
             <Grid item xs={6} sm={3}>
               <Typography variant="body2" color="text.secondary">
-                <strong>Method Used:</strong> {clusteringMethod.charAt(0).toUpperCase() + clusteringMethod.slice(1)}
+                <strong>Method Used:</strong>{" "}
+                {clusteringMethod.charAt(0).toUpperCase() +
+                  clusteringMethod.slice(1)}
               </Typography>
             </Grid>
           </Grid>

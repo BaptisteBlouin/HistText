@@ -1,32 +1,36 @@
 // app/frontend/src/containers/components/MetadataForm.tsx
-import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  Box, 
-  Button, 
-  Card, 
-  CardContent, 
-  Typography, 
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Typography,
   Grid,
   Alert,
-  Chip
-} from '@mui/material';
-import { PlayArrow, QueryStats, CheckCircle } from '@mui/icons-material';
-import axios from 'axios';
-import config from '../../../config.json';
-import { buildQueryString } from './buildQueryString';
-import { useAuth } from '../../hooks/useAuth';
-import { useEmbeddings } from './MetadataForm/hooks/useEmbeddings';
-import { useSmartValidation } from '../../hooks/useSmartValidation';
-import { useSearchHistory, SavedSearch } from '../../hooks/useSearchHistory';
-import { shouldExcludeField, isTextField, sortFieldsByPriority } from './MetadataForm/utils/fieldUtils';
-import FormHeader from './MetadataForm/components/FormHeader';
-import FormField from './MetadataForm/components/FormField';
-import DateRangeField from './MetadataForm/components/DateRangeField';
-import QueryOptions from './MetadataForm/components/QueryOptions';
-import CodeGeneration from './MetadataForm/components/CodeGeneration';
-import EmbeddingTools from './MetadataForm/components/EmbeddingTools';
-import SearchHistoryIntegration from './MetadataForm/components/SearchHistoryIntegration';
-import SearchHistoryPanel from './SearchHistory/SearchHistoryPanel';
+  Chip,
+} from "@mui/material";
+import { PlayArrow, QueryStats, CheckCircle } from "@mui/icons-material";
+import axios from "axios";
+import config from "../../../config.json";
+import { buildQueryString } from "./buildQueryString";
+import { useAuth } from "../../hooks/useAuth";
+import { useEmbeddings } from "./MetadataForm/hooks/useEmbeddings";
+import { useSmartValidation } from "../../hooks/useSmartValidation";
+import { useSearchHistory, SavedSearch } from "../../hooks/useSearchHistory";
+import {
+  shouldExcludeField,
+  isTextField,
+  sortFieldsByPriority,
+} from "./MetadataForm/utils/fieldUtils";
+import FormHeader from "./MetadataForm/components/FormHeader";
+import FormField from "./MetadataForm/components/FormField";
+import DateRangeField from "./MetadataForm/components/DateRangeField";
+import QueryOptions from "./MetadataForm/components/QueryOptions";
+import CodeGeneration from "./MetadataForm/components/CodeGeneration";
+import EmbeddingTools from "./MetadataForm/components/EmbeddingTools";
+import SearchHistoryIntegration from "./MetadataForm/components/SearchHistoryIntegration";
+import SearchHistoryPanel from "./SearchHistory/SearchHistoryPanel";
 
 type StatsLevel = (typeof config.statsLevelOptions)[number];
 type DocLevel = (typeof config.docLevelOptions)[number];
@@ -47,9 +51,11 @@ interface MetadataFormProps {
   formData: {
     [key: string]: { value: string; operator: string; not?: boolean }[];
   };
-  setFormData: React.Dispatch<React.SetStateAction<{
-    [key: string]: { value: string; operator: string; not?: boolean }[];
-  }>>;
+  setFormData: React.Dispatch<
+    React.SetStateAction<{
+      [key: string]: { value: string; operator: string; not?: boolean }[];
+    }>
+  >;
   dateRange: { min: string; max: string } | null;
   handleQuery: (
     e: React.FormEvent,
@@ -71,7 +77,7 @@ interface MetadataFormProps {
   selectedAlias: string;
   allResults?: any[];
   // Search history integration props
-  availableDatabases?: Array<{ id: number; name: string; }>;
+  availableDatabases?: Array<{ id: number; name: string }>;
   availableCollections?: Record<number, string[]>;
   onDatabaseChange?: (database: any) => void;
   onAliasChange?: (alias: string) => void;
@@ -95,13 +101,15 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   solrDatabaseId,
   selectedAlias,
   allResults = [],
-  availableDatabases, 
+  availableDatabases,
   availableCollections,
   onDatabaseChange,
-  onAliasChange
+  onAliasChange,
 }) => {
   const { accessToken } = useAuth();
-  const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(null);
+  const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(
+    null,
+  );
   const [hasEmbeddings, setHasEmbeddings] = useState<boolean>(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showEmbeddingAlert, setShowEmbeddingAlert] = useState(false);
@@ -123,26 +131,30 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     getSimilarity,
     getAnalogy,
     setSimilarityResult,
-    setAnalogyResult
+    setAnalogyResult,
   } = useEmbeddings(solrDatabaseId, selectedAlias, accessToken, hasEmbeddings);
 
   // Smart validation hook
-  const { validateField, formValidation } = useSmartValidation(formData, metadata, collectionInfo);
+  const { validateField, formValidation } = useSmartValidation(
+    formData,
+    metadata,
+    collectionInfo,
+  );
 
   // Fetch collection info
   useEffect(() => {
     if (solrDatabaseId && selectedAlias) {
       axios
         .get(`/api/solr_database_info/${solrDatabaseId}/${selectedAlias}`)
-        .then(response => {
+        .then((response) => {
           setCollectionInfo(response.data);
-          setHasEmbeddings(response.data.embeddings !== 'none');
-          if (response.data.embeddings !== 'none') {
+          setHasEmbeddings(response.data.embeddings !== "none");
+          if (response.data.embeddings !== "none") {
             setShowEmbeddingAlert(true);
           }
         })
-        .catch(error => {
-          console.error('Failed to fetch collection info:', error);
+        .catch((error) => {
+          console.error("Failed to fetch collection info:", error);
           setCollectionInfo(null);
           setHasEmbeddings(false);
         });
@@ -157,147 +169,163 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     const initializedFormData: any = {};
     metadata.forEach((field: any) => {
       if (!formData[field.name]) {
-        initializedFormData[field.name] = [{ value: '', operator: '', not: false }];
+        initializedFormData[field.name] = [
+          { value: "", operator: "", not: false },
+        ];
       }
     });
     setFormData((prevData: any) => ({ ...prevData, ...initializedFormData }));
   }, [metadata, setFormData, formData]);
 
-  const handleSwitchAndApply = useCallback(async (search: SavedSearch) => {
-    try {
-      // Check if handlers are available
-      if (!onDatabaseChange || !onAliasChange) {
-        throw new Error('Database/collection switching not supported');
-      }
-
-      // Switch database if different
-      if (search.selectedSolrDatabase.id !== solrDatabaseId) {
-        const targetDatabase = availableDatabases?.find(db => db.id === search.selectedSolrDatabase.id);
-        if (!targetDatabase) {
-          throw new Error('Target database not found');
+  const handleSwitchAndApply = useCallback(
+    async (search: SavedSearch) => {
+      try {
+        // Check if handlers are available
+        if (!onDatabaseChange || !onAliasChange) {
+          throw new Error("Database/collection switching not supported");
         }
-        await onDatabaseChange(targetDatabase);
-        
-        // Wait for database change to propagate
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
 
-      // Switch collection if different
-      if (search.selectedAlias !== selectedAlias) {
-        await onAliasChange(search.selectedAlias);
-        
-        // Wait for alias change to propagate
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+        // Switch database if different
+        if (search.selectedSolrDatabase.id !== solrDatabaseId) {
+          const targetDatabase = availableDatabases?.find(
+            (db) => db.id === search.selectedSolrDatabase.id,
+          );
+          if (!targetDatabase) {
+            throw new Error("Target database not found");
+          }
+          await onDatabaseChange(targetDatabase);
 
-      // Apply the form data
-      setFormData(search.formData);
-      
-      // Note: You might also want to handle dateRange if it's managed at this level
-      
-    } catch (error) {
-      console.error('Error switching collection and applying search:', error);
-      throw error; // Re-throw to let the panel handle the error
-    }
-  }, [
-    solrDatabaseId, 
-    selectedAlias, 
-    availableDatabases, 
-    onDatabaseChange, 
-    onAliasChange, 
-    setFormData
-  ]);
+          // Wait for database change to propagate
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
+        // Switch collection if different
+        if (search.selectedAlias !== selectedAlias) {
+          await onAliasChange(search.selectedAlias);
+
+          // Wait for alias change to propagate
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
+        // Apply the form data
+        setFormData(search.formData);
+
+        // Note: You might also want to handle dateRange if it's managed at this level
+      } catch (error) {
+        console.error("Error switching collection and applying search:", error);
+        throw error; // Re-throw to let the panel handle the error
+      }
+    },
+    [
+      solrDatabaseId,
+      selectedAlias,
+      availableDatabases,
+      onDatabaseChange,
+      onAliasChange,
+      setFormData,
+    ],
+  );
   // Auto-save searches to history when query is executed
-  const handleSubmitWithHistory = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (formValidation.canSubmit) {
-      // Save to history before executing query
-      if (selectedAlias && solrDatabaseId) {
-        const queryString = buildQueryString(formData, dateRange);
-        
-        // Generate a default name for the search
-        const keyTerms: string[] = [];
-        Object.entries(formData).forEach(([field, entries]: [string, any]) => {
-          entries.forEach((entry: any) => {
-            if (entry.value && entry.value.trim()) {
-              keyTerms.push(entry.value.trim());
-            }
-          });
-        });
+  const handleSubmitWithHistory = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
 
-        const termsPart = keyTerms.slice(0, 2).join(', ');
-        const defaultName = `${selectedAlias}: ${termsPart}`.slice(0, 80);
-        
-        const searchData: Omit<SavedSearch, 'id' | 'createdAt' | 'lastUsed'> = {
-          name: defaultName || `Search in ${selectedAlias}`,
-          formData,
-          dateRange,
-          selectedAlias,
-          selectedSolrDatabase: {
-            id: solrDatabaseId,
-            name: collectionInfo?.collection_name || 'Unknown'
-          },
-          isBookmarked: false,
-          tags: [],
-          queryString,
-          resultsCount: allResults.length || undefined
-        };
+      if (formValidation.canSubmit) {
+        // Save to history before executing query
+        if (selectedAlias && solrDatabaseId) {
+          const queryString = buildQueryString(formData, dateRange);
 
-        addToHistory(searchData);
+          // Generate a default name for the search
+          const keyTerms: string[] = [];
+          Object.entries(formData).forEach(
+            ([field, entries]: [string, any]) => {
+              entries.forEach((entry: any) => {
+                if (entry.value && entry.value.trim()) {
+                  keyTerms.push(entry.value.trim());
+                }
+              });
+            },
+          );
+
+          const termsPart = keyTerms.slice(0, 2).join(", ");
+          const defaultName = `${selectedAlias}: ${termsPart}`.slice(0, 80);
+
+          const searchData: Omit<SavedSearch, "id" | "createdAt" | "lastUsed"> =
+            {
+              name: defaultName || `Search in ${selectedAlias}`,
+              formData,
+              dateRange,
+              selectedAlias,
+              selectedSolrDatabase: {
+                id: solrDatabaseId,
+                name: collectionInfo?.collection_name || "Unknown",
+              },
+              isBookmarked: false,
+              tags: [],
+              queryString,
+              resultsCount: allResults.length || undefined,
+            };
+
+          addToHistory(searchData);
+        }
+
+        // Execute the query
+        handleQuery(e, false, getNER, downloadOnly, statsLevel, docLevel);
       }
-
-      // Execute the query
-      handleQuery(e, false, getNER, downloadOnly, statsLevel, docLevel);
-    }
-  }, [
-    formValidation.canSubmit,
-    selectedAlias,
-    solrDatabaseId,
-    formData,
-    dateRange,
-    collectionInfo,
-    allResults.length,
-    addToHistory,
-    handleQuery,
-    getNER,
-    downloadOnly,
-    statsLevel,
-    docLevel
-  ]);
+    },
+    [
+      formValidation.canSubmit,
+      selectedAlias,
+      solrDatabaseId,
+      formData,
+      dateRange,
+      collectionInfo,
+      allResults.length,
+      addToHistory,
+      handleQuery,
+      getNER,
+      downloadOnly,
+      statsLevel,
+      docLevel,
+    ],
+  );
 
   // Handle applying saved search
-  const handleApplySavedSearch = useCallback(async (search: SavedSearch) => {
-    try {
-      // Strict compatibility check - prevent cross-collection application
-      if (!solrDatabaseId || !selectedAlias) {
-        console.warn('No current database/alias selected');
-        return;
-      }
+  const handleApplySavedSearch = useCallback(
+    async (search: SavedSearch) => {
+      try {
+        // Strict compatibility check - prevent cross-collection application
+        if (!solrDatabaseId || !selectedAlias) {
+          console.warn("No current database/alias selected");
+          return;
+        }
 
-      if (search.selectedSolrDatabase.id !== solrDatabaseId || 
-          search.selectedAlias !== selectedAlias) {
-        console.warn('Search is not compatible with current collection:', {
-          searchDatabase: search.selectedSolrDatabase.id,
-          searchAlias: search.selectedAlias,
-          currentDatabase: solrDatabaseId,
-          currentAlias: selectedAlias
-        });
-        return;
-      }
-      
-      // Only apply the form data if the collections match exactly
-      setFormData(search.formData);
-      
-      // Note: dateRange changes would need to be handled by parent component
-      // since it's typically managed at a higher level
-      
-    } catch (error) {
-      console.error('Error applying saved search:', error);
-    }
-  }, [solrDatabaseId, selectedAlias, setFormData]);
+        if (
+          search.selectedSolrDatabase.id !== solrDatabaseId ||
+          search.selectedAlias !== selectedAlias
+        ) {
+          console.warn("Search is not compatible with current collection:", {
+            searchDatabase: search.selectedSolrDatabase.id,
+            searchAlias: search.selectedAlias,
+            currentDatabase: solrDatabaseId,
+            currentAlias: selectedAlias,
+          });
+          return;
+        }
 
-    // Handle saving current search manually
+        // Only apply the form data if the collections match exactly
+        setFormData(search.formData);
+
+        // Note: dateRange changes would need to be handled by parent component
+        // since it's typically managed at a higher level
+      } catch (error) {
+        console.error("Error applying saved search:", error);
+      }
+    },
+    [solrDatabaseId, selectedAlias, setFormData],
+  );
+
+  // Handle saving current search manually
   const handleSaveCurrentSearch = useCallback(() => {
     setHistoryPanelOpen(false);
     // Add a small delay to allow the panel to close, then trigger save
@@ -308,50 +336,69 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   }, []);
 
   // Handlers
-  const handleFormChange = useCallback((
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | { name?: string; value: unknown }>,
-    index: number,
-  ) => {
-    const { name, value } = event.target;
-    setFormData(prev => ({
-      ...prev,
-      [name!]: (prev[name!] || []).map((entry, i) =>
-        i === index ? { ...entry, value: value.toString() } : entry,
-      ),
-    }));
-  }, [setFormData]);
+  const handleFormChange = useCallback(
+    (
+      event: React.ChangeEvent<
+        | HTMLInputElement
+        | HTMLTextAreaElement
+        | { name?: string; value: unknown }
+      >,
+      index: number,
+    ) => {
+      const { name, value } = event.target;
+      setFormData((prev) => ({
+        ...prev,
+        [name!]: (prev[name!] || []).map((entry, i) =>
+          i === index ? { ...entry, value: value.toString() } : entry,
+        ),
+      }));
+    },
+    [setFormData],
+  );
 
-  const handleSelectChange = useCallback((fieldName: string, newValue: string | null, index: number = 0) => {
-    setFormData(prev => ({
-      ...prev,
-      [fieldName]: (prev[fieldName] || []).map((entry, i) =>
-        i === index ? { ...entry, value: newValue || '' } : entry,
-      ),
-    }));
-  }, [setFormData]);
+  const handleSelectChange = useCallback(
+    (fieldName: string, newValue: string | null, index: number = 0) => {
+      setFormData((prev) => ({
+        ...prev,
+        [fieldName]: (prev[fieldName] || []).map((entry, i) =>
+          i === index ? { ...entry, value: newValue || "" } : entry,
+        ),
+      }));
+    },
+    [setFormData],
+  );
 
-  const addBooleanField = useCallback((name: string, operator: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: [...(prev[name] || []), { value: '', operator, not: false }],
-    }));
-  }, [setFormData]);
+  const addBooleanField = useCallback(
+    (name: string, operator: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: [...(prev[name] || []), { value: "", operator, not: false }],
+      }));
+    },
+    [setFormData],
+  );
 
-  const removeBooleanField = useCallback((name: string, index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: (prev[name] || []).filter((_, i) => i !== index),
-    }));
-  }, [setFormData]);
+  const removeBooleanField = useCallback(
+    (name: string, index: number) => {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: (prev[name] || []).filter((_, i) => i !== index),
+      }));
+    },
+    [setFormData],
+  );
 
-  const toggleNotCondition = useCallback((name: string, index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: (prev[name] || []).map((entry, i) =>
-        i === index ? { ...entry, not: !entry.not } : entry,
-      ),
-    }));
-  }, [setFormData]);
+  const toggleNotCondition = useCallback(
+    (name: string, index: number) => {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: (prev[name] || []).map((entry, i) =>
+          i === index ? { ...entry, not: !entry.not } : entry,
+        ),
+      }));
+    },
+    [setFormData],
+  );
 
   const handleOpenEmbeddingModal = useCallback(() => {
     setEmbeddingModalOpen(true);
@@ -363,16 +410,16 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
 
   // Filter and sort fields
   const visibleFields = sortFieldsByPriority(
-    metadata.filter(field => !shouldExcludeField(field.name, collectionInfo))
+    metadata.filter((field) => !shouldExcludeField(field.name, collectionInfo)),
   );
 
   // Check if we have any search content
   const hasSearchContent = Object.values(formData).some((entries: any) =>
-    entries.some((entry: any) => entry.value && entry.value.trim())
+    entries.some((entry: any) => entry.value && entry.value.trim()),
   );
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: "100%" }}>
       <FormHeader
         hasEmbeddings={hasEmbeddings}
         showEmbeddingAlert={showEmbeddingAlert}
@@ -383,26 +430,34 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box component="form" onSubmit={handleSubmitWithHistory}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            >
               <QueryStats />
               Search Fields
             </Typography>
-                        {/* Search History Integration */}
+            {/* Search History Integration */}
             <Box sx={{ mb: 3 }}>
               <SearchHistoryIntegration
                 formData={formData}
                 dateRange={dateRange}
                 selectedAlias={selectedAlias}
-                selectedSolrDatabase={solrDatabaseId ? { 
-                  id: solrDatabaseId, 
-                  name: collectionInfo?.collection_name || 'Database' 
-                } : null}
+                selectedSolrDatabase={
+                  solrDatabaseId
+                    ? {
+                        id: solrDatabaseId,
+                        name: collectionInfo?.collection_name || "Database",
+                      }
+                    : null
+                }
                 resultsCount={allResults.length || undefined}
                 onShowHistory={() => setHistoryPanelOpen(true)}
               />
             </Box>
             <Grid container spacing={3} sx={{ mb: 3 }}>
-              {visibleFields.map(field => (
+              {visibleFields.map((field) => (
                 <Grid item xs={12} md={6} lg={4} key={field.name}>
                   <FormField
                     field={field}
@@ -445,14 +500,23 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
 
             {/* Form Validation Summary */}
             <Box sx={{ mb: 3 }}>
-              <Alert 
+              <Alert
                 severity={
-                  formValidation.overallStatus === 'error' ? 'error' :
-                  formValidation.overallStatus === 'ready' ? 'success' : 'info'
+                  formValidation.overallStatus === "error"
+                    ? "error"
+                    : formValidation.overallStatus === "ready"
+                      ? "success"
+                      : "info"
                 }
                 sx={{ mb: 2 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <Typography variant="body2">
                     {formValidation.summary}
                   </Typography>
@@ -460,25 +524,30 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
               </Alert>
             </Box>
 
-
-
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
-              <Button 
-                variant="contained" 
-                color="primary" 
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 2,
+                flexWrap: "wrap",
+              }}
+            >
+              <Button
+                variant="contained"
+                color="primary"
                 type="submit"
                 size="large"
                 startIcon={<PlayArrow />}
                 disabled={!formValidation.canSubmit}
-                sx={{ 
+                sx={{
                   minWidth: 120,
                   opacity: formValidation.canSubmit ? 1 : 0.6,
-                  cursor: formValidation.canSubmit ? 'pointer' : 'not-allowed'
+                  cursor: formValidation.canSubmit ? "pointer" : "not-allowed",
                 }}
               >
                 Execute Query
               </Button>
-              
+
               {solrDatabaseId && (
                 <CodeGeneration
                   formData={formData}
@@ -504,10 +573,14 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
         currentFormData={hasSearchContent ? formData : undefined}
         currentDateRange={dateRange}
         currentAlias={selectedAlias}
-        currentSolrDatabase={solrDatabaseId ? { 
-          id: solrDatabaseId, 
-          name: collectionInfo?.collection_name || 'Database' 
-        } : undefined}
+        currentSolrDatabase={
+          solrDatabaseId
+            ? {
+                id: solrDatabaseId,
+                name: collectionInfo?.collection_name || "Database",
+              }
+            : undefined
+        }
         onSaveCurrentSearch={handleSaveCurrentSearch}
         availableDatabases={availableDatabases}
         availableCollections={availableCollections}

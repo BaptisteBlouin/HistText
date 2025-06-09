@@ -1,5 +1,5 @@
-import React from 'react';
-import LoadingOverlayComponent from './LoadingOverlayComponent';
+import React from "react";
+import LoadingOverlayComponent from "./LoadingOverlayComponent";
 
 /**
  * Props for the LoadingOverlay component.

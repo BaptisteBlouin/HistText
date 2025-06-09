@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   IconButton,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Tooltip
-} from '@mui/material';
-import { MoreVert } from '@mui/icons-material';
+  Tooltip,
+} from "@mui/material";
+import { MoreVert } from "@mui/icons-material";
 
 /**
  * Describes a single action within the ActionMenu.
@@ -46,7 +46,7 @@ interface ActionMenuProps {
 const ActionMenu: React.FC<ActionMenuProps> = ({
   items,
   tooltip = "More actions",
-  icon = <MoreVert />
+  icon = <MoreVert />,
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -76,16 +76,14 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   return (
     <>
       <Tooltip title={tooltip}>
-        <IconButton onClick={handleClick}>
-          {icon}
-        </IconButton>
+        <IconButton onClick={handleClick}>{icon}</IconButton>
       </Tooltip>
       <Menu
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
         {items.map((item) => (
           <MenuItem
