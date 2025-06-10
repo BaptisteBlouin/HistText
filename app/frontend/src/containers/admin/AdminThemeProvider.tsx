@@ -75,48 +75,6 @@ export const AdminThemeProvider: React.FC<AdminThemeProviderProps> = ({ children
           },
         },
       },
-      MuiDataGrid: {
-        styleOverrides: {
-          root: {
-            backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
-            border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 224, 224, 1)'}`,
-            '& .MuiDataGrid-cell': {
-              borderBottom: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 224, 224, 1)'}`,
-              color: darkMode ? '#ffffff' : 'rgba(0, 0, 0, 0.87)',
-            },
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: darkMode ? '#2d2d2d' : '#fafafa',
-              borderBottom: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 224, 224, 1)'}`,
-              color: darkMode ? '#ffffff' : 'rgba(0, 0, 0, 0.87)',
-            },
-            '& .MuiDataGrid-columnHeaderTitle': {
-              color: darkMode ? '#ffffff' : 'rgba(0, 0, 0, 0.87)',
-              fontWeight: 600,
-            },
-            '& .MuiDataGrid-row': {
-              '&:hover': {
-                backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-              },
-              '&.Mui-selected': {
-                backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(25, 118, 210, 0.08)',
-                '&:hover': {
-                  backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.16)' : 'rgba(25, 118, 210, 0.12)',
-                },
-              },
-            },
-            '& .MuiDataGrid-footerContainer': {
-              backgroundColor: darkMode ? '#2d2d2d' : '#fafafa',
-              borderTop: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 224, 224, 1)'}`,
-            },
-            '& .MuiTablePagination-root': {
-              color: darkMode ? '#ffffff' : 'rgba(0, 0, 0, 0.87)',
-            },
-            '& .MuiIconButton-root': {
-              color: darkMode ? '#ffffff' : 'rgba(0, 0, 0, 0.54)',
-            },
-          },
-        },
-      },
       MuiTextField: {
         styleOverrides: {
           root: {

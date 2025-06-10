@@ -131,6 +131,10 @@ export const CustomThemeProvider: React.FC<CustomThemeProviderProps> = ({ childr
           root: {
             backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
             backgroundImage: 'none',
+            '@media (max-width:768px)': {
+              borderRadius: '8px !important',
+              margin: '8px',
+            },
           },
         },
       },
@@ -171,73 +175,6 @@ export const CustomThemeProvider: React.FC<CustomThemeProviderProps> = ({ childr
             backgroundColor: darkMode ? '#1e1e1e' : '#fafafa',
             backgroundImage: 'none',
             color: darkMode ? '#ffffff' : 'rgba(0, 0, 0, 0.87)',
-          },
-        },
-      },
-      MuiDataGrid: {
-        styleOverrides: {
-          root: {
-            backgroundColor: darkMode ? '#1e1e1e !important' : '#ffffff !important',
-            border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 224, 224, 1)'} !important`,
-            color: darkMode ? '#ffffff !important' : 'rgba(0, 0, 0, 0.87) !important',
-            '& .MuiDataGrid-main': {
-              backgroundColor: darkMode ? '#1e1e1e !important' : '#ffffff !important',
-            },
-            '& .MuiDataGrid-virtualScroller': {
-              backgroundColor: darkMode ? '#1e1e1e !important' : '#ffffff !important',
-            },
-            '& .MuiDataGrid-cell': {
-              borderBottom: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 224, 224, 1)'} !important`,
-              color: darkMode ? '#ffffff !important' : 'rgba(0, 0, 0, 0.87) !important',
-              backgroundColor: darkMode ? '#1e1e1e !important' : '#ffffff !important',
-            },
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: darkMode ? '#2d2d2d !important' : '#fafafa !important',
-              borderBottom: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 224, 224, 1)'} !important`,
-              color: darkMode ? '#ffffff !important' : 'rgba(0, 0, 0, 0.87) !important',
-            },
-            '& .MuiDataGrid-columnHeader': {
-              backgroundColor: darkMode ? '#2d2d2d !important' : '#fafafa !important',
-              color: darkMode ? '#ffffff !important' : 'rgba(0, 0, 0, 0.87) !important',
-            },
-            '& .MuiDataGrid-columnHeaderTitle': {
-              color: darkMode ? '#ffffff !important' : 'rgba(0, 0, 0, 0.87) !important',
-              fontWeight: 600,
-            },
-            '& .MuiDataGrid-row': {
-              backgroundColor: darkMode ? '#1e1e1e !important' : '#ffffff !important',
-              '&:hover': {
-                backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.08) !important' : 'rgba(0, 0, 0, 0.04) !important',
-              },
-              '&.Mui-selected': {
-                backgroundColor: darkMode ? 'rgba(144, 202, 249, 0.16) !important' : 'rgba(25, 118, 210, 0.08) !important',
-                '&:hover': {
-                  backgroundColor: darkMode ? 'rgba(144, 202, 249, 0.24) !important' : 'rgba(25, 118, 210, 0.12) !important',
-                },
-              },
-              '&:nth-of-type(even)': {
-                backgroundColor: darkMode ? '#1e1e1e !important' : '#ffffff !important',
-              },
-            },
-            '& .MuiDataGrid-footerContainer': {
-              backgroundColor: darkMode ? '#2d2d2d !important' : '#fafafa !important',
-              borderTop: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 224, 224, 1)'} !important`,
-            },
-            '& .MuiTablePagination-root': {
-              color: darkMode ? '#ffffff !important' : 'rgba(0, 0, 0, 0.87) !important',
-            },
-            '& .MuiIconButton-root': {
-              color: darkMode ? '#ffffff !important' : 'rgba(0, 0, 0, 0.54) !important',
-            },
-            '& .MuiDataGrid-toolbarContainer': {
-              backgroundColor: darkMode ? '#2d2d2d !important' : '#fafafa !important',
-              borderBottom: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 224, 224, 1)'} !important`,
-              color: darkMode ? '#ffffff !important' : 'rgba(0, 0, 0, 0.87) !important',
-            },
-            '& .MuiDataGrid-overlay': {
-              backgroundColor: darkMode ? '#1e1e1e !important' : '#ffffff !important',
-              color: darkMode ? '#ffffff !important' : 'rgba(0, 0, 0, 0.87) !important',
-            },
           },
         },
       },
@@ -370,7 +307,6 @@ export const CustomThemeProvider: React.FC<CustomThemeProviderProps> = ({ childr
           },
         },
       },
-      // Responsive Container Overrides
       MuiContainer: {
         styleOverrides: {
           root: {
@@ -383,22 +319,10 @@ export const CustomThemeProvider: React.FC<CustomThemeProviderProps> = ({ childr
           },
         },
       },
-      MuiPaper: {
-        styleOverrides: {
-          root: {
-            backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
-            backgroundImage: 'none',
-            '@media (max-width:768px)': {
-              borderRadius: '8px !important',
-              margin: '8px',
-            },
-          },
-        },
-      },
-      // Enhanced responsive components
       MuiDialog: {
         styleOverrides: {
           paper: {
+            backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
             '@media (max-width:600px)': {
               margin: '8px',
               maxHeight: 'calc(100vh - 16px)',

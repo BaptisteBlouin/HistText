@@ -51,6 +51,13 @@ const SearchHistoryFAB: React.FC<SearchHistoryFABProps> = ({
       : []),
   ];
 
+  // Get the appropriate size styling for the SpeedDial
+  const getSpeedDialSize = () => {
+    if (isVerySmallMobile) return { width: 40, height: 40 };
+    if (isMobile) return { width: 48, height: 48 };
+    return { width: 56, height: 56 };
+  };
+
   return (
     <SpeedDial
       ariaLabel="Search History Actions"
@@ -60,6 +67,9 @@ const SearchHistoryFAB: React.FC<SearchHistoryFABProps> = ({
         right: isMobile ? (isVerySmallMobile ? 12 : 16) : 24, // Move to right side on mobile to avoid menu FAB
         left: isMobile ? 'auto' : 24, // Remove left positioning on mobile
         zIndex: 1000,
+        '& .MuiSpeedDial-fab': {
+          ...getSpeedDialSize(),
+        },
       }}
       icon={
         <SpeedDialIcon
@@ -79,7 +89,6 @@ const SearchHistoryFAB: React.FC<SearchHistoryFABProps> = ({
       onClose={() => setSpeedDialOpen(false)}
       open={speedDialOpen}
       direction="up"
-      size={isVerySmallMobile ? "small" : isMobile ? "medium" : "large"}
     >
       {actions.map((action) => (
         <SpeedDialAction
