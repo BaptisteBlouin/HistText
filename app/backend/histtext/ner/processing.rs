@@ -50,7 +50,7 @@ pub async fn get_ner_annotation_batch(
             ids_chunk.len()
         );
 
-        let chunk_results = process_ner_chunk(&client, &solr_base_url, &solr_collection, ids_chunk).await?;
+        let chunk_results = process_ner_chunk(&client, &solr_base_url, &solr_collection, ids_chunk, config.solr_ner_port).await?;
         results.extend(chunk_results);
     }
 
@@ -64,6 +64,7 @@ async fn process_ner_chunk(
     solr_base_url: &str,
     solr_collection: &str,
     ids_chunk: &[String],
+    solr_port: u16,
 ) -> Result<HashMap<String, SerdeValue>, io::Error> {
     let ids_query = ids_chunk
         .iter()
@@ -83,6 +84,8 @@ async fn process_ner_chunk(
     let response = client.get(&url).send().await
         .map_err(|e| {
             error!("HTTP request to Solr NER failed: {}", e);
+            error!("NER collection '{}' may not exist or Solr service at '{}' is not accessible", solr_collection, solr_base_url);
+            error!("To fix this issue: 1) Ensure Solr is running on port {}, 2) Verify the '{}' collection exists, 3) Check network connectivity", solr_port, solr_collection);
             io::Error::new(io::ErrorKind::Other, format!("HTTP request failed: {}", e))
         })?;
 

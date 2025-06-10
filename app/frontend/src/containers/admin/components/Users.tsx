@@ -889,26 +889,30 @@ const Users: React.FC = () => {
                         </Button>
                       </Tooltip>
                       <Tooltip title="Export All to CSV">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<GetApp />}
-                          onClick={handleExportCSV}
-                          disabled={filteredUsers.length === 0}
-                        >
-                          Export All
-                        </Button>
+                        <span>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<GetApp />}
+                            onClick={handleExportCSV}
+                            disabled={filteredUsers.length === 0}
+                          >
+                            Export All
+                          </Button>
+                        </span>
                       </Tooltip>
                       <Tooltip title="Select All (Ctrl+Shift+A)">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<SelectAll />}
-                          onClick={handleSelectAll}
-                          disabled={filteredUsers.length === 0}
-                        >
-                          Select All
-                        </Button>
+                        <span>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<SelectAll />}
+                            onClick={handleSelectAll}
+                            disabled={filteredUsers.length === 0}
+                          >
+                            Select All
+                          </Button>
+                        </span>
                       </Tooltip>
                     </>
                   )}

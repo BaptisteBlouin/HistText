@@ -187,6 +187,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
                       <ListItemText
                         primary={
                           <Box
+                            component="span"
                             sx={{
                               display: "flex",
                               justifyContent: "space-between",
@@ -200,6 +201,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
                               {doc.documentId.substring(0, 25) + "..."}
                             </DocumentLink>
                             <Box
+                              component="span"
                               sx={{
                                 display: "flex",
                                 alignItems: "center",
@@ -222,12 +224,13 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
                           </Box>
                         }
                         secondary={
-                          <Box>
-                            <Typography component="div" variant="body2">
+                          <Box component="span" sx={{ display: "block" }}>
+                            <Typography component="span" variant="body2" sx={{ display: "block" }}>
                               {doc.uniqueEntityCount} unique / {doc.entityCount}{" "}
                               total entities
                             </Typography>
                             <Box
+                              component="span"
                               sx={{
                                 display: "flex",
                                 alignItems: "center",
@@ -244,6 +247,8 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
                             </Box>
                           </Box>
                         }
+                        primaryTypographyProps={{ component: "div" }}
+                        secondaryTypographyProps={{ component: "div" }}
                       />
                     </ListItem>
                   );

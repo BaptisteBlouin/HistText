@@ -224,12 +224,14 @@ impl SolrDatabaseInfoHandler {
 
     /// Gets a specific collection metadata record by its composite key
     ///
+    /// If no record exists, returns default values instead of a 404 error.
+    ///
     /// # Arguments
     /// * `db` - Database connection
     /// * `path` - Path parameters containing database ID and collection name
     ///
     /// # Returns
-    /// HTTP response with the requested record as JSON
+    /// HTTP response with the requested record or default values as JSON
     pub async fn get_by_id_and_collection(
         &self,
         db: web::Data<Database>,
@@ -237,14 +239,34 @@ impl SolrDatabaseInfoHandler {
         ) -> AppResult<HttpResponse> {
         use crate::schema::solr_database_info::dsl::*;
         let (solr_db_id, coll) = path.into_inner();
+        let coll_clone = coll.clone(); // Clone before moving into closure
+        
         let result = execute_db_query(db, move |conn| {
             solr_database_info
                 .filter(solr_database_id.eq(solr_db_id))
-                .filter(collection_name.eq(coll))
+                .filter(collection_name.eq(coll_clone))
                 .first::<SolrDatabaseInfo>(conn)
         })
-        .await?;
-        Ok(HttpResponse::Ok().json(result))
+        .await;
+
+        match result {
+            Ok(info) => Ok(HttpResponse::Ok().json(info)),
+            Err(AppError::NotFound { .. }) => {
+                // Return default values when no record exists
+                let default_info = SolrDatabaseInfo {
+                    solr_database_id: solr_db_id,
+                    collection_name: coll,
+                    description: "".to_string(),
+                    embeddings: "none".to_string(),
+                    lang: None,
+                    text_field: Some("text".to_string()),
+                    tokenizer: None,
+                    to_not_display: Some(vec![]),
+                };
+                Ok(HttpResponse::Ok().json(default_info))
+            }
+            Err(e) => Err(e),
+        }
     }
 
     /// Creates a new collection metadata record
@@ -368,7 +390,8 @@ pub async fn get_solr_database_infos(
 /// Retrieves a specific Solr collection metadata record
 ///
 /// Looks up collection metadata by the composite key of
-/// solr_database_id and collection_name.
+/// solr_database_id and collection_name. If no metadata exists,
+/// returns default values instead of a 404 error.
 ///
 /// # Arguments
 /// * `db` - Database connection pool
@@ -376,7 +399,7 @@ pub async fn get_solr_database_infos(
 /// * `config` - Application configuration
 ///
 /// # Returns
-/// HTTP response with the matching metadata record or not-found error
+/// HTTP response with the matching metadata record or default values
 #[utoipa::path(
     get,
     path = "/api/solr_database_infos/{solr_database_id}/{collection_name}",
@@ -386,8 +409,7 @@ pub async fn get_solr_database_infos(
         ("collection_name" = String, Path, example = "users")
     ),
     responses(
-        (status = 200, description = "SolrDatabaseInfo metadata record found", body = SolrDatabaseInfo),
-        (status = 404, description = "No metadata found for the specified database ID and collection"),
+        (status = 200, description = "SolrDatabaseInfo metadata record found or default values returned", body = SolrDatabaseInfo),
         (status = 500, description = "Database connection error or query execution failure")
     ),
     security(

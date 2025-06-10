@@ -49,7 +49,20 @@ pub async fn fetch_ner_data(query: web::Query<PathQueryParams>) -> Result<HttpRe
         return Ok(HttpResponse::Ok().json(Some(ner_data_map)));
     }
 
-    let ner_results = get_ner_annotation_batch(&collection, &collected_ids).await?;
+    let ner_results = get_ner_annotation_batch(&collection, &collected_ids).await
+        .map_err(|e| {
+            error!("NER processing failed: {}", e);
+            // Provide more specific error handling for common issues
+            if e.to_string().contains("HTTP request failed") {
+                error!("NER service unavailable - Solr NER collection may not exist or service is down");
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    "Named Entity Recognition service is currently unavailable. Please ensure the Solr NER service is running and the collection exists."
+                )
+            } else {
+                e
+            }
+        })?;
 
     debug!("Retrieved NER results for {} documents", ner_results.len());
 

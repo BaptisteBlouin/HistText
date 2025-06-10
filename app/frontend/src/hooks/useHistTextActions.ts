@@ -435,10 +435,21 @@ export const useHistTextActions = ({
                     "info",
                   );
                 } else if ((error as any).response?.status >= 500) {
-                  showNotification(
-                    "Named entity recognition is not available for this collection",
-                    "info",
-                  );
+                  // Check if it's a Solr connectivity issue
+                  const errorMessage = error.response?.data?.message || error.message || "";
+                  if (errorMessage.toLowerCase().includes("solr") || 
+                      errorMessage.toLowerCase().includes("unavailable") ||
+                      errorMessage.toLowerCase().includes("service")) {
+                    showNotification(
+                      "NER service is unavailable. The Solr service may be down or the collection doesn't exist.",
+                      "warning",
+                    );
+                  } else {
+                    showNotification(
+                      "Named entity recognition service encountered an error",
+                      "info",
+                    );
+                  }
                 } else if (error.response?.status === 400) {
                   showNotification(
                     "Named entity recognition is not supported for this content",

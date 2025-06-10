@@ -183,6 +183,7 @@ const DocumentAnalysisTab: React.FC<DocumentAnalysisTabProps> = ({
                   <ListItemText
                     primary={
                       <Box
+                        component="span"
                         sx={{
                           display: "flex",
                           justifyContent: "space-between",
@@ -196,6 +197,7 @@ const DocumentAnalysisTab: React.FC<DocumentAnalysisTabProps> = ({
                           {doc.docId}
                         </DocumentLink>
                         <Box
+                          component="span"
                           sx={{
                             display: "flex",
                             alignItems: "center",
@@ -222,17 +224,18 @@ const DocumentAnalysisTab: React.FC<DocumentAnalysisTabProps> = ({
                       </Box>
                     }
                     secondary={
-                      <Box>
-                        <Typography variant="caption">
+                      <Box component="span" sx={{ display: "block" }}>
+                        <Typography component="span" variant="caption" sx={{ display: "block" }}>
                           Unique: {doc.uniqueCount}, Conf: {doc.avgConfidence}%,
                           Quality: {doc.diversityLevel}
                         </Typography>
-                        <br />
-                        <Typography variant="caption" color="success.main">
+                        <Typography component="span" variant="caption" color="success.main" sx={{ display: "block", mt: 0.5 }}>
                           ✓ Normalized entity analysis
                         </Typography>
                       </Box>
                     }
+                    primaryTypographyProps={{ component: "div" }}
+                    secondaryTypographyProps={{ component: "div" }}
                   />
                 </ListItem>
               ))}

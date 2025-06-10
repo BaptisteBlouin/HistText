@@ -875,7 +875,7 @@ pub mod handlers {
                 Cookie::build(COOKIE_NAME, refresh_token)
                     .secure(true)
                     .http_only(true)
-                    .same_site(SameSite::Strict)
+                    .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
                     .path("/")
                     .finish(),
             )
@@ -1008,7 +1008,7 @@ pub mod handlers {
                 Cookie::build(COOKIE_NAME, new_refresh_token)
                     .secure(true)
                     .http_only(true)
-                    .same_site(SameSite::Strict)
+                    .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
                     .path("/")
                     .finish(),
             )

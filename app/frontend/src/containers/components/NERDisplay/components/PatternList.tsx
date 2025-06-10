@@ -59,6 +59,7 @@ const PatternList: React.FC<PatternListProps> = ({
           <ListItemText
             primary={
               <Box
+                component="span"
                 sx={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -66,6 +67,7 @@ const PatternList: React.FC<PatternListProps> = ({
                 }}
               >
                 <Typography
+                  component="span"
                   variant="body2"
                   sx={{
                     fontWeight: 500,
@@ -75,13 +77,15 @@ const PatternList: React.FC<PatternListProps> = ({
                 >
                   {pattern.pattern}
                 </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Chip label={pattern.count} size="small" color={colorType} />
                   {getIcon()}
                 </Box>
               </Box>
             }
             secondary={`Found in ${pattern.documents.length} documents • ${getSecondaryText()}`}
+            primaryTypographyProps={{ component: "div" }}
+            secondaryTypographyProps={{ component: "div" }}
           />
         </ListItem>
       ))}

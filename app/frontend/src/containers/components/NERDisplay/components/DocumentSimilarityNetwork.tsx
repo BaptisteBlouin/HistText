@@ -42,6 +42,22 @@ import {
 } from "@mui/icons-material";
 import * as d3 from "d3";
 
+// Helper function to safely apply transitions
+const safeTransition = (selection: any, duration: number = 200) => {
+  // Check if transition method exists
+  if (selection && typeof selection.transition === 'function') {
+    try {
+      return selection.transition().duration(duration);
+    } catch (error) {
+      console.warn('D3 transition failed, applying styles directly:', error);
+      return selection;
+    }
+  } else {
+    console.warn('D3 transition method not available, applying styles directly');
+    return selection;
+  }
+};
+
 interface DocumentNode extends d3.SimulationNodeDatum {
   id: string;
   title: string;
@@ -309,16 +325,13 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
 
     const zoomBehavior = {
       zoomIn: () => {
-        svg.transition().duration(300).call(zoom.scaleBy, 1.5);
+        safeTransition(svg, 300).call(zoom.scaleBy, 1.5);
       },
       zoomOut: () => {
-        svg
-          .transition()
-          .duration(300)
-          .call(zoom.scaleBy, 1 / 1.5);
+        safeTransition(svg, 300).call(zoom.scaleBy, 1 / 1.5);
       },
       reset: () => {
-        svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+        safeTransition(svg, 500).call(zoom.transform, d3.zoomIdentity);
       },
       zoomToCluster: (clusterId: number) => {
         const clusterNodes = networkData.nodes.filter(
@@ -342,9 +355,7 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         const translateX = width / 2 - centerX * scale;
         const translateY = height / 2 - centerY * scale;
 
-        svg
-          .transition()
-          .duration(750)
+        safeTransition(svg, 750)
           .call(
             zoom.transform,
             d3.zoomIdentity.translate(translateX, translateY).scale(scale),
@@ -470,9 +481,8 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         onDocumentClick(d.id);
       })
       .on("mouseover", function (event, d) {
-        d3.select(this)
-          .transition()
-          .duration(200)
+        const selection = d3.select(this);
+        safeTransition(selection, 200)
           .attr("r", Math.sqrt(d.entityCount) * 0.6 + baseRadius + 5)
           .attr("stroke-width", 4);
 
@@ -481,9 +491,8 @@ const DocumentSimilarityNetwork: React.FC<DocumentSimilarityNetworkProps> = ({
         );
       })
       .on("mouseout", function (event, d) {
-        d3.select(this)
-          .transition()
-          .duration(200)
+        const selection = d3.select(this);
+        safeTransition(selection, 200)
           .attr("r", Math.sqrt(d.entityCount) * 0.6 + baseRadius)
           .attr("stroke-width", selectedCluster === d.cluster ? 3 : 2);
 

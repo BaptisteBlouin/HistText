@@ -397,13 +397,14 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
                   <ListItemText
                     primary={
                       <Box
+                        component="span"
                         sx={{
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
                         }}
                       >
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        <Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>
                           #{index + 1}.{" "}
                           {entity.entity.length > 25
                             ? entity.entity.substring(0, 25) + "..."
@@ -417,8 +418,9 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
                       </Box>
                     }
                     secondary={
-                      <Box sx={{ mt: 1 }}>
+                      <Box component="span" sx={{ display: "block", mt: 1 }}>
                         <Box
+                          component="span"
                           sx={{
                             display: "flex",
                             gap: 1,
@@ -451,7 +453,7 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
                           </Tooltip>
                         </Box>
 
-                        <Typography variant="caption" display="block">
+                        <Typography component="span" variant="caption" sx={{ display: "block" }}>
                           Spread: {(entity.spreadFactor * 100).toFixed(1)}%
                         </Typography>
                         <LinearProgress
@@ -461,7 +463,7 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
                           color="primary"
                         />
 
-                        <Typography variant="caption" display="block">
+                        <Typography component="span" variant="caption" sx={{ display: "block" }}>
                           Persistence:{" "}
                           {(entity.persistenceScore * 100).toFixed(1)}%
                         </Typography>
@@ -472,7 +474,7 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
                           color="secondary"
                         />
 
-                        <Typography variant="caption" display="block">
+                        <Typography component="span" variant="caption" sx={{ display: "block" }}>
                           Frequency: {(entity.frequencyScore * 100).toFixed(1)}%
                         </Typography>
                         <LinearProgress
@@ -483,6 +485,8 @@ const EntityInfluenceScores: React.FC<EntityInfluenceScoresProps> = ({
                         />
                       </Box>
                     }
+                    primaryTypographyProps={{ component: "div" }}
+                    secondaryTypographyProps={{ component: "div" }}
                   />
                 </ListItem>
               ))}

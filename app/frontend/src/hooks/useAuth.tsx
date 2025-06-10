@@ -11,6 +11,9 @@ import React, {
 const MILLISECONDS_UNTIL_EXPIRY_CHECK = 10 * 1000; // check expiry every 10 seconds
 const REMAINING_TOKEN_EXPIRY_TIME_ALLOWED = 60 * 1000; // 1 minute before token should be refreshed
 
+// Global refresh promise to prevent race conditions
+let refreshPromise: Promise<void> | null = null;
+
 // Extend the AccessTokenClaims interface to include user info
 interface ExtendedAccessTokenClaims extends AccessTokenClaims {
   email?: string;
@@ -288,6 +291,12 @@ export const useAuthCheck = () => {
   const { isCheckingAuth } = context;
 
   const refreshIfNecessary = useCallback(async () => {
+    // If a refresh is already in progress, wait for it to complete
+    if (refreshPromise) {
+      await refreshPromise;
+      return;
+    }
+
     if (isCheckingAuth.current) {
       return;
     }
@@ -306,48 +315,62 @@ export const useAuthCheck = () => {
       return true;
     };
 
-    try {
-      if (!context.accessToken || isExpiringSoon()) {
-        // console.log('Restoring session')
-        const response = await fetch("/api/auth/refresh", {
-          method: "POST",
-        });
-
-        if (response.ok) {
-          const responseJson = await response.json();
-          const parsedToken = parseJwt(
-            responseJson.access_token,
-          ) as ExtendedAccessTokenClaims;
-          const permissions = new Permissions(
-            parsedToken.roles,
-            parsedToken.permissions,
-          );
-          const userInfo = extractUserInfo(parsedToken);
-
-          context.setAccessToken(responseJson.access_token);
-          context.setSession({
-            userId: parsedToken.sub,
-            expiresOnUTC: parsedToken.exp,
-            roles: permissions.roles,
-            permissions: permissions.permissions,
-            user: userInfo,
-            hasRole: permissions.hasRole,
-            hasPermission: permissions.hasPermission,
+    // Create the refresh promise to prevent race conditions
+    refreshPromise = (async () => {
+      try {
+        if (!context.accessToken || isExpiringSoon()) {
+          // console.log('Restoring session')
+          const response = await fetch("/api/auth/refresh", {
+            method: "POST",
+            credentials: "include", // CRITICAL: Include cookies in request
+            headers: {
+              "Content-Type": "application/json",
+            },
           });
-        } else {
-          context.setAccessToken(undefined);
-          context.setSession(undefined);
+
+          if (response.ok) {
+            const responseJson = await response.json();
+            const parsedToken = parseJwt(
+              responseJson.access_token,
+            ) as ExtendedAccessTokenClaims;
+            const permissions = new Permissions(
+              parsedToken.roles,
+              parsedToken.permissions,
+            );
+            const userInfo = extractUserInfo(parsedToken);
+
+            context.setAccessToken(responseJson.access_token);
+            context.setSession({
+              userId: parsedToken.sub,
+              expiresOnUTC: parsedToken.exp,
+              roles: permissions.roles,
+              permissions: permissions.permissions,
+              user: userInfo,
+              hasRole: permissions.hasRole,
+              hasPermission: permissions.hasPermission,
+            });
+          } else {
+            // Log specific error information for debugging
+            console.warn(`Auth refresh failed with status: ${response.status} ${response.statusText}`);
+            context.setAccessToken(undefined);
+            context.setSession(undefined);
+          }
         }
+      } catch (error) {
+        console.error("Auth refresh error:", error);
+        context.setAccessToken(undefined);
+        context.setSession(undefined);
+      } finally {
+        // Set loading to false after initial auth check
+        context.setIsLoading(false);
+        isCheckingAuth.current = false;
+        // Clear the refresh promise when done
+        refreshPromise = null;
       }
-    } catch (error) {
-      console.error("Auth refresh error:", error);
-      context.setAccessToken(undefined);
-      context.setSession(undefined);
-    } finally {
-      // Set loading to false after initial auth check
-      context.setIsLoading(false);
-      isCheckingAuth.current = false;
-    }
+    })();
+
+    // Wait for the refresh to complete
+    await refreshPromise;
   }, [context]);
 
   useEffect(() => {

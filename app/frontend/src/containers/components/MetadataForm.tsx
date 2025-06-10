@@ -160,9 +160,26 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
           }
         })
         .catch((error) => {
-          console.error("Failed to fetch collection info:", error);
-          setCollectionInfo(null);
-          setHasEmbeddings(false);
+          // Handle 404 gracefully - it's normal for some collections to not have description info
+          if (error.response?.status === 404) {
+            console.warn(`No description info found for collection ${selectedAlias} in database ${solrDatabaseId}`);
+            // Set minimal collection info with defaults
+            setCollectionInfo({
+              solr_database_id: solrDatabaseId,
+              collection_name: selectedAlias,
+              description: "",
+              embeddings: "none",
+              lang: null,
+              text_field: "text",
+              tokenizer: null,
+              to_not_display: [],
+            });
+            setHasEmbeddings(false);
+          } else {
+            console.error("Failed to fetch collection info:", error);
+            setCollectionInfo(null);
+            setHasEmbeddings(false);
+          }
         });
     } else {
       setCollectionInfo(null);

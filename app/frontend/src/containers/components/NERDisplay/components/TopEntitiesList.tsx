@@ -55,6 +55,7 @@ const TopEntitiesList: React.FC<TopEntitiesListProps> = ({
                     <ListItemText
                       primary={
                         <Box
+                          component="span"
                           sx={{
                             display: "flex",
                             justifyContent: "space-between",
@@ -66,6 +67,7 @@ const TopEntitiesList: React.FC<TopEntitiesListProps> = ({
                             placement="top"
                           >
                             <Typography
+                              component="span"
                               variant="body2"
                               sx={{
                                 fontWeight: 500,
@@ -87,6 +89,8 @@ const TopEntitiesList: React.FC<TopEntitiesListProps> = ({
                         </Box>
                       }
                       secondary={`${entity.documents} docs • Normalized entity`}
+                      primaryTypographyProps={{ component: "div" }}
+                      secondaryTypographyProps={{ component: "div" }}
                     />
                   </ListItem>
                 ))}
