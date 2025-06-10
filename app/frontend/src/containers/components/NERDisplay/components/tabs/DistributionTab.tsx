@@ -212,6 +212,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
                                 color={chipColor}
                               />
                               <Typography
+                                component="span"
                                 variant="caption"
                                 color="success.main"
                               >
@@ -222,7 +223,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
                         }
                         secondary={
                           <Box>
-                            <Typography variant="body2">
+                            <Typography component="div" variant="body2">
                               {doc.uniqueEntityCount} unique / {doc.entityCount}{" "}
                               total entities
                             </Typography>

@@ -55,6 +55,7 @@ const CentralityScores: React.FC<CentralityScoresProps> = ({
               <ListItemText
                 primary={
                   <Box
+                    component="div"
                     sx={{
                       display: "flex",
                       justifyContent: "space-between",
@@ -63,6 +64,7 @@ const CentralityScores: React.FC<CentralityScoresProps> = ({
                   >
                     <Tooltip title={`Full entity: ${entity.entity}`}>
                       <Typography
+                        component="span"
                         variant="body2"
                         sx={{
                           fontWeight: 500,
@@ -83,13 +85,13 @@ const CentralityScores: React.FC<CentralityScoresProps> = ({
                   </Box>
                 }
                 secondary={
-                  <Box>
+                  <Box component="div">
                     <LinearProgress
                       variant="determinate"
                       value={entity.score * 100}
                       sx={{ mt: 0.5, mb: 0.5 }}
                     />
-                    <Typography variant="caption" color="success.main">
+                    <Typography component="span" variant="caption" color="success.main">
                       Normalized entity
                     </Typography>
                   </Box>

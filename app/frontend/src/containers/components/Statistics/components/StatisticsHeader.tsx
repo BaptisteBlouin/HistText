@@ -90,19 +90,21 @@ const StatisticsHeader: React.FC<StatisticsHeaderProps> = ({
           {navigationInfo.hasNavigation && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Tooltip title="Previous statistic (←)">
-                <IconButton
-                  onClick={() => onNavigate("prev")}
-                  disabled={navigationInfo.isFirst}
-                  size="small"
-                  sx={{
-                    bgcolor: "primary.light",
-                    color: "white",
-                    "&:hover": { bgcolor: "primary.main" },
-                    "&:disabled": { bgcolor: "grey.300", color: "grey.500" },
-                  }}
-                >
-                  <KeyboardArrowLeft />
-                </IconButton>
+                <span>
+                  <IconButton
+                    onClick={() => onNavigate("prev")}
+                    disabled={navigationInfo.isFirst}
+                    size="small"
+                    sx={{
+                      bgcolor: "primary.light",
+                      color: "white",
+                      "&:hover": { bgcolor: "primary.main" },
+                      "&:disabled": { bgcolor: "grey.300", color: "grey.500" },
+                    }}
+                  >
+                    <KeyboardArrowLeft />
+                  </IconButton>
+                </span>
               </Tooltip>
 
               <Typography
@@ -113,19 +115,21 @@ const StatisticsHeader: React.FC<StatisticsHeaderProps> = ({
               </Typography>
 
               <Tooltip title="Next statistic (→)">
-                <IconButton
-                  onClick={() => onNavigate("next")}
-                  disabled={navigationInfo.isLast}
-                  size="small"
-                  sx={{
-                    bgcolor: "primary.light",
-                    color: "white",
-                    "&:hover": { bgcolor: "primary.main" },
-                    "&:disabled": { bgcolor: "grey.300", color: "grey.500" },
-                  }}
-                >
-                  <KeyboardArrowRight />
-                </IconButton>
+                <span>
+                  <IconButton
+                    onClick={() => onNavigate("next")}
+                    disabled={navigationInfo.isLast}
+                    size="small"
+                    sx={{
+                      bgcolor: "primary.light",
+                      color: "white",
+                      "&:hover": { bgcolor: "primary.main" },
+                      "&:disabled": { bgcolor: "grey.300", color: "grey.500" },
+                    }}
+                  >
+                    <KeyboardArrowRight />
+                  </IconButton>
+                </span>
               </Tooltip>
             </Box>
           )}

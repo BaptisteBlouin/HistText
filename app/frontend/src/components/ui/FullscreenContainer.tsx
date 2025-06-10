@@ -24,13 +24,13 @@ interface FullscreenContainerProps extends BoxProps {
  * A flexible container that adapts to fullscreen scenarios.
  * Supports "browser" (CSS fullscreen), "native" (browser API), and normal modes.
  */
-const FullscreenContainer: React.FC<FullscreenContainerProps> = ({
+const FullscreenContainer = React.forwardRef<HTMLDivElement, FullscreenContainerProps>(({
   fullscreenMode,
   isNativeFullscreen = false,
   children,
   sx,
   ...props
-}) => {
+}, ref) => {
   /**
    * Returns the container styles depending on fullscreen mode and native fullscreen state.
    */
@@ -77,6 +77,7 @@ const FullscreenContainer: React.FC<FullscreenContainerProps> = ({
 
   return (
     <Box
+      ref={ref}
       {...props}
       sx={{
         ...getContainerStyles(),
@@ -86,6 +87,8 @@ const FullscreenContainer: React.FC<FullscreenContainerProps> = ({
       {children}
     </Box>
   );
-};
+});
 
-export default React.memo(FullscreenContainer);
+FullscreenContainer.displayName = "FullscreenContainer";
+
+export default FullscreenContainer;

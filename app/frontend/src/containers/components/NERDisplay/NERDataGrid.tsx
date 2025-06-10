@@ -241,7 +241,6 @@ const NERDataGrid: React.FC<NERDataGridProps> = ({
             paginationPageSize={isMobile ? 50 : 100}
             paginationPageSizeSelector={[50, 100, 200, 500]}
             animateRows={false} // Disabled for better performance
-            enableRangeSelection={true}
             rowSelection="multiple"
             suppressRowClickSelection={true}
             headerHeight={44}

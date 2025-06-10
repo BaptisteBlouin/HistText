@@ -26,14 +26,12 @@ const HistText: React.FC = React.memo(() => {
     resetHistTextState,
   } = useHistTextState();
 
-  // Memoized actions with proper dependencies including search history
-  const actions = useMemo(() => {
-    return useHistTextActions({
-      ...data,
-      showNotification,
-      setActiveTab,
-    });
-  }, [data, showNotification, setActiveTab]);
+  // ✅ FIXED: Call the hook directly at the top level, not inside useMemo
+  const actions = useHistTextActions({
+    ...data,
+    showNotification,
+    setActiveTab,
+  });
 
   // Optimized word cloud processor
   useWordCloudProcessor({
@@ -56,9 +54,7 @@ const HistText: React.FC = React.memo(() => {
   );
 
   // Enhanced collections mapping - fetch collections for all databases
-  const [allCollections, setAllCollections] = React.useState<
-    Record<number, string[]>
-  >({});
+  const [allCollections, setAllCollections] = React.useState<Record<number, string[]>>({});
 
   // Fetch collections for all databases to support cross-database search switching
   useEffect(() => {

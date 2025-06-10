@@ -120,7 +120,6 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
               }),
             }}
             animateRows={true}
-            enableRangeSelection={true}
             rowSelection="multiple"
             suppressRowClickSelection={true}
             rowHeight={isOverviewStat ? 60 : undefined}

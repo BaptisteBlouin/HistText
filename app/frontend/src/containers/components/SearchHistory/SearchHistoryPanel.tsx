@@ -592,17 +592,19 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
 
               {!isCompatible && !canSwitch && (
                 <Tooltip title="Collection not available">
-                  <IconButton
-                    size="small"
-                    disabled
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIncompatibleSearch(search);
-                      setIncompatibleDialogOpen(true);
-                    }}
-                  >
-                    <Block />
-                  </IconButton>
+                  <span>
+                    <IconButton
+                      size="small"
+                      disabled
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIncompatibleSearch(search);
+                        setIncompatibleDialogOpen(true);
+                      }}
+                    >
+                      <Block />
+                    </IconButton>
+                  </span>
                 </Tooltip>
               )}
             </Box>

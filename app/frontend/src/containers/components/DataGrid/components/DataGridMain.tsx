@@ -181,30 +181,10 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
           enableCellTextSelection={true}
           rowSelection={isMobile ? "single" : "multiple"}
           suppressRowClickSelection={true}
-          enableRangeSelection={!isMobile}
           animateRows={!showConcordance && !isMobile}
           rowBuffer={showConcordance ? 20 : isMobile ? 5 : 10}
           suppressScrollOnNewData={true}
           suppressColumnVirtualisation={isMobile}
-          sideBar={isMobile ? false : {
-            toolPanels: [
-              {
-                id: "columns",
-                labelDefault: "Columns",
-                labelKey: "columns",
-                iconKey: "columns",
-                toolPanel: "agColumnsToolPanel",
-              },
-              {
-                id: "filters",
-                labelDefault: "Filters",
-                labelKey: "filters",
-                iconKey: "filter",
-                toolPanel: "agFiltersToolPanel",
-              },
-            ],
-            defaultToolPanel: "columns",
-          }}
         />
       </Box>
     </Paper>

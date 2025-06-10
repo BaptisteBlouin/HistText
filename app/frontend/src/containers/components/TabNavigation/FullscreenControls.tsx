@@ -244,19 +244,26 @@ const FullscreenControls: React.FC<FullscreenControlsProps> = ({
         direction="up"
       >
         {fullscreenActions.map((action) => (
-          <SpeedDialAction
+          <Tooltip
             key={action.name}
-            icon={action.icon}
-            tooltipTitle={action.name}
-            onClick={action.onClick}
-            sx={{
-              opacity: action.disabled ? 0.5 : 1,
-              bgcolor: action.disabled ? "grey.300" : "background.paper",
-              "&:hover": {
-                bgcolor: action.disabled ? "grey.300" : "primary.light",
-              },
-            }}
-          />
+            title={action.disabled ? "" : action.name}
+          >
+            <span>
+              <SpeedDialAction
+                icon={action.icon}
+                tooltipTitle=""  // ← Remove internal tooltip
+                onClick={action.disabled ? undefined : action.onClick}
+                sx={{
+                  opacity: action.disabled ? 0.5 : 1,
+                  bgcolor: action.disabled ? "grey.300" : "background.paper",
+                  pointerEvents: action.disabled ? "none" : "auto",
+                  "&:hover": {
+                    bgcolor: action.disabled ? "grey.300" : "primary.light",
+                  },
+                }}
+              />
+            </span>
+          </Tooltip>
         ))}
       </SpeedDial>
     </>
