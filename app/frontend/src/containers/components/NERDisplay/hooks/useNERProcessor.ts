@@ -142,7 +142,7 @@ export const useNERProcessor = () => {
         if (controller.signal.aborted) throw new Error("Aborted");
 
         // Initialize stats container for later updates
-        let currentStats: NERAdvancedStats = {
+        const currentStats: NERAdvancedStats = {
           totalEntities: entities.length,
           totalDocuments: basicStats.totalDocuments,
           averageEntitiesPerDocument:

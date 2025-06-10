@@ -28,7 +28,7 @@ export const useChartData = (
 
     let labels: string[] = [];
     let data: number[] = [];
-    let chartTitle = selectedStat
+    const chartTitle = selectedStat
       .replace(/_/g, " ")
       .replace(/\b\w/g, (l) => l.toUpperCase());
 

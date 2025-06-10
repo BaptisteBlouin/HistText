@@ -125,7 +125,7 @@ export class EntityNormalizer {
       return this.cache.get(text)!;
     }
 
-    let normalized = text
+    const normalized = text
       .trim()
       .replace(/\s+/g, " ")
       .replace(/[.,;:!?]+$/, "")

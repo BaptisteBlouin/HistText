@@ -104,7 +104,7 @@ export const useSmartValidation = (
       const isTextField = collectionInfo?.text_field === fieldName;
       const isDateField = fieldName.toLowerCase().includes("date");
 
-      let applicableRules = [...validationRules.default];
+      const applicableRules = [...validationRules.default];
 
       if (isTextField) {
         applicableRules.push(...validationRules.text_field);

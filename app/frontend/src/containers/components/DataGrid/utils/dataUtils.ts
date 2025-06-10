@@ -48,7 +48,7 @@ export const createConcordance = (
   limitedTerms.forEach((term) => {
     if (term && typeof term === "string" && term.length > 1) {
       const lowerTerm = term.toLowerCase();
-      let index = lowerText.indexOf(lowerTerm);
+      const index = lowerText.indexOf(lowerTerm);
       
       // Find only the first match per term
       if (index !== -1) {

@@ -57,20 +57,45 @@ export const UserToken = ({ auth }: { auth: any }) => {
   }, []);
 
   /**
-   * Simulates refreshing the token.
-   * (TODO: this should call your refresh endpoint.)
+   * Refreshes the token by calling the refresh endpoint.
    */
   const handleRefreshToken = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("Token refreshed successfully!");
+      const response = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include", // Include cookies for refresh token
+        headers: {
+          "Content-Type": "application/json",
+          ...(auth.accessToken && { Authorization: auth.accessToken }),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to refresh token");
+      }
+
+      const data = await response.json();
+      
+      // Update the auth context with the new access token
+      if (auth.setAccessToken && data.access_token) {
+        auth.setAccessToken(data.access_token);
+        toast.success("Token refreshed successfully!");
+      } else {
+        throw new Error("No access token received");
+      }
     } catch (error) {
-      toast.error("Failed to refresh token");
+      console.error("Token refresh error:", error);
+      toast.error(
+        error instanceof Error 
+          ? error.message 
+          : "Failed to refresh token"
+      );
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [auth]);
 
   /**
    * Masks the token for display (shows only part, replaces the middle).
