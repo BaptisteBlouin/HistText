@@ -60,6 +60,8 @@ const HistText: React.FC = React.memo(() => {
   useEffect(() => {
     if (!data.authAxios || data.solrDatabases.length === 0) return;
 
+    const abortController = new AbortController();
+    
     const fetchAllCollections = async () => {
       const collectionsMap: Record<number, string[]> = {};
 
@@ -69,6 +71,7 @@ const HistText: React.FC = React.memo(() => {
           try {
             const response = await data.authAxios.get(
               `/api/solr/aliases?solr_database_id=${database.id}`,
+              { signal: abortController.signal }
             );
 
             if (Array.isArray(response.data)) {
@@ -81,22 +84,36 @@ const HistText: React.FC = React.memo(() => {
               collectionsMap[database.id] = [];
             }
           } catch (error) {
-            console.error(
-              `Error fetching collections for database ${database.id}:`,
-              error,
-            );
+            // Don't log errors if the request was cancelled
+            if (!abortController.signal.aborted) {
+              console.error(
+                `Error fetching collections for database ${database.id}:`,
+                error,
+              );
+            }
             collectionsMap[database.id] = [];
           }
         });
 
         await Promise.all(promises);
-        setAllCollections(collectionsMap);
+        
+        // Only update state if not aborted
+        if (!abortController.signal.aborted) {
+          setAllCollections(collectionsMap);
+        }
       } catch (error) {
-        console.error("Error fetching collections for all databases:", error);
+        if (!abortController.signal.aborted) {
+          console.error("Error fetching collections for all databases:", error);
+        }
       }
     };
 
     fetchAllCollections();
+
+    // Cleanup function to abort requests
+    return () => {
+      abortController.abort();
+    };
   }, [data.authAxios, data.solrDatabases]);
 
   // Enhanced database change handler that properly handles search history integration

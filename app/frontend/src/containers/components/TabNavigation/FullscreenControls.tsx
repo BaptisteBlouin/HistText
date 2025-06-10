@@ -129,8 +129,12 @@ const FullscreenControls: React.FC<FullscreenControlsProps> = ({
             size="small"
             sx={{
               color: "text.secondary",
+              transition: "all 0.3s ease",
               "&:hover": {
                 bgcolor: "action.hover",
+                transform: "scale(1.1)",
+                color: "primary.main",
+                boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
               },
             }}
           >
@@ -145,6 +149,21 @@ const FullscreenControls: React.FC<FullscreenControlsProps> = ({
           onClose={() => setFullscreenMenuAnchor(null)}
           transformOrigin={{ horizontal: "right", vertical: "top" }}
           anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+          sx={{
+            "& .MuiPaper-root": {
+              borderRadius: 2,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+              border: "1px solid",
+              borderColor: "divider",
+            },
+            "& .MuiMenuItem-root": {
+              transition: "all 0.2s ease",
+              "&:hover": {
+                backgroundColor: "primary.light",
+                transform: "translateX(4px)",
+              },
+            },
+          }}
         >
           <MenuItem
             onClick={() => handleFullscreenModeChange("normal")}
@@ -216,8 +235,11 @@ const FullscreenControls: React.FC<FullscreenControlsProps> = ({
             sx={{
               color: "white",
               p: 0.5,
+              transition: "all 0.3s ease",
               "&:hover": {
                 bgcolor: "rgba(255,255,255,0.2)",
+                transform: "scale(1.1) rotate(90deg)",
+                boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
               },
             }}
           >
@@ -235,6 +257,19 @@ const FullscreenControls: React.FC<FullscreenControlsProps> = ({
           zIndex: 9999,
           "& .MuiFab-primary": {
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+              transform: "scale(1.1)",
+              boxShadow: "0 8px 16px rgba(102, 126, 234, 0.4)",
+            },
+          },
+          "& .MuiSpeedDialAction-fab": {
+            transition: "all 0.3s ease",
+            "&:hover": {
+              transform: "scale(1.1)",
+              boxShadow: "0 6px 12px rgba(0,0,0,0.2)",
+            },
           },
         }}
         icon={<SpeedDialIcon icon={getFullscreenIcon()} openIcon={<Close />} />}

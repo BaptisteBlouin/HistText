@@ -59,9 +59,20 @@ const DatabaseSelectorButton: React.FC<DatabaseSelectorButtonProps> =
             transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             transform: isOpen ? "translateY(-2px)" : "translateY(0)",
             "&:hover": {
-              transform: "translateY(-4px)",
-              boxShadow: theme.shadows[6],
+              transform: "translateY(-4px) scale(1.02)",
+              boxShadow: "0 12px 24px rgba(0,0,0,0.15)",
               borderColor: theme.palette.secondary.light,
+              background: selectedSolrDatabase
+                ? theme.palette.mode === 'dark' 
+                  ? "linear-gradient(135deg, #3a3a3a 0%, #4a4a4a 100%)"
+                  : "linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%)"
+                : theme.palette.mode === 'dark'
+                  ? "linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%)"
+                  : "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+            },
+            "&:active": {
+              transform: "translateY(-2px) scale(1.01)",
+              transition: "transform 0.1s ease",
             },
           }}
         >
@@ -76,6 +87,12 @@ const DatabaseSelectorButton: React.FC<DatabaseSelectorButtonProps> =
                   color: "white",
                   fontWeight: 600,
                   fontSize: "1rem",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "scale(1.1) rotate(5deg)",
+                    bgcolor: "secondary.dark",
+                    boxShadow: "0 6px 12px rgba(0,0,0,0.2)",
+                  },
                 }}
               >
                 {getDatabaseInitials(selectedSolrDatabase.name)}
@@ -87,6 +104,13 @@ const DatabaseSelectorButton: React.FC<DatabaseSelectorButtonProps> =
                   height: 48,
                   bgcolor: "grey.300",
                   color: "grey.600",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "scale(1.1)",
+                    bgcolor: "secondary.light",
+                    color: "secondary.contrastText",
+                    boxShadow: "0 6px 12px rgba(0,0,0,0.15)",
+                  },
                 }}
               >
                 <DnsRounded />
@@ -105,6 +129,10 @@ const DatabaseSelectorButton: React.FC<DatabaseSelectorButtonProps> =
                       fontSize: "1.1rem",
                       lineHeight: 1.2,
                       mb: 0.5,
+                      transition: "color 0.3s ease",
+                      "&:hover": {
+                        color: "secondary.main",
+                      },
                     }}
                   >
                     {selectedSolrDatabase.name}
@@ -167,7 +195,12 @@ const DatabaseSelectorButton: React.FC<DatabaseSelectorButtonProps> =
                     sx={{
                       bgcolor: "error.light",
                       color: "error.contrastText",
-                      "&:hover": { bgcolor: "error.main" },
+                      transition: "all 0.3s ease",
+                      "&:hover": { 
+                        bgcolor: "error.main",
+                        transform: "scale(1.1) rotate(90deg)",
+                        boxShadow: "0 4px 8px rgba(211, 47, 47, 0.3)",
+                      },
                     }}
                   >
                     <Close fontSize="small" />
@@ -181,8 +214,12 @@ const DatabaseSelectorButton: React.FC<DatabaseSelectorButtonProps> =
                   bgcolor: "secondary.light",
                   color: "secondary.contrastText",
                   transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-                  transition: "transform 0.3s ease",
-                  "&:hover": { bgcolor: "secondary.main" },
+                  transition: "all 0.3s ease",
+                  "&:hover": { 
+                    bgcolor: "secondary.main",
+                    transform: isOpen ? "rotate(180deg) scale(1.1)" : "rotate(0deg) scale(1.1)",
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                  },
                 }}
               >
                 <ExpandMore />
@@ -203,6 +240,12 @@ const DatabaseSelectorButton: React.FC<DatabaseSelectorButtonProps> =
                 color: "white",
                 fontWeight: 600,
                 fontSize: "0.75rem",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  transform: "scale(1.1)",
+                  bgcolor: "secondary.dark",
+                  boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                },
               }}
             />
           )}

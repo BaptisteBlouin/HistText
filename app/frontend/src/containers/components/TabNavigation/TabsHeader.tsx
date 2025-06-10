@@ -138,9 +138,11 @@ const TabsHeader: React.FC<TabsHeaderProps> = ({
           minHeight: { xs: 48, sm: 52, md: 56 },
           minWidth: { xs: 80, sm: 100, md: 120 },
           padding: { xs: '6px 8px', sm: '8px 12px', md: '12px 16px' },
-          transition: "all 0.2s ease",
+          transition: "all 0.3s ease",
           "&:hover": {
             backgroundColor: "action.hover",
+            transform: "translateY(-2px)",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
           },
         },
         "& .Mui-selected": {
@@ -192,7 +194,7 @@ const TabsHeader: React.FC<TabsHeaderProps> = ({
                     height: tabInfo.isLoading ? "20px" : "16px",
                     minWidth: tabInfo.isLoading ? "20px" : "16px",
                     animation: tabInfo.isLoading
-                      ? "spin 1s linear infinite"
+                      ? "spin 1.5s ease-in-out infinite"
                       : "none",
                     "@keyframes spin": {
                       "0%": {

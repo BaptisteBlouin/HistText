@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useMemo, useCallback } from "react";
 import { Box, Container, Paper, Fade } from "@mui/material";
 import { FullscreenContainer } from "../../../components/ui";
 import { useResponsive } from "../../../lib/responsive-utils";
-import DatabaseSelector from "../DatabaseSelector";
+import DatabaseSelector, { DatabaseSelectorHandle } from "../DatabaseSelector";
 import TabNavigation, { FullscreenMode } from "../TabNavigation";
 import LoadingOverlay from "../LoadingOverlay";
 import QuickActions from "../QuickActions";
@@ -66,6 +66,7 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mainPaperRef = useRef<HTMLDivElement>(null);
+  const databaseSelectorRef = useRef<DatabaseSelectorHandle>(null);
   const { isMobile, isTablet, getModalWidth } = useResponsive();
 
   // Fullscreen state calculation (native or browser)
@@ -93,6 +94,21 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
     showNotification,
   );
 
+  // Function to open database selector
+  const openDatabaseSelector = useCallback(() => {
+    // If in fullscreen mode, exit fullscreen first
+    if (fullscreenState.isAnyFullscreen) {
+      setFullscreenMode("normal");
+      // Wait a bit for the transition, then open the selector
+      setTimeout(() => {
+        databaseSelectorRef.current?.openDatabaseSelector();
+      }, 300);
+    } else {
+      // Direct access in normal mode
+      databaseSelectorRef.current?.openDatabaseSelector();
+    }
+  }, [fullscreenState.isAnyFullscreen, setFullscreenMode]);
+
   return (
     <FullscreenContainer
       ref={containerRef}
@@ -115,6 +131,7 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
         {/* Database Selector - Hidden in fullscreen */}
         {!fullscreenState.isAnyFullscreen && (
           <DatabaseSelector
+            ref={databaseSelectorRef}
             solrDatabases={data.solrDatabases}
             selectedSolrDatabase={data.selectedSolrDatabase}
             onSolrDatabaseChange={onSolrDatabaseChange}
@@ -174,7 +191,10 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
           <MainContent
             activeTab={activeTab}
             data={data}
-            actions={actions}
+            actions={{
+              ...actions,
+              openDatabaseSelector,
+            }}
             fullscreenState={fullscreenState}
           />
         </Paper>

@@ -55,44 +55,6 @@ const CollectionsList: React.FC<CollectionsListProps> = React.memo(
 
     return (
       <Box sx={{ maxHeight: "400px", overflow: "auto" }}>
-        {/* Default Option ("select a collection...") */}
-        <Card
-          variant="outlined"
-          onClick={() => onCollectionSelect("")}
-          sx={{
-            m: 1,
-            cursor: "pointer",
-            borderRadius: 2,
-            border: selectedAlias === "" ? "2px solid" : "1px solid",
-            borderColor: selectedAlias === "" ? "primary.main" : "divider",
-            bgcolor: selectedAlias === "" ? "primary.light" : "transparent",
-            transition: "all 0.2s ease",
-            "&:hover": {
-              bgcolor: selectedAlias === "" ? "primary.light" : "action.hover",
-              transform: "translateX(4px)",
-              boxShadow: theme.shadows[2],
-            },
-          }}
-        >
-          <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Avatar sx={{ bgcolor: "grey.300", color: "grey.600" }}>
-                <CollectionsBookmark />
-              </Avatar>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  {config.collection_selector_sentence ||
-                    "Select a collection..."}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Choose from the available collections below
-                </Typography>
-              </Box>
-              {selectedAlias === "" && <Check color="primary" />}
-            </Box>
-          </CardContent>
-        </Card>
-
         {/* Render each collection as a card with transition */}
         {processedCollections.map((collection, index) => (
           <Zoom

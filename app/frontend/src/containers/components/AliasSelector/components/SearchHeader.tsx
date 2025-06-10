@@ -43,12 +43,13 @@ const SearchHeader: React.FC<SearchHeaderProps> = React.memo(
     return (
       <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
         <TextField
-          ref={searchInputRef}
+          inputRef={searchInputRef}
           fullWidth
           size="small"
           placeholder="Search collections..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
+          autoFocus
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">

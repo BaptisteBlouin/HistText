@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from "react";
+import React, { useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Box, Paper, Fade, useTheme, useMediaQuery } from "@mui/material";
 import { useAuth } from "../../../hooks/useAuth";
 import { useSolrDatabaseSelectorState } from "./hooks/useSolrDatabaseSelectorState";
@@ -22,8 +22,12 @@ interface SolrDatabaseSelectorProps {
   onSolrDatabaseChange: (database: SolrDatabase | null) => void;
 }
 
-const SolrDatabaseSelector: React.FC<SolrDatabaseSelectorProps> = React.memo(
-  ({ solrDatabases, selectedSolrDatabase, onSolrDatabaseChange }) => {
+export interface SolrDatabaseSelectorHandle {
+  openDropdown: () => void;
+}
+
+const SolrDatabaseSelector = forwardRef<SolrDatabaseSelectorHandle, SolrDatabaseSelectorProps>(
+  ({ solrDatabases, selectedSolrDatabase, onSolrDatabaseChange }, ref) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("md"));
     const { isAuthenticated } = useAuth();
@@ -40,6 +44,7 @@ const SolrDatabaseSelector: React.FC<SolrDatabaseSelectorProps> = React.memo(
       setIsLoading,
       toggleDropdown,
       closeDropdown,
+      openDropdown,
       clearSearch,
     } = useSolrDatabaseSelectorState();
 
@@ -48,10 +53,6 @@ const SolrDatabaseSelector: React.FC<SolrDatabaseSelectorProps> = React.memo(
       selectedSolrDatabase,
       searchTerm,
     );
-
-    // Reuse keyboard and click outside hooks from AliasSelector
-    useClickOutside(dropdownRef, closeDropdown);
-    useAliasSelectorKeyboard(isOpen, closeDropdown, searchInputRef);
 
     const handleDatabaseSelect = useCallback(
       (database: SolrDatabase | null) => {
@@ -66,6 +67,35 @@ const SolrDatabaseSelector: React.FC<SolrDatabaseSelectorProps> = React.memo(
       },
       [onSolrDatabaseChange, closeDropdown, setIsLoading],
     );
+
+    /**
+     * Handle selecting the first filtered database (for Enter key).
+     */
+    const handleSelectFirst = useCallback(() => {
+      if (processedDatabases.length > 0) {
+        handleDatabaseSelect(processedDatabases[0].database);
+      }
+    }, [processedDatabases, handleDatabaseSelect]);
+
+    // Reuse keyboard and click outside hooks from AliasSelector
+    useClickOutside(dropdownRef, closeDropdown);
+    useAliasSelectorKeyboard(isOpen, closeDropdown, searchInputRef, handleSelectFirst);
+
+    // Expose openDropdown function through ref
+    useImperativeHandle(ref, () => ({
+      openDropdown,
+    }), [openDropdown]);
+
+    // Auto-focus search input when dropdown opens
+    useEffect(() => {
+      if (isOpen && searchInputRef.current) {
+        // Small delay to ensure the dropdown is rendered
+        const timer = setTimeout(() => {
+          searchInputRef.current?.focus();
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+    }, [isOpen]);
 
     const handleClearSelection = useCallback(
       (e: React.MouseEvent) => {
@@ -146,9 +176,9 @@ const SolrDatabaseSelector: React.FC<SolrDatabaseSelectorProps> = React.memo(
         </style>
       </Box>
     );
-  },
+  }
 );
 
 SolrDatabaseSelector.displayName = "SolrDatabaseSelector";
 
-export default SolrDatabaseSelector;
+export default React.memo(SolrDatabaseSelector);

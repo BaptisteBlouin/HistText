@@ -1,5 +1,5 @@
-import React from "react";
-import DatabaseSelectorCard from "./DatabaseSelectorCard";
+import React, { forwardRef } from "react";
+import DatabaseSelectorCard, { DatabaseSelectorCardHandle } from "./DatabaseSelectorCard";
 
 /**
  * Props for the DatabaseSelector component, forwarding to DatabaseSelectorCard.
@@ -28,8 +28,11 @@ interface DatabaseSelectorProps {
  * @param props - DatabaseSelectorProps
  * @returns The database selector UI.
  */
-const DatabaseSelector: React.FC<DatabaseSelectorProps> = (props) => {
-  return <DatabaseSelectorCard {...props} />;
-};
+const DatabaseSelector = forwardRef<DatabaseSelectorCardHandle, DatabaseSelectorProps>((props, ref) => {
+  return <DatabaseSelectorCard ref={ref} {...props} />;
+});
+
+DatabaseSelector.displayName = "DatabaseSelector";
 
 export default DatabaseSelector;
+export type { DatabaseSelectorCardHandle as DatabaseSelectorHandle };

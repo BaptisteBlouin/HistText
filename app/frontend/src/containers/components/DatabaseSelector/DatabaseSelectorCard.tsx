@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -12,8 +12,8 @@ import axios from "axios";
 
 import { GradientPaper, StatusChip } from "../../../components/ui";
 import { useResponsive } from "../../../lib/responsive-utils";
-import AliasSelector from "../AliasSelector";
-import SolrDatabaseSelector from "../SolrDatabaseSelector";
+import AliasSelector, { AliasSelectorHandle } from "../AliasSelector";
+import SolrDatabaseSelector, { SolrDatabaseSelectorHandle } from "../SolrDatabaseSelector";
 import StatusIndicators from "./StatusIndicators";
 
 /**
@@ -47,6 +47,11 @@ interface DatabaseSelectorCardProps {
   statsReady: boolean;
   stats: any;
   totalEntities: number;
+  onOpenDatabaseSelector?: () => void;
+}
+
+export interface DatabaseSelectorCardHandle {
+  openDatabaseSelector: () => void;
 }
 
 /**
@@ -56,7 +61,7 @@ interface DatabaseSelectorCardProps {
  * @param props - DatabaseSelectorCardProps
  * @returns Card element with Solr DB/collection controls and status indicators.
  */
-const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
+const DatabaseSelectorCard = forwardRef<DatabaseSelectorCardHandle, DatabaseSelectorCardProps>(({
   solrDatabases,
   selectedSolrDatabase,
   onSolrDatabaseChange,
@@ -71,12 +76,35 @@ const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
   statsReady,
   stats,
   totalEntities,
-}) => {
+  onOpenDatabaseSelector,
+}, ref) => {
   const [collectionDescriptions, setCollectionDescriptions] = useState<
     Record<string, string>
   >({});
   const [isLoadingDescriptions, setIsLoadingDescriptions] = useState(false);
   const { isMobile, isTablet } = useResponsive();
+  const solrDatabaseSelectorRef = useRef<SolrDatabaseSelectorHandle>(null);
+  const aliasSelectorRef = useRef<AliasSelectorHandle>(null);
+
+  // Enhanced database change handler that auto-opens alias selector
+  const handleDatabaseChangeWithAutoOpen = useCallback((database: any) => {
+    // Call the original handler
+    onSolrDatabaseChange(database);
+    
+    // If a database was selected (not null), auto-open the alias selector after a short delay
+    if (database) {
+      setTimeout(() => {
+        aliasSelectorRef.current?.openDropdown();
+      }, 500); // Wait for database change to complete
+    }
+  }, [onSolrDatabaseChange]);
+
+  // Expose openDatabaseSelector function through ref
+  useImperativeHandle(ref, () => ({
+    openDatabaseSelector: () => {
+      solrDatabaseSelectorRef.current?.openDropdown();
+    },
+  }), []);
 
   // Fetch collection descriptions when the selected Solr database changes
   useEffect(() => {
@@ -152,9 +180,10 @@ const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
               {isMobile ? "Database" : "Solr Database"}
             </Typography>
             <SolrDatabaseSelector
+              ref={solrDatabaseSelectorRef}
               solrDatabases={solrDatabases}
               selectedSolrDatabase={selectedSolrDatabase}
-              onSolrDatabaseChange={onSolrDatabaseChange}
+              onSolrDatabaseChange={handleDatabaseChangeWithAutoOpen}
             />
           </Grid>
 
@@ -174,6 +203,7 @@ const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
               )}
             </Box>
             <AliasSelector
+              ref={aliasSelectorRef}
               aliases={aliases}
               selectedAlias={selectedAlias}
               onAliasChange={onAliasChange}
@@ -198,6 +228,8 @@ const DatabaseSelectorCard: React.FC<DatabaseSelectorCardProps> = ({
       </CardContent>
     </GradientPaper>
   );
-};
+});
+
+DatabaseSelectorCard.displayName = "DatabaseSelectorCard";
 
 export default React.memo(DatabaseSelectorCard);

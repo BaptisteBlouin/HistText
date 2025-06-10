@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from "react";
+import React, { useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Box, Paper, Fade, useTheme, useMediaQuery } from "@mui/material";
 import { useAuth } from "../../../hooks/useAuth";
 import { useResponsive } from "../../../lib/responsive-utils";
@@ -17,6 +17,10 @@ interface AliasSelectorProps {
   descriptions: Record<string, string>;
 }
 
+export interface AliasSelectorHandle {
+  openDropdown: () => void;
+}
+
 /**
  * AliasSelector component for selecting a Solr collection alias.
  * Includes dropdown, search, and selection features.
@@ -26,8 +30,8 @@ interface AliasSelectorProps {
  * @param onAliasChange - Callback when alias changes.
  * @param descriptions - Mapping from alias to description.
  */
-const AliasSelector: React.FC<AliasSelectorProps> = React.memo(
-  ({ aliases, selectedAlias, onAliasChange, descriptions }) => {
+const AliasSelector = forwardRef<AliasSelectorHandle, AliasSelectorProps>(
+  ({ aliases, selectedAlias, onAliasChange, descriptions }, ref) => {
     const theme = useTheme();
     const { isMobile, isTablet } = useResponsive();
     const { isAuthenticated } = useAuth();
@@ -45,16 +49,13 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(
       setIsLoading,
       toggleDropdown,
       closeDropdown,
+      openDropdown,
       clearSearch,
     } = useAliasSelectorState();
 
     // Get processed collection objects and selected collection details
     const { processedCollections, selectedCollection } =
       useProcessedCollections(aliases, descriptions, selectedAlias, searchTerm);
-
-    // Close dropdown on outside click, and handle ESC key & search input focus
-    useClickOutside(dropdownRef, closeDropdown);
-    useAliasSelectorKeyboard(isOpen, closeDropdown, searchInputRef);
 
     /**
      * Handle selecting a collection from the list.
@@ -71,6 +72,35 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(
       },
       [onAliasChange, closeDropdown, setIsLoading],
     );
+
+    /**
+     * Handle selecting the first filtered collection (for Enter key).
+     */
+    const handleSelectFirst = useCallback(() => {
+      if (processedCollections.length > 0) {
+        handleCollectionSelect(processedCollections[0].name);
+      }
+    }, [processedCollections, handleCollectionSelect]);
+
+    // Expose openDropdown function through ref
+    useImperativeHandle(ref, () => ({
+      openDropdown,
+    }), [openDropdown]);
+
+    // Close dropdown on outside click, and handle ESC key & search input focus
+    useClickOutside(dropdownRef, closeDropdown);
+    useAliasSelectorKeyboard(isOpen, closeDropdown, searchInputRef, handleSelectFirst);
+
+    // Auto-focus search input when dropdown opens
+    useEffect(() => {
+      if (isOpen && searchInputRef.current) {
+        // Small delay to ensure the dropdown is rendered
+        const timer = setTimeout(() => {
+          searchInputRef.current?.focus();
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+    }, [isOpen]);
 
     /**
      * Handle clearing the current selection.
@@ -153,9 +183,9 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(
         </style>
       </Box>
     );
-  },
+  }
 );
 
 AliasSelector.displayName = "AliasSelector";
 
-export default AliasSelector;
+export default React.memo(AliasSelector);

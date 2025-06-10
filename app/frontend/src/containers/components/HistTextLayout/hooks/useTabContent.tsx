@@ -47,14 +47,15 @@ export const useTabContent = (
    * Memoized action for the EmptyState, disabled when in fullscreen.
    */
   const emptyStateAction = useMemo(() => {
-    if (fullscreenState.isAnyFullscreen) return undefined;
-
+    // Always show the action if we have the function - it can handle fullscreen mode
+    if (!actions.openDatabaseSelector) return undefined;
+    
     return {
-      label: "Choose Data Source",
+      label: fullscreenState.isAnyFullscreen ? "Exit Fullscreen & Choose Data Source" : "Choose Data Source",
       icon: <Search />,
-      onClick: () => {},
+      onClick: actions.openDatabaseSelector,
     };
-  }, [fullscreenState.isAnyFullscreen]);
+  }, [fullscreenState.isAnyFullscreen, actions.openDatabaseSelector]);
 
   /**
    * Returns the content for a given tab, including empty states and loading indicators.
@@ -65,7 +66,7 @@ export const useTabContent = (
 
       switch (tabIndex) {
         case TABS.QUERY:
-          if (data.selectedAlias && data.metadata.length > 0) {
+          if (data.selectedAlias && data.metadata?.length > 0) {
             return (
               <Box sx={tabContentStyles}>
                 <MetadataForm

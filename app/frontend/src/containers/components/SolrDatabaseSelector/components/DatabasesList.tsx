@@ -52,48 +52,6 @@ const DatabasesList: React.FC<DatabasesListProps> = React.memo(
 
     return (
       <Box sx={{ maxHeight: "400px", overflow: "auto" }}>
-        {/* Default Option */}
-        <Card
-          variant="outlined"
-          onClick={() => onDatabaseSelect(null)}
-          sx={{
-            m: 1,
-            cursor: "pointer",
-            borderRadius: 2,
-            border: selectedSolrDatabase === null ? "2px solid" : "1px solid",
-            borderColor:
-              selectedSolrDatabase === null ? "secondary.main" : "divider",
-            bgcolor:
-              selectedSolrDatabase === null ? "secondary.light" : "transparent",
-            transition: "all 0.2s ease",
-            "&:hover": {
-              bgcolor:
-                selectedSolrDatabase === null
-                  ? "secondary.light"
-                  : "action.hover",
-              transform: "translateX(4px)",
-              boxShadow: theme.shadows[2],
-            },
-          }}
-        >
-          <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Avatar sx={{ bgcolor: "grey.300", color: "grey.600" }}>
-                <DnsRounded />
-              </Avatar>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  {config.solr_selector_sentence || "Select a database..."}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Choose from the available databases below
-                </Typography>
-              </Box>
-              {selectedSolrDatabase === null && <Check color="secondary" />}
-            </Box>
-          </CardContent>
-        </Card>
-
         {/* Database Options */}
         {processedDatabases.map((dbInfo, index) => (
           <Zoom
