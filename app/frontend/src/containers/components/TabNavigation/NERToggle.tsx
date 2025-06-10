@@ -1,5 +1,5 @@
 import React from "react";
-import { Tooltip, Fab } from "@mui/material";
+import { Tooltip, Fab, Box } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 
 interface NERToggleProps {
@@ -24,24 +24,41 @@ const NERToggle: React.FC<NERToggleProps> = ({
   }
 
   return (
-    <Tooltip
-      title={viewNER ? "Hide NER highlighting" : "Show NER highlighting"}
+    <Box
+      sx={{
+        position: "fixed",
+        bottom: isAnyFullscreen ? 24 : 24,
+        right: isAnyFullscreen ? 24 : 24,
+        zIndex: 1300, // Higher than most Material-UI components
+        display: "flex",
+        flexDirection: "column",
+        gap: 1,
+      }}
     >
-      <Fab
-        onClick={onToggleNER}
-        size="medium"
-        sx={{
-          position: "absolute",
-          bottom: -28,
-          right: isAnyFullscreen ? 80 : 24,
-          bgcolor: viewNER ? "error.main" : "primary.main",
-          "&:hover": { bgcolor: viewNER ? "error.dark" : "primary.dark" },
-          zIndex: 1000,
-        }}
+      <Tooltip
+        title={viewNER ? "Hide NER highlighting" : "Show NER highlighting"}
+        placement="left"
       >
-        {viewNER ? <VisibilityOff /> : <Visibility />}
-      </Fab>
-    </Tooltip>
+        <Fab
+          onClick={onToggleNER}
+          size="medium"
+          sx={{
+            bgcolor: viewNER ? "error.main" : "primary.main",
+            color: "white",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+            transition: "all 0.3s ease",
+            transform: "scale(1)",
+            "&:hover": {
+              bgcolor: viewNER ? "error.dark" : "primary.dark",
+              transform: "scale(1.05)",
+              boxShadow: "0 6px 25px rgba(0,0,0,0.4)",
+            },
+          }}
+        >
+          {viewNER ? <VisibilityOff /> : <Visibility />}
+        </Fab>
+      </Tooltip>
+    </Box>
   );
 };
 

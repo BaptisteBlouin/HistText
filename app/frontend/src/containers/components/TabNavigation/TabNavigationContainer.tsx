@@ -82,7 +82,7 @@ const TabNavigationContainer: React.FC<TabNavigationContainerProps> = ({
         borderColor: "divider",
         bgcolor: "background.paper",
         position: "relative",
-        overflow: "hidden",
+        overflow: "visible",
       }}
     >
       <Box

@@ -8,6 +8,7 @@ import { RecoveryPage } from "./containers/RecoveryPage";
 import { ResetPage } from "./containers/ResetPage";
 import { ProtectedRoute } from "./components/RouteGuards";
 import { LogoutButton } from "./components/LogoutButton";
+import { KeyboardShortcutsHelp } from "./components/ui";
 import React, { useState } from "react";
 import "./App.css";
 import "./styles/ag-grid-dark-theme.css";
@@ -691,6 +692,9 @@ const AppContent = () => {
           />
         </Routes>
       </Box>
+      
+      {/* Global Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp />
     </Box>
   );
 };

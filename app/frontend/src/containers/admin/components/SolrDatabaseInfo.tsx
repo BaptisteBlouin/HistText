@@ -30,6 +30,7 @@ import {
   Badge,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams, GridSelectionModel } from "@mui/x-data-grid";
+import { SkeletonLoader, CopyToClipboard } from "../../../components/ui";
 import {
   Add,
   Edit,
@@ -742,13 +743,20 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     {
       field: "collection_name",
       headerName: "Collection",
-      width: 180,
+      width: 220,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <DataObject fontSize="small" color="primary" />
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
             {highlightText(params.value, search)}
           </Typography>
+          <CopyToClipboard 
+            text={params.value} 
+            variant="icon" 
+            size="small" 
+            showToast={false}
+            tooltipTitle="Copy collection name"
+          />
         </Box>
       ),
     },
@@ -1053,16 +1061,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
         {/* Table of collection info */}
         <Paper sx={{ height: 600, borderRadius: 3, overflow: "hidden" }}>
           {loading ? (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-              }}
-            >
-              <CircularProgress />
-            </Box>
+            <SkeletonLoader variant="admin" rows={10} />
           ) : (
             <DataGrid
               rows={filteredInfos}

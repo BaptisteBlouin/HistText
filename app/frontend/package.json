@@ -1,6 +1,6 @@
 {
   "name": "histtext",
-  "version": "0.0.0",
+  "version": "2.0.0",
   "private": true,
   "dependencies": {
     "@ag-grid-community/client-side-row-model": "^32.3.3",
