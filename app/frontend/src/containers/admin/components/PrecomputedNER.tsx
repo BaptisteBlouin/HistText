@@ -384,7 +384,7 @@ const PrecomputeNER: React.FC = () => {
     const cacheModelName = getCacheModelName(modelName);
 
     // Build NER command
-    let nerCmd = `python -m histtext_toolkit.main --solr-host ${solrHost} --solr-port ${solrPort} --cache-dir "${cacheDir}" ner "${collectionName}" --model-name "${modelName}" --model-type "${modelType}" --text-field "${textField}"`;
+    let nerCmd = `python -m histtext_toolkit.cli ner "${collectionName}" --solr-host ${solrHost} --solr-port ${solrPort} --cache-dir "${cacheDir}" --model-name "${modelName}" --model-type "${modelType}" --text-field "${textField}"`;
 
     // Add optional parameters
     if (filterQuery) {
@@ -411,7 +411,7 @@ const PrecomputeNER: React.FC = () => {
     setNerCommand(nerCmd);
 
     // Generate upload command
-    const uploadCmd = `python -m histtext_toolkit.main --solr-host ${solrHost} --solr-port ${solrPort} upload "${collectionName}-ner" "${cacheDir}/${cacheModelName}/${collectionName}/${textField}/*.jsonl" --schema "${cacheDir}/${collectionName}-ner.yaml"`;
+    const uploadCmd = `python -m histtext_toolkit.cli upload "${collectionName}-ner" --solr-host ${solrHost} --solr-port ${solrPort}  "${cacheDir}/${cacheModelName}/${collectionName}/${textField}/*.jsonl" --schema "${cacheDir}/${collectionName}-ner.yaml"`;
 
     setUploadCommand(uploadCmd);
   };

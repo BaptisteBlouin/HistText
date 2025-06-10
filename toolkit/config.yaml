@@ -4,7 +4,7 @@
 # Solr connection settings
 solr:
   host: localhost
-  port: 8983
+  port: 8982
   username: null
   password: null
 

@@ -52,31 +52,16 @@ class NERProcessor:
         empty_count = 0
         error_count = 0
         
-        # Sample first few documents for detailed logging
-        sample_doc_ids = list(documents.keys())[:2] if len(documents) > 0 else []
-        
         for doc_id, text in tqdm(documents.items(), desc="Processing documents"):
             try:
                 # Check for empty or whitespace-only text
                 if not text or text.isspace():
                     empty_count += 1
-                    if doc_id in sample_doc_ids:
-                        logger.debug(f"Skipping empty document {doc_id}")
                     continue
-                
-                # Log sample document processing
-                if doc_id in sample_doc_ids:
-                    logger.info(f"Processing sample document {doc_id} (length: {len(text)})")
                 
                 # Extract entities using the model
                 entities = self.model.extract_entities(text, entity_types)
                 processed_count += 1
-                
-                # Log entities found for sample documents
-                if doc_id in sample_doc_ids and entities:
-                    logger.info(f"Found {len(entities)} entities in sample document {doc_id}")
-                    for i, ent in enumerate(entities[:3]):  # Show first 3
-                        logger.info(f"  - '{ent.text}' ({ent.labels[0] if ent.labels else 'NO_LABEL'})")
                 
                 if entities:
                     total_entities += len(entities)
@@ -96,23 +81,23 @@ class NERProcessor:
                         if include_label_stats:
                             all_labels.append(original_label)
                     
-                    # Create flat document structure
+                    # Create flat document structure with new format
+                    ner_id = f"ner-{doc_id}"
                     flat_doc = {
-                        "doc_id": [doc_id] * len(entities),
+                        "id": ner_id,
+                        "doc_id": [doc_id],  # Single item in list
                         "t": [entity.text for entity in entities],
                         "l": processed_labels,
                         "s": [self._convert_to_serializable(entity.start_pos) for entity in entities],
                         "e": [self._convert_to_serializable(entity.end_pos) for entity in entities],
-                        "c": [self._convert_to_serializable(entity.confidence) for entity in entities]
+                        "c": [self._convert_to_serializable(entity.confidence) for entity in entities],
+                        "_root_": ner_id
                     }
                     flat_docs.append(flat_doc)
             
             except Exception as e:
                 error_count += 1
                 logger.error(f"Error processing document {doc_id}: {e}")
-                if doc_id in sample_doc_ids:
-                    import traceback
-                    logger.debug(f"Error traceback: {traceback.format_exc()}")
         
         # Summary logging
         logger.info(f"Processed {processed_count} documents ({empty_count} empty, {error_count} errors)")
@@ -252,7 +237,7 @@ async def precompute_ner(
     try:
         # Test model with sample data first - AVOID OVERLAP WITH BATCH PROCESSING
         logger.info("Testing model with sample data from collection...")
-        
+        '''
         # Calculate test offset to avoid overlap with batch processing
         if start == 0:
             # If starting from beginning, use documents beyond the first batch
@@ -299,7 +284,7 @@ async def precompute_ner(
             # Show sample text
             for doc_id, text in list(test_docs.items())[:2]:
                 logger.warning(f"Sample text from {doc_id}: {repr(text[:200])}")
-        
+        '''
         # Process batches
         with tqdm(desc="Processing batches", unit="batch") as pbar:
             while num_batches is None or current_batch < num_batches:
@@ -315,6 +300,7 @@ async def precompute_ner(
                     break
                 
                 # Filter out documents already processed in test phase
+                '''
                 if processed_doc_ids:
                     original_count = len(documents)
                     documents = {
@@ -324,7 +310,7 @@ async def precompute_ner(
                     filtered_count = original_count - len(documents)
                     if filtered_count > 0:
                         logger.info(f"Filtered out {filtered_count} documents already processed in test phase")
-                
+                '''
                 if not documents:
                     logger.info("All documents in batch already processed, moving to next batch")
                     current_batch += 1

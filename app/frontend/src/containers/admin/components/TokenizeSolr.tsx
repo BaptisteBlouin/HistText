@@ -189,11 +189,11 @@ const TokenizeSolr: React.FC = () => {
    * Generates tokenization and upload commands from the form fields.
    */
   const handleGenerate = () => {
-    const tokenizeCmd = `python -m histtext_toolkit.main --solr-host ${solrHost} --solr-port ${solrPort} --cache-dir "${cacheDir}" tokenize-solr "${collectionName}" --model-name "${modelName}" --model-type "${modelType}" --text-field "${textField}"`;
+    const tokenizeCmd = `python -m histtext_toolkit.cli tokenize-solr "${collectionName}" --solr-host ${solrHost} --solr-port ${solrPort} --cache-dir "${cacheDir}" --model-name "${modelName}" --model-type "${modelType}" --text-field "${textField}"`;
 
     setTokenizeCommand(tokenizeCmd);
 
-    const uploadCmd = `python -m histtext_toolkit.main --solr-host ${solrHost} --solr-port ${solrPort} upload ${collectionName}-tok "${cacheDir}/${modelName}/${collectionName}/${textField}/"*.jsonl --schema "${cacheDir}/${collectionName}.yaml"`;
+    const uploadCmd = `python -m histtext_toolkit.cli  upload ${collectionName}-tok --solr-host ${solrHost} --solr-port ${solrPort} "${cacheDir}/${modelName}/${collectionName}/${textField}/"*.jsonl --schema "${cacheDir}/${collectionName}.yaml"`;
 
     setUploadCommand(uploadCmd);
   };

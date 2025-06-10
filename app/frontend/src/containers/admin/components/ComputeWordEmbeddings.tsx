@@ -206,7 +206,7 @@ const ComputeWordEmbeddings: React.FC = () => {
    * Generates the embeddings command and stores it in state.
    */
   const handleGenerate = () => {
-    let embeddingsCmd = `python -m histtext_toolkit.main --solr-host ${solrHost} --solr-port ${solrPort} compute-word-embeddings "${collectionName}" "${outputDir}/${outputName}" --text-field "${textField}"`;
+    let embeddingsCmd = `python -m histtext_toolkit.cli compute-word-embeddings "${collectionName}" --solr-host ${solrHost} --solr-port ${solrPort} "${outputDir}/${outputName}" --text-field "${textField}"`;
 
     if (autoConfig) embeddingsCmd += ` --auto-config`;
     if (noHeader) embeddingsCmd += ` --no-header`;

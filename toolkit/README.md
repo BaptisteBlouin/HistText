@@ -261,7 +261,7 @@ Invoke the toolkit via the console script or directly as a module:
 histtext-toolkit [GLOBAL OPTIONS] <command> [COMMAND OPTIONS]
 
 # Or with Python's module flag
-python -m histtext_toolkit.main [GLOBAL OPTIONS] <command> [COMMAND OPTIONS]
+python -m histtext_toolkit.cli [GLOBAL OPTIONS] <command> [COMMAND OPTIONS]
 ```
 
 ### Web Interface
@@ -346,7 +346,7 @@ The toolkit provides commands in several categories:
 ### Example Command Structure
 
 ```bash
-python -m histtext_toolkit.main \
+python -m histtext_toolkit.cli \
   --solr-host localhost --solr-port 8983 \
   upload test-collection ./data/*.jsonl --schema ./schemas/test.yaml
 ```
@@ -358,7 +358,7 @@ python -m histtext_toolkit.main \
 Upload JSONL files to a Solr collection:
 
 ```bash
-python -m histtext_toolkit.main upload my-collection ./data/*.jsonl --schema schema.yaml --batch-size 500
+python -m histtext_toolkit.cli upload my-collection ./data/*.jsonl --schema schema.yaml --batch-size 500
 ```
 
 **Options:**
@@ -372,7 +372,7 @@ python -m histtext_toolkit.main upload my-collection ./data/*.jsonl --schema sch
 Upload precomputed NER annotations to a Solr collection:
 
 ```bash
-python -m histtext_toolkit.main upload-ner target-collection model-name source-collection text-field
+python -m histtext_toolkit.cli upload-ner target-collection model-name source-collection text-field
 ```
 
 **Options:**
@@ -387,7 +387,7 @@ python -m histtext_toolkit.main upload-ner target-collection model-name source-c
 Inspect the content of JSONL files:
 
 ```bash
-python -m histtext_toolkit.main examine-jsonl ./cache/model/collection/field/*.jsonl -n 3
+python -m histtext_toolkit.cli examine-jsonl ./cache/model/collection/field/*.jsonl -n 3
 ```
 
 **Options:**
@@ -401,7 +401,7 @@ python -m histtext_toolkit.main examine-jsonl ./cache/model/collection/field/*.j
 Tokenize text in a CSV file:
 
 ```bash
-python -m histtext_toolkit.main tokenize-csv bert-base input.csv output.csv --text-column "Text"
+python -m histtext_toolkit.cli tokenize-csv bert-base input.csv output.csv --text-column "Text"
 ```
 
 **Options:**
@@ -416,7 +416,7 @@ python -m histtext_toolkit.main tokenize-csv bert-base input.csv output.csv --te
 Tokenize a text string:
 
 ```bash
-python -m histtext_toolkit.main tokenize-text bert-base "This is a sample text to tokenize."
+python -m histtext_toolkit.cli tokenize-text bert-base "This is a sample text to tokenize."
 ```
 
 **Options:**
@@ -429,7 +429,7 @@ python -m histtext_toolkit.main tokenize-text bert-base "This is a sample text t
 Tokenize documents from a Solr collection and cache the results:
 
 ```bash
-python -m histtext_toolkit.main tokenize-solr my-collection --model-name bert-base --text-field text
+python -m histtext_toolkit.cli tokenize-solr my-collection --model-name bert-base --text-field text
 ```
 
 **Options:**
@@ -450,7 +450,7 @@ python -m histtext_toolkit.main tokenize-solr my-collection --model-name bert-ba
 Precompute NER annotations for a collection:
 
 ```bash
-python -m histtext_toolkit.main precompute-ner my-collection --model-name spacy-en --text-field text
+python -m histtext_toolkit.cli precompute-ner my-collection --model-name spacy-en --text-field text
 ```
 
 **Options:**
@@ -473,7 +473,7 @@ See the [Embedding Features](#embedding-features) section for detailed informati
 #### Compute Document Embeddings
 
 ```bash
-python -m histtext_toolkit.main compute-embeddings my-collection output/embeddings \
+python -m histtext_toolkit.cli compute-embeddings my-collection output/embeddings \
   --model-name all-MiniLM-L6-v2 --model-type sentence_transformers \
   --text-field content --output-format binary
 ```
@@ -481,7 +481,7 @@ python -m histtext_toolkit.main compute-embeddings my-collection output/embeddin
 #### Perform Semantic Search
 
 ```bash
-python -m histtext_toolkit.main semantic-search research-papers "climate change mitigation strategies" \
+python -m histtext_toolkit.cli semantic-search research-papers "climate change mitigation strategies" \
   --model-name all-mpnet-base-v2 --model-type sentence_transformers \
   --text-field abstract --top-k 15
 ```
@@ -489,14 +489,14 @@ python -m histtext_toolkit.main semantic-search research-papers "climate change 
 #### Generate Word Embeddings
 
 ```bash
-python -m histtext_toolkit.main compute-word-embeddings historical-texts embeddings/word-vectors \
+python -m histtext_toolkit.cli compute-word-embeddings historical-texts embeddings/word-vectors \
   --text-field full_text --method word2vec --dim 200 --window 10
 ```
 
 #### Build Embedding Index
 
 ```bash
-python -m histtext_toolkit.main build-embedding-index my-collection embeddings-index \
+python -m histtext_toolkit.cli build-embedding-index my-collection embeddings-index \
   --model-name sentence-transformer --text-field content
 ```
 
@@ -505,19 +505,19 @@ python -m histtext_toolkit.main build-embedding-index my-collection embeddings-i
 #### List Available Models
 
 ```bash
-python -m histtext_toolkit.main list-models
+python -m histtext_toolkit.cli list-models
 ```
 
 #### Verify Solr Connection
 
 ```bash
-python -m histtext_toolkit.main verify-solr my-collection
+python -m histtext_toolkit.cli verify-solr my-collection
 ```
 
 #### Clear Cache
 
 ```bash
-python -m histtext_toolkit.main clear-cache --model bert-base --collection my-collection
+python -m histtext_toolkit.cli clear-cache --model bert-base --collection my-collection
 ```
 
 ## API Reference
@@ -593,19 +593,19 @@ Document embeddings represent entire texts as dense vectors, enabling semantic s
 
 1. **FastText** - Efficient word embeddings with subword information
    ```bash
-   python -m histtext_toolkit.main compute-embeddings collection output/embeddings \
+   python -m histtext_toolkit.cli compute-embeddings collection output/embeddings \
      --model-name cc.en.300.bin --model-type fasttext --text-field text
    ```
 
 2. **Word2Vec** - Classic word embeddings model (via Gensim)
    ```bash
-   python -m histtext_toolkit.main compute-embeddings collection output/embeddings \
+   python -m histtext_toolkit.cli compute-embeddings collection output/embeddings \
      --model-name word2vec-google-news-300 --model-type word2vec --text-field text
    ```
 
 3. **Sentence Transformers** - State-of-the-art semantic representations
    ```bash
-   python -m histtext_toolkit.main compute-embeddings collection output/embeddings \
+   python -m histtext_toolkit.cli compute-embeddings collection output/embeddings \
      --model-name all-MiniLM-L6-v2 --model-type sentence_transformers --text-field text
    ```
 
@@ -623,7 +623,7 @@ Document embeddings represent entire texts as dense vectors, enabling semantic s
 Perform semantic search within a collection using embeddings:
 
 ```bash
-python -m histtext_toolkit.main semantic-search collection "query text" \
+python -m histtext_toolkit.cli semantic-search collection "query text" \
   --model-name all-mpnet-base-v2 --model-type sentence_transformers \
   --text-field abstract --top-k 10
 ```
@@ -643,7 +643,7 @@ This computes the embedding for the query text and finds the most similar docume
 The toolkit can generate custom word embeddings directly from your text collections:
 
 ```bash
-python -m histtext_toolkit.main compute-word-embeddings collection output/word-vectors \
+python -m histtext_toolkit.cli compute-word-embeddings collection output/word-vectors \
   --text-field content --method word2vec --dim 200 --window 8 \
   --min-count 5 --output-format txt
 ```
@@ -759,8 +759,8 @@ cache:
 Or via command-line options:
 
 ```bash
-python -m histtext_toolkit.main --cache-dir ./my_cache upload collection data.jsonl
-python -m histtext_toolkit.main --cache-disabled tokenize-solr collection
+python -m histtext_toolkit.cli --cache-dir ./my_cache upload collection data.jsonl
+python -m histtext_toolkit.cli --cache-disabled tokenize-solr collection
 ```
 
 ### Checkpoint System
