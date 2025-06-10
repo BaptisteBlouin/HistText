@@ -176,7 +176,7 @@ useEffect(() => {
         className="ag-theme-alpine main-data-grid"
         style={{ height: "100%", width: "100%" }}
       >
-        <AgGridReact
+         <AgGridReact
           rowData={rowData}
           columnDefs={columnDefs}
           onGridReady={onGridReady}
@@ -190,9 +190,21 @@ useEffect(() => {
           rowSelection={isMobile ? "single" : "multiple"}
           suppressRowClickSelection={true}
           animateRows={!showConcordance && !isMobile}
-          rowBuffer={showConcordance ? 20 : isMobile ? 5 : 10}
+          rowBuffer={showConcordance ? 5 : isMobile ? 3 : 10}
+          suppressColumnVirtualisation={false} // Enable column virtualization for performance
+          headerHeight={isMobile ? 48 : 56}
+          rowHeight={isMobile ? 40 : 44}
+          
+          // Community edition performance optimizations
+          getRowId={(params) => params.data.id || String(params.data.id || Math.random())}
+          suppressPropertyNamesCheck={true}
+          
+          // Reduce unnecessary updates
           suppressScrollOnNewData={true}
-          suppressColumnVirtualisation={isMobile}
+          suppressHorizontalScroll={isMobile}
+          
+          // Cache optimizations
+          cacheQuickFilter={true}
         />
       </Box>
     </Paper>

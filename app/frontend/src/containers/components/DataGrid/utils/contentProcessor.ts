@@ -180,6 +180,7 @@ export const processContent = (
   showConcordance: boolean,
   mainTextColumn: string,
 ): ProcessedElement[] => {
+  // Early return for empty values
   if (!value && value !== 0) return [];
 
   let stringValue = "";
@@ -194,35 +195,27 @@ export const processContent = (
   }
 
   const documentId = data.id;
-
-  // Apply concordance for main text column when showing concordance mode
   const isMainTextColumn = field === mainTextColumn;
-  if (showConcordance && isMainTextColumn) {
-    const searchTerms = getSearchTermsForField(formData, field);
-    if (searchTerms.length > 0) {
-      stringValue = createConcordance(stringValue, searchTerms);
-    } else if (stringValue.length > 300) {
-      stringValue = stringValue.substring(0, 300) + "...";
-    }
-  }
 
-  // Get ALL highlight terms (field-specific + cross-field)
+  // Optimized cache key generation (keep full content processing)
   const highlightTerms = getHighlightTermsForField(formData, field);
+  const cacheKey = `${documentId}_${field}_${stringValue.slice(0, 50)}_${viewNER}_${showConcordance}_${highlightTerms.slice(0, 3).join("_")}`;
 
-  // Create cache key with all highlight terms
-  const cacheKey = `${documentId}_${field}_${stringValue.slice(0, 50)}_${viewNER}_${showConcordance}_${highlightTerms.join("_")}`;
-
-  // Check cache first
+  // Check cache first for performance
   if (contentCache.has(cacheKey)) {
     return contentCache.get(cacheKey);
   }
 
-  // Debug output for the first few cells (randomly, to avoid console spam)
-  if (Math.random() < 0.01) {
-    debugFormData(formData);
+  // Apply concordance - NO length limits
+  if (showConcordance && isMainTextColumn) {
+    const searchTerms = getSearchTermsForField(formData, field);
+    if (searchTerms.length > 0) {
+      stringValue = createConcordance(stringValue, searchTerms); // Process full content
+    }
+    // Remove the else truncation - process full content always
   }
 
-  // Process content with NER
+  // Process content with NER (existing logic) - NO limits
   let elements = processContentWithNER(
     stringValue,
     documentId,
@@ -232,8 +225,9 @@ export const processContent = (
     showConcordance,
   );
 
-  // Apply search highlighting with ALL terms
-  elements = processContentWithHighlights(elements, highlightTerms);
+  // Apply search highlighting with limited terms for performance (keep this optimization)
+  const limitedHighlightTerms = highlightTerms.slice(0, 10);
+  elements = processContentWithHighlights(elements, limitedHighlightTerms);
 
   // Cache the result
   contentCache.set(cacheKey, elements);

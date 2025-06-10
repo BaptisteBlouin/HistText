@@ -6,11 +6,20 @@ const MAX_CACHE_SIZE = 1000;
  */
 export const manageCacheSize = () => {
   if (contentCache.size > MAX_CACHE_SIZE) {
+    // Simple LRU-like cleanup - keep the most recent entries
     const entries = Array.from(contentCache.entries());
     contentCache.clear();
-    entries.slice(-500).forEach(([key, value]) => {
+    
+    // Keep the last 60% of entries to avoid frequent cleanups
+    const keepCount = Math.floor(MAX_CACHE_SIZE * 0.6);
+    entries.slice(-keepCount).forEach(([key, value]) => {
       contentCache.set(key, value);
     });
+    
+    // Only log in development to avoid production console spam
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Cache cleaned: ${entries.length} -> ${contentCache.size} entries`);
+    }
   }
 };
 
@@ -34,25 +43,31 @@ export const createConcordance = (
   const lowerText = text.toLowerCase();
   const matches: Array<{ start: number; end: number; term: string }> = [];
 
-  searchTerms.forEach((term) => {
+  const limitedTerms = searchTerms.slice(0, 5);
+
+  limitedTerms.forEach((term) => {
     if (term && typeof term === "string" && term.length > 1) {
       const lowerTerm = term.toLowerCase();
       let index = lowerText.indexOf(lowerTerm);
-      while (index !== -1) {
+      
+      // Find only the first match per term
+      if (index !== -1) {
         matches.push({
           start: index,
           end: index + lowerTerm.length,
           term: term,
         });
-        index = lowerText.indexOf(lowerTerm, index + 1);
       }
     }
   });
 
   if (matches.length === 0) {
-    return text.length > contextLength * 2
-      ? text.substring(0, contextLength * 2) + "..."
-      : text;
+    // For concordance mode, show truncated text with "..." when no matches
+    const fallbackLength = contextLength * 2;
+    if (text.length > fallbackLength) {
+      return text.substring(0, fallbackLength) + "...";
+    }
+    return text;
   }
 
   matches.sort((a, b) => a.start - b.start);
@@ -72,10 +87,23 @@ export const createConcordance = (
 
   let concordance = "";
   contexts.forEach((context, index) => {
-    if (index > 0) concordance += " ... ";
-    if (context.start > 0) concordance += "...";
+    // Add separator between different contexts
+    if (index > 0) {
+      concordance += " ... ";
+    }
+    
+    // Add left ellipsis if we're not starting from the beginning of the text
+    if (context.start > 0) {
+      concordance += "...";
+    }
+    
+    // Add the actual context content
     concordance += text.substring(context.start, context.end);
-    if (context.end < text.length) concordance += "...";
+    
+    // Add right ellipsis if we're not at the end of the text
+    if (context.end < text.length) {
+      concordance += "...";
+    }
   });
 
   return concordance;

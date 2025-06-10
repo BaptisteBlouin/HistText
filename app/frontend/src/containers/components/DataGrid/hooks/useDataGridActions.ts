@@ -1,14 +1,7 @@
-import { useCallback, useState } from "react";
+// Add debounced search for better performance
+import { useCallback, useState, useMemo } from "react";
 import { contentCache } from "../utils";
 
-/**
- * Custom hook providing actions and state for AG Grid data table:
- * - Handles search/filter, fullscreen, export CSV, selection, and cache control.
- *
- * @param results - Array of result objects displayed in the grid.
- * @param gridRef - Mutable ref to the AG Grid React instance.
- * @returns Actions and state for toolbar/grid control.
- */
 export const useDataGridActions = (
   results: any[],
   gridRef: React.MutableRefObject<any>,
@@ -17,52 +10,74 @@ export const useDataGridActions = (
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
 
-  /**
-   * Download current results as a CSV file.
-   */
-  const downloadCSV = useCallback(() => {
-    if (results.length === 0) return;
+  // Debounced search implementation for performance
+  const debouncedSearch = useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return (value: string) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (gridRef.current?.api) {
+          gridRef.current.api.setQuickFilter(value);
+        }
+      }, 150); // 150ms debounce for better performance
+    };
+  }, [gridRef]);
 
-    const headers = Object.keys(results[0]).filter(
-      (key) => !(key.startsWith("_") && key.endsWith("_")),
-    );
-    const csvRows = [headers.join(",")];
-
-    results.forEach((row) => {
-      const values = headers.map((header) => {
-        const value = row[header];
-        const stringValue =
-          value !== null && value !== undefined ? String(value) : "";
-        return `"${stringValue.replace(/"/g, '""')}"`;
-      });
-      csvRows.push(values.join(","));
-    });
-
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `histtext-data-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [results]);
-
-  /**
-   * Set the quick filter (search) in the grid.
-   */
+  // Optimized search handler
   const handleSearch = useCallback(
     (value: string) => {
       setSearchText(value);
-      if (gridRef.current?.api) {
-        gridRef.current.api.setQuickFilter(value);
-      }
+      debouncedSearch(value);
     },
-    [gridRef],
+    [debouncedSearch],
   );
 
-  /**
-   * Clear all filters and search text in the grid.
-   */
+  // Optimized CSV download with chunked processing
+  const downloadCSV = useCallback(() => {
+    if (results.length === 0) return;
+
+    // Process in chunks for large datasets
+    const chunkSize = 1000;
+    const headers = Object.keys(results[0]).filter(
+      (key) => !(key.startsWith("_") && key.endsWith("_")),
+    );
+    
+    let csvContent = headers.join(",") + "\n";
+
+    // Process results in chunks to avoid blocking the UI
+    const processChunk = (startIndex: number) => {
+      const endIndex = Math.min(startIndex + chunkSize, results.length);
+      
+      for (let i = startIndex; i < endIndex; i++) {
+        const row = results[i];
+        const values = headers.map((header) => {
+          const value = row[header];
+          const stringValue =
+            value !== null && value !== undefined ? String(value) : "";
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        });
+        csvContent += values.join(",") + "\n";
+      }
+
+      if (endIndex < results.length) {
+        // Use setTimeout to avoid blocking the main thread
+        setTimeout(() => processChunk(endIndex), 0);
+      } else {
+        // Download when complete
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `histtext-data-${new Date().toISOString().split("T")[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    processChunk(0);
+  }, [results]);
+
+  // Rest of the existing functions remain the same...
   const clearFilters = useCallback(() => {
     setSearchText("");
     if (gridRef.current?.api) {
@@ -72,36 +87,24 @@ export const useDataGridActions = (
     contentCache.clear();
   }, [gridRef]);
 
-  /**
-   * Select all rows in the grid.
-   */
   const selectAll = useCallback(() => {
     if (gridRef.current?.api) {
       gridRef.current.api.selectAll();
     }
   }, [gridRef]);
 
-  /**
-   * Deselect all rows in the grid.
-   */
   const deselectAll = useCallback(() => {
     if (gridRef.current?.api) {
       gridRef.current.api.deselectAll();
     }
   }, [gridRef]);
 
-  /**
-   * Auto-size all columns in the grid.
-   */
   const autoSizeColumns = useCallback(() => {
     if (gridRef.current?.api) {
       gridRef.current.api.autoSizeAllColumns();
     }
   }, [gridRef]);
 
-  /**
-   * Clear the content cache (used for cell rendering).
-   */
   const clearCache = useCallback(() => {
     contentCache.clear();
   }, []);

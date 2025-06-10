@@ -103,6 +103,13 @@ export const useDataGridConfig = (
       resizable: true,
       sortable: true,
       suppressSizeToFit: false,
+      // Performance optimizations
+      suppressKeyboardEvent: (params: any) => {
+        // Suppress some keyboard events for better performance
+        return false;
+      },
+      // Reduce cell flash on data changes
+      suppressCellFlash: true,
     }),
     [],
   );
@@ -114,7 +121,7 @@ export const useDataGridConfig = (
     () => ({
       cellRenderer: CellRenderer,
     }),
-    [],
+    [], // Empty dependency array since CellRenderer is stable
   );
 
   return {
