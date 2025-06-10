@@ -1,6 +1,7 @@
 import React, { useRef, useCallback } from "react";
 import { Box, Paper, Fade, useTheme, useMediaQuery } from "@mui/material";
 import { useAuth } from "../../../hooks/useAuth";
+import { useResponsive } from "../../../lib/responsive-utils";
 import { useAliasSelectorState } from "./hooks/useAliasSelectorState";
 import { useProcessedCollections } from "./hooks/useProcessedCollections";
 import { useAliasSelectorKeyboard } from "./hooks/useAliasSelectorKeyboard";
@@ -28,7 +29,7 @@ interface AliasSelectorProps {
 const AliasSelector: React.FC<AliasSelectorProps> = React.memo(
   ({ aliases, selectedAlias, onAliasChange, descriptions }) => {
     const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+    const { isMobile, isTablet } = useResponsive();
     const { isAuthenticated } = useAuth();
 
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -89,7 +90,11 @@ const AliasSelector: React.FC<AliasSelectorProps> = React.memo(
     return (
       <Box
         ref={containerRef}
-        sx={{ position: "relative", minWidth: isMobile ? "100%" : 300 }}
+        sx={{ 
+          position: "relative", 
+          minWidth: isMobile ? "100%" : isTablet ? 250 : 300,
+          width: "100%"
+        }}
       >
         <SelectorButton
           selectedCollection={selectedCollection}

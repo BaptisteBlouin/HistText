@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { History, Bookmark, Add, FolderOpen } from "@mui/icons-material";
 import { useSearchHistory } from "../../../hooks/useSearchHistory";
+import { useResponsive } from "../../../lib/responsive-utils";
 
 interface SearchHistoryFABProps {
   onOpenHistory: () => void;
@@ -25,6 +26,7 @@ const SearchHistoryFAB: React.FC<SearchHistoryFABProps> = ({
   hasCurrentSearch,
 }) => {
   const { stats } = useSearchHistory();
+  const { isMobile, isVerySmallMobile } = useResponsive();
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
 
   const actions = [
@@ -54,8 +56,9 @@ const SearchHistoryFAB: React.FC<SearchHistoryFABProps> = ({
       ariaLabel="Search History Actions"
       sx={{
         position: "fixed",
-        bottom: 24,
-        left: 24,
+        bottom: isMobile ? (isVerySmallMobile ? 70 : 80) : 24, // Position above mobile menu FAB
+        right: isMobile ? (isVerySmallMobile ? 12 : 16) : 24, // Move to right side on mobile to avoid menu FAB
+        left: isMobile ? 'auto' : 24, // Remove left positioning on mobile
         zIndex: 1000,
       }}
       icon={
@@ -66,16 +69,17 @@ const SearchHistoryFAB: React.FC<SearchHistoryFABProps> = ({
               color="primary"
               max={99}
             >
-              <FolderOpen />
+              <FolderOpen sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
             </Badge>
           }
-          openIcon={<FolderOpen />}
+          openIcon={<FolderOpen sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />}
         />
       }
       onOpen={() => setSpeedDialOpen(true)}
       onClose={() => setSpeedDialOpen(false)}
       open={speedDialOpen}
       direction="up"
+      size={isVerySmallMobile ? "small" : isMobile ? "medium" : "large"}
     >
       {actions.map((action) => (
         <SpeedDialAction

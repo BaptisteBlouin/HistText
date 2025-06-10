@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useMemo, useCallback } from "react";
 import { Box, Container, Paper, Fade } from "@mui/material";
 import { FullscreenContainer } from "../../../components/ui";
+import { useResponsive } from "../../../lib/responsive-utils";
 import DatabaseSelector from "../DatabaseSelector";
 import TabNavigation, { FullscreenMode } from "../TabNavigation";
 import LoadingOverlay from "../LoadingOverlay";
@@ -65,6 +66,7 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mainPaperRef = useRef<HTMLDivElement>(null);
+  const { isMobile, isTablet, getModalWidth } = useResponsive();
 
   // Fullscreen state calculation (native or browser)
   const fullscreenState = useMemo(() => {
@@ -105,6 +107,10 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
           maxWidth:
             containerConfig.maxWidth === true ? "xl" : containerConfig.maxWidth,
         }}
+        sx={{
+          px: { xs: 1, sm: 2, md: 3 },
+          py: { xs: 1, sm: 2 },
+        }}
       >
         {/* Database Selector - Hidden in fullscreen */}
         {!fullscreenState.isAnyFullscreen && (
@@ -135,7 +141,15 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
           fullscreenMode={fullscreenMode}
         />
 
-        <Paper ref={mainPaperRef} sx={paperStyles}>
+        <Paper 
+          ref={mainPaperRef} 
+          sx={{
+            ...paperStyles,
+            borderRadius: { xs: 1, sm: 2 },
+            mx: { xs: 0, sm: 0 },
+            p: { xs: 1, sm: 2, md: 3 },
+          }}
+        >
           <TabNavigation
             activeTab={activeTab}
             onTabChange={(e, newValue) => setActiveTab(newValue)}

@@ -23,6 +23,7 @@ import {
   Stack,
   LinearProgress,
   Alert,
+  Fab,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -42,6 +43,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import BreadcrumbNavigation from "../../components/ui/BreadcrumbNavigation";
 import { useThemeMode } from "../../contexts/ThemeContext";
+import { useResponsive } from "../../lib/responsive-utils";
 
 const Users = React.lazy(() => import("./components/Users"));
 const RolePermissions = React.lazy(
@@ -309,7 +311,7 @@ const AdminPanelContent: React.FC = () => {
   useAuthCheck();
   const auth = useAuth();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const { isMobile, isTablet } = useResponsive();
   const isAdmin = auth.session?.hasRole("Admin");
   const { darkMode, toggleDarkMode } = useThemeMode();
 
@@ -511,7 +513,7 @@ const AdminPanelContent: React.FC = () => {
   const sidebarContent = (
     <Box
       sx={{
-        width: 280,
+        width: isMobile ? 280 : isTablet ? 260 : 280,
         height: "100%",
         display: "flex",
         flexDirection: "column",
@@ -521,7 +523,7 @@ const AdminPanelContent: React.FC = () => {
     >
       <Box
         sx={{
-          p: 3,
+          p: { xs: 2, sm: 3 },
           borderBottom: "1px solid",
           borderColor: "divider",
           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -529,16 +531,29 @@ const AdminPanelContent: React.FC = () => {
           textAlign: "center",
         }}
       >
-        <AdminPanelSettings sx={{ fontSize: 48, mb: 1, opacity: 0.9 }} />
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Admin Panel
+        <AdminPanelSettings sx={{ 
+          fontSize: { xs: 40, sm: 48 }, 
+          mb: 1, 
+          opacity: 0.9 
+        }} />
+        <Typography 
+          variant={isMobile ? "subtitle1" : "h6"} 
+          sx={{ 
+            fontWeight: 700, 
+            mb: 0.5,
+            fontSize: { xs: '1.125rem', sm: '1.25rem' }
+          }}
+        >
+          {isMobile ? "Admin" : "Admin Panel"}
         </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.8 }}>
-          System administration and configuration
-        </Typography>
+        {!isMobile && (
+          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+            System administration and configuration
+          </Typography>
+        )}
       </Box>
 
-      <List sx={{ flex: 1, py: 2, px: 1 }}>
+      <List sx={{ flex: 1, py: { xs: 1.5, sm: 2 }, px: 1 }}>
         {mainTabs.map((tab, index) => (
           <ListItem
             key={index}
@@ -550,7 +565,8 @@ const AdminPanelContent: React.FC = () => {
               borderRadius: 3,
               mx: 1,
               my: 0.5,
-              p: 1.5,
+              p: { xs: 1.25, sm: 1.5 },
+              minHeight: { xs: 48, sm: 56 },
               background:
                 mainTab === index
                   ? `linear-gradient(135deg, ${(theme.palette as any)[tab.color]?.main || theme.palette.primary.main} 0%, ${(theme.palette as any)[tab.color]?.dark || theme.palette.primary.dark} 100%)`
@@ -573,9 +589,9 @@ const AdminPanelContent: React.FC = () => {
             <ListItemIcon
               sx={{
                 color: "inherit",
-                minWidth: 48,
+                minWidth: { xs: 40, sm: 48 },
                 "& .MuiSvgIcon-root": {
-                  fontSize: "1.5rem",
+                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
                   filter:
                     mainTab === index
                       ? "drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
@@ -586,13 +602,14 @@ const AdminPanelContent: React.FC = () => {
               {tab.icon}
             </ListItemIcon>
             <ListItemText
-              primary={tab.label}
+              primary={isMobile && tab.label.length > 12 ? 
+                tab.label.split(' ')[0] : tab.label}
               primaryTypographyProps={{
                 fontWeight: mainTab === index ? 700 : 600,
-                fontSize: "0.95rem",
+                fontSize: { xs: "0.875rem", sm: "0.95rem" },
               }}
             />
-            {mainTab === index && (
+            {mainTab === index && !isMobile && (
               <Chip
                 size="small"
                 label="Active"
@@ -632,20 +649,21 @@ const AdminPanelContent: React.FC = () => {
     >
       {isMobile ? (
         <>
-          <IconButton
+          <Fab
             onClick={() => setMobileDrawerOpen(true)}
+            size="medium"
             sx={{
               position: "fixed",
-              top: 16,
-              left: 16,
-              zIndex: theme.zIndex.speedDial,
-              bgcolor: "primary.main",
+              top: isMobile ? 76 : 16, // Position below main app menu FAB
+              left: isMobile ? 16 : 16,
+              zIndex: 1001, // Higher than main app FAB
+              bgcolor: "secondary.main",
               color: "white",
-              "&:hover": { bgcolor: "primary.dark" },
+              "&:hover": { bgcolor: "secondary.dark" },
             }}
           >
-            <MenuIcon />
-          </IconButton>
+            <AdminPanelSettings />
+          </Fab>
 
           <Drawer
             anchor="left"
@@ -685,19 +703,26 @@ const AdminPanelContent: React.FC = () => {
         sx={{
           flex: 1,
           overflow: "auto",
-          pt: isMobile ? 8 : 0,
+          pt: isMobile ? 10 : 0, // Account for admin FAB position
+          px: { xs: 1, sm: 0 },
           bgcolor: "background.default",
           minHeight: "100vh",
         }}
       >
-        <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Container 
+          maxWidth="xl" 
+          sx={{ 
+            py: { xs: 2, sm: 4 },
+            px: { xs: 1, sm: 3 }
+          }}
+        >
           <Fade in={true} timeout={500}>
             <Paper
               elevation={0}
               sx={{
                 bgcolor: "background.paper",
-                borderRadius: 4,
-                p: 3,
+                borderRadius: { xs: 2, sm: 4 },
+                p: { xs: 2, sm: 3 },
                 minHeight: "calc(100vh - 8rem)",
                 border: 1,
                 borderColor: "divider",

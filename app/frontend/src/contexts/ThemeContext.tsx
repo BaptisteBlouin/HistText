@@ -63,6 +63,57 @@ export const CustomThemeProvider: React.FC<CustomThemeProviderProps> = ({ childr
         selected: darkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
       },
     },
+    typography: {
+      h1: {
+        fontSize: '2.5rem',
+        '@media (max-width:600px)': {
+          fontSize: '2rem',
+        },
+      },
+      h2: {
+        fontSize: '2rem',
+        '@media (max-width:600px)': {
+          fontSize: '1.75rem',
+        },
+      },
+      h3: {
+        fontSize: '1.75rem',
+        '@media (max-width:600px)': {
+          fontSize: '1.5rem',
+        },
+      },
+      h4: {
+        fontSize: '1.5rem',
+        '@media (max-width:600px)': {
+          fontSize: '1.25rem',
+        },
+      },
+      h5: {
+        fontSize: '1.25rem',
+        '@media (max-width:600px)': {
+          fontSize: '1.125rem',
+        },
+      },
+      h6: {
+        fontSize: '1.125rem',
+        '@media (max-width:600px)': {
+          fontSize: '1rem',
+        },
+      },
+      body1: {
+        fontSize: '1rem',
+        '@media (max-width:600px)': {
+          fontSize: '0.875rem',
+        },
+      },
+      body2: {
+        fontSize: '0.875rem',
+        '@media (max-width:600px)': {
+          fontSize: '0.8125rem',
+        },
+      },
+    },
+    spacing: 8,
     components: {
       MuiCard: {
         styleOverrides: {
@@ -315,6 +366,43 @@ export const CustomThemeProvider: React.FC<CustomThemeProviderProps> = ({ childr
             },
             '&:hover': {
               backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+            },
+          },
+        },
+      },
+      // Responsive Container Overrides
+      MuiContainer: {
+        styleOverrides: {
+          root: {
+            paddingLeft: '16px',
+            paddingRight: '16px',
+            '@media (max-width:600px)': {
+              paddingLeft: '12px',
+              paddingRight: '12px',
+            },
+          },
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+            backgroundImage: 'none',
+            '@media (max-width:768px)': {
+              borderRadius: '8px !important',
+              margin: '8px',
+            },
+          },
+        },
+      },
+      // Enhanced responsive components
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            '@media (max-width:600px)': {
+              margin: '8px',
+              maxHeight: 'calc(100vh - 16px)',
+              borderRadius: '12px !important',
             },
           },
         },

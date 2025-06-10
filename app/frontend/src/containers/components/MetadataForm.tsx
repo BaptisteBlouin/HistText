@@ -15,6 +15,7 @@ import axios from "axios";
 import config from "../../../config.json";
 import { buildQueryString } from "./buildQueryString";
 import { useAuth } from "../../hooks/useAuth";
+import { useResponsive } from "../../lib/responsive-utils";
 import { useEmbeddings } from "./MetadataForm/hooks/useEmbeddings";
 import { useSmartValidation } from "../../hooks/useSmartValidation";
 import { useSearchHistory, SavedSearch } from "../../hooks/useSearchHistory";
@@ -111,6 +112,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   onAliasChange,
 }) => {
   const { accessToken } = useAuth();
+  const { isMobile, isTablet } = useResponsive();
   const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(
     null,
   );
@@ -432,19 +434,24 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
         onOpenEmbeddingModal={handleOpenEmbeddingModal}
       />
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
+      <Card sx={{ mb: { xs: 2, sm: 3 } }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           <Box component="form" onSubmit={handleSubmitWithHistory}>
             <Typography
-              variant="h6"
+              variant={isMobile ? "subtitle1" : "h6"}
               gutterBottom
-              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+              sx={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 1,
+                fontSize: { xs: '1.125rem', sm: '1.25rem' }
+              }}
             >
-              <QueryStats />
+              <QueryStats sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
               Search Fields
             </Typography>
             {/* Search History Integration */}
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: { xs: 2, sm: 3 } }}>
               <SearchHistoryIntegration
                 formData={formData}
                 dateRange={dateRange}
@@ -461,9 +468,16 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                 onShowHistory={() => setHistoryPanelOpen(true)}
               />
             </Box>
-            <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 2, sm: 3 } }}>
               {visibleFields.map((field) => (
-                <Grid item xs={12} md={6} lg={4} key={field.name}>
+                <Grid 
+                  item 
+                  xs={12} 
+                  sm={isMobile ? 12 : isTablet ? 6 : 6} 
+                  md={6} 
+                  lg={4} 
+                  key={field.name}
+                >
                   <FormField
                     field={field}
                     formData={formData}

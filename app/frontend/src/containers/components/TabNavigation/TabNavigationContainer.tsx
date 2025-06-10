@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Box, useTheme, useMediaQuery } from "@mui/material";
 import { FullscreenMode } from "./index";
+import { useResponsive } from "../../../lib/responsive-utils";
 import TabsHeader from "./TabsHeader";
 import FullscreenControls from "./FullscreenControls";
 import NERToggle from "./NERToggle";
@@ -56,7 +57,7 @@ const TabNavigationContainer: React.FC<TabNavigationContainerProps> = ({
   containerRef,
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const { isMobile, isTablet } = useResponsive();
   const isAnyFullscreen =
     fullscreenMode === "browser" || fullscreenMode === "native";
 
@@ -81,6 +82,7 @@ const TabNavigationContainer: React.FC<TabNavigationContainerProps> = ({
         borderColor: "divider",
         bgcolor: "background.paper",
         position: "relative",
+        overflow: "hidden",
       }}
     >
       <Box
@@ -88,8 +90,10 @@ const TabNavigationContainer: React.FC<TabNavigationContainerProps> = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          px: 2,
-          py: 1,
+          px: { xs: 1, sm: 2 },
+          py: { xs: 0.5, sm: 1 },
+          flexWrap: isMobile ? "wrap" : "nowrap",
+          gap: { xs: 1, sm: 0 },
         }}
       >
         <TabsHeader
@@ -105,7 +109,6 @@ const TabNavigationContainer: React.FC<TabNavigationContainerProps> = ({
           isStatsLoading={isStatsLoading}
           isCloudLoading={isCloudLoading}
           isNERLoading={isNERLoading}
-          isMobile={isMobile}
         />
 
         <FullscreenControls

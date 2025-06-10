@@ -11,7 +11,9 @@ import { LogoutButton } from "./components/LogoutButton";
 import React, { useState } from "react";
 import "./App.css";
 import "./styles/ag-grid-dark-theme.css";
+import "./styles/responsive.css";
 import { CustomThemeProvider, useThemeMode } from "./contexts/ThemeContext";
+import { useResponsive } from "./lib/responsive-utils";
 import { Home } from "./containers/Home";
 import { Route, useNavigate, Routes } from "react-router-dom";
 import HistText from "./containers/HistText";
@@ -57,7 +59,7 @@ const AppContent = () => {
   const auth = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const { isMobile, isTablet, isVerySmallMobile } = useResponsive();
   const { darkMode, toggleDarkMode } = useThemeMode();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -99,7 +101,13 @@ const AppContent = () => {
     },
   ];
 
-  const drawerWidth = 280;
+  const getDrawerWidth = () => {
+    if (isMobile) return 280;
+    if (isTablet) return 260;
+    return 280;
+  };
+  
+  const drawerWidth = getDrawerWidth();
   const collapsedWidth = 64;
 
   const drawer = (collapsed = false) => (
@@ -139,7 +147,7 @@ const AppContent = () => {
       {/* Logo Section */}
       <Box
         sx={{
-          p: collapsed ? 1 : 3,
+          p: collapsed ? 1 : { xs: 2, sm: 3 },
           textAlign: "center",
           borderBottom: "1px solid",
           borderColor: "divider",
@@ -149,15 +157,15 @@ const AppContent = () => {
           <Tooltip title="HistText" placement="right">
             <Avatar
               sx={{
-                width: 40,
-                height: 40,
+                width: { xs: 36, sm: 40 },
+                height: { xs: 36, sm: 40 },
                 bgcolor: "primary.main",
                 cursor: "pointer",
                 margin: "0 auto",
               }}
               onClick={() => navigate("/histtext")}
             >
-              <Description />
+              <Description sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
             </Avatar>
           </Tooltip>
         ) : (
@@ -165,11 +173,19 @@ const AppContent = () => {
             <img
               src={HistLogo}
               alt="HistText Logo"
-              style={{ height: "50px", cursor: "pointer", marginBottom: "8px" }}
+              style={{ 
+                height: isMobile ? "40px" : "50px", 
+                cursor: "pointer", 
+                marginBottom: "8px" 
+              }}
               onClick={() => navigate("/histtext")}
             />
             <br />
-            <Typography variant="caption" color="text.secondary">
+            <Typography 
+              variant="caption" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.6875rem', sm: '0.75rem' } }}
+            >
               Text Analysis Platform
             </Typography>
           </>
@@ -177,7 +193,7 @@ const AppContent = () => {
       </Box>
 
       {/* Navigation */}
-      <Box sx={{ flex: 1, py: 2 }}>
+      <Box sx={{ flex: 1, py: { xs: 1.5, sm: 2 } }}>
         <List>
           {navigationItems.map((item) => {
             if (item.auth && !auth.isAuthenticated) return null;
@@ -198,10 +214,11 @@ const AppContent = () => {
                   }}
                   sx={{
                     borderRadius: 2,
-                    mx: collapsed ? 1 : 2,
+                    mx: collapsed ? 1 : { xs: 1.5, sm: 2 },
                     mb: 1,
                     justifyContent: collapsed ? "center" : "flex-start",
-                    px: collapsed ? 1 : 2,
+                    px: collapsed ? 1 : { xs: 1.5, sm: 2 },
+                    minHeight: { xs: 44, sm: 48 },
                     "&:hover": {
                       backgroundColor: "primary.light",
                       color: "white",
@@ -214,8 +231,11 @@ const AppContent = () => {
                   <ListItemIcon
                     sx={{
                       color: "primary.main",
-                      minWidth: collapsed ? "auto" : 40,
+                      minWidth: collapsed ? "auto" : { xs: 36, sm: 40 },
                       justifyContent: "center",
+                      '& svg': {
+                        fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                      }
                     }}
                   >
                     {item.icon}
@@ -223,7 +243,10 @@ const AppContent = () => {
                   {!collapsed && (
                     <ListItemText
                       primary={item.text}
-                      primaryTypographyProps={{ fontWeight: 500 }}
+                      primaryTypographyProps={{ 
+                        fontWeight: 500,
+                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                      }}
                     />
                   )}
                 </ListItem>
@@ -549,14 +572,20 @@ const AppContent = () => {
           color="primary"
           aria-label="menu"
           onClick={handleDrawerToggle}
+          size={isVerySmallMobile ? "small" : "medium"}
           sx={{
             position: "fixed",
-            top: 16,
-            left: 16,
+            top: isVerySmallMobile ? 10 : 12,
+            left: isVerySmallMobile ? 10 : 12,
             zIndex: theme.zIndex.speedDial,
+            width: isVerySmallMobile ? 44 : 48,
+            height: isVerySmallMobile ? 44 : 48,
           }}
         >
-          {mobileOpen ? <CloseIcon /> : <MenuIcon />}
+          {mobileOpen ? 
+            <CloseIcon sx={{ fontSize: isVerySmallMobile ? '1.125rem' : '1.25rem' }} /> : 
+            <MenuIcon sx={{ fontSize: isVerySmallMobile ? '1.125rem' : '1.25rem' }} />
+          }
         </Fab>
       )}
 
@@ -612,8 +641,9 @@ const AppContent = () => {
           flexGrow: 1,
           bgcolor: "background.default",
           minHeight: "100vh",
-          pt: isMobile ? 8 : 0,
-          transition: theme.transitions.create("margin", {
+          pt: isMobile ? { xs: 7, sm: 8 } : 0,
+          px: { xs: 1, sm: 0 },
+          transition: theme.transitions.create(["margin", "padding"], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),

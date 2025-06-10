@@ -18,6 +18,7 @@ import {
   Cloud as CloudIcon,
 } from "@mui/icons-material";
 import { CountBadge } from "../../../components/ui";
+import { useResponsive } from "../../../lib/responsive-utils";
 
 interface TabsHeaderProps {
   activeTab: number;
@@ -32,7 +33,6 @@ interface TabsHeaderProps {
   isStatsLoading: boolean;
   isCloudLoading: boolean;
   isNERLoading: boolean;
-  isMobile: boolean;
 }
 
 const TABS = {
@@ -66,8 +66,8 @@ const TabsHeader: React.FC<TabsHeaderProps> = ({
   isStatsLoading,
   isCloudLoading,
   isNERLoading,
-  isMobile,
 }) => {
+  const { isMobile, isTablet } = useResponsive();
   const getTabInfo = (tabIndex: number): TabInfo => {
     const tabsInfo = {
       [TABS.QUERY]: {
@@ -84,7 +84,7 @@ const TabsHeader: React.FC<TabsHeaderProps> = ({
           ) : (
             <TableRows />
           ),
-        label: isMobile ? "Partial" : "Partial Results",
+        label: isMobile ? "Partial" : isTablet ? "Partial" : "Partial Results",
         color: "secondary",
         count: partialResults.length,
         description: "Quick preview of results",
@@ -92,7 +92,7 @@ const TabsHeader: React.FC<TabsHeaderProps> = ({
       },
       [TABS.ALL_RESULTS]: {
         icon: isDataLoading ? <CircularProgress size={20} /> : <TableChart />,
-        label: isMobile ? "All" : "All Results",
+        label: isMobile ? "All" : isTablet ? "All" : "All Results",
         color: "success",
         count: allResults.length,
         description: "Complete dataset",
@@ -107,7 +107,7 @@ const TabsHeader: React.FC<TabsHeaderProps> = ({
       },
       [TABS.CLOUD]: {
         icon: isCloudLoading ? <CircularProgress size={20} /> : <CloudIcon />,
-        label: isMobile ? "Cloud" : "Word Cloud",
+        label: isMobile ? "Cloud" : isTablet ? "Cloud" : "Word Cloud",
         color: "warning",
         description: "Visual word frequency",
         isLoading: isCloudLoading,
@@ -127,15 +127,17 @@ const TabsHeader: React.FC<TabsHeaderProps> = ({
     <Tabs
       value={activeTab}
       onChange={onTabChange}
-      variant={isMobile ? "scrollable" : "fullWidth"}
-      scrollButtons={isMobile ? "auto" : false}
+      variant={isMobile ? "scrollable" : isTablet ? "scrollable" : "fullWidth"}
+      scrollButtons={isMobile || isTablet ? "auto" : false}
       sx={{
         flex: 1,
         "& .MuiTab-root": {
           textTransform: "none",
           fontWeight: 600,
-          fontSize: isMobile ? "0.8rem" : "0.9rem",
-          minHeight: 56,
+          fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.9rem' },
+          minHeight: { xs: 48, sm: 52, md: 56 },
+          minWidth: { xs: 80, sm: 100, md: 120 },
+          padding: { xs: '6px 8px', sm: '8px 12px', md: '12px 16px' },
           transition: "all 0.2s ease",
           "&:hover": {
             backgroundColor: "action.hover",

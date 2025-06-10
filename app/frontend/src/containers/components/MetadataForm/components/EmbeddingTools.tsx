@@ -19,6 +19,7 @@ import {
   Zoom,
 } from "@mui/material";
 import { AutoAwesome, PlayArrow } from "@mui/icons-material";
+import { useResponsive } from "../../../../lib/responsive-utils";
 
 /**
  * Props for the EmbeddingTools component.
@@ -63,6 +64,7 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
   const [analogyWordA, setAnalogyWordA] = useState("");
   const [analogyWordB, setAnalogyWordB] = useState("");
   const [analogyWordC, setAnalogyWordC] = useState("");
+  const { isMobile } = useResponsive();
 
   // Sync modal state with external controls if provided
   useEffect(() => {
@@ -97,10 +99,11 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
           color="secondary"
           aria-label="embedding tools"
           onClick={() => setEmbeddingModalOpen(true)}
+          size={isMobile ? "medium" : "large"}
           sx={{
             position: "fixed",
-            bottom: 24,
-            right: 24,
+            bottom: isMobile ? 140 : 24, // Stack above other FABs on mobile
+            right: isMobile ? 16 : 24,
             zIndex: 1000,
           }}
         >
@@ -113,29 +116,47 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
         onClose={handleCloseModal}
         fullWidth
         maxWidth="md"
+        fullScreen={isMobile}
+        sx={{
+          '& .MuiDialog-paper': {
+            margin: isMobile ? 0 : 2,
+            maxHeight: isMobile ? '100%' : 'calc(100% - 32px)',
+          }
+        }}
       >
-        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <AutoAwesome />
-          Semantic Analysis Tools
+        <DialogTitle sx={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: 1,
+          fontSize: { xs: '1.125rem', sm: '1.25rem' },
+          py: { xs: 1.5, sm: 2 }
+        }}>
+          <AutoAwesome sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
+          {isMobile ? "Semantic Analysis" : "Semantic Analysis Tools"}
         </DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={3}>
+        <DialogContent dividers sx={{ p: { xs: 2, sm: 3 } }}>
+          <Stack spacing={{ xs: 2, sm: 3 }}>
             <Card variant="outlined">
-              <CardContent>
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                 <Typography
-                  variant="h6"
+                  variant={isMobile ? "subtitle1" : "h6"}
                   gutterBottom
-                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  sx={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: 1,
+                    fontSize: { xs: '1rem', sm: '1.25rem' }
+                  }}
                 >
                   Word Similarity Analysis
                 </Typography>
-                <Grid container spacing={2} alignItems="center">
+                <Grid container spacing={{ xs: 2, sm: 2 }} alignItems="center">
                   <Grid item xs={12} sm={4}>
                     <TextField
                       label="First Word"
                       value={similarityWord1}
                       onChange={(e) => setSimilarityWord1(e.target.value)}
-                      size="small"
+                      size={isMobile ? "small" : "medium"}
                       fullWidth
                     />
                   </Grid>
@@ -144,7 +165,7 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
                       label="Second Word"
                       value={similarityWord2}
                       onChange={(e) => setSimilarityWord2(e.target.value)}
-                      size="small"
+                      size={isMobile ? "small" : "medium"}
                       fullWidth
                     />
                   </Grid>
@@ -156,6 +177,7 @@ const EmbeddingTools: React.FC<EmbeddingToolsProps> = ({
                         !similarityWord1 || !similarityWord2 || embeddingLoading
                       }
                       fullWidth
+                      size={isMobile ? "medium" : "large"}
                       startIcon={
                         embeddingLoading ? (
                           <CircularProgress size={16} />
