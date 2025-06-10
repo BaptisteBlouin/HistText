@@ -29,6 +29,7 @@ import {
   Badge,
   Paper,
   CircularProgress,
+  useTheme,
 } from "@mui/material";
 import {
   History,
@@ -52,7 +53,6 @@ import {
 } from "@mui/icons-material";
 import { useSearchHistory, SavedSearch } from "../../../hooks/useSearchHistory";
 import { formatDistanceToNow } from "date-fns";
-import { GradientPaper } from "../../../components/ui";
 
 interface SearchHistoryPanelProps {
   open: boolean;
@@ -83,6 +83,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
   onSwitchAndApply,
   canSwitchCollections = false,
 }) => {
+  const theme = useTheme();
   const {
     searchHistory,
     bookmarks,
@@ -345,6 +346,8 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
               }
             : {},
           position: "relative",
+          // Theme-aware background
+          backgroundColor: theme.palette.background.paper,
         }}
       >
         {!isCompatible && (
@@ -461,7 +464,16 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
               {!isCompatible && (
                 <Alert
                   severity={canSwitch ? "info" : "warning"}
-                  sx={{ mt: 1, mb: 1 }}
+                  sx={{ 
+                    mt: 1, 
+                    mb: 1,
+                    // Theme-aware alert styling
+                    backgroundColor: theme.palette.mode === 'dark' 
+                      ? canSwitch 
+                        ? 'rgba(2, 136, 209, 0.2)' 
+                        : 'rgba(237, 108, 2, 0.2)'
+                      : undefined
+                  }}
                   variant="outlined"
                   action={
                     canSwitch ? (
@@ -618,6 +630,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
             display: "flex",
             alignItems: "center",
             gap: 1,
+            color: "text.primary",
           }}
         >
           {!isCompatible && <Warning color="warning" />}
@@ -651,14 +664,26 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
       maxWidth="md"
       fullWidth
       PaperProps={{
-        sx: { height: "80vh", borderRadius: 3 },
+        sx: { 
+          height: "80vh", 
+          borderRadius: 3,
+          backgroundColor: theme.palette.background.paper,
+        },
       }}
     >
       <DialogTitle
-        sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}
+        sx={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: 1, 
+          pb: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: theme.palette.background.paper,
+        }}
       >
         <Folder color="primary" />
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>
           Search Library
         </Typography>
         <Badge
@@ -679,12 +704,15 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
         )}
       </DialogTitle>
 
-      <DialogContent sx={{ p: 0 }}>
+      <DialogContent sx={{ p: 0, backgroundColor: theme.palette.background.default }}>
         <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
           <Tabs
             value={activeTab}
             onChange={handleTabChange}
             variant="fullWidth"
+            sx={{
+              backgroundColor: theme.palette.background.paper,
+            }}
           >
             <Tab
               icon={<History />}
@@ -732,7 +760,13 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                   </InputAdornment>
                 ),
               }}
-              sx={{ flexGrow: 1, minWidth: 200 }}
+              sx={{ 
+                flexGrow: 1, 
+                minWidth: 200,
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: theme.palette.background.paper,
+                },
+              }}
             />
 
             <Button
@@ -798,7 +832,11 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
 
                 {/* Empty State */}
                 {!hasCompatible && !hasIncompatible && (
-                  <Paper sx={{ p: 4, textAlign: "center" }}>
+                  <Paper sx={{ 
+                    p: 4, 
+                    textAlign: "center",
+                    backgroundColor: theme.palette.background.paper,
+                  }}>
                     {activeTab === 0 ? (
                       <History
                         sx={{ fontSize: 48, color: "text.secondary", mb: 2 }}
@@ -830,7 +868,12 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
+      <DialogActions sx={{ 
+        p: 2, 
+        borderTop: 1, 
+        borderColor: "divider",
+        backgroundColor: theme.palette.background.paper,
+      }}>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
 
@@ -840,6 +883,9 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
         onClose={() => !isSwitching && setSwitchDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: { backgroundColor: theme.palette.background.paper }
+        }}
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <PlayArrow color="info" />
@@ -855,7 +901,12 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                 </Typography>
               </Alert>
 
-              <Box sx={{ mt: 2, p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
+              <Box sx={{ 
+                mt: 2, 
+                p: 2, 
+                bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50', 
+                borderRadius: 1 
+              }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Search to Apply:
                 </Typography>
@@ -883,7 +934,7 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                   sx={{
                     mt: 2,
                     p: 2,
-                    bgcolor: "warning.light",
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 152, 0, 0.2)' : 'warning.light',
                     borderRadius: 1,
                     opacity: 0.8,
                   }}
@@ -932,6 +983,9 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
         onClose={() => setIncompatibleDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: { backgroundColor: theme.palette.background.paper }
+        }}
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Warning color="warning" />
@@ -945,173 +999,208 @@ const SearchHistoryPanel: React.FC<SearchHistoryPanelProps> = ({
                 applied to your current selection.
               </Typography>
 
-              <Box sx={{ mt: 2, p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
+              <Box sx={{ 
+                mt: 2, 
+                p: 2, 
+                bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50', 
+                borderRadius: 1 
+              }}>
                 <Typography variant="subtitle2" gutterBottom>
-                  Search Details:
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  <strong>Name:</strong> {incompatibleSearch.name}
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  <strong>Created for:</strong>{" "}
-                  {incompatibleSearch.selectedAlias}
-                </Typography>
-                {currentSolrDatabase && currentAlias && (
-                  <Typography variant="body2">
-                    <strong>Current collection:</strong> {currentAlias}
-                  </Typography>
-                )}
-              </Box>
+                 Search Details:
+               </Typography>
+               <Typography variant="body2" gutterBottom>
+                 <strong>Name:</strong> {incompatibleSearch.name}
+               </Typography>
+               <Typography variant="body2" gutterBottom>
+                 <strong>Created for:</strong>{" "}
+                 {incompatibleSearch.selectedAlias}
+               </Typography>
+               {currentSolrDatabase && currentAlias && (
+                 <Typography variant="body2">
+                   <strong>Current collection:</strong> {currentAlias}
+                 </Typography>
+               )}
+             </Box>
 
-              <Alert severity="info" sx={{ mt: 2 }}>
-                <Typography variant="body2">
-                  To use this search, please switch to the{" "}
-                  {incompatibleSearch.selectedAlias} collection first.
-                </Typography>
-              </Alert>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIncompatibleDialogOpen(false)}>
-            Got it
-          </Button>
-        </DialogActions>
-      </Dialog>
+             <Alert severity="info" sx={{ mt: 2 }}>
+               <Typography variant="body2">
+                 To use this search, please switch to the{" "}
+                 {incompatibleSearch.selectedAlias} collection first.
+               </Typography>
+             </Alert>
+           </Box>
+         )}
+       </DialogContent>
+       <DialogActions>
+         <Button onClick={() => setIncompatibleDialogOpen(false)}>
+           Got it
+         </Button>
+       </DialogActions>
+     </Dialog>
 
-      {/* Context Menu */}
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={handleEdit}>
-          <Edit sx={{ mr: 1 }} /> Edit
-        </MenuItem>
-        <MenuItem onClick={handleBookmarkToggle}>
-          {selectedItem?.isBookmarked ? (
-            <>
-              <BookmarkBorder sx={{ mr: 1 }} /> Remove Bookmark
-            </>
-          ) : (
-            <>
-              <Bookmark sx={{ mr: 1 }} /> Add Bookmark
-            </>
-          )}
-        </MenuItem>
-        <MenuItem
-          onClick={() =>
-            navigator.clipboard.writeText(selectedItem?.queryString || "")
-          }
-        >
-          <Share sx={{ mr: 1 }} /> Copy Query
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
-          <Delete sx={{ mr: 1 }} /> Delete
-        </MenuItem>
-      </Menu>
+     {/* Context Menu */}
+     <Menu
+       anchorEl={menuAnchor}
+       open={Boolean(menuAnchor)}
+       onClose={handleMenuClose}
+       PaperProps={{
+         sx: { backgroundColor: theme.palette.background.paper }
+       }}
+     >
+       <MenuItem onClick={handleEdit}>
+         <Edit sx={{ mr: 1 }} /> Edit
+       </MenuItem>
+       <MenuItem onClick={handleBookmarkToggle}>
+         {selectedItem?.isBookmarked ? (
+           <>
+             <BookmarkBorder sx={{ mr: 1 }} /> Remove Bookmark
+           </>
+         ) : (
+           <>
+             <Bookmark sx={{ mr: 1 }} /> Add Bookmark
+           </>
+         )}
+       </MenuItem>
+       <MenuItem
+         onClick={() =>
+           navigator.clipboard.writeText(selectedItem?.queryString || "")
+         }
+       >
+         <Share sx={{ mr: 1 }} /> Copy Query
+       </MenuItem>
+       <Divider />
+       <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
+         <Delete sx={{ mr: 1 }} /> Delete
+       </MenuItem>
+     </Menu>
 
-      {/* Edit Dialog */}
-      {editDialogOpen && editingSearch && (
-        <EditSearchDialog
-          open={editDialogOpen}
-          search={editingSearch}
-          onClose={() => setEditDialogOpen(false)}
-          onSave={handleSaveEdit}
-        />
-      )}
+     {/* Edit Dialog */}
+     {editDialogOpen && editingSearch && (
+       <EditSearchDialog
+         open={editDialogOpen}
+         search={editingSearch}
+         onClose={() => setEditDialogOpen(false)}
+         onSave={handleSaveEdit}
+       />
+     )}
 
-      {/* Delete Confirmation */}
-      <Dialog
-        open={deleteConfirmOpen}
-        onClose={() => setDeleteConfirmOpen(false)}
-      >
-        <DialogTitle>Delete Search</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete "{selectedItem?.name}"? This action
-            cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleConfirmDelete}
-            color="error"
-            variant="contained"
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Dialog>
-  );
+     {/* Delete Confirmation */}
+     <Dialog
+       open={deleteConfirmOpen}
+       onClose={() => setDeleteConfirmOpen(false)}
+       PaperProps={{
+         sx: { backgroundColor: theme.palette.background.paper }
+       }}
+     >
+       <DialogTitle>Delete Search</DialogTitle>
+       <DialogContent>
+         <Typography>
+           Are you sure you want to delete "{selectedItem?.name}"? This action
+           cannot be undone.
+         </Typography>
+       </DialogContent>
+       <DialogActions>
+         <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+         <Button
+           onClick={handleConfirmDelete}
+           color="error"
+           variant="contained"
+         >
+           Delete
+         </Button>
+       </DialogActions>
+     </Dialog>
+   </Dialog>
+ );
 };
 
-// Edit Search Dialog Component (unchanged)
+// Edit Search Dialog Component
 const EditSearchDialog: React.FC<{
-  open: boolean;
-  search: SavedSearch;
-  onClose: () => void;
-  onSave: (updates: Partial<SavedSearch>) => void;
+ open: boolean;
+ search: SavedSearch;
+ onClose: () => void;
+ onSave: (updates: Partial<SavedSearch>) => void;
 }> = ({ open, search, onClose, onSave }) => {
-  const [name, setName] = useState(search.name);
-  const [description, setDescription] = useState(search.description || "");
-  const [tags, setTags] = useState(search.tags.join(", "));
+ const theme = useTheme();
+ const [name, setName] = useState(search.name);
+ const [description, setDescription] = useState(search.description || "");
+ const [tags, setTags] = useState(search.tags.join(", "));
 
-  const handleSave = () => {
-    onSave({
-      name,
-      description,
-      tags: tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-    });
-  };
+ const handleSave = () => {
+   onSave({
+     name,
+     description,
+     tags: tags
+       .split(",")
+       .map((tag) => tag.trim())
+       .filter(Boolean),
+   });
+ };
 
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Edit Search</DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-          <TextField
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            fullWidth
-            required
-          />
-          <TextField
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            fullWidth
-            multiline
-            rows={2}
-          />
-          <TextField
-            label="Tags (comma separated)"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            fullWidth
-            helperText="Add tags to organize your searches"
-          />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button
-          onClick={handleSave}
-          variant="contained"
-          disabled={!name.trim()}
-        >
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
+ return (
+   <Dialog 
+     open={open} 
+     onClose={onClose} 
+     maxWidth="sm" 
+     fullWidth
+     PaperProps={{
+       sx: { backgroundColor: theme.palette.background.paper }
+     }}
+   >
+     <DialogTitle>Edit Search</DialogTitle>
+     <DialogContent>
+       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+         <TextField
+           label="Name"
+           value={name}
+           onChange={(e) => setName(e.target.value)}
+           fullWidth
+           required
+           sx={{
+             "& .MuiOutlinedInput-root": {
+               backgroundColor: theme.palette.background.paper,
+             },
+           }}
+         />
+         <TextField
+           label="Description"
+           value={description}
+           onChange={(e) => setDescription(e.target.value)}
+           fullWidth
+           multiline
+           rows={2}
+           sx={{
+             "& .MuiOutlinedInput-root": {
+               backgroundColor: theme.palette.background.paper,
+             },
+           }}
+         />
+         <TextField
+           label="Tags (comma separated)"
+           value={tags}
+           onChange={(e) => setTags(e.target.value)}
+           fullWidth
+           helperText="Add tags to organize your searches"
+           sx={{
+             "& .MuiOutlinedInput-root": {
+               backgroundColor: theme.palette.background.paper,
+             },
+           }}
+         />
+       </Box>
+     </DialogContent>
+     <DialogActions>
+       <Button onClick={onClose}>Cancel</Button>
+       <Button
+         onClick={handleSave}
+         variant="contained"
+         disabled={!name.trim()}
+       >
+         Save
+       </Button>
+     </DialogActions>
+   </Dialog>
+ );
 };
 
 export default SearchHistoryPanel;
