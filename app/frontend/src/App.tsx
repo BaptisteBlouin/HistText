@@ -164,7 +164,16 @@ const AppContent = () => {
               style={{ 
                 height: isMobile ? "40px" : "50px", 
                 cursor: "pointer", 
-                marginBottom: "8px" 
+                marginBottom: "8px",
+                transition: "transform 0.2s ease, opacity 0.2s ease"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.opacity = "0.8";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.opacity = "1";
               }}
               onClick={() => navigate("/histtext")}
             />
@@ -454,7 +463,13 @@ const AppContent = () => {
                   mb: 1,
                   "&:hover": {
                     backgroundColor: "action.hover",
+                    borderColor: "primary.main",
+                    transform: "translateY(-1px)",
+                    boxShadow: 1,
                   },
+                  transition: theme.transitions.create(["background-color", "border-color", "transform", "box-shadow"], {
+                    duration: theme.transitions.duration.short,
+                  }),
                 }}
               >
                 <ListItemIcon>
@@ -557,6 +572,16 @@ const AppContent = () => {
             zIndex: theme.zIndex.speedDial,
             width: isVerySmallMobile ? 44 : 48,
             height: isVerySmallMobile ? 44 : 48,
+            transition: theme.transitions.create(["transform", "box-shadow"], {
+              duration: theme.transitions.duration.short,
+            }),
+            "&:hover": {
+              transform: "scale(1.1)",
+              boxShadow: "0 6px 20px rgba(102, 126, 234, 0.4)",
+            },
+            "&:active": {
+              transform: "scale(0.95)",
+            },
           }}
         >
           {mobileOpen ? 
@@ -578,6 +603,10 @@ const AppContent = () => {
               boxSizing: "border-box",
               width: drawerWidth,
               bgcolor: "background.paper",
+              transition: theme.transitions.create("transform", {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
             },
           }}
         >

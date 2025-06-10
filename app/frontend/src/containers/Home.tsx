@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import {
   Container,
   Typography,
@@ -12,6 +13,7 @@ import {
   useMediaQuery,
   Fade,
 } from "@mui/material";
+import { LoadingButton } from "../components/ui";
 import {
   Description,
   Analytics,
@@ -30,6 +32,7 @@ export const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
+  const [isNavigating, setIsNavigating] = useState(false);
   const contactAddress = config.CONTACT_ADDRESS || "feedback@histtext.com";
 
   const homeMessage =
@@ -154,11 +157,15 @@ export const Home = () => {
               />
             </Paper>
 
-            <Button
+            <LoadingButton
               variant="contained"
               size="large"
               endIcon={<ArrowForward />}
-              onClick={() => navigate("/histtext")}
+              loading={isNavigating}
+              onClick={() => {
+                setIsNavigating(true);
+                setTimeout(() => navigate("/histtext"), 100);
+              }}
               sx={{
                 px: 4,
                 py: 1.5,
@@ -174,7 +181,7 @@ export const Home = () => {
               }}
             >
               Get Started
-            </Button>
+            </LoadingButton>
             <Button
               variant="outlined"
               startIcon={<Email />}

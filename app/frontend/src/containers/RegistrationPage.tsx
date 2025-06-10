@@ -252,6 +252,7 @@ export const RegistrationPage = () => {
                     handleInputChange("firstname", e.target.value)
                   }
                   required
+                  autoFocus
                   placeholder="Enter your first name"
                   InputProps={{
                     startAdornment: (
@@ -316,6 +317,13 @@ export const RegistrationPage = () => {
                       <IconButton
                         onClick={() => setShowPassword(!showPassword)}
                         edge="end"
+                        sx={{
+                          "&:hover": {
+                            backgroundColor: "primary.light",
+                            color: "primary.dark",
+                          },
+                          transition: "all 0.2s ease",
+                        }}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
@@ -405,6 +413,13 @@ export const RegistrationPage = () => {
                           setShowConfirmPassword(!showConfirmPassword)
                         }
                         edge="end"
+                        sx={{
+                          "&:hover": {
+                            backgroundColor: "primary.light",
+                            color: "primary.dark",
+                          },
+                          transition: "all 0.2s ease",
+                        }}
                       >
                         {showConfirmPassword ? (
                           <VisibilityOff />

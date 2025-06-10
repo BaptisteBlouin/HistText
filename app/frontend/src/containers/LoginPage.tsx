@@ -115,6 +115,7 @@ export const LoginPage = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoFocus
               sx={{ mb: 3 }}
               placeholder="Enter username"
               InputProps={{
@@ -146,6 +147,13 @@ export const LoginPage = () => {
                     <IconButton
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
+                      sx={{
+                        "&:hover": {
+                          backgroundColor: "primary.light",
+                          color: "primary.dark",
+                        },
+                        transition: "all 0.2s ease",
+                      }}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
@@ -208,7 +216,14 @@ export const LoginPage = () => {
                 variant="outlined"
                 onClick={() => navigate("/register")}
                 startIcon={<PersonAdd />}
-                sx={{ py: 1.2 }}
+                sx={{ 
+                  py: 1.2,
+                  "&:hover": {
+                    transform: "translateY(-1px)",
+                    boxShadow: 2,
+                  },
+                  transition: "all 0.2s ease",
+                }}
               >
                 Create New Account
               </Button>
@@ -218,7 +233,14 @@ export const LoginPage = () => {
                 variant="text"
                 onClick={() => navigate("/recovery")}
                 startIcon={<LockReset />}
-                sx={{ py: 1 }}
+                sx={{ 
+                  py: 1,
+                  "&:hover": {
+                    backgroundColor: "action.hover",
+                    transform: "translateX(4px)",
+                  },
+                  transition: "all 0.2s ease",
+                }}
               >
                 Forgot Password?
               </Button>
@@ -232,7 +254,15 @@ export const LoginPage = () => {
           New to HistText?{" "}
           <Link
             onClick={() => navigate("/register")}
-            sx={{ cursor: "pointer", fontWeight: 600 }}
+            sx={{ 
+              cursor: "pointer", 
+              fontWeight: 600,
+              "&:hover": {
+                color: "primary.dark",
+                textDecoration: "underline",
+              },
+              transition: "all 0.2s ease",
+            }}
           >
             Create an account
           </Link>

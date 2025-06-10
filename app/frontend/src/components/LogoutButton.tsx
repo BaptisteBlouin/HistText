@@ -65,7 +65,10 @@ export const LogoutButton = ({
             "&:hover": {
               backgroundColor: "error.light",
               color: "white",
+              transform: "scale(1.05)",
+              boxShadow: 2,
             },
+            transition: "all 0.2s ease",
           }}
         >
           {isLoading ? <CircularProgress size={16} /> : <LogoutIcon />}
@@ -82,6 +85,13 @@ export const LogoutButton = ({
       startIcon={isLoading ? <CircularProgress size={16} /> : <LogoutIcon />}
       onClick={handleLogout}
       disabled={isLoading}
+      sx={{
+        "&:hover": {
+          transform: "translateY(-1px)",
+          boxShadow: 2,
+        },
+        transition: "all 0.2s ease",
+      }}
     >
       {isLoading ? "Signing out..." : "Sign Out"}
     </Button>
