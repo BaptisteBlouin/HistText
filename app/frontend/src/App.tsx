@@ -31,8 +31,6 @@ import {
   useTheme,
   useMediaQuery,
   Avatar,
-  Menu,
-  MenuItem,
   Divider,
   Typography,
   Button,
@@ -64,23 +62,12 @@ const AppContent = () => {
   const { darkMode, toggleDarkMode } = useThemeMode();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // Add proper typing
-
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
   const handleSidebarToggle = () => {
     setSidebarCollapsed(!sidebarCollapsed);
-  };
-
-  // Add proper typing for the event parameter
-  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleProfileMenuClose = () => {
-    setAnchorEl(null);
   };
 
   const navigationItems = [
@@ -430,7 +417,10 @@ const AppContent = () => {
             {collapsed ? (
               <Tooltip title="Account" placement="right">
                 <IconButton
-                  onClick={handleProfileMenuOpen}
+                  onClick={() => {
+                    navigate("/account");
+                    if (isMobile) setMobileOpen(false);
+                  }}
                   sx={{
                     width: "100%",
                     height: 48,
@@ -453,7 +443,10 @@ const AppContent = () => {
             ) : (
               <ListItem
                 button
-                onClick={handleProfileMenuOpen}
+                onClick={() => {
+                  navigate("/account");
+                  if (isMobile) setMobileOpen(false);
+                }}
                 sx={{
                   borderRadius: 2,
                   border: "1px solid",
@@ -488,23 +481,6 @@ const AppContent = () => {
               }}
             />
 
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleProfileMenuClose}
-              transformOrigin={{ horizontal: "left", vertical: "bottom" }}
-              anchorOrigin={{ horizontal: "left", vertical: "top" }}
-            >
-              <MenuItem
-                onClick={() => {
-                  navigate("/account");
-                  handleProfileMenuClose();
-                  if (isMobile) setMobileOpen(false);
-                }}
-              >
-                <AccountCircle sx={{ mr: 1 }} /> Account Settings
-              </MenuItem>
-            </Menu>
           </Box>
         ) : (
           <>
