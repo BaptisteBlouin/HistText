@@ -10,7 +10,7 @@
   font-size: 16px;
   font-weight: 500;
   margin-bottom: 0px;
-  color: #333; /* Darker color for label text */
+  color: var(--text-primary, #333);
 }
 
 #alias-select {
@@ -19,29 +19,29 @@
   min-width: 40vh;
   height: 5vh;
   padding: 12px 16px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color, #ccc);
   border-radius: 8px;
-  background-color: #f9f9f9;
+  background-color: var(--background-paper, #f9f9f9);
   font-size: 2.5vh;
-  color: rgb(0, 0, 0);
+  color: var(--text-primary, rgb(0, 0, 0));
   outline: none;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0px 2px 5px var(--shadow-color, rgba(0, 0, 0, 0.1));
   font-family: "palatino", sans-serif;
 }
 
 /* Hover effect for the select element */
 #alias-select:hover {
-  border-color: #007bff; /* Blue border on hover */
-  background-color: #fff;
+  border-color: var(--primary-main, #007bff);
+  background-color: var(--background-paper, #fff);
 }
 
 /* Focus effect to show the active state */
 #alias-select:focus {
-  border-color: #007bff; /* Blue border on focus */
-  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Blue glow */
-  background-color: #fff;
+  border-color: var(--primary-main, #007bff);
+  box-shadow: 0 0 5px var(--primary-glow, rgba(0, 123, 255, 0.5));
+  background-color: var(--background-paper, #fff);
 }
 
 /* Style the options inside the select dropdown */

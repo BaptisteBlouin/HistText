@@ -1,11 +1,9 @@
 """Modern FastAPI application for HistText Toolkit Web UI."""
-
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
-from fastapi.responses import HTMLResponse 
-
+from fastapi.responses import HTMLResponse
 from .routers import config, upload, ner, tokenize, embeddings, models
 from .core.config import get_settings
 
@@ -21,7 +19,8 @@ app = FastAPI(
 )
 
 # Setup static files and templates
-static_dir = Path(__file__).parent / "static"
+# CHANGED: Point to the actual location of static files
+static_dir = Path(__file__).parent / "templates" / "static"
 templates_dir = Path(__file__).parent / "templates"
 
 if static_dir.exists():

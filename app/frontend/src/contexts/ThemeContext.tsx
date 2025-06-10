@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
+import { setCSSCustomProperties } from '../lib/theme-css-utils';
 
 interface ThemeContextType {
   darkMode: boolean;
@@ -331,6 +332,15 @@ export const CustomThemeProvider: React.FC<CustomThemeProviderProps> = ({ childr
       },
     },
   });
+
+  // Set CSS custom properties and data attributes whenever theme changes
+  useEffect(() => {
+    setCSSCustomProperties(theme);
+    // Set data attribute for CSS selectors
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    // Also set MUI's color scheme attribute
+    document.documentElement.setAttribute('data-mui-color-scheme', darkMode ? 'dark' : 'light');
+  }, [theme, darkMode]);
 
   return (
     <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>

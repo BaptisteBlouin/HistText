@@ -5,24 +5,24 @@
 }
 
 .selector {
-  background-color: white;
-  border: 1px solid #e2e8f0;
+  background-color: var(--background-paper, white);
+  border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 0.5rem;
   padding: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px 0 var(--shadow-color, rgba(0, 0, 0, 0.05));
   transition: border-color 0.2s;
 }
 
 .selector:hover {
-  border-color: #cbd5e0;
+  border-color: var(--border-hover, #cbd5e0);
 }
 
 .selectorText {
-  color: #4a5568;
+  color: var(--text-primary, #4a5568);
   font-weight: 500;
   font-size: 1.5vh;
 }
@@ -30,7 +30,7 @@
 .icon {
   height: 1.25rem;
   width: 1.25rem;
-  color: #718096;
+  color: var(--text-secondary, #718096);
   transition: transform 0.2s;
 }
 
@@ -43,16 +43,16 @@
   top: 100%;
   left: 0;
   width: 100%;
-  background-color: white;
-  border: 1px solid #e2e8f0;
+  background-color: var(--background-paper, white);
+  border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 0.5rem;
   margin-top: 0.25rem;
   box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    0 4px 6px -1px var(--shadow-color, rgba(0, 0, 0, 0.1)),
+    0 2px 4px -1px var(--shadow-color, rgba(0, 0, 0, 0.06));
   z-index: 10;
   overflow: hidden;
-  color: black;
+  color: var(--text-primary, black);
   font-size: 1.5vh;
 }
 
@@ -71,7 +71,7 @@
 }
 
 .option:hover {
-  background-color: #f7fafc;
+  background-color: var(--action-hover, #f7fafc);
 }
 
 .infoIconContainer {
@@ -81,12 +81,12 @@
 .infoIcon {
   height: 1.25rem;
   width: 1.25rem;
-  color: #718096;
+  color: var(--text-secondary, #718096);
   transition: color 0.2s;
 }
 
 .infoIcon:hover {
-  color: #4a5568;
+  color: var(--text-primary, #4a5568);
 }
 
 .tooltip {

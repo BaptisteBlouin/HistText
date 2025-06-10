@@ -38,29 +38,64 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   /**
-   * Injects custom styles for main and ID columns.
+   * Injects custom styles for main and ID columns with theme awareness.
    */
   useEffect(() => {
     const style = document.createElement("style");
+    const isDark = theme.palette.mode === 'dark';
+    
     style.innerHTML = `
       .main-column-header {
-        background-color: #e8f4f8 !important;
+        background-color: ${isDark ? '#2a4a5a !important' : '#e8f4f8 !important'};
         font-weight: 700 !important;
-        border-left: 3px solid #1976d2 !important;
+        border-left: 3px solid ${theme.palette.primary.main} !important;
+        color: ${isDark ? '#ffffff !important' : 'inherit !important'};
       }
       .main-column-cell {
-        border-left: 2px solid #e3f2fd !important;
-        background-color: #fafffe !important;
+        border-left: 2px solid ${isDark ? '#3a5a7a !important' : '#e3f2fd !important'};
+        background-color: ${isDark ? '#2a2a2a !important' : '#fafffe !important'};
+        color: ${isDark ? '#ffffff !important' : 'inherit !important'};
       }
       .id-column-header {
-        background-color: #f3e5f5 !important;
+        background-color: ${isDark ? '#4a3a5a !important' : '#f3e5f5 !important'};
         font-weight: 600 !important;
+        color: ${isDark ? '#ffffff !important' : 'inherit !important'};
       }
       .id-column-cell {
-        background-color: #faf8ff !important;
+        background-color: ${isDark ? '#2a2a2a !important' : '#faf8ff !important'};
+        color: ${isDark ? '#ffffff !important' : 'inherit !important'};
       }
       .ag-theme-alpine .ag-header-cell {
         font-weight: 600;
+        background-color: ${isDark ? '#2d2d2d !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+      .ag-theme-alpine .ag-row {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+      .ag-theme-alpine .ag-row:hover {
+        background-color: ${isDark ? 'rgba(255, 255, 255, 0.08) !important' : 'inherit'};
+      }
+      .ag-theme-alpine .ag-cell {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+        border-bottom-color: ${isDark ? 'rgba(255, 255, 255, 0.12) !important' : 'inherit'};
+      }
+      .ag-theme-alpine {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+      .ag-theme-alpine .ag-root-wrapper {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+      }
+      .ag-theme-alpine .ag-paging-panel {
+        background-color: ${isDark ? '#2d2d2d !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+        border-top-color: ${isDark ? 'rgba(255, 255, 255, 0.12) !important' : 'inherit'};
+      }
+      .ag-theme-alpine .ag-paging-button {
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
       }
     `;
     document.head.appendChild(style);
@@ -70,7 +105,7 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
         document.head.removeChild(style);
       }
     };
-  }, []);
+  }, [theme.palette.mode, theme.palette.primary.main]); // Re-run when theme changes
 
   return (
     <Paper
@@ -82,7 +117,7 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
       }}
     >
       <Box
-        className="ag-theme-alpine"
+        className="ag-theme-alpine main-data-grid"
         style={{ height: "100%", width: "100%" }}
       >
         <AgGridReact

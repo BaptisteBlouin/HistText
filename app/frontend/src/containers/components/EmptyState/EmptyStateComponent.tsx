@@ -78,7 +78,9 @@ const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({
       };
     }
     return {
-      background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+      background: theme.palette.mode === 'dark' 
+        ? "linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%)"
+        : "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
       borderRadius: 2,
       border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
     };
@@ -135,11 +137,11 @@ const EmptyStateComponent: React.FC<EmptyStateComponentProps> = ({
           startIcon={action.icon}
           onClick={action.onClick}
           sx={{
-            borderColor: "#667eea",
-            color: "#667eea",
+            borderColor: theme.palette.primary.main,
+            color: theme.palette.primary.main,
             "&:hover": {
-              borderColor: "#5a6fd8",
-              backgroundColor: "rgba(102, 126, 234, 0.1)",
+              borderColor: theme.palette.primary.dark,
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
             },
           }}
         >

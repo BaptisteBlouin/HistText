@@ -62,7 +62,9 @@ const StatisticsSidebar: React.FC<StatisticsSidebarProps> = ({
         height: isMobile ? "auto" : "80vh",
         overflowY: "auto",
         borderRadius: 3,
-        background: "linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)",
+        background: theme.palette.mode === 'dark' 
+          ? "linear-gradient(180deg, #2a2a2a 0%, #1e1e1e 100%)"
+          : "linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)",
       }}
     >
       <Box
@@ -176,7 +178,7 @@ const StatisticsSidebar: React.FC<StatisticsSidebarProps> = ({
                 timeout="auto"
                 unmountOnExit
               >
-                <List sx={{ pl: 2, bgcolor: "grey.50" }}>
+                <List sx={{ pl: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
                   {category.stats
                     .filter((stat: string) => stats[stat])
                     .map((stat: string) => (

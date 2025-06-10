@@ -10,6 +10,7 @@ import { ProtectedRoute } from "./components/RouteGuards";
 import { LogoutButton } from "./components/LogoutButton";
 import React, { useState } from "react";
 import "./App.css";
+import "./styles/ag-grid-dark-theme.css";
 import { CustomThemeProvider, useThemeMode } from "./contexts/ThemeContext";
 import { Home } from "./containers/Home";
 import { Route, useNavigate, Routes } from "react-router-dom";

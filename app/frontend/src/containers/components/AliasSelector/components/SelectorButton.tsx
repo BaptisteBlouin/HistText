@@ -63,8 +63,12 @@ const SelectorButton: React.FC<SelectorButtonProps> = React.memo(
           borderRadius: 3,
           border: `2px solid ${isOpen ? theme.palette.primary.main : "transparent"}`,
           background: selectedAlias
-            ? "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)"
-            : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+            ? theme.palette.mode === 'dark' 
+              ? "linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%)"
+              : "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)"
+            : theme.palette.mode === 'dark'
+              ? "linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%)"
+              : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           transform: isOpen ? "translateY(-2px)" : "translateY(0)",
           "&:hover": {

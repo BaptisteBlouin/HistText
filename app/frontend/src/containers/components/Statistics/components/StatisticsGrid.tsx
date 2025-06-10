@@ -1,6 +1,6 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { Card, CardContent, Box } from "@mui/material";
+import { Card, CardContent, Box, useTheme } from "@mui/material";
 import { COLUMN_DEFS } from "../constants/columnDefs";
 
 interface StatisticsGridProps {
@@ -16,6 +16,55 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
   isMobile,
   onGridReady,
 }) => {
+  const theme = useTheme();
+  
+  // Inject theme-aware styles for AG Grid
+  useEffect(() => {
+    const style = document.createElement("style");
+    const isDark = theme.palette.mode === 'dark';
+    
+    style.innerHTML = `
+      .statistics-grid .ag-theme-alpine {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+      .statistics-grid .ag-theme-alpine .ag-header-cell {
+        background-color: ${isDark ? '#2d2d2d !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+      .statistics-grid .ag-theme-alpine .ag-row {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+      .statistics-grid .ag-theme-alpine .ag-row:hover {
+        background-color: ${isDark ? 'rgba(255, 255, 255, 0.08) !important' : 'inherit'};
+      }
+      .statistics-grid .ag-theme-alpine .ag-cell {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+        border-bottom-color: ${isDark ? 'rgba(255, 255, 255, 0.12) !important' : 'inherit'};
+      }
+      .statistics-grid .ag-theme-alpine .ag-root-wrapper {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+      }
+      .statistics-grid .ag-theme-alpine .ag-paging-panel {
+        background-color: ${isDark ? '#2d2d2d !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+        border-top-color: ${isDark ? 'rgba(255, 255, 255, 0.12) !important' : 'inherit'};
+      }
+      .statistics-grid .ag-theme-alpine .ag-paging-button {
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    };
+  }, [theme.palette.mode]);
+
   const getColumnDef = useCallback(() => {
     switch (selectedStat) {
       case "corpus_overview":
@@ -47,7 +96,7 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
     <Card sx={{ height: gridHeight }}>
       <CardContent sx={{ height: "100%", p: 0 }}>
         <Box
-          className="ag-theme-alpine"
+          className="ag-theme-alpine statistics-grid"
           style={{ height: "100%", width: "100%" }}
         >
           <AgGridReact

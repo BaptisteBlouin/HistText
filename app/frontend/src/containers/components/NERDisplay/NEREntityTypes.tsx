@@ -111,7 +111,7 @@ const NEREntityTypes: React.FC<NEREntityTypesProps> = ({
       </Box>
 
       {/* Integrated Confidence Distribution with Quick Filters */}
-      <Box sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
+      <Box sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50', borderRadius: 1 }}>
         <Typography
           variant="subtitle2"
           gutterBottom

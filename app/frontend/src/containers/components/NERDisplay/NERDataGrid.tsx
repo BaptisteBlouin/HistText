@@ -1,7 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { ColDef } from "ag-grid-community";
-import { Paper, Box, Typography, Chip, LinearProgress } from "@mui/material";
+import { Paper, Box, Typography, Chip, LinearProgress, useTheme } from "@mui/material";
 import { TableChart } from "@mui/icons-material";
 
 interface NERDataGridProps {
@@ -19,8 +19,56 @@ const NERDataGrid: React.FC<NERDataGridProps> = ({
   onGridReady,
   onIdClick,
 }) => {
+  const theme = useTheme();
   const containerStyle = useMemo(() => ({ width: "100%", height: "70vh" }), []);
   const gridStyle = useMemo(() => ({ height: "70vh", width: "100%" }), []);
+
+  // Inject theme-aware styles for AG Grid
+  useEffect(() => {
+    const style = document.createElement("style");
+    const isDark = theme.palette.mode === 'dark';
+    
+    style.innerHTML = `
+      .ner-grid .ag-theme-quartz {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+      .ner-grid .ag-theme-quartz .ag-header-cell {
+        background-color: ${isDark ? '#2d2d2d !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+      .ner-grid .ag-theme-quartz .ag-row {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+      .ner-grid .ag-theme-quartz .ag-row:hover {
+        background-color: ${isDark ? 'rgba(255, 255, 255, 0.08) !important' : 'inherit'};
+      }
+      .ner-grid .ag-theme-quartz .ag-cell {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+        border-bottom-color: ${isDark ? 'rgba(255, 255, 255, 0.12) !important' : 'inherit'};
+      }
+      .ner-grid .ag-theme-quartz .ag-root-wrapper {
+        background-color: ${isDark ? '#1e1e1e !important' : 'inherit'};
+      }
+      .ner-grid .ag-theme-quartz .ag-paging-panel {
+        background-color: ${isDark ? '#2d2d2d !important' : 'inherit'};
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+        border-top-color: ${isDark ? 'rgba(255, 255, 255, 0.12) !important' : 'inherit'};
+      }
+      .ner-grid .ag-theme-quartz .ag-paging-button {
+        color: ${isDark ? '#ffffff !important' : 'inherit'};
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    };
+  }, [theme.palette.mode]);
 
   // Optimized column definitions
   const columnDefs = useMemo<ColDef[]>(
@@ -155,7 +203,7 @@ const NERDataGrid: React.FC<NERDataGridProps> = ({
       <Box
         sx={{
           p: 2,
-          bgcolor: "grey.50",
+          bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
           borderBottom: 1,
           borderColor: "divider",
         }}
@@ -183,7 +231,7 @@ const NERDataGrid: React.FC<NERDataGridProps> = ({
       </Box>
 
       <Box id="NerTable" style={containerStyle}>
-        <div style={gridStyle} className="ag-theme-quartz">
+        <div style={gridStyle} className="ag-theme-quartz ner-grid">
           <AgGridReact
             rowData={displayEntities}
             columnDefs={columnDefs}

@@ -155,7 +155,7 @@ const DocumentDetailsModal: React.FC<DocumentDetailsModalProps> = React.memo(
           onClose={onClose}
         />
 
-        <DialogContent sx={{ p: 0, bgcolor: "grey.50" }}>
+        <DialogContent sx={{ p: 0, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
           {renderContent()}
         </DialogContent>
 
@@ -164,7 +164,7 @@ const DocumentDetailsModal: React.FC<DocumentDetailsModalProps> = React.memo(
             sx={{
               px: 3,
               py: 2,
-              bgcolor: "grey.50",
+              bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
               borderTop: "1px solid",
               borderColor: "divider",
             }}
