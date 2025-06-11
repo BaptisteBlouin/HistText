@@ -67,7 +67,9 @@
     "preview": "vite preview",
     "start:dev": "npm install && vite",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
-    "lint": "eslint src --ext .ts,.tsx --ignore-pattern \"**/*.js\" --fix"
+    "lint": "eslint src --ext .ts,.tsx --ignore-pattern \"**/*.js\" --fix",
+    "audit:prod": "npm audit --omit=dev",
+    "audit:all": "npm audit"
   },
   "eslintConfig": {
     "extends": [
