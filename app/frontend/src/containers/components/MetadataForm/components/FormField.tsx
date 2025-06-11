@@ -385,7 +385,7 @@ const FormField: React.FC<FormFieldProps> = ({
                 )}
               </Box>
 
-              {idx === formData[field.name].length - 1 && (
+              {idx === formData[field.name].length - 1 && entry.value && entry.value.trim() && (
                 <ButtonGroup size="small" variant="outlined" sx={{ mt: 1 }}>
                   <Button
                     onClick={() => onAddBooleanField(field.name, "AND")}
@@ -586,7 +586,7 @@ const FormField: React.FC<FormFieldProps> = ({
                 </Box>
               )}
 
-              {idx === formData[field.name].length - 1 && (
+              {idx === formData[field.name].length - 1 && entry.value && entry.value.trim() && (
                 <ButtonGroup size="small" variant="outlined" sx={{ mt: 1 }}>
                   <Button
                     onClick={() => onAddBooleanField(field.name, "AND")}

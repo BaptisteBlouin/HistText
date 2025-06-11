@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from "react";
-import { Box, Typography, Alert, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Typography, Alert } from "@mui/material";
 import { TableChart, Info } from "@mui/icons-material";
 import { useDataGridConfig } from "./DataGrid/hooks/useDataGridConfig";
 import { useDataGridActions } from "./DataGrid/hooks/useDataGridActions";
 import { contentCache } from "./DataGrid/utils";
+import { useResponsive } from "../../lib/responsive-utils";
 import DataGridToolbar from "./DataGrid/components/DataGridToolbar";
 import DataGridMain from "./DataGrid/components/DataGridMain";
 import ExportDialog from "./DataGrid/components/ExportDialog";
@@ -18,6 +19,7 @@ interface DataGridComponentProps {
   selectedSolrDatabase: any;
   authAxios: any;
   isAllResultsTab?: boolean;
+  isLoading?: boolean;
 }
 
 const DataGridComponent: React.FC<DataGridComponentProps> = React.memo(
@@ -30,9 +32,9 @@ const DataGridComponent: React.FC<DataGridComponentProps> = React.memo(
     selectedSolrDatabase,
     authAxios,
     isAllResultsTab = false,
+    isLoading = false,
   }) => {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+    const { isMobile } = useResponsive();
 
     // Local state
     const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
@@ -138,6 +140,10 @@ const DataGridComponent: React.FC<DataGridComponentProps> = React.memo(
           onGridReady={onGridReady}
           showConcordance={showConcordance}
           fullscreen={fullscreen}
+          onIdClick={handleIdClick}
+          searchText={searchText}
+          onSearchChange={handleSearch}
+          isLoading={isLoading}
         />
 
         <ExportDialog

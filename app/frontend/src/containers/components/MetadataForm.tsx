@@ -9,8 +9,14 @@ import {
   Grid,
   Alert,
   Chip,
+  CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Badge,
+  Collapse,
 } from "@mui/material";
-import { PlayArrow, QueryStats, CheckCircle } from "@mui/icons-material";
+import { PlayArrow, QueryStats, CheckCircle, ClearAll, ExpandMore, Search, FilterList } from "@mui/icons-material";
 import axios from "axios";
 import config from "../../../config.json";
 import { buildQueryString } from "./buildQueryString";
@@ -23,6 +29,7 @@ import {
   shouldExcludeField,
   isTextField,
   sortFieldsByPriority,
+  getFieldPriority,
 } from "./MetadataForm/utils/fieldUtils";
 import FormHeader from "./MetadataForm/components/FormHeader";
 import FormField from "./MetadataForm/components/FormField";
@@ -79,6 +86,7 @@ interface MetadataFormProps {
   solrDatabaseId: number | null;
   selectedAlias: string;
   allResults?: any[];
+  isLoading?: boolean;
   // Search history integration props
   availableDatabases?: Array<{ id: number; name: string }>;
   availableCollections?: Record<number, string[]>;
@@ -106,6 +114,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   solrDatabaseId,
   selectedAlias,
   allResults = [],
+  isLoading = false,
   availableDatabases,
   availableCollections,
   onDatabaseChange,
@@ -121,6 +130,11 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   const [showEmbeddingAlert, setShowEmbeddingAlert] = useState(false);
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
+  
+  // Mobile collapsible sections state
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(isMobile ? ['primary-fields'] : ['search-fields', 'date-range', 'options'])
+  );
 
   // Search history hook
   const { addToHistory } = useSearchHistory();
@@ -370,24 +384,48 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       index: number,
     ) => {
       const { name, value } = event.target;
-      setFormData((prev) => ({
-        ...prev,
-        [name!]: (prev[name!] || []).map((entry, i) =>
+      setFormData((prev) => {
+        const newFieldData = (prev[name!] || []).map((entry, i) =>
           i === index ? { ...entry, value: (value as any)?.toString() || "" } : entry,
-        ),
-      }));
+        );
+
+        // Smart field management: remove empty boolean fields (except the first one)
+        const cleanedFieldData = newFieldData.filter((entry, i) => {
+          // Always keep the first field
+          if (i === 0) return true;
+          // Remove additional fields if they're empty
+          return entry.value && entry.value.trim();
+        });
+
+        return {
+          ...prev,
+          [name!]: cleanedFieldData,
+        };
+      });
     },
     [setFormData],
   );
 
   const handleSelectChange = useCallback(
     (fieldName: string, newValue: string | null, index: number = 0) => {
-      setFormData((prev) => ({
-        ...prev,
-        [fieldName]: (prev[fieldName] || []).map((entry, i) =>
+      setFormData((prev) => {
+        const newFieldData = (prev[fieldName] || []).map((entry, i) =>
           i === index ? { ...entry, value: newValue || "" } : entry,
-        ),
-      }));
+        );
+
+        // Smart field management: remove empty boolean fields (except the first one)
+        const cleanedFieldData = newFieldData.filter((entry, i) => {
+          // Always keep the first field
+          if (i === 0) return true;
+          // Remove additional fields if they're empty
+          return entry.value && entry.value.trim();
+        });
+
+        return {
+          ...prev,
+          [fieldName]: cleanedFieldData,
+        };
+      });
     },
     [setFormData],
   );
@@ -432,10 +470,65 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     setEmbeddingModalOpen(false);
   }, []);
 
+  const clearAllFields = useCallback(() => {
+    const clearedFormData: any = {};
+    metadata.forEach((field: any) => {
+      clearedFormData[field.name] = [{ value: "", operator: "", not: false }];
+    });
+    setFormData(clearedFormData);
+  }, [metadata, setFormData]);
+
+  // Helper functions for mobile collapsible sections
+  const toggleSection = useCallback((sectionId: string) => {
+    setExpandedSections(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(sectionId)) {
+        newExpanded.delete(sectionId);
+      } else {
+        newExpanded.add(sectionId);
+      }
+      return newExpanded;
+    });
+  }, []);
+
   // Filter and sort fields
   const visibleFields = sortFieldsByPriority(
     metadata.filter((field) => !shouldExcludeField(field.name, collectionInfo)),
   );
+
+  const getFieldsWithValues = useCallback(() => {
+    return visibleFields.filter(field => {
+      const fieldData = formData[field.name];
+      return fieldData && fieldData.some((entry: any) => entry.value && entry.value.trim());
+    });
+  }, [visibleFields, formData]);
+
+  const organizeFields = useCallback(() => {
+    const fieldsWithValues = getFieldsWithValues();
+    const emptyFields = visibleFields.filter(field => !fieldsWithValues.includes(field));
+    
+    // Group fields by importance
+    const primaryFields = visibleFields.filter(field => 
+      isTextField(field.name, collectionInfo) || 
+      getFieldPriority(field) <= 2
+    );
+    
+    const secondaryFields = visibleFields.filter(field => 
+      getFieldPriority(field) > 2 && getFieldPriority(field) < 10
+    );
+    
+    const metadataFields = visibleFields.filter(field => 
+      getFieldPriority(field) >= 10
+    );
+
+    return {
+      fieldsWithValues,
+      emptyFields,
+      primaryFields,
+      secondaryFields,
+      metadataFields
+    };
+  }, [visibleFields, getFieldsWithValues, collectionInfo]);
 
   // Determine which field should receive autofocus
   const getAutoFocusField = () => {
@@ -471,20 +564,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       <Card sx={{ mb: { xs: 2, sm: 3 } }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           <Box component="form" onSubmit={handleSubmitWithHistory}>
-            <Typography
-              variant={isMobile ? "subtitle1" : "h6"}
-              gutterBottom
-              sx={{ 
-                display: "flex", 
-                alignItems: "center", 
-                gap: 1,
-                fontSize: { xs: '1.125rem', sm: '1.25rem' }
-              }}
-            >
-              <QueryStats sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
-              Search Fields
-            </Typography>
-            {/* Search History Integration */}
+            {/* Search History Integration - Always visible */}
             <Box sx={{ mb: { xs: 2, sm: 3 } }}>
               <SearchHistoryIntegration
                 formData={formData}
@@ -502,57 +582,260 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                 onShowHistory={() => setHistoryPanelOpen(true)}
               />
             </Box>
-            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 2, sm: 3 } }}>
-              {visibleFields.map((field) => (
-                <Grid 
-                  item 
-                  xs={12} 
-                  sm={isMobile ? 12 : isTablet ? 6 : 6} 
-                  md={6} 
-                  lg={4} 
-                  key={field.name}
+
+            {isMobile ? (
+              /* Mobile: Collapsible Sections */
+              <Box>
+                {/* Active Fields Section */}
+                {getFieldsWithValues().length > 0 && (
+                  <Accordion 
+                    expanded={expandedSections.has('active-fields')}
+                    onChange={() => toggleSection('active-fields')}
+                    sx={{ mb: 2 }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMore />}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                        <Badge badgeContent={getFieldsWithValues().length} color="primary">
+                          <Search />
+                        </Badge>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          Active Search Fields
+                        </Typography>
+                      </Box>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Grid container spacing={2}>
+                        {getFieldsWithValues().map((field) => (
+                          <Grid item xs={12} key={field.name}>
+                            <FormField
+                              field={field}
+                              formData={formData}
+                              collectionInfo={collectionInfo}
+                              hasEmbeddings={hasEmbeddings}
+                              neighbors={neighbors}
+                              loadingNeighbors={loadingNeighbors}
+                              metadata={metadata}
+                              onFormChange={handleFormChange}
+                              onSelectChange={handleSelectChange}
+                              onToggleNot={toggleNotCondition}
+                              onAddBooleanField={addBooleanField}
+                              onRemoveBooleanField={removeBooleanField}
+                              onFetchNeighbors={getNeighbors}
+                              onRemoveNeighborDropdown={removeNeighborDropdown}
+                              shouldAutoFocus={field.name === autoFocusFieldName}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </AccordionDetails>
+                  </Accordion>
+                )}
+
+                {/* Primary Fields Section */}
+                <Accordion 
+                  expanded={expandedSections.has('primary-fields')}
+                  onChange={() => toggleSection('primary-fields')}
+                  sx={{ mb: 2 }}
                 >
-                  <FormField
-                    field={field}
-                    formData={formData}
-                    collectionInfo={collectionInfo}
-                    hasEmbeddings={hasEmbeddings}
-                    neighbors={neighbors}
-                    loadingNeighbors={loadingNeighbors}
-                    metadata={metadata}
-                    onFormChange={handleFormChange}
-                    onSelectChange={handleSelectChange}
-                    onToggleNot={toggleNotCondition}
-                    onAddBooleanField={addBooleanField}
-                    onRemoveBooleanField={removeBooleanField}
-                    onFetchNeighbors={getNeighbors}
-                    onRemoveNeighborDropdown={removeNeighborDropdown}
-                    shouldAutoFocus={field.name === autoFocusFieldName}
-                  />
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Search />
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        Main Search Fields
+                      </Typography>
+                      <Chip size="small" label={organizeFields().primaryFields.length} />
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      {organizeFields().primaryFields.map((field) => (
+                        <Grid item xs={12} key={field.name}>
+                          <FormField
+                            field={field}
+                            formData={formData}
+                            collectionInfo={collectionInfo}
+                            hasEmbeddings={hasEmbeddings}
+                            neighbors={neighbors}
+                            loadingNeighbors={loadingNeighbors}
+                            metadata={metadata}
+                            onFormChange={handleFormChange}
+                            onSelectChange={handleSelectChange}
+                            onToggleNot={toggleNotCondition}
+                            onAddBooleanField={addBooleanField}
+                            onRemoveBooleanField={removeBooleanField}
+                            onFetchNeighbors={getNeighbors}
+                            onRemoveNeighborDropdown={removeNeighborDropdown}
+                            shouldAutoFocus={field.name === autoFocusFieldName}
+                          />
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Secondary Fields Section */}
+                {organizeFields().secondaryFields.length > 0 && (
+                  <Accordion 
+                    expanded={expandedSections.has('secondary-fields')}
+                    onChange={() => toggleSection('secondary-fields')}
+                    sx={{ mb: 2 }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMore />}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <FilterList />
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          Additional Filters
+                        </Typography>
+                        <Chip size="small" label={organizeFields().secondaryFields.length} />
+                      </Box>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Grid container spacing={2}>
+                        {organizeFields().secondaryFields.map((field) => (
+                          <Grid item xs={12} key={field.name}>
+                            <FormField
+                              field={field}
+                              formData={formData}
+                              collectionInfo={collectionInfo}
+                              hasEmbeddings={hasEmbeddings}
+                              neighbors={neighbors}
+                              loadingNeighbors={loadingNeighbors}
+                              metadata={metadata}
+                              onFormChange={handleFormChange}
+                              onSelectChange={handleSelectChange}
+                              onToggleNot={toggleNotCondition}
+                              onAddBooleanField={addBooleanField}
+                              onRemoveBooleanField={removeBooleanField}
+                              onFetchNeighbors={getNeighbors}
+                              onRemoveNeighborDropdown={removeNeighborDropdown}
+                              shouldAutoFocus={field.name === autoFocusFieldName}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </AccordionDetails>
+                  </Accordion>
+                )}
+
+                {/* Date Range Section */}
+                <Accordion 
+                  expanded={expandedSections.has('date-range')}
+                  onChange={() => toggleSection('date-range')}
+                  sx={{ mb: 2 }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      Date Range
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <DateRangeField
+                      dateRange={dateRange}
+                      formData={formData}
+                      onFormChange={handleFormChange}
+                    />
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Query Options Section */}
+                <Accordion 
+                  expanded={expandedSections.has('options')}
+                  onChange={() => toggleSection('options')}
+                  sx={{ mb: 2 }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      Query Options
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <QueryOptions
+                      getNER={getNER}
+                      setGetNER={setGetNER}
+                      downloadOnly={downloadOnly}
+                      setDownloadOnly={setdownloadOnly}
+                      statsOnly={statsOnly}
+                      setStatsOnly={setStatsOnly}
+                      statsLevel={statsLevel}
+                      setStatsLevel={setStatsLevel}
+                      docLevel={docLevel}
+                      setDocLevel={setDocLevel}
+                      showAdvanced={showAdvanced}
+                      setShowAdvanced={setShowAdvanced}
+                    />
+                  </AccordionDetails>
+                </Accordion>
+              </Box>
+            ) : (
+              /* Desktop: Original Layout */
+              <Box>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: 1,
+                    mb: 3
+                  }}
+                >
+                  <QueryStats />
+                  Search Fields
+                </Typography>
+                
+                <Grid container spacing={3} sx={{ mb: 3 }}>
+                  {visibleFields.map((field) => (
+                    <Grid 
+                      item 
+                      xs={12} 
+                      sm={isTablet ? 6 : 6} 
+                      md={6} 
+                      lg={4} 
+                      key={field.name}
+                    >
+                      <FormField
+                        field={field}
+                        formData={formData}
+                        collectionInfo={collectionInfo}
+                        hasEmbeddings={hasEmbeddings}
+                        neighbors={neighbors}
+                        loadingNeighbors={loadingNeighbors}
+                        metadata={metadata}
+                        onFormChange={handleFormChange}
+                        onSelectChange={handleSelectChange}
+                        onToggleNot={toggleNotCondition}
+                        onAddBooleanField={addBooleanField}
+                        onRemoveBooleanField={removeBooleanField}
+                        onFetchNeighbors={getNeighbors}
+                        onRemoveNeighborDropdown={removeNeighborDropdown}
+                        shouldAutoFocus={field.name === autoFocusFieldName}
+                      />
+                    </Grid>
+                  ))}
                 </Grid>
-              ))}
-            </Grid>
 
-            <DateRangeField
-              dateRange={dateRange}
-              formData={formData}
-              onFormChange={handleFormChange}
-            />
+                <DateRangeField
+                  dateRange={dateRange}
+                  formData={formData}
+                  onFormChange={handleFormChange}
+                />
 
-            <QueryOptions
-              getNER={getNER}
-              setGetNER={setGetNER}
-              downloadOnly={downloadOnly}
-              setDownloadOnly={setdownloadOnly}
-              statsOnly={statsOnly}
-              setStatsOnly={setStatsOnly}
-              statsLevel={statsLevel}
-              setStatsLevel={setStatsLevel}
-              docLevel={docLevel}
-              setDocLevel={setDocLevel}
-              showAdvanced={showAdvanced}
-              setShowAdvanced={setShowAdvanced}
-            />
+                <QueryOptions
+                  getNER={getNER}
+                  setGetNER={setGetNER}
+                  downloadOnly={downloadOnly}
+                  setDownloadOnly={setdownloadOnly}
+                  statsOnly={statsOnly}
+                  setStatsOnly={setStatsOnly}
+                  statsLevel={statsLevel}
+                  setStatsLevel={setStatsLevel}
+                  docLevel={docLevel}
+                  setDocLevel={setDocLevel}
+                  showAdvanced={showAdvanced}
+                  setShowAdvanced={setShowAdvanced}
+                />
+              </Box>
+            )}
 
             {/* Form Validation Summary */}
             <Box sx={{ mb: 3 }}>
@@ -593,16 +876,36 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                 color="primary"
                 type="submit"
                 size="large"
-                startIcon={<PlayArrow />}
-                disabled={!formValidation.canSubmit}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <PlayArrow />}
+                disabled={!formValidation.canSubmit || isLoading}
                 sx={{
                   minWidth: 120,
-                  opacity: formValidation.canSubmit ? 1 : 0.6,
-                  cursor: formValidation.canSubmit ? "pointer" : "not-allowed",
+                  opacity: formValidation.canSubmit && !isLoading ? 1 : 0.6,
+                  cursor: formValidation.canSubmit && !isLoading ? "pointer" : "not-allowed",
                 }}
               >
-                Execute Query
+                {isLoading ? "Processing..." : "Execute Query"}
               </Button>
+
+              {hasSearchContent && (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="large"
+                  startIcon={<ClearAll />}
+                  onClick={clearAllFields}
+                  disabled={isLoading}
+                  sx={{
+                    minWidth: 120,
+                    "&:hover": {
+                      backgroundColor: "secondary.light",
+                      color: "white",
+                    },
+                  }}
+                >
+                  Clear All
+                </Button>
+              )}
 
               {solrDatabaseId && (
                 <CodeGeneration

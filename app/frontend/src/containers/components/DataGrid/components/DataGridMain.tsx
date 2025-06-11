@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { Box, Paper, useTheme } from "@mui/material";
 import { useResponsive } from "../../../../lib/responsive-utils";
+import MobileCardView from "./MobileCardView";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
 
@@ -16,6 +17,10 @@ interface DataGridMainProps {
   onGridReady: (params: any) => void;
   showConcordance: boolean;
   fullscreen: boolean;
+  onIdClick?: (id: string) => void;
+  searchText?: string;
+  onSearchChange?: (text: string) => void;
+  isLoading?: boolean;
 }
 
 /**
@@ -34,6 +39,10 @@ const DataGridMain: React.FC<DataGridMainProps> = ({
   onGridReady,
   showConcordance,
   fullscreen,
+  onIdClick,
+  searchText = "",
+  onSearchChange,
+  isLoading = false,
 }) => {
   const theme = useTheme();
   const { isMobile, isTablet, getPaginationSize } = useResponsive();
@@ -161,6 +170,40 @@ useEffect(() => {
     return [50, 100, 200];
   };
 
+  // Render mobile card view for small screens
+  if (isMobile) {
+    const mobileHeight = fullscreen 
+      ? "calc(100vh - 100px)" 
+      : "calc(100vh - 300px)"; // Account for other UI elements
+
+    return (
+      <Paper
+        elevation={2}
+        className="responsive-table"
+        sx={{
+          borderRadius: { xs: 1, sm: 2 },
+          overflow: "hidden",
+          margin: { xs: 0.5, sm: 0 },
+          height: mobileHeight,
+          maxHeight: mobileHeight,
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <MobileCardView
+          rowData={rowData}
+          columnDefs={columnDefs}
+          onIdClick={onIdClick}
+          isLoading={isLoading}
+          showConcordance={showConcordance}
+          searchText={searchText}
+          onSearchChange={onSearchChange}
+        />
+      </Paper>
+    );
+  }
+
+  // Render AG Grid for desktop/tablet
   return (
     <Paper
       elevation={2}

@@ -418,6 +418,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
             isMobile={isMobile}
             onGridReady={onGridReady}
             onIdClick={handleIdClick}
+            isLoading={isAnalyticsLoading}
           />
 
           <NERPerformanceHint totalEntities={stats.totalEntities} />

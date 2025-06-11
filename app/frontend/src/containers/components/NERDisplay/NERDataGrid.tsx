@@ -3,6 +3,7 @@ import { AgGridReact } from "ag-grid-react";
 import { ColDef } from "ag-grid-community";
 import { Paper, Box, Typography, Chip, LinearProgress, useTheme } from "@mui/material";
 import { TableChart } from "@mui/icons-material";
+import NERMobileCardView from "./NERMobileCardView";
 
 interface NERDataGridProps {
   displayEntities: any[];
@@ -10,6 +11,7 @@ interface NERDataGridProps {
   isMobile: boolean;
   onGridReady: (params: any) => void;
   onIdClick: (id: string) => void;
+  isLoading?: boolean;
 }
 
 const NERDataGrid: React.FC<NERDataGridProps> = ({
@@ -18,6 +20,7 @@ const NERDataGrid: React.FC<NERDataGridProps> = ({
   isMobile,
   onGridReady,
   onIdClick,
+  isLoading = false,
 }) => {
   const theme = useTheme();
   const containerStyle = useMemo(() => ({ width: "100%", height: "70vh" }), []);
@@ -198,6 +201,32 @@ const NERDataGrid: React.FC<NERDataGridProps> = ({
     [],
   );
 
+  // Render mobile card view for small screens
+  if (isMobile) {
+    const mobileHeight = "calc(100vh - 300px)"; // Account for other UI elements
+
+    return (
+      <Paper
+        sx={{
+          borderRadius: 2,
+          overflow: "hidden",
+          height: mobileHeight,
+          maxHeight: mobileHeight,
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <NERMobileCardView
+          displayEntities={displayEntities}
+          stats={stats}
+          onIdClick={onIdClick}
+          isLoading={isLoading}
+        />
+      </Paper>
+    );
+  }
+
+  // Render AG Grid for desktop/tablet
   return (
     <Paper sx={{ borderRadius: 2, overflow: "hidden" }}>
       <Box
