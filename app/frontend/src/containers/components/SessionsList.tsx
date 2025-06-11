@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Box, Typography, Button, Pagination, Grid } from "@mui/material";
+import { Box, Typography, Button, Pagination, Grid, CircularProgress, Skeleton } from "@mui/material";
+import { LoadingButton } from "@mui/lab";
 import "../css/SessionsList.css";
 import { toast } from "react-toastify";
 
@@ -8,6 +9,7 @@ export const SessionsList = ({ auth }: { auth: any }) => {
   const [pageSize, setPageSize] = useState<number>(10);
   const [isFetchingSessions, setFetchingSessions] = useState<boolean>(false);
   const [isDeleting, setDeleting] = useState<boolean>(false);
+  const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null);
   const [sessions, setSessions] = useState<UserSessionResponse>({
     sessions: [],
     num_pages: 1,
@@ -51,7 +53,7 @@ export const SessionsList = ({ auth }: { auth: any }) => {
   };
 
   const deleteSession = async (id: number) => {
-    setDeleting(true);
+    setDeletingSessionId(id);
     try {
       const response = await fetch(`/api/auth/sessions/${id}`, {
         method: "DELETE",
@@ -73,7 +75,7 @@ export const SessionsList = ({ auth }: { auth: any }) => {
       console.error(error);
       toast.error("Failed to delete session.");
     } finally {
-      setDeleting(false);
+      setDeletingSessionId(null);
     }
   };
 
@@ -105,17 +107,29 @@ export const SessionsList = ({ auth }: { auth: any }) => {
   return (
     <Box sx={{ backgroundColor: "#f9f9f9", p: 3, borderRadius: 2 }}>
       <Typography variant="h6">Sessions</Typography>
-      <Button
+      <LoadingButton
         variant="contained"
         color="secondary"
-        disabled={isDeleting}
+        loading={isDeleting}
+        disabled={deletingSessionId !== null}
         onClick={deleteAllSessions}
+        loadingIndicator="Deleting all sessions..."
         sx={{ mb: 2 }}
       >
-        {isDeleting ? "Deleting..." : "Delete All Sessions"}
-      </Button>
+        Delete All Sessions
+      </LoadingButton>
+      
       {isFetchingSessions ? (
-        <Typography>Fetching sessions...</Typography>
+        <Box>
+          {[...Array(3)].map((_, index) => (
+            <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+              <Skeleton variant="text" width="60%" height={20} sx={{ mb: 1 }} />
+              <Skeleton variant="text" width="40%" height={16} sx={{ mb: 1 }} />
+              <Skeleton variant="text" width="80%" height={16} sx={{ mb: 2 }} />
+              <Skeleton variant="rectangular" width={80} height={36} />
+            </Box>
+          ))}
+        </Box>
       ) : (
         <Box>
           {sessions.sessions.length === 0 ? (
@@ -124,14 +138,17 @@ export const SessionsList = ({ auth }: { auth: any }) => {
             sessions.sessions.map((session) => (
               <Box key={session.id} className="session-item" sx={{ mb: 2 }}>
                 <pre>{JSON.stringify(session, null, 2)}</pre>
-                <Button
+                <LoadingButton
                   variant="contained"
                   color="secondary"
-                  disabled={isDeleting}
+                  loading={deletingSessionId === session.id}
+                  disabled={isDeleting || deletingSessionId !== null}
                   onClick={() => deleteSession(session.id)}
+                  loadingIndicator="Deleting..."
+                  size="small"
                 >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
+                  Delete
+                </LoadingButton>
               </Box>
             ))
           )}
@@ -141,6 +158,7 @@ export const SessionsList = ({ auth }: { auth: any }) => {
               page={page}
               onChange={(e, value) => setPage(value)}
               color="primary"
+              disabled={isFetchingSessions || isDeleting || deletingSessionId !== null}
             />
           </Grid>
         </Box>

@@ -125,6 +125,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(
     null,
   );
+  const [loadingCollectionInfo, setLoadingCollectionInfo] = useState<boolean>(false);
   const [hasEmbeddings, setHasEmbeddings] = useState<boolean>(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showEmbeddingAlert, setShowEmbeddingAlert] = useState(false);
@@ -164,6 +165,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   // Fetch collection info
   useEffect(() => {
     if (solrDatabaseId && selectedAlias) {
+      setLoadingCollectionInfo(true);
       axios
         .get(`/api/solr_database_info/${solrDatabaseId}/${selectedAlias}`)
         .then((response) => {
@@ -194,10 +196,14 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
             setCollectionInfo(null);
             setHasEmbeddings(false);
           }
+        })
+        .finally(() => {
+          setLoadingCollectionInfo(false);
         });
     } else {
       setCollectionInfo(null);
       setHasEmbeddings(false);
+      setLoadingCollectionInfo(false);
     }
   }, [solrDatabaseId, selectedAlias]);
 
@@ -554,6 +560,13 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
 
   return (
     <Box sx={{ width: "100%" }}>
+      {loadingCollectionInfo && (
+        <Alert severity="info" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+          <CircularProgress size={16} sx={{ mr: 1 }} />
+          Loading collection information...
+        </Alert>
+      )}
+      
       <FormHeader
         hasEmbeddings={hasEmbeddings}
         showEmbeddingAlert={showEmbeddingAlert}

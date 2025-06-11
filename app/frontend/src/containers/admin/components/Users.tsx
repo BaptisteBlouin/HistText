@@ -27,6 +27,7 @@ import {
   Badge,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { LoadingButton } from "@mui/lab";
 import {
   Edit,
   Delete,
@@ -115,6 +116,10 @@ const Users: React.FC = () => {
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   /**
    * Fetch users on component mount.
@@ -263,6 +268,7 @@ const Users: React.FC = () => {
       return;
     }
     
+    setAdding(true);
     try {
       await authAxios.post("/api/users", newUser);
       setNewUser({});
@@ -282,6 +288,8 @@ const Users: React.FC = () => {
       } else {
         showNotification(`Failed to add user: ${errorMessage}`, "error");
       }
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -296,6 +304,7 @@ const Users: React.FC = () => {
       return;
     }
     
+    setUpdating(true);
     try {
       await authAxios.put(`/api/users/${id}`, editingUser);
       const userName = `${editingUser.firstname} ${editingUser.lastname}`.trim() || editingUser.email;
@@ -317,6 +326,8 @@ const Users: React.FC = () => {
       } else {
         showNotification(`Failed to update user: ${errorMessage}`, "error");
       }
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -328,6 +339,7 @@ const Users: React.FC = () => {
       `${userToDelete.firstname} ${userToDelete.lastname}`.trim() || userToDelete.email : 
       `User ${id}`;
     
+    setDeleting(true);
     try {
       await authAxios.delete(`/api/users/${id}`);
       fetchUsers();
@@ -350,6 +362,8 @@ const Users: React.FC = () => {
       }
       setOpenDeleteDialog(false);
       setUserToDelete(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -367,6 +381,7 @@ const Users: React.FC = () => {
   const handleBulkDelete = async () => {
     if (selectedUsers.length === 0) return;
     
+    setDeletingBulk(true);
     try {
       await Promise.all(
         selectedUsers.map(id => authAxios.delete(`/api/users/${id}`))
@@ -387,6 +402,8 @@ const Users: React.FC = () => {
         "error"
       );
       setOpenBulkDeleteDialog(false);
+    } finally {
+      setDeletingBulk(false);
     }
   };
 
@@ -1076,10 +1093,11 @@ const Users: React.FC = () => {
             </Grid>
           </DialogContent>
           <DialogActions sx={{ p: 3 }}>
-            <Button onClick={() => setOpenAddDialog(false)}>Cancel</Button>
-            <Button
+            <Button onClick={() => setOpenAddDialog(false)} disabled={adding}>Cancel</Button>
+            <LoadingButton
               variant="contained"
               onClick={handleAdd}
+              loading={adding}
               disabled={
                 !newUser.email ||
                 !newUser.firstname ||
@@ -1088,7 +1106,7 @@ const Users: React.FC = () => {
               }
             >
               Add User
-            </Button>
+            </LoadingButton>
           </DialogActions>
         </Dialog>
 
@@ -1170,13 +1188,14 @@ const Users: React.FC = () => {
             </Grid>
           </DialogContent>
           <DialogActions sx={{ p: 3 }}>
-            <Button onClick={handleEditClose}>Cancel</Button>
-            <Button
+            <Button onClick={handleEditClose} disabled={updating}>Cancel</Button>
+            <LoadingButton
               variant="contained"
               onClick={() => editingUserId && handleUpdate(editingUserId)}
+              loading={updating}
             >
               Save Changes
-            </Button>
+            </LoadingButton>
           </DialogActions>
         </Dialog>
 
@@ -1192,14 +1211,15 @@ const Users: React.FC = () => {
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-            <Button
+            <Button onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>Cancel</Button>
+            <LoadingButton
               variant="contained"
               color="error"
               onClick={() => userToDelete && handleDelete(userToDelete.id)}
+              loading={deleting}
             >
               Delete
-            </Button>
+            </LoadingButton>
           </DialogActions>
         </Dialog>
 
@@ -1236,14 +1256,15 @@ const Users: React.FC = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenBulkDeleteDialog(false)}>Cancel</Button>
-            <Button
+            <Button onClick={() => setOpenBulkDeleteDialog(false)} disabled={deletingBulk}>Cancel</Button>
+            <LoadingButton
               variant="contained"
               color="error"
               onClick={handleBulkDelete}
+              loading={deletingBulk}
             >
               Delete {selectedUsers.length} User{selectedUsers.length !== 1 ? 's' : ''}
-            </Button>
+            </LoadingButton>
           </DialogActions>
         </Dialog>
 
