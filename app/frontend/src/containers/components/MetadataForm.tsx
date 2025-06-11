@@ -437,6 +437,23 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     metadata.filter((field) => !shouldExcludeField(field.name, collectionInfo)),
   );
 
+  // Determine which field should receive autofocus
+  const getAutoFocusField = () => {
+    if (!visibleFields.length) return null;
+    
+    // Prioritize the main text field if it exists
+    const mainTextField = visibleFields.find(
+      (field) => collectionInfo?.text_field === field.name
+    );
+    
+    if (mainTextField) return mainTextField.name;
+    
+    // Otherwise, use the first visible field
+    return visibleFields[0]?.name;
+  };
+
+  const autoFocusFieldName = getAutoFocusField();
+
   // Check if we have any search content
   const hasSearchContent = Object.values(formData).some((entries: any) =>
     entries.some((entry: any) => entry.value && entry.value.trim()),
@@ -510,6 +527,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                     onRemoveBooleanField={removeBooleanField}
                     onFetchNeighbors={getNeighbors}
                     onRemoveNeighborDropdown={removeNeighborDropdown}
+                    shouldAutoFocus={field.name === autoFocusFieldName}
                   />
                 </Grid>
               ))}

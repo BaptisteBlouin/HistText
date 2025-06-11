@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import {
   Paper,
   Typography,
@@ -44,6 +44,7 @@ import { useSmartValidation } from "../../../../hooks/useSmartValidation";
  * @property onRemoveBooleanField - Handler to remove a boolean field.
  * @property onFetchNeighbors - Handler to fetch AI suggestions.
  * @property onRemoveNeighborDropdown - Handler to hide AI suggestions.
+ * @property shouldAutoFocus - Whether this field should receive focus on mount.
  */
 interface FormFieldProps {
   field: any;
@@ -64,6 +65,7 @@ interface FormFieldProps {
   onRemoveBooleanField: (name: string, index: number) => void;
   onFetchNeighbors: (inputValue: string, fieldName: string) => void;
   onRemoveNeighborDropdown: (fieldName: string) => void;
+  shouldAutoFocus?: boolean;
 }
 
 /**
@@ -85,6 +87,7 @@ const FormField: React.FC<FormFieldProps> = ({
   onRemoveBooleanField,
   onFetchNeighbors,
   onRemoveNeighborDropdown,
+  shouldAutoFocus = false,
 }) => {
   const { validateField } = useSmartValidation(
     formData,
@@ -92,6 +95,20 @@ const FormField: React.FC<FormFieldProps> = ({
     collectionInfo,
   );
   const isTextField = collectionInfo?.text_field === field.name;
+  
+  // Ref for the first input field to enable autofocus
+  const firstInputRef = useRef<HTMLInputElement>(null);
+  
+  // Auto-focus the field if requested
+  useEffect(() => {
+    if (shouldAutoFocus && firstInputRef.current) {
+      // Small delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        firstInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldAutoFocus]);
 
   // Get validation for this field
   const validation = validateField(field.name, formData[field.name] || []);
@@ -464,6 +481,7 @@ const FormField: React.FC<FormFieldProps> = ({
                     size="small"
                     fullWidth
                     placeholder={`Enter ${field.name}...`}
+                    inputRef={idx === 0 && shouldAutoFocus ? firstInputRef : undefined}
                     InputProps={{
                       endAdornment: idx === 0 &&
                         hasEmbeddings &&
