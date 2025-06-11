@@ -6,6 +6,12 @@
 //! - Role-based access control with permissions
 //! - Session management with device tracking
 //! - Email-based account activation and password recovery
+//!
+//! ## Cookie Security
+//! 
+//! Cookies automatically adapt security settings based on build mode:
+//! - Debug builds: `secure: false` (allows HTTP for local development)
+//! - Release builds: `secure: true` (requires HTTPS for production)
 
 use crate::config::Config;
 use crate::services::error::{AppError, AppResult, AuthErrorReason};
@@ -873,7 +879,7 @@ pub mod handlers {
         Ok(HttpResponse::Ok()
             .cookie(
                 Cookie::build(COOKIE_NAME, refresh_token)
-                    .secure(true)
+                    .secure(!cfg!(debug_assertions)) // Secure in release, allow HTTP in debug
                     .http_only(true)
                     .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
                     .path("/")
@@ -996,17 +1002,27 @@ pub mod handlers {
         req: HttpRequest,
         config: web::Data<Arc<Config>>,
         ) -> Result<HttpResponse, AppError> {
+        debug!("Refresh endpoint called");
+        
         let refresh_token = req
             .cookie(COOKIE_NAME)
             .map(|cookie| cookie.value().to_string());
 
+        if refresh_token.is_none() {
+            warn!("No refresh token found in cookies");
+            return Err(AppError::auth(AuthErrorReason::InvalidToken, "No refresh token provided"));
+        }
+
+        debug!("Found refresh token in cookies");
         let handler = AuthHandler::new(config.get_ref().clone());
         let (access_token, new_refresh_token) = handler.refresh(db, refresh_token.as_deref()).await?;
 
+        debug!("Sending new refresh token in response (secure: {})", !cfg!(debug_assertions));
+        
         Ok(HttpResponse::Ok()
             .cookie(
                 Cookie::build(COOKIE_NAME, new_refresh_token)
-                    .secure(true)
+                    .secure(!cfg!(debug_assertions)) // Secure in release, allow HTTP in debug
                     .http_only(true)
                     .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
                     .path("/")

@@ -1,7 +1,8 @@
 import react from "@vitejs/plugin-react";
-import glob from "glob";
 import { resolve } from "path";
 import { defineConfig } from "vite";
+import { readdirSync, statSync } from "fs";
+import { join } from "path";
 
 const buildRollupInput = (isDevelopment): { [entryAlias: string]: string } => {
   const rollupInput: { [entryAlias: string]: string } = isDevelopment
@@ -10,11 +11,29 @@ const buildRollupInput = (isDevelopment): { [entryAlias: string]: string } => {
       }
     : {};
 
-  // TODO: use import.meta.glob() + npm uninstall glob
+  // Use fs instead of glob to avoid dependencies
+  const bundlesDir = resolve(__dirname, "./bundles");
+  try {
+    const findTsxFiles = (dir: string): string[] => {
+      const files: string[] = [];
+      const items = readdirSync(dir);
+      
+      for (const item of items) {
+        const fullPath = join(dir, item);
+        const stat = statSync(fullPath);
+        
+        if (stat.isDirectory()) {
+          files.push(...findTsxFiles(fullPath));
+        } else if (item.endsWith('.tsx')) {
+          files.push(fullPath);
+        }
+      }
+      
+      return files;
+    };
 
-  glob
-    .sync(resolve(__dirname, "./bundles/**/*.tsx"))
-    .map((inputEntry: string) => {
+    const tsxFiles = findTsxFiles(bundlesDir);
+    tsxFiles.forEach((inputEntry: string) => {
       let outputEntry = inputEntry;
       // output entry is an absolute path, let's remove the absolute part:
       outputEntry = outputEntry.replace(`${__dirname}/`, "");
@@ -23,6 +42,9 @@ const buildRollupInput = (isDevelopment): { [entryAlias: string]: string } => {
 
       rollupInput[outputEntry] = inputEntry;
     });
+  } catch (error) {
+    console.warn("Could not read bundles directory:", error);
+  }
 
   return rollupInput;
 };

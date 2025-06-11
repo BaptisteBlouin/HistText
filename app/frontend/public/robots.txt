@@ -1,3 +1,46 @@
+# robots.txt for HistText - Historical Text Analysis Platform
 # https://www.robotstxt.org/robotstxt.html
+
+# Default rules for all crawlers
 User-agent: *
-Disallow:
+
+# Disallow sensitive areas
+Disallow: /admin/
+Disallow: /Admin/
+Disallow: /account/
+Disallow: /api/
+Disallow: /graphql/
+
+# Disallow authentication routes
+Disallow: /auth/
+Disallow: /login/
+Disallow: /register/
+Disallow: /recovery/
+Disallow: /reset/
+Disallow: /activation/
+
+# Disallow user-specific content
+Disallow: /histtext/
+Disallow: /sessions/
+
+# Allow public documentation and static assets
+Allow: /docs/
+Allow: /public/
+Allow: /images/
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.ico
+
+# Allow root page
+Allow: /
+
+# Crawl delay (be respectful to server resources)
+Crawl-delay: 1
+
+# Sitemap location (uncomment and update URL when available)
+# Sitemap: https://yourdomain.com/sitemap.xml

@@ -17,6 +17,7 @@ pub async fn run_server() -> std::io::Result<()> {
     use crate::services::cache_manager::CacheManager;
     use crate::services::response_pool::ResponsePool;
     use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
+    use actix_cors::Cors;
     use actix_web::web::PayloadConfig;
     use actix_web::{
         web::{self, Data},
@@ -98,7 +99,15 @@ pub async fn run_server() -> std::io::Result<()> {
         let shared_db_pool = web::Data::new(db_pool.clone());
         let shared_schema = web::Data::new(schema.clone());
 
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .supports_credentials()
+            .max_age(3600);
+
         let app = App::new()
+            .wrap(cors)
             .wrap(RequestAnalyticsMiddleware)
             .wrap(Compress::default())
             .wrap(NormalizePath::new(TrailingSlash::MergeOnly))

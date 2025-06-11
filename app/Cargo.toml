@@ -40,6 +40,7 @@ name = "script"
 path = "backend/bin/admin_once.rs"
 
 [dependencies]
+actix-cors = "0.7.0"
 actix-files = "0.6.0"
 actix-http = "3.0.0"
 actix-web = "4.0.1"

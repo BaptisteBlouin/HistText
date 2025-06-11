@@ -352,12 +352,25 @@ export const useAuthCheck = () => {
           } else {
             // Log specific error information for debugging
             console.warn(`Auth refresh failed with status: ${response.status} ${response.statusText}`);
+            
+            // Try to get the error response body for more details
+            try {
+              const errorText = await response.text();
+              console.warn("Auth refresh error response:", errorText);
+            } catch (e) {
+              console.warn("Could not read error response body");
+            }
+            
             context.setAccessToken(undefined);
             context.setSession(undefined);
           }
         }
       } catch (error) {
         console.error("Auth refresh error:", error);
+        console.error("Refresh token fetch failed. This could be due to:");
+        console.error("1. CORS misconfiguration");
+        console.error("2. Missing or expired refresh token cookie");
+        console.error("3. Backend server issues");
         context.setAccessToken(undefined);
         context.setSession(undefined);
       } finally {
