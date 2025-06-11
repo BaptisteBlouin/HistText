@@ -13,6 +13,7 @@ import {
   useTheme,
   alpha,
 } from "@mui/material";
+import { useAuth } from "../../hooks/useAuth";
 import {
   Keyboard,
   Close,
@@ -22,6 +23,16 @@ import {
   GetApp,
   Delete,
   ExitToApp,
+  Home,
+  Description,
+  AdminPanelSettings,
+  AccountCircle,
+  History,
+  ArrowBack,
+  ArrowForward,
+  Tab,
+  ExpandLess,
+  ExpandMore,
 } from "@mui/icons-material";
 
 interface KeyboardShortcut {
@@ -29,13 +40,134 @@ interface KeyboardShortcut {
   description: string;
   category: string;
   icon?: React.ReactNode;
+  adminOnly?: boolean;
+  requiresAuth?: boolean;
 }
 
 const shortcuts: KeyboardShortcut[] = [
+  // Navigation Shortcuts
+  {
+    keys: ["Ctrl", "H"],
+    description: "Go to Home",
+    category: "Navigation",
+    icon: <Home fontSize="small" />,
+  },
+  {
+    keys: ["Ctrl", "M"],
+    description: "Go to HistText",
+    category: "Navigation",
+    icon: <Description fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "A"],
+    description: "Go to Account",
+    category: "Navigation",
+    icon: <AccountCircle fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "Shift", "A"],
+    description: "Go to Admin Panel",
+    category: "Navigation",
+    icon: <AdminPanelSettings fontSize="small" />,
+    adminOnly: true,
+  },
+  {
+    keys: ["Ctrl", "Shift", "H"],
+    description: "Open Search History",
+    category: "Navigation",
+    icon: <History fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "B"],
+    description: "Toggle Sidebar",
+    category: "Navigation",
+    icon: <ExpandLess fontSize="small" />,
+  },
+  {
+    keys: ["Alt", "Left"],
+    description: "Go Back",
+    category: "Navigation",
+    icon: <ArrowBack fontSize="small" />,
+  },
+  {
+    keys: ["Alt", "Right"],
+    description: "Go Forward",
+    category: "Navigation",
+    icon: <ArrowForward fontSize="small" />,
+  },
+  
+  // Tab Navigation
+  {
+    keys: ["Ctrl", "1"],
+    description: "Switch to Query tab",
+    category: "Tabs",
+    icon: <Search fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "2"],
+    description: "Switch to Partial Results",
+    category: "Tabs",
+    icon: <Tab fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "3"],
+    description: "Switch to All Results",
+    category: "Tabs",
+    icon: <Tab fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "4"],
+    description: "Switch to Word Cloud",
+    category: "Tabs",
+    icon: <Tab fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "5"],
+    description: "Switch to Statistics",
+    category: "Tabs",
+    icon: <Tab fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "6"],
+    description: "Switch to NER",
+    category: "Tabs",
+    icon: <Tab fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "Left"],
+    description: "Previous Tab",
+    category: "Tabs",
+    icon: <ArrowBack fontSize="small" />,
+    requiresAuth: true,
+  },
+  {
+    keys: ["Ctrl", "Right"],
+    description: "Next Tab",
+    category: "Tabs",
+    icon: <ArrowForward fontSize="small" />,
+    requiresAuth: true,
+  },
+
+  // Search & Actions
   {
     keys: ["Ctrl", "K"],
-    description: "Open search",
-    category: "Navigation",
+    description: "Focus search field",
+    category: "Search",
+    icon: <Search fontSize="small" />,
+  },
+  {
+    keys: ["Ctrl", "Enter"],
+    description: "Execute search",
+    category: "Search",
     icon: <Search fontSize="small" />,
   },
   {
@@ -43,6 +175,7 @@ const shortcuts: KeyboardShortcut[] = [
     description: "Add new item",
     category: "Actions",
     icon: <Add fontSize="small" />,
+    adminOnly: true,
   },
   {
     keys: ["Ctrl", "R"],
@@ -55,22 +188,19 @@ const shortcuts: KeyboardShortcut[] = [
     description: "Export selected",
     category: "Actions",
     icon: <GetApp fontSize="small" />,
+    requiresAuth: true,
   },
   {
-    keys: ["Ctrl", "Shift", "A"],
-    description: "Select all items",
-    category: "Selection",
-  },
-  {
-    keys: ["Delete"],
+    keys: ["Ctrl", "Shift", "Del"],
     description: "Delete selected",
     category: "Actions",
     icon: <Delete fontSize="small" />,
+    adminOnly: true,
   },
   {
     keys: ["Escape"],
     description: "Close dialogs/clear selection",
-    category: "Navigation",
+    category: "General",
     icon: <ExitToApp fontSize="small" />,
   },
   {
@@ -112,6 +242,7 @@ const KeyChip: React.FC<{ keyName: string }> = ({ keyName }) => {
 export const KeyboardShortcutsHelp: React.FC = () => {
   const [open, setOpen] = useState(false);
   const theme = useTheme();
+  const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -129,7 +260,18 @@ export const KeyboardShortcutsHelp: React.FC = () => {
     return () => document.removeEventListener("keydown", handleKeyPress);
   }, []);
 
-  const groupedShortcuts = shortcuts.reduce((acc, shortcut) => {
+  // Filter shortcuts based on user permissions
+  const filteredShortcuts = shortcuts.filter(shortcut => {
+    if (shortcut.adminOnly && (!user || !user.is_admin)) {
+      return false;
+    }
+    if (shortcut.requiresAuth && !isAuthenticated) {
+      return false;
+    }
+    return true;
+  });
+
+  const groupedShortcuts = filteredShortcuts.reduce((acc, shortcut) => {
     if (!acc[shortcut.category]) {
       acc[shortcut.category] = [];
     }
@@ -167,7 +309,12 @@ export const KeyboardShortcutsHelp: React.FC = () => {
         PaperProps={{
           sx: {
             borderRadius: 3,
-            background: "linear-gradient(135deg, rgba(103, 58, 183, 0.05) 0%, rgba(63, 81, 181, 0.05) 100%)",
+            backgroundColor: "background.paper",
+            backdropFilter: "blur(20px)",
+            border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+            background: theme.palette.mode === 'dark' 
+              ? "linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(40, 40, 40, 0.95) 100%)"
+              : "linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)",
           },
         }}
       >

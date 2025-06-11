@@ -4,6 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useHistTextData } from "../../hooks/useHistTextData";
 import { useHistTextActions } from "../../hooks/useHistTextActions";
 import { useWordCloudProcessor } from "../../hooks/useWordCloudProcessor";
+import { useGlobalKeyboardNavigation } from "../../hooks/useGlobalKeyboardNavigation";
 import HistTextLayout from "../components/HistTextLayout";
 import AuthenticationRequired from "./components/AuthenticationRequired";
 import { useHistTextState } from "./hooks/useHistTextState";
@@ -375,6 +376,33 @@ const HistText: React.FC = React.memo(() => {
       showNotification,
     ],
   );
+
+  // Keyboard navigation for HistText
+  useGlobalKeyboardNavigation({
+    activeTab,
+    setActiveTab,
+    onFocusSearch: () => {
+      // Focus the first text input in the metadata form
+      const firstInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+      if (firstInput) {
+        firstInput.focus();
+      }
+    },
+    onExecuteSearch: () => {
+      // Trigger the query execution
+      if (actions.handleQuery) {
+        actions.handleQuery();
+      }
+    },
+    onRefresh: () => {
+      // Refresh the current data
+      window.location.reload();
+    },
+    onExport: () => {
+      // Trigger export functionality if available
+      showNotification("Export functionality", "info");
+    },
+  });
 
   // Early return for unauthenticated users
   if (!isAuthenticated) {

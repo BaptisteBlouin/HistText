@@ -12,3 +12,4 @@ export { default as SkeletonLoader } from "./SkeletonLoader";
 export { default as KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 export { default as CopyToClipboard } from "./CopyToClipboard";
 export { default as ProgressIndicator } from "./ProgressIndicator";
+export { default as MobileBottomNavigation } from "./MobileBottomNavigation";

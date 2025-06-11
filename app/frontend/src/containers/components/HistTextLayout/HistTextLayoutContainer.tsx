@@ -158,11 +158,14 @@ const HistTextLayoutContainer: React.FC<HistTextLayoutContainerProps> = ({
           fullscreenMode={fullscreenMode}
         />
 
+
         <Paper 
           ref={mainPaperRef} 
           sx={{
             ...paperStyles,
-            borderRadius: { xs: 1, sm: 2 },
+            borderRadius: { xs: fullscreenState.isAnyFullscreen ? 0 : 1, sm: fullscreenState.isAnyFullscreen ? 0 : 2 },
+            borderTopLeftRadius: !fullscreenState.isAnyFullscreen ? 0 : undefined,
+            borderTopRightRadius: !fullscreenState.isAnyFullscreen ? 0 : undefined,
             mx: { xs: 0, sm: 0 },
             p: { xs: 1, sm: 2, md: 3 },
           }}

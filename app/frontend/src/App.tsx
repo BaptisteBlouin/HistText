@@ -1,4 +1,5 @@
 import { useAuth, useAuthCheck, AuthProvider } from "./hooks/useAuth";
+import { useGlobalKeyboardNavigation } from "./hooks/useGlobalKeyboardNavigation";
 import { AccountPage } from "./containers/AccountPage";
 import { LoginPage } from "./containers/LoginPage";
 import { OauthLoginResultPage } from "./containers/OauthLoginResultPage";
@@ -8,7 +9,7 @@ import { RecoveryPage } from "./containers/RecoveryPage";
 import { ResetPage } from "./containers/ResetPage";
 import { ProtectedRoute } from "./components/RouteGuards";
 import { LogoutButton } from "./components/LogoutButton";
-import { KeyboardShortcutsHelp } from "./components/ui";
+import { KeyboardShortcutsHelp, MobileBottomNavigation } from "./components/ui";
 import React, { useState } from "react";
 import "./App.css";
 import "./styles/ag-grid-dark-theme.css";
@@ -69,6 +70,12 @@ const AppContent = () => {
   const handleSidebarToggle = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
+
+  // Global keyboard navigation
+  useGlobalKeyboardNavigation({
+    onToggleSidebar: handleSidebarToggle,
+    onRefresh: () => window.location.reload(),
+  });
 
   const navigationItems = [
     { text: "Home", icon: <HomeIcon />, path: "/", public: true },
@@ -308,6 +315,24 @@ const AppContent = () => {
       <Divider />
 
       <Box sx={{ p: collapsed ? 1 : 2 }}>
+        {/* Help Tip */}
+        {!collapsed && (
+          <Box sx={{ mb: 2, p: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, bgcolor: "action.hover" }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>
+              💡 Press <Box component="kbd" sx={{ 
+                px: 0.5, 
+                py: 0.25, 
+                borderRadius: 0.5, 
+                backgroundColor: "background.paper",
+                fontFamily: 'monospace',
+                fontSize: '0.75rem',
+                border: '1px solid',
+                borderColor: 'divider'
+              }}>?</Box> for keyboard shortcuts
+            </Typography>
+          </Box>
+        )}
+        
         {/* Theme Toggle */}
         <Box sx={{ mb: 2 }}>
           {collapsed ? (
@@ -546,6 +571,7 @@ const AppContent = () => {
             )}
           </>
         )}
+        
       </Box>
     </Box>
   );
@@ -647,6 +673,7 @@ const AppContent = () => {
           flexGrow: 1,
           bgcolor: "background.default",
           minHeight: "100vh",
+          paddingBottom: { xs: '80px', sm: 0 }, // Space for mobile bottom nav
           pt: isMobile ? { xs: 7, sm: 8 } : 0,
           px: { xs: 1, sm: 0 },
           transition: theme.transitions.create(["margin", "padding"], {
@@ -700,6 +727,9 @@ const AppContent = () => {
       
       {/* Global Keyboard Shortcuts Help */}
       <KeyboardShortcutsHelp />
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNavigation />
     </Box>
   );
 };
