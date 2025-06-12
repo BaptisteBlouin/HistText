@@ -6,6 +6,7 @@
 
 use actix_web::{web, HttpResponse};
 use diesel::prelude::*;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -354,6 +355,119 @@ impl SolrDatabaseInfoHandler {
         }
         Ok(HttpResponse::Ok().body("SolrDatabaseInfo deleted"))
     }
+
+    /// Checks if a NER collection exists in Solr
+    ///
+    /// Queries the Solr NER instance to determine if a collection with suffix "-ner" exists
+    /// for the given base collection name.
+    ///
+    /// # Arguments
+    /// * `db` - Database connection
+    /// * `path` - Path parameters containing database ID and collection name
+    ///
+    /// # Returns
+    /// HTTP response with JSON indicating whether the NER collection exists
+    pub async fn check_ner_collection_exists(
+        &self,
+        _db: web::Data<Database>,
+        path: web::Path<(i32, String)>,
+    ) -> AppResult<HttpResponse> {
+        let (_solr_db_id, collection_name) = path.into_inner();
+        let ner_collection_name = format!("{}-ner", collection_name);
+        
+        // Check if collection exists in the NER Solr instance
+        let solr_ner_url = format!("http://localhost:{}/solr", self.config.solr_ner_port);
+        
+        // First check if the core exists in the status
+        let check_url = format!("{}/admin/cores?action=STATUS&core={}", solr_ner_url, ner_collection_name);
+        debug!("Checking NER collection existence at: {}", check_url);
+        
+        match reqwest::get(&check_url).await {
+            Ok(response) => {
+                debug!("Solr response status: {}", response.status());
+                if response.status().is_success() {
+                    match response.json::<serde_json::Value>().await {
+                        Ok(json) => {
+                            debug!("Solr response JSON: {}", json);
+                            
+                            // First check if the collection appears in the status response
+                            let core_in_status = json
+                                .get("status")
+                                .and_then(|status| status.get(&ner_collection_name))
+                                .is_some();
+                            
+                            if !core_in_status {
+                                debug!("NER collection '{}' not found in status", ner_collection_name);
+                                return Ok(HttpResponse::Ok().json(serde_json::json!({
+                                    "collection_name": collection_name,
+                                    "ner_collection_name": ner_collection_name,
+                                    "exists": false
+                                })));
+                            }
+                            
+                            // Core exists in status, now verify it's actually functional by checking if it has documents
+                            let query_url = format!("{}/{}/select?q=*:*&rows=0", solr_ner_url, ner_collection_name);
+                            debug!("Verifying NER collection functionality at: {}", query_url);
+                            
+                            match reqwest::get(&query_url).await {
+                                Ok(query_response) => {
+                                    if query_response.status().is_success() {
+                                        debug!("NER collection '{}' is functional", ner_collection_name);
+                                        Ok(HttpResponse::Ok().json(serde_json::json!({
+                                            "collection_name": collection_name,
+                                            "ner_collection_name": ner_collection_name,
+                                            "exists": true
+                                        })))
+                                    } else {
+                                        debug!("NER collection '{}' query failed with status: {}", ner_collection_name, query_response.status());
+                                        Ok(HttpResponse::Ok().json(serde_json::json!({
+                                            "collection_name": collection_name,
+                                            "ner_collection_name": ner_collection_name,
+                                            "exists": false
+                                        })))
+                                    }
+                                }
+                                Err(e) => {
+                                    debug!("NER collection '{}' query failed: {}", ner_collection_name, e);
+                                    Ok(HttpResponse::Ok().json(serde_json::json!({
+                                        "collection_name": collection_name,
+                                        "ner_collection_name": ner_collection_name,
+                                        "exists": false
+                                    })))
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            // Failed to parse response, assume collection doesn't exist
+                            debug!("Failed to parse Solr response: {}", e);
+                            Ok(HttpResponse::Ok().json(serde_json::json!({
+                                "collection_name": collection_name,
+                                "ner_collection_name": ner_collection_name,
+                                "exists": false
+                            })))
+                        }
+                    }
+                } else {
+                    // HTTP error, assume collection doesn't exist
+                    debug!("Solr HTTP error: {}", response.status());
+                    Ok(HttpResponse::Ok().json(serde_json::json!({
+                        "collection_name": collection_name,
+                        "ner_collection_name": ner_collection_name,
+                        "exists": false
+                    })))
+                }
+            }
+            Err(e) => {
+                // Network error, assume collection doesn't exist
+                debug!("Network error connecting to Solr: {}", e);
+                Ok(HttpResponse::Ok().json(serde_json::json!({
+                    "collection_name": collection_name,
+                    "ner_collection_name": ner_collection_name,
+                    "exists": false
+                })))
+            }
+        }
+    }
 }
 
 /// Retrieves all Solr collection metadata records
@@ -538,4 +652,43 @@ pub async fn delete_solr_database_info(
 ) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
     handler.delete(db, path).await
+}
+
+/// Checks if a NER collection exists for a given collection
+///
+/// Queries the Solr NER instance to determine if a collection with suffix "-ner" exists
+/// for the specified base collection. This is used to conditionally show NER features
+/// in the frontend.
+///
+/// # Arguments
+/// * `db` - Database connection pool
+/// * `path` - Path parameters containing database ID and collection name
+/// * `config` - Application configuration
+///
+/// # Returns
+/// HTTP response with JSON indicating whether the NER collection exists
+#[utoipa::path(
+    get,
+    path = "/api/solr_database_infos/{solr_database_id}/{collection_name}/ner-exists",
+    tag = "SolrDatabaseInfo",
+    params(
+        ("solr_database_id" = i32, Path, example = 1),
+        ("collection_name" = String, Path, example = "users")
+    ),
+    responses(
+        (status = 200, description = "NER collection existence check completed", body = inline(Object)),
+        (status = 404, description = "Base Solr database not found"),
+        (status = 500, description = "Database connection error or Solr query failure")
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
+pub async fn check_ner_collection_exists(
+    db: web::Data<Database>,
+    path: web::Path<(i32, String)>,
+    config: web::Data<Arc<Config>>,
+) -> Result<HttpResponse, AppError> {
+    let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
+    handler.check_ner_collection_exists(db, path).await
 }

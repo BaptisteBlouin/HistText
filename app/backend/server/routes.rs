@@ -444,6 +444,10 @@ fn configure_solr_database_info_routes(api_scope: Scope) -> Scope {
                         .to(delete_solr_database_info),
                 ),
         )
+        .service(
+            web::resource("/solr_database_info/{solr_database_id}/{collection_name}/ner-exists")
+                .route(web::get().to(check_ner_collection_exists)),
+        )
 }
 
 /// Configure user role assignment routes

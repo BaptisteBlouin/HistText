@@ -131,6 +131,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   const [showEmbeddingAlert, setShowEmbeddingAlert] = useState(false);
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
+  const [hasNERCollection, setHasNERCollection] = useState<boolean>(true); // Default to true to show NER button initially
   
   // Mobile collapsible sections state
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
@@ -206,6 +207,33 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       setLoadingCollectionInfo(false);
     }
   }, [solrDatabaseId, selectedAlias]);
+
+  // Check if NER collection exists
+  useEffect(() => {
+    if (solrDatabaseId && selectedAlias && accessToken) {
+      axios
+        .get(`/api/solr_database_info/${solrDatabaseId}/${selectedAlias}/ner-exists`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+        .then((response) => {
+          setHasNERCollection(response.data.exists);
+          // If NER collection doesn't exist, also disable NER option
+          if (!response.data.exists) {
+            setGetNER(false);
+          }
+        })
+        .catch((error) => {
+          console.warn(`Failed to check NER collection for ${selectedAlias}:`, error);
+          // Default to true if check fails to avoid hiding the option unnecessarily
+          setHasNERCollection(true);
+        });
+    } else {
+      // Default to true when no collection is selected
+      setHasNERCollection(true);
+    }
+  }, [solrDatabaseId, selectedAlias, accessToken]); // Removed getNER and setGetNER from dependencies
 
   // Initialize form data
   useEffect(() => {
@@ -775,6 +803,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                       setDocLevel={setDocLevel}
                       showAdvanced={showAdvanced}
                       setShowAdvanced={setShowAdvanced}
+                      showNER={hasNERCollection}
                     />
                   </AccordionDetails>
                 </Accordion>
@@ -846,6 +875,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                   setDocLevel={setDocLevel}
                   showAdvanced={showAdvanced}
                   setShowAdvanced={setShowAdvanced}
+                  showNER={hasNERCollection}
                 />
               </Box>
             )}
