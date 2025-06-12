@@ -387,7 +387,11 @@ export const useAuthCheck = () => {
   }, [context]);
 
   useEffect(() => {
-    refreshIfNecessary();
+    // Add a small delay to allow cookies to be processed by the browser
+    const timeoutId = setTimeout(() => {
+      refreshIfNecessary();
+    }, 100); // 100ms delay to ensure cookies are available
+
     let intervalId: NodeJS.Timeout | undefined = undefined;
 
     if (context.accessToken) {
@@ -397,6 +401,7 @@ export const useAuthCheck = () => {
       }, MILLISECONDS_UNTIL_EXPIRY_CHECK);
     }
     return () => {
+      clearTimeout(timeoutId);
       if (intervalId) clearInterval(intervalId);
     };
   }, [refreshIfNecessary]);
