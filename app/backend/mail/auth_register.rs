@@ -30,7 +30,7 @@ use crate::services::mailer::Mailer;
 /// let activation_link = "https://example.com/activate?token=xyz789";
 /// auth_register::send(&mailer, "newuser@example.com", activation_link);
 /// ```
-pub fn send(mailer: &Mailer, to_email: &str, link: &str) {
+pub async fn send(mailer: &Mailer, to_email: &str, link: &str) {
     let subject = "Complete Your HistText Registration";
     
     let text = format!(
@@ -199,5 +199,5 @@ The HistText Team"#,
         link = link
     );
 
-    mailer.send(to_email, subject, &text, &html);
+    mailer.send(to_email, subject, &text, &html).await;
 }

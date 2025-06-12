@@ -128,14 +128,17 @@ pub struct Config {
     /// Maximum number of embedding files to keep in cache
     pub max_embeddings_files: usize,
 
-    // Email settings (SMTP)
-    /// SMTP server address
+    // Email settings
+    /// Email service provider: "smtp", "oauth2", "sendgrid", "mailgun"
+    pub email_provider: String,
+
+    /// SMTP server address (for SMTP provider)
     pub smtp_server: String,
 
-    /// SMTP username
+    /// SMTP username (for SMTP provider)
     pub smtp_username: String,
 
-    /// SMTP password
+    /// SMTP password (for SMTP provider)
     pub smtp_password: String,
 
     /// Email address to use as sender
@@ -143,6 +146,32 @@ pub struct Config {
 
     /// Whether to actually send emails or just log them
     pub send_mail: bool,
+
+    // OAuth2 settings (for Gmail OAuth2)
+    /// OAuth2 client ID
+    pub oauth2_client_id: String,
+
+    /// OAuth2 client secret
+    pub oauth2_client_secret: String,
+
+    /// OAuth2 refresh token
+    pub oauth2_refresh_token: String,
+
+    /// OAuth2 redirect URI
+    pub oauth2_redirect_uri: String,
+
+    // HTTP API settings (for SendGrid, Mailgun, etc.)
+    /// API key for HTTP email services
+    pub email_api_key: String,
+
+    /// API endpoint for HTTP email services
+    pub email_api_endpoint: String,
+
+    /// Domain for Mailgun service
+    pub mailgun_domain: String,
+
+    /// Admin contact email for when email service is disabled
+    pub admin_contact_email: String,
 
     pub cache_ttl_seconds: u64,
     pub max_cache_size: usize,
@@ -196,11 +225,31 @@ impl Config {
 
 
     pub fn is_email_enabled(&self) -> bool {
-        self.send_mail && 
-        !self.smtp_server.is_empty() && 
-        self.smtp_server != "localhost" &&
-        !self.smtp_username.is_empty() &&
-        !self.smtp_password.is_empty()
+        if !self.send_mail {
+            return false;
+        }
+
+        match self.email_provider.as_str() {
+            "smtp" => {
+                !self.smtp_server.is_empty() && 
+                self.smtp_server != "localhost" &&
+                !self.smtp_username.is_empty() &&
+                !self.smtp_password.is_empty()
+            },
+            "oauth2" => {
+                !self.oauth2_client_id.is_empty() &&
+                !self.oauth2_client_secret.is_empty() &&
+                !self.oauth2_refresh_token.is_empty()
+            },
+            "sendgrid" => {
+                !self.email_api_key.is_empty()
+            },
+            "mailgun" => {
+                !self.email_api_key.is_empty() &&
+                !self.mailgun_domain.is_empty()
+            },
+            _ => false
+        }
     }
 
     /// Checks if accounts should be auto-activated (when email is not configured)
@@ -311,11 +360,26 @@ impl Config {
             max_embeddings_files: parse_with_default::<usize>("MAX_EMBEDDINGS_FILES", 3),
 
             // Email settings
+            email_provider: get_with_default("EMAIL_PROVIDER", "smtp"),
             smtp_server: get_with_default("SMTP_SERVER", "localhost"),
             smtp_username: get_with_default("SMTP_USERNAME", ""),
             smtp_password: get_with_default("SMTP_PASSWORD", ""),
             smtp_from_address: get_with_default("SMTP_FROM_ADDRESS", "no-reply@example.com"),
             send_mail: parse_with_default::<bool>("SEND_MAIL", false),
+
+            // OAuth2 settings
+            oauth2_client_id: get_with_default("OAUTH2_CLIENT_ID", ""),
+            oauth2_client_secret: get_with_default("OAUTH2_CLIENT_SECRET", ""),
+            oauth2_refresh_token: get_with_default("OAUTH2_REFRESH_TOKEN", ""),
+            oauth2_redirect_uri: get_with_default("OAUTH2_REDIRECT_URI", ""),
+
+            // HTTP API settings
+            email_api_key: get_with_default("EMAIL_API_KEY", ""),
+            email_api_endpoint: get_with_default("EMAIL_API_ENDPOINT", ""),
+            mailgun_domain: get_with_default("MAILGUN_DOMAIN", ""),
+
+            // Admin contact
+            admin_contact_email: get_with_default("ADMIN_CONTACT_EMAIL", "admin@histtext.com"),
 
             cache_ttl_seconds: parse_with_default::<u64>("CACHE_TTL_SECONDS", 3600),
             max_cache_size: parse_with_default::<usize>("MAX_CACHE_SIZE", 1000),

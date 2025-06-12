@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Box, TextField, Button, Grid } from "@mui/material";
+import { useNotification } from "../../../contexts/NotificationContext";
 
 /**
  * Fetches the configuration for the update form.
@@ -26,6 +27,7 @@ const saveConfig = async (updatedConfig: any) => {
  * and triggers a save (with placeholder logic).
  */
 const UpdateConfig: React.FC = () => {
+  const { showSuccess, showError } = useNotification();
   const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,8 +41,20 @@ const UpdateConfig: React.FC = () => {
   }, []);
 
   const handleSave = async () => {
-    await saveConfig(config);
-    alert("Configuration saved successfully!");
+    try {
+      await saveConfig(config);
+      showSuccess(
+        "Configuration Saved", 
+        "The configuration has been updated successfully.",
+        "Changes will take effect immediately."
+      );
+    } catch (error) {
+      showError(
+        "Save Failed",
+        "Failed to save configuration. Please try again.",
+        "Check your network connection and permissions."
+      );
+    }
   };
 
   if (loading) {

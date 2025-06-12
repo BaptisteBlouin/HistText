@@ -31,7 +31,7 @@ use crate::services::mailer::Mailer;
 /// let register_link = "https://example.com/register";
 /// auth_recover_nonexistent_account::send(&mailer, "user@example.com", register_link);
 /// ```
-pub fn send(mailer: &Mailer, to_email: &str, link: &str) {
+pub async fn send(mailer: &Mailer, to_email: &str, link: &str) {
     let subject = "HistText Account Not Found";
     
     let text = format!(
@@ -218,5 +218,5 @@ The HistText Team"#,
         link = link
     );
 
-    mailer.send(to_email, subject, &text, &html);
+    mailer.send(to_email, subject, &text, &html).await;
 }

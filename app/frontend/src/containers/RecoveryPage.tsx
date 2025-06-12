@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useNotification } from "../contexts/NotificationContext";
 import {
   Container,
   TextField,
@@ -26,6 +27,7 @@ import {
 export const RecoveryPage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
+  const { showSuccess, showEmailDisabled, showError } = useNotification();
   const [email, setEmail] = useState<string>("");
   const [processing, setProcessing] = useState<boolean>(false);
   const [success, setSuccess] = useState<boolean>(false);
@@ -60,16 +62,35 @@ export const RecoveryPage = () => {
       console.log(data);
 
       if (response.ok) {
-        setSuccess(true);
-        setEmail("");
+        if (data.email_enabled === false) {
+          // Email is disabled - show admin contact info with modern UI
+          showEmailDisabled(
+            data.message,
+            data.admin_email,
+            data.alternative
+          );
+          setError(null); // Clear form error since we're showing the notification
+        } else {
+          // Normal email flow
+          showSuccess(
+            "Password Reset Email Sent",
+            data.message,
+            data.info || "Please check your email inbox and spam folder."
+          );
+          setSuccess(true);
+          setEmail("");
+          setError(null);
+        }
       } else {
-        setError(
-          data.message || "Failed to send recovery email. Please try again.",
-        );
+        const errorMessage = data.message || "Failed to send recovery email. Please try again.";
+        showError("Password Reset Failed", errorMessage);
+        setError(errorMessage);
       }
     } catch (error) {
       console.error("Recovery request failed:", error);
-      setError("Network error. Please check your connection and try again.");
+      const errorMessage = "Network error. Please check your connection and try again.";
+      showError("Connection Error", errorMessage);
+      setError(errorMessage);
     } finally {
       setProcessing(false);
     }

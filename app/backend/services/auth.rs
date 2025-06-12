@@ -492,6 +492,11 @@ impl AuthHandler {
         if should_auto_activate {
             info!("Auto-activated user account during registration: {}", email_clone);
 
+            // Still send activation email (for logging/preview when email is disabled)
+            let activation_token = "auto-activated"; // Dummy token since account is already active
+            let activation_link = format!("{}/activate?token={}", self.config.app_url, activation_token);
+            mailer.send_register(&email_clone, &activation_link).await;
+
             // Automatically assign default role to newly activated user
             let role_service = get_role_assignment_service();
             if let Err(e) = role_service.assign_default_role_to_user(
@@ -508,8 +513,10 @@ impl AuthHandler {
 
             // Send a different response for auto-activated accounts
             Ok(HttpResponse::Ok().json(serde_json::json!({
-                "message": "Registration successful. Your account has been automatically activated and you can now log in.",
-                "activated": true
+                "message": "Registration successful! Your account has been automatically activated because email is not configured. You can now log in.",
+                "activated": true,
+                "email_enabled": false,
+                "info": "Email notifications are currently disabled on this server."
             })))
         } else {
             // Original email-based activation flow
@@ -535,13 +542,15 @@ impl AuthHandler {
 
             // Send activation email
             let activation_link = format!("{}/activate?token={}", self.config.app_url, activation_token);
-            mailer.send_register(&email_clone, &activation_link);
+            mailer.send_register(&email_clone, &activation_link).await;
 
             info!("Successfully registered user: {}", email_clone);
 
             Ok(HttpResponse::Ok().json(serde_json::json!({
-                "message": "Registration successful. Please check your email to activate your account.",
-                "activated": false
+                "message": "Registration successful! Please check your email to activate your account.",
+                "activated": false,
+                "email_enabled": true,
+                "info": "An activation link has been sent to your email address."
             })))
         }
     }
@@ -567,6 +576,20 @@ impl AuthHandler {
                 .optional()
         }).await?;
 
+        // Check if email is enabled to provide appropriate response
+        let email_enabled = self.config.is_email_enabled();
+        
+        if !email_enabled {
+            // Email is disabled - provide admin contact info
+            return Ok(HttpResponse::Ok().json(serde_json::json!({
+                "message": "Email service is not configured on this server.",
+                "email_enabled": false,
+                "info": "Please contact the administrator to reset your password.",
+                "admin_email": self.config.admin_contact_email,
+                "alternative": "You can also ask an administrator to reset your password manually."
+            })));
+        }
+
         if let Some(user) = user_result {
             let reset_claims = RefreshTokenClaims {
                 exp: (Utc::now() + Duration::hours(24)).timestamp() as usize,
@@ -588,16 +611,18 @@ impl AuthHandler {
             })?;
 
             let reset_link = format!("reset?token={}", reset_token);
-            mailer.send_recover_existent_account(&user.email, &reset_link);
+            mailer.send_recover_existent_account(&user.email, &reset_link).await;
             info!("Sent password reset email to: {}", user.email);
         } else {
             let register_link = "register";
-            mailer.send_recover_nonexistent_account(&email_clone, register_link);
+            mailer.send_recover_nonexistent_account(&email_clone, register_link).await;
             debug!("Sent registration suggestion to: {}", email_clone);
         }
 
         Ok(HttpResponse::Ok().json(serde_json::json!({
-            "message": "Please check your email."
+            "message": "If an account with this email exists, you will receive password reset instructions.",
+            "email_enabled": true,
+            "info": "Please check your email inbox and spam folder."
         })))
     }
 
@@ -644,7 +669,7 @@ impl AuthHandler {
                 .execute(conn)
         }).await?;
 
-        mailer.send_password_changed(&user.email);
+        mailer.send_password_changed(&user.email).await;
         info!("Password changed for user: {}", auth.user_id);
 
         Ok(HttpResponse::Ok().json(serde_json::json!({
@@ -698,7 +723,7 @@ impl AuthHandler {
                 .execute(conn)
         }).await?;
 
-        mailer.send_password_reset(&user.email);
+        mailer.send_password_reset(&user.email).await;
         info!("Password reset for user: {}", user.id);
 
         Ok(HttpResponse::Ok().json(serde_json::json!({
@@ -749,7 +774,7 @@ impl AuthHandler {
 
         // Send activation confirmation email only if email is enabled
         if self.config.is_email_enabled() {
-            mailer.send_activated(&user_before_activation.email);
+            mailer.send_activated(&user_before_activation.email).await;
         }
         
         info!("Account activated for user: {}", user_before_activation.email);
@@ -886,8 +911,16 @@ pub mod handlers {
             .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
             .path("/");
 
+        // Only set domain if explicitly configured and not localhost
         if let Some(domain) = &config.cookie_domain {
-            cookie_builder = cookie_builder.domain(domain);
+            if !domain.contains("localhost") && !domain.contains("127.0.0.1") {
+                cookie_builder = cookie_builder.domain(domain);
+                debug!("Setting cookie domain to: {}", domain);
+            } else {
+                debug!("Skipping domain setting for localhost/127.0.0.1: {}", domain);
+            }
+        } else {
+            debug!("No cookie domain configured, using default");
         }
 
         Ok(HttpResponse::Ok()
@@ -1015,11 +1048,17 @@ pub mod handlers {
         ) -> Result<HttpResponse, AppError> {
         debug!("Refresh endpoint called");
         
+        // Enhanced debugging: Log request details
+        debug!("Request URI: {}", req.uri());
+        debug!("Request method: {}", req.method());
+        debug!("Request headers: {:?}", req.headers());
+        
         // Debug: Log all received cookies
         let all_cookies: Vec<String> = req.cookies()
             .map(|cookies| cookies.iter().map(|c| format!("{}={}", c.name(), c.value())).collect())
             .unwrap_or_default();
         debug!("All received cookies: {:?}", all_cookies);
+        debug!("Cookie header raw: {:?}", req.headers().get("cookie"));
         
         let refresh_token = req
             .cookie(COOKIE_NAME)
@@ -1029,6 +1068,8 @@ pub mod handlers {
             warn!("No refresh token found in cookies");
             warn!("Expected cookie name: {}", COOKIE_NAME);
             warn!("Available cookies: {:?}", all_cookies);
+            warn!("Request came from: {:?}", req.headers().get("origin"));
+            warn!("User-Agent: {:?}", req.headers().get("user-agent"));
             return Err(AppError::auth(AuthErrorReason::InvalidToken, "No refresh token provided"));
         }
 
@@ -1046,8 +1087,16 @@ pub mod handlers {
             .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
             .path("/");
 
+        // Only set domain if explicitly configured and not localhost
         if let Some(domain) = &config.cookie_domain {
-            cookie_builder = cookie_builder.domain(domain);
+            if !domain.contains("localhost") && !domain.contains("127.0.0.1") {
+                cookie_builder = cookie_builder.domain(domain);
+                debug!("Setting refresh cookie domain to: {}", domain);
+            } else {
+                debug!("Skipping refresh domain setting for localhost/127.0.0.1: {}", domain);
+            }
+        } else {
+            debug!("No cookie domain configured for refresh, using default");
         }
         
         Ok(HttpResponse::Ok()

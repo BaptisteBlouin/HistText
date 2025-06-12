@@ -26,7 +26,7 @@ use crate::services::mailer::Mailer;
 /// let mailer = Mailer::new();
 /// auth_password_changed::send(&mailer, "user@example.com");
 /// ```
-pub fn send(mailer: &Mailer, to_email: &str) {
+pub async fn send(mailer: &Mailer, to_email: &str) {
     let subject = "HistText Password Changed Successfully";
     
     let text = r"(This is an automated message.)
@@ -168,5 +168,5 @@ The HistText Team".to_string();
 </html>
     "#.to_string();
 
-    mailer.send(to_email, subject, &text, &html);
+    mailer.send(to_email, subject, &text, &html).await;
 }

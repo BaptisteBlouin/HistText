@@ -29,7 +29,7 @@ use crate::services::mailer::Mailer;
 /// let reset_link = "https://example.com/reset?token=abc123";
 /// auth_recover_existent_account::send(&mailer, "user@example.com", reset_link);
 /// ```
-pub fn send(mailer: &Mailer, to_email: &str, link: &str) {
+pub async fn send(mailer: &Mailer, to_email: &str, link: &str) {
     let subject = "Reset Your HistText Password";
     
     let text = format!(
@@ -212,5 +212,5 @@ The HistText Team"#,
         link = link
     );
 
-    mailer.send(to_email, subject, &text, &html);
+    mailer.send(to_email, subject, &text, &html).await;
 }

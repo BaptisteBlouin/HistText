@@ -15,6 +15,7 @@ import "./App.css";
 import "./styles/ag-grid-dark-theme.css";
 import "./styles/responsive.css";
 import { CustomThemeProvider, useThemeMode } from "./contexts/ThemeContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import { useResponsive } from "./lib/responsive-utils";
 import { Home } from "./containers/Home";
 import { Route, useNavigate, Routes } from "react-router-dom";
@@ -738,9 +739,11 @@ const AppContent = () => {
 const App = () => {
   return (
     <CustomThemeProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <NotificationProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </NotificationProvider>
     </CustomThemeProvider>
   );
 };

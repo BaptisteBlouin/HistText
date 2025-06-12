@@ -25,7 +25,7 @@ use crate::services::mailer::Mailer;
 /// let mailer = Mailer::new();
 /// auth_activated::send(&mailer, "user@example.com");
 /// ```
-pub fn send(mailer: &Mailer, to_email: &str) {
+pub async fn send(mailer: &Mailer, to_email: &str) {
     let subject = "Welcome to HistText - Your Account is Active";
     
     let text = r"
@@ -221,5 +221,5 @@ If you didn't create this account, please contact us at histtext@gmail.com
 </html>
 "#.trim().to_string();
 
-    mailer.send(to_email, subject, &text, &html);
+    mailer.send(to_email, subject, &text, &html).await;
 }

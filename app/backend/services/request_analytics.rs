@@ -607,18 +607,56 @@ where
                     use crate::config::Config;
                     
                     let config = Config::global();
+                    // Use a more lenient validation for analytics purposes (ignore expiration)
+                    let mut validation = Validation::default();
+                    validation.validate_exp = false; // Don't validate expiration for analytics
+                    
                     if let Ok(token_data) = decode::<AccessTokenClaims>(
                         token,
                         &DecodingKey::from_secret(config.secret_key.as_ref()),
-                        &Validation::default(),
+                        &validation,
                     ) {
                         let user_id = token_data.claims.sub;
+                        debug!("Extracted user_id {} from JWT for analytics", user_id);
                         // We'll look up the real name during analytics recording
                         let username = format!("User {}", user_id);
                         Some((user_id, username))
                     } else {
+                        debug!("Failed to decode JWT token for analytics");
                         None
                     }
+                } else {
+                    None
+                }
+            })
+            .or_else(|| {
+                // If no Authorization header, try to extract from refresh token cookie (for /api/auth/refresh)
+                if path == "/api/auth/refresh" {
+                    use crate::services::auth::COOKIE_NAME;
+                    use jsonwebtoken::{decode, DecodingKey, Validation};
+                    use crate::services::auth::RefreshTokenClaims;
+                    use crate::config::Config;
+                    
+                    req.cookie(COOKIE_NAME)
+                        .and_then(|cookie| {
+                            let config = Config::global();
+                            let mut validation = Validation::default();
+                            validation.validate_exp = false; // Don't validate expiration for analytics
+                            
+                            if let Ok(token_data) = decode::<RefreshTokenClaims>(
+                                cookie.value(),
+                                &DecodingKey::from_secret(config.secret_key.as_ref()),
+                                &validation,
+                            ) {
+                                let user_id = token_data.claims.sub;
+                                debug!("Extracted user_id {} from refresh token cookie for analytics", user_id);
+                                let username = format!("User {}", user_id);
+                                Some((user_id, username))
+                            } else {
+                                debug!("Failed to decode refresh token cookie for analytics");
+                                None
+                            }
+                        })
                 } else {
                     None
                 }

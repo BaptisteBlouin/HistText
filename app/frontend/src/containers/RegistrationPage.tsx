@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useNotification } from "../contexts/NotificationContext";
 import {
   Container,
   TextField,
@@ -33,6 +34,7 @@ import {
 export const RegistrationPage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
+  const { showAutoActivation, showSuccess, showError } = useNotification();
 
   const [formData, setFormData] = useState({
     firstname: "",
@@ -158,9 +160,22 @@ export const RegistrationPage = () => {
 
       const data = await response.json();
       console.log(data);
-      navigate("/login");
+      
+      // Show success message to user
+      setErrors([]); // Clear any errors
+      
+      if (data.activated) {
+        // Account was auto-activated
+        showAutoActivation(data.message, data.info || '');
+        setTimeout(() => navigate("/login"), 2000); // Give time to read the message
+      } else {
+        // Email activation required
+        showSuccess("Registration Successful!", data.message, data.info || '');
+        setTimeout(() => navigate("/login"), 2000); // Give time to read the message
+      }
     } catch (error) {
       console.error("Registration failed", error);
+      showError("Registration Failed", "An error occurred during registration. Please try again later.");
       setErrors(["Registration failed. Please try again later."]);
     } finally {
       setProcessing(false);
