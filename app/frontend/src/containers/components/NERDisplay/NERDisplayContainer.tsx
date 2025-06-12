@@ -184,6 +184,53 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
     setIsModalOpen(true);
   }, []);
 
+  const handleDownloadCSV = useCallback(() => {
+    if (displayEntities.length === 0) return;
+
+    // Process in chunks for large datasets
+    const chunkSize = 1000;
+    const headers = ['document_id', 'entity_text', 'entity_type', 'start_position', 'end_position', 'confidence'];
+    
+    let csvContent = headers.join(',') + '\n';
+
+    // Process results in chunks to avoid blocking the UI
+    const processChunk = (startIndex: number) => {
+      const endIndex = Math.min(startIndex + chunkSize, displayEntities.length);
+      
+      for (let i = startIndex; i < endIndex; i++) {
+        const entity = displayEntities[i];
+        const values = [
+          entity.id || '',
+          entity.text || '',
+          entity.labelFull || '',
+          entity.start || '',
+          entity.end || '',
+          entity.confidence ? entity.confidence.toFixed(3) : ''
+        ].map(value => {
+          const stringValue = String(value);
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        });
+        csvContent += values.join(',') + '\n';
+      }
+
+      if (endIndex < displayEntities.length) {
+        // Use setTimeout to avoid blocking the main thread
+        setTimeout(() => processChunk(endIndex), 0);
+      } else {
+        // Download when complete
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `histtext-entities-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    processChunk(0);
+  }, [displayEntities]);
+
   const handleTabChange = useCallback(
     (event: React.SyntheticEvent, newValue: number) => {
       if (newValue === 1 && activeTab !== 1) {
@@ -372,7 +419,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
             onToggleAdvancedFilters={() =>
               setShowAdvancedFilters(!showAdvancedFilters)
             }
-            onDownloadCSV={() => {}} // Implement download CSV
+            onDownloadCSV={handleDownloadCSV}
             onClearAllFilters={clearAllFilters}
             quickFilterMode={quickFilterMode}
           />

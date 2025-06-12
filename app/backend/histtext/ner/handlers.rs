@@ -1,14 +1,19 @@
 //! HTTP request handlers for NER operations.
 
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpResponse, HttpRequest};
 use serde_json::{Map, Value};
 use std::io;
+use std::time::Instant;
 use log::{error, info};
 use tokio::fs;
+use jsonwebtoken::{decode, DecodingKey, Validation};
 
 use super::types::PathQueryParams;
 use super::cache::{generate_cache_key, get_cached_ner_results, cache_ner_results};
 use super::processing::get_ner_annotation_batch;
+use crate::services::{user_behavior_analytics, collection_intelligence};
+use crate::services::auth::AccessTokenClaims;
+use crate::config::Config;
 use log::debug;
 
 
@@ -25,7 +30,11 @@ use log::debug;
         ("bearer_auth" = [])
     )
 )]
-pub async fn fetch_ner_data(query: web::Query<PathQueryParams>) -> Result<HttpResponse, io::Error> {
+pub async fn fetch_ner_data(
+    req: HttpRequest,
+    query: web::Query<PathQueryParams>
+) -> Result<HttpResponse, io::Error> {
+    let start_time = Instant::now();
     let ner_path = query.path.as_deref().unwrap_or("");
 
     info!("Loading NER data from path: {}", ner_path);
@@ -46,6 +55,65 @@ pub async fn fetch_ner_data(query: web::Query<PathQueryParams>) -> Result<HttpRe
     
     if let Some(cached_results) = get_cached_ner_results(&cache_key) {
         let ner_data_map: Map<String, Value> = cached_results.into_iter().collect();
+        
+        // Extract user information for analytics (cached case)
+        let (user_id, username) = if let Some(auth_header) = req.headers().get("Authorization") {
+            if let Ok(auth_str) = auth_header.to_str() {
+                if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                    let config = Config::global();
+                    if let Ok(token_data) = decode::<AccessTokenClaims>(
+                        token,
+                        &DecodingKey::from_secret(config.secret_key.as_ref()),
+                        &Validation::default(),
+                    ) {
+                        (Some(token_data.claims.sub), Some(format!("user_{}", token_data.claims.sub)))
+                    } else {
+                        (None, None)
+                    }
+                } else {
+                    (None, None)
+                }
+            } else {
+                (None, None)
+            }
+        } else {
+            (None, None)
+        };
+
+        // Record analytics for cached response
+        let response_time_ms = start_time.elapsed().as_millis() as f64;
+        let entities_count = ner_data_map.len() as u64;
+        let collection_name = collection.clone();
+        
+        // Record analytics asynchronously
+        tokio::spawn(async move {
+            if let (Some(uid), Some(uname)) = (user_id, username) {
+                // Record user behavior analytics
+                user_behavior_analytics::get_user_behavior_store()
+                    .record_activity(
+                        uid,
+                        uname,
+                        "ner_processing_cached".to_string(),
+                        collection_name.clone(),
+                        format!("session_{}", uid), // session_id
+                        None, // user_agent
+                        true, // success
+                    ).await;
+            }
+
+            // Record collection intelligence
+            collection_intelligence::get_collection_intelligence_store()
+                .record_usage(
+                    collection_name,
+                    user_id,
+                    collection_intelligence::OperationType::Query,
+                    (entities_count as f64) / 1000.0, // rough estimate of data size in MB
+                    response_time_ms as u64,
+                    true, // success
+                    vec!["ner".to_string(), "entity_extraction".to_string(), "cached".to_string()],
+                ).await;
+        });
+        
         return Ok(HttpResponse::Ok().json(Some(ner_data_map)));
     }
 
@@ -71,6 +139,64 @@ pub async fn fetch_ner_data(query: web::Query<PathQueryParams>) -> Result<HttpRe
     let ner_data_map: Map<String, Value> = ner_results.into_iter().collect();
 
     cleanup_cache_file(ner_path).await;
+
+    // Extract user information for analytics
+    let (user_id, username) = if let Some(auth_header) = req.headers().get("Authorization") {
+        if let Ok(auth_str) = auth_header.to_str() {
+            if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                let config = Config::global();
+                if let Ok(token_data) = decode::<AccessTokenClaims>(
+                    token,
+                    &DecodingKey::from_secret(config.secret_key.as_ref()),
+                    &Validation::default(),
+                ) {
+                    (Some(token_data.claims.sub), Some(format!("user_{}", token_data.claims.sub)))
+                } else {
+                    (None, None)
+                }
+            } else {
+                (None, None)
+            }
+        } else {
+            (None, None)
+        }
+    } else {
+        (None, None)
+    };
+
+    // Record analytics
+    let response_time_ms = start_time.elapsed().as_millis() as f64;
+    let entities_count = ner_data_map.len() as u64;
+    let collection_name = collection.clone();
+    
+    // Record analytics asynchronously
+    tokio::spawn(async move {
+        if let (Some(uid), Some(uname)) = (user_id, username) {
+            // Record user behavior analytics
+            user_behavior_analytics::get_user_behavior_store()
+                .record_activity(
+                    uid,
+                    uname,
+                    "ner_processing".to_string(),
+                    collection_name.clone(),
+                    format!("session_{}", uid), // session_id
+                    None, // user_agent
+                    true, // success
+                ).await;
+        }
+
+        // Record collection intelligence
+        collection_intelligence::get_collection_intelligence_store()
+            .record_usage(
+                collection_name,
+                user_id,
+                collection_intelligence::OperationType::Query,
+                (entities_count as f64) / 1000.0, // rough estimate of data size in MB
+                response_time_ms as u64,
+                true, // success
+                vec!["ner".to_string(), "entity_extraction".to_string()],
+            ).await;
+    });
 
     info!("Successfully processed NER data for collection: {}", collection);
     Ok(HttpResponse::Ok().json(Some(ner_data_map)))

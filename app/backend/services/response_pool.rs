@@ -19,10 +19,8 @@ impl ResponsePool {
             let mut pool: Vec<Value> = Vec::with_capacity(100);
             
             while let Some(response) = rx.recv().await {
-                if response.size_estimate < 1024 * 1024 {
-                    if pool.len() < 100 {
-                        pool.push(response.value.clone());
-                    }
+                if response.size_estimate < 1024 * 1024 && pool.len() < 100 {
+                    pool.push(response.value.clone());
                 }
                 
                 let _ = response.sender.send(response.value);

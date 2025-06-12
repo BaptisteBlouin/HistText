@@ -44,6 +44,8 @@ import {
   Timeline,
   Dns,
   AccountTree,
+  VisibilityOff,
+  Visibility,
 } from "@mui/icons-material";
 import { useAuth, useAuthCheck } from "../../../../hooks/useAuth";
 
@@ -54,6 +56,12 @@ import { SolrDatabaseStatus } from "./components/SolrDatabaseStatus";
 import { ApiAnalytics } from "./components/ApiAnalytics";
 import { EmbeddingCacheManagement } from "./components/EmbeddingCacheManagement";
 import { UserActivityMonitoring } from "./components/UserActivityMonitoring";
+import EnhancedApiAnalytics from "./components/EnhancedApiAnalytics";
+import UserBehaviorAnalytics from "./components/UserBehaviorAnalytics";
+import QueryAnalytics from "./components/QueryAnalytics";
+import CollectionIntelligence from "./components/CollectionIntelligence";
+import TabbedDashboard from "./components/TabbedDashboard";
+import ExportImportControls from "./components/ExportImportControls";
 
 // Hooks
 import { useDashboardData } from "./hooks/useDashboardData";
@@ -76,12 +84,11 @@ const Dashboard: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isAdmin = session?.hasRole("Admin");
 
-  // State for expandable sections
+  // State for expandable sections (maintained for TabbedDashboard)
   const [showEmbeddingDetails, setShowEmbeddingDetails] =
     useState<boolean>(false);
   const [showAdvancedStats, setShowAdvancedStats] = useState<boolean>(false);
-  const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
-  const [showUserActivity, setShowUserActivity] = useState<boolean>(false);
+  const [showSystemDashboard, setShowSystemDashboard] = useState<boolean>(true);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -107,11 +114,11 @@ const Dashboard: React.FC = () => {
   // Other data hooks
   const { analytics, analyticsLoading, fetchAnalytics } = useAnalytics(
     accessToken || null,
-    showAnalytics,
+    true, // Always fetch for TabbedDashboard
   );
 
   const { userActivity, userActivityLoading, fetchUserActivity } =
-    useUserActivity(accessToken || null, showUserActivity);
+    useUserActivity(accessToken || null, true); // Always fetch for TabbedDashboard
 
   /**
    * Refresh all dashboard data (optionally force bypassing cache).
@@ -119,14 +126,12 @@ const Dashboard: React.FC = () => {
   const refreshAll = useCallback(
     async (force: boolean = false): Promise<void> => {
       setLastRefresh(new Date());
-      const promises: Promise<void>[] = [fetchComprehensiveStats({ force })];
+      const promises: Promise<void>[] = [
+        fetchComprehensiveStats({ force }),
+        fetchAnalytics(),
+        fetchUserActivity(),
+      ];
 
-      if (showAnalytics) {
-        promises.push(fetchAnalytics());
-      }
-      if (showUserActivity) {
-        promises.push(fetchUserActivity());
-      }
       if (showEmbeddingDetails) {
         promises.push(fetchEmbeddingDetails({ force }));
       }
@@ -142,12 +147,87 @@ const Dashboard: React.FC = () => {
       fetchUserActivity,
       fetchEmbeddingDetails,
       fetchAdvancedStats,
-      showAnalytics,
-      showUserActivity,
       showEmbeddingDetails,
       showAdvancedStats,
     ],
   );
+
+  // Export/Import functions
+  const handleExportAll = async () => {
+    try {
+      const exportData = {
+        exportType: 'complete',
+        timestamp: new Date().toISOString(),
+        version: '1.0',
+        comprehensiveStats,
+        analytics,
+        userActivity,
+        embeddingDetails,
+        advancedStats,
+        settings: {
+          autoRefresh,
+          showSystemDashboard,
+          showEmbeddingDetails,
+          showAdvancedStats,
+        },
+      };
+      return exportData;
+    } catch (error) {
+      console.error('Export failed:', error);
+      throw error;
+    }
+  };
+
+  const handleExportTab = async (tabName: string) => {
+    try {
+      const baseData = {
+        exportType: 'tab',
+        tabName,
+        timestamp: new Date().toISOString(),
+        version: '1.0',
+      };
+
+      switch (tabName) {
+        case 'overview':
+          return { ...baseData, data: { comprehensiveStats, userActivity } };
+        case 'api-analytics':
+          return { ...baseData, data: { analytics } };
+        case 'user-behavior':
+          return { ...baseData, data: { userActivity } };
+        case 'query-analytics':
+          return { ...baseData, data: { analytics } };
+        case 'collections':
+          return { ...baseData, data: { comprehensiveStats } };
+        case 'system-health':
+          return { ...baseData, data: { embeddingDetails, advancedStats } };
+        default:
+          throw new Error(`Unknown tab: ${tabName}`);
+      }
+    } catch (error) {
+      console.error('Tab export failed:', error);
+      throw error;
+    }
+  };
+
+  const handleImport = async (importData: any) => {
+    try {
+      // Note: In a real implementation, you would want to:
+      // 1. Validate the import data more thoroughly
+      // 2. Potentially store it in localStorage or send to backend
+      // 3. Refresh the dashboard with the imported data
+      
+      console.log('Importing data:', importData);
+      
+      // For now, just trigger a refresh to simulate import
+      await refreshAll(true);
+      
+      // In a real app, you might want to show a success message
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Import failed:', error);
+      throw error;
+    }
+  };
 
   // Auto refresh effect - only refresh if data is stale
   useEffect(() => {
@@ -346,6 +426,19 @@ const Dashboard: React.FC = () => {
 
             {/* Controls */}
             <Stack direction="row" spacing={2} alignItems="center">
+              <ExportImportControls
+                onExportAll={handleExportAll}
+                onExportTab={handleExportTab}
+                onImport={handleImport}
+                availableTabs={[
+                  { name: 'overview', label: 'Overview', icon: <Assessment fontSize="small" /> },
+                  { name: 'api-analytics', label: 'API Analytics', icon: <ErrorIcon fontSize="small" /> },
+                  { name: 'user-behavior', label: 'User Behavior', icon: <People fontSize="small" /> },
+                  { name: 'query-analytics', label: 'Query Analytics', icon: <Analytics fontSize="small" /> },
+                  { name: 'collections', label: 'Collections', icon: <Storage fontSize="small" /> },
+                  { name: 'system-health', label: 'System Health', icon: <Psychology fontSize="small" /> },
+                ]}
+              />
               <FormControlLabel
                 control={
                   <Switch
@@ -356,6 +449,14 @@ const Dashboard: React.FC = () => {
                 }
                 label="Auto Refresh"
               />
+              <Tooltip title={showSystemDashboard ? "Hide System Dashboard" : "Show System Dashboard"}>
+                <IconButton 
+                  onClick={() => setShowSystemDashboard(!showSystemDashboard)} 
+                  color="secondary"
+                >
+                  {showSystemDashboard ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </Tooltip>
               <Tooltip
                 title={isDataFresh ? "Force Refresh" : "Refresh Stale Data"}
               >
@@ -366,7 +467,7 @@ const Dashboard: React.FC = () => {
             </Stack>
           </Box>
 
-          {stats && (
+          {stats && showSystemDashboard && (
             <>
               {/* Main Stats Grid */}
               <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -608,53 +709,32 @@ const Dashboard: React.FC = () => {
                 )}
               </Grid>
 
-              <Divider sx={{ my: 4 }} />
+              {showSystemDashboard && <Divider sx={{ my: 4 }} />}
+            </>
+          )}
 
-              {/* Detailed Component Sections */}
-              {comprehensiveStats && (
-                <SolrDatabaseStatus comprehensiveStats={comprehensiveStats} />
-              )}
-
-              <ApiAnalytics
-                autoRefresh={autoRefresh}
-                refreshInterval={60000}
-                onToggle={() => setShowAnalytics(!showAnalytics)}
-                isVisible={showAnalytics}
-              />
-
-              <UserActivityMonitoring
+          {/* Tabbed Dashboard for Analytics - Always Visible */}
+          {stats && (
+            <TabbedDashboard
+                comprehensiveStats={comprehensiveStats}
+                analytics={analytics}
                 userActivity={userActivity}
-                loading={userActivityLoading}
-                onToggle={() => setShowUserActivity(!showUserActivity)}
-                isVisible={showUserActivity}
-              />
-
-              <EmbeddingCacheManagement
                 embeddingDetails={embeddingDetails}
                 advancedStats={advancedStats}
                 detailsLoading={detailsLoading}
                 advancedLoading={advancedLoading}
-                showEmbeddingDetails={showEmbeddingDetails}
-                showAdvancedStats={showAdvancedStats}
-                onToggleEmbeddingDetails={() => {
-                  setShowEmbeddingDetails(!showEmbeddingDetails);
-                  if (!showEmbeddingDetails) {
-                    fetchEmbeddingDetails();
-                  }
-                }}
-                onToggleAdvancedStats={() => {
-                  setShowAdvancedStats(!showAdvancedStats);
-                  if (!showAdvancedStats) {
-                    fetchAdvancedStats();
-                  }
-                }}
+                userActivityLoading={userActivityLoading}
+                autoRefresh={autoRefresh}
                 onClearCache={clearEmbeddingCache}
                 onResetMetrics={resetMetrics}
+                fetchEmbeddingDetails={fetchEmbeddingDetails}
+                fetchAdvancedStats={fetchAdvancedStats}
               />
+          )}
 
-              {/* Fallback message */}
-              {!comprehensiveStats && legacyStats && (
-                <Alert
+          {/* Fallback message */}
+          {!comprehensiveStats && legacyStats && (
+            <Alert
                   severity="info"
                   sx={{ mb: 4 }}
                   action={
@@ -670,9 +750,7 @@ const Dashboard: React.FC = () => {
                   Using basic statistics. Some advanced features may not be
                   available. Click refresh to try loading comprehensive data
                   again.
-                </Alert>
-              )}
-            </>
+            </Alert>
           )}
         </Box>
       </Fade>

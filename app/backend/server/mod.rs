@@ -108,7 +108,7 @@ pub async fn run_server() -> std::io::Result<()> {
 
         let app = App::new()
             .wrap(cors)
-            .wrap(RequestAnalyticsMiddleware)
+            .wrap(RequestAnalyticsMiddleware::new())
             .wrap(Compress::default())
             .wrap(NormalizePath::new(TrailingSlash::MergeOnly))
             .wrap(Logger::default());

@@ -338,7 +338,7 @@ impl CacheKey {
         }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn as_key(&self) -> String {
         format!("{}:{}", self.solr_database_id, self.collection_name)
     }
 }

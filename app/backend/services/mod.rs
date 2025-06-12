@@ -21,4 +21,7 @@ pub mod query_optimizer;
 pub mod response_pool;
 pub mod request_analytics;
 pub mod security_events;
+pub mod user_behavior_analytics;
+pub mod query_analytics;
+pub mod collection_intelligence;
 pub mod types;

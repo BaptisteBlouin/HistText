@@ -5,11 +5,15 @@ use crate::histtext::embeddings::{
     stats,
 };
 use crate::services::database::Database;
-use actix_web::{web, HttpResponse, Responder};
+use crate::services::{user_behavior_analytics, collection_intelligence};
+use actix_web::{web, HttpResponse, Responder, HttpRequest};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use std::time::Instant;
+use crate::services::auth::AccessTokenClaims;
+use jsonwebtoken::{decode, DecodingKey, Validation};
+use crate::config::Config;
 
 #[derive(Deserialize, ToSchema)]
 pub struct EnhancedNeighborsRequest {
@@ -141,10 +145,11 @@ pub struct AnalogyResponse {
     security(("bearer_auth" = []))
 )]
 pub async fn compute_neighbors_handler(
+    req: HttpRequest,
     db: web::Data<Database>,
     request: web::Json<NeighborsRequest>,
 ) -> impl Responder {
-    compute_neighbors(db, request).await
+    compute_neighbors(req, db, request).await
 }
 
 #[utoipa::path(
@@ -502,6 +507,7 @@ pub async fn word_analogy(
 }
 
 pub async fn compute_neighbors(
+    req: HttpRequest,
     db: web::Data<Database>,
     query: web::Json<NeighborsRequest>,
 ) -> impl Responder {
@@ -546,6 +552,66 @@ pub async fn compute_neighbors(
             query.word
         );
     }
+
+    // Extract user information for analytics (optional, as embeddings might be used without auth)
+    let (user_id, username) = if let Some(auth_header) = req.headers().get("Authorization") {
+        if let Ok(auth_str) = auth_header.to_str() {
+            if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                let config = Config::global();
+                if let Ok(token_data) = decode::<AccessTokenClaims>(
+                    token,
+                    &DecodingKey::from_secret(config.secret_key.as_ref()),
+                    &Validation::default(),
+                ) {
+                    (Some(token_data.claims.sub), Some(format!("user_{}", token_data.claims.sub)))
+                } else {
+                    (None, None)
+                }
+            } else {
+                (None, None)
+            }
+        } else {
+            (None, None)
+        }
+    } else {
+        (None, None)
+    };
+
+    // Record analytics
+    let response_time_ms = start_time.elapsed().as_millis() as f64;
+    let success = !response.neighbors.is_empty();
+    let neighbors_count = response.neighbors.len() as u64;
+    let collection_name = query.collection_name.clone();
+    let _word = query.word.clone();
+    
+    // Record analytics asynchronously
+    tokio::spawn(async move {
+        if let (Some(uid), Some(uname)) = (user_id, username) {
+            // Record user behavior analytics
+            user_behavior_analytics::get_user_behavior_store()
+                .record_activity(
+                    uid,
+                    uname,
+                    "embedding_search".to_string(),
+                    collection_name.clone(),
+                    format!("session_{}", uid), // session_id
+                    None, // user_agent
+                    success,
+                ).await;
+        }
+
+        // Record collection intelligence (even for anonymous usage)
+        collection_intelligence::get_collection_intelligence_store()
+            .record_usage(
+                collection_name,
+                user_id,
+                collection_intelligence::OperationType::Query,
+                (neighbors_count as f64) / 1000.0, // rough estimate of data size in MB
+                response_time_ms as u64,
+                success,
+                vec!["embeddings".to_string(), "semantic_search".to_string()],
+            ).await;
+    });
  
     HttpResponse::Ok().json(response)
  }

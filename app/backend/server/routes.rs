@@ -503,6 +503,26 @@ fn configure_stats_routes(api_scope: Scope) -> Scope {
             .guard(guard::fn_guard(has_permission))
             .route(web::get().to(crate::services::stats::get_user_activity)),
     )
+    .service(
+        web::resource("/dashboard/enhanced-analytics")
+            .guard(guard::fn_guard(has_permission))
+            .route(web::get().to(crate::services::stats::get_enhanced_request_analytics)),
+    )
+    .service(
+        web::resource("/dashboard/user-behavior")
+            .guard(guard::fn_guard(has_permission))
+            .route(web::get().to(crate::services::stats::get_user_behavior_analytics)),
+    )
+    .service(
+        web::resource("/dashboard/query-analytics")
+            .guard(guard::fn_guard(has_permission))
+            .route(web::get().to(crate::services::stats::get_query_analytics)),
+    )
+    .service(
+        web::resource("/dashboard/collection-intelligence")
+            .guard(guard::fn_guard(has_permission))
+            .route(web::get().to(crate::services::stats::get_collection_intelligence)),
+    )
 }
 
 /// Configure health check endpoint

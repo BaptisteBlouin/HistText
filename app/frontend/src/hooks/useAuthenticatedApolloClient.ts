@@ -44,7 +44,7 @@ export const useAuthenticatedApolloClient = () => {
       operation.setContext(({ headers = {} }) => ({
         headers: {
           ...headers,
-          Authorization: auth.accessToken,
+          Authorization: auth.accessToken ? `Bearer ${auth.accessToken}` : undefined,
         },
       }));
 

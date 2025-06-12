@@ -17,6 +17,7 @@ use crate::models::solr_database_permissions::SolrDatabasePermission;
 use crate::schema::solr_database_permissions::dsl::*;
 use crate::services::auth::AccessTokenClaims;
 use crate::services::database::DbPool;
+use crate::services::{query_analytics, user_behavior_analytics, collection_intelligence};
 use crate::histtext;
 
 use super::types::CollectionQueryParams;
@@ -272,6 +273,66 @@ pub async fn query_collection(
         log_elapsed(response_data_start, "Prepared response data");
         info!("Total time taken: {:?}", start_time.elapsed());
 
+        // Record analytics for successful query (download case)
+        let user_id = token_data.claims.sub;
+        let username = format!("user_{}", user_id);
+        let collection = query.collection.clone();
+        let query_text = query.query.clone().unwrap_or_default();
+        let response_time_ms = start_time.elapsed().as_millis() as f64;
+        let result_count = total_results;
+        
+        // Extract filters used
+        let mut filters_used = Vec::new();
+        if query.query.is_some() {
+            filters_used.push("query_filter".to_string());
+        }
+        if query.start.is_some() {
+            filters_used.push("pagination".to_string());
+        }
+        if query.rows.is_some() {
+            filters_used.push("result_limit".to_string());
+        }
+
+        // Record analytics asynchronously to avoid blocking the response
+        tokio::spawn(async move {
+            // Record query analytics
+            query_analytics::record_query(
+                query_text.clone(),
+                collection.clone(),
+                Some(user_id),
+                format!("session_{}", user_id), // session_id
+                response_time_ms as u64,
+                result_count,
+                true, // success
+                None, // error_message
+                filters_used.clone(),
+            ).await;
+
+            // Record user behavior analytics
+            user_behavior_analytics::get_user_behavior_store()
+                .record_activity(
+                    user_id,
+                    username.clone(),
+                    "query_search_download".to_string(),
+                    collection.clone(),
+                    format!("session_{}", user_id), // session_id
+                    None, // user_agent
+                    true, // success
+                ).await;
+
+            // Record collection intelligence
+            collection_intelligence::get_collection_intelligence_store()
+                .record_usage(
+                    collection.clone(),
+                    Some(user_id),
+                    collection_intelligence::OperationType::Query,
+                    result_count as f64 * 0.01, // Estimate ~10KB per document = 0.01MB
+                    response_time_ms as u64,
+                    true, // success
+                    vec!["search".to_string(), "download".to_string(), format!("docs:{}", result_count)],
+                ).await;
+        });
+
         return Ok(HttpResponse::Ok().json(response_data));
     }
 
@@ -286,6 +347,66 @@ pub async fn query_collection(
 
     log_elapsed(response_data_start, "Prepared response data");
     info!("Total time taken: {:?}", start_time.elapsed());
+
+    // Record analytics for successful query
+    let user_id = token_data.claims.sub;
+    let username = format!("user_{}", user_id);
+    let collection = query.collection.clone();
+    let query_text = query.query.clone().unwrap_or_default();
+    let response_time_ms = start_time.elapsed().as_millis() as f64;
+    let result_count = total_results;
+    
+    // Extract filters used
+    let mut filters_used = Vec::new();
+    if query.query.is_some() {
+        filters_used.push("query_filter".to_string());
+    }
+    if query.start.is_some() {
+        filters_used.push("pagination".to_string());
+    }
+    if query.rows.is_some() {
+        filters_used.push("result_limit".to_string());
+    }
+
+    // Record analytics asynchronously to avoid blocking the response
+    tokio::spawn(async move {
+        // Record query analytics
+        query_analytics::record_query(
+            query_text.clone(),
+            collection.clone(),
+            Some(user_id),
+            format!("session_{}", user_id), // session_id
+            response_time_ms as u64,
+            result_count,
+            true, // success
+            None, // error_message
+            filters_used.clone(),
+        ).await;
+
+        // Record user behavior analytics
+        user_behavior_analytics::get_user_behavior_store()
+            .record_activity(
+                user_id,
+                username.clone(),
+                "query_search".to_string(),
+                collection.clone(),
+                format!("session_{}", user_id), // session_id
+                None, // user_agent
+                true, // success
+            ).await;
+
+        // Record collection intelligence
+        collection_intelligence::get_collection_intelligence_store()
+            .record_usage(
+                collection.clone(),
+                Some(user_id),
+                collection_intelligence::OperationType::Query,
+                result_count as f64 * 0.01, // Estimate ~10KB per document = 0.01MB
+                response_time_ms as u64,
+                true, // success
+                vec!["search".to_string(), format!("docs:{}", result_count)],
+            ).await;
+    });
 
     Ok(HttpResponse::Ok().json(response_data))
 }

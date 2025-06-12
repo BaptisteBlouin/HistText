@@ -15,6 +15,7 @@ use crate::services::error::AppError;
 use crate::services::crud::execute_db_query;
 use crate::histtext::embeddings::{cache, stats as embedding_stats};
 use crate::services::request_analytics::{get_analytics_store, RequestAnalytics};
+use crate::services::{request_analytics, user_behavior_analytics, query_analytics, collection_intelligence};
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use crate::services::security_events::SecurityEventLogger;
@@ -623,4 +624,68 @@ pub async fn get_user_activity(
     };
 
     Ok(HttpResponse::Ok().json(activity))
+}
+
+/// Get enhanced request analytics with detailed error tracking
+#[utoipa::path(
+    get,
+    path = "/api/dashboard/enhanced-analytics",
+    tag = "Stats",
+    responses(
+        (status = 200, description = "Enhanced request analytics with error tracking", body = crate::services::request_analytics::RequestAnalytics),
+        (status = 500, description = "Analytics retrieval failed")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn get_enhanced_request_analytics() -> Result<HttpResponse, AppError> {
+    let analytics = request_analytics::get_analytics_store().get_analytics().await;
+    Ok(HttpResponse::Ok().json(analytics))
+}
+
+/// Get user behavior analytics
+#[utoipa::path(
+    get,
+    path = "/api/dashboard/user-behavior",
+    tag = "Stats",
+    responses(
+        (status = 200, description = "User behavior analytics and patterns", body = crate::services::user_behavior_analytics::UserBehaviorAnalytics),
+        (status = 500, description = "Analytics retrieval failed")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn get_user_behavior_analytics() -> Result<HttpResponse, AppError> {
+    let analytics = user_behavior_analytics::get_user_behavior_store().get_user_behavior_analytics().await;
+    Ok(HttpResponse::Ok().json(analytics))
+}
+
+/// Get query analytics with search patterns and performance
+#[utoipa::path(
+    get,
+    path = "/api/dashboard/query-analytics",
+    tag = "Stats",
+    responses(
+        (status = 200, description = "Query analytics with search patterns and performance metrics", body = crate::services::query_analytics::QueryAnalytics),
+        (status = 500, description = "Analytics retrieval failed")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn get_query_analytics() -> Result<HttpResponse, AppError> {
+    let analytics = query_analytics::get_query_analytics_store().get_query_analytics().await;
+    Ok(HttpResponse::Ok().json(analytics))
+}
+
+/// Get collection usage intelligence
+#[utoipa::path(
+    get,
+    path = "/api/dashboard/collection-intelligence",
+    tag = "Stats", 
+    responses(
+        (status = 200, description = "Collection usage intelligence and optimization insights", body = crate::services::collection_intelligence::CollectionIntelligence),
+        (status = 500, description = "Analytics retrieval failed")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn get_collection_intelligence() -> Result<HttpResponse, AppError> {
+    let intelligence = collection_intelligence::get_collection_intelligence_store().get_collection_intelligence().await;
+    Ok(HttpResponse::Ok().json(intelligence))
 }

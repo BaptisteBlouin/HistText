@@ -180,7 +180,7 @@ pub async fn get_cached_embeddings(
     collection_name: &str,
 ) -> Option<Arc<EmbeddingMap>> {
     let cache_key = CacheKey::new(solr_database_id, collection_name.to_string());
-    let cache_key_str = cache_key.to_string();
+    let cache_key_str = cache_key.as_key();
 
     if let Some(entry) = CACHE.get(&cache_key_str) {
         entry.touch().await;
