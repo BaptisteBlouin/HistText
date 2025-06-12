@@ -99,12 +99,17 @@ pub async fn run_server() -> std::io::Result<()> {
         let shared_db_pool = web::Data::new(db_pool.clone());
         let shared_schema = web::Data::new(schema.clone());
 
-        let cors = Cors::default()
-            .allow_any_origin()
+        let mut cors = Cors::default()
             .allow_any_method()
             .allow_any_header()
             .supports_credentials()
+            .expose_headers(vec!["set-cookie"])
             .max_age(3600);
+
+        // Add configured CORS origins
+        for origin in config.get_cors_origins() {
+            cors = cors.allowed_origin(&origin);
+        }
 
         let app = App::new()
             .wrap(cors)

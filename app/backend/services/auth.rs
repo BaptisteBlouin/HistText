@@ -908,7 +908,7 @@ pub mod handlers {
         let mut cookie_builder = Cookie::build(COOKIE_NAME, refresh_token)
             .secure(is_secure) // Secure in release, allow HTTP in debug
             .http_only(true)
-            .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
+            .same_site(if is_secure { SameSite::None } else { SameSite::Lax }) // None for cross-domain HTTPS, Lax for local
             .path("/");
 
         // Only set domain if explicitly configured and not localhost
@@ -1014,11 +1014,16 @@ pub mod handlers {
         let mut response = handler.logout(db, refresh_token.as_deref()).await?;
 
         // Clear the refresh token cookie
+        let is_secure = !cfg!(debug_assertions);
         let mut cookie = Cookie::named(COOKIE_NAME);
         if let Some(domain) = &config.cookie_domain {
-            cookie.set_domain(domain);
+            if !domain.contains("localhost") && !domain.contains("127.0.0.1") {
+                cookie.set_domain(domain);
+            }
         }
         cookie.set_path("/");
+        cookie.set_secure(is_secure);
+        cookie.set_same_site(if is_secure { SameSite::None } else { SameSite::Lax });
         cookie.make_removal();
 
         response.add_cookie(&cookie).map_err(|e| {
@@ -1084,7 +1089,7 @@ pub mod handlers {
         let mut cookie_builder = Cookie::build(COOKIE_NAME, new_refresh_token)
             .secure(is_secure) // Secure in release, allow HTTP in debug
             .http_only(true)
-            .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
+            .same_site(if is_secure { SameSite::None } else { SameSite::Lax }) // None for cross-domain HTTPS, Lax for local
             .path("/");
 
         // Only set domain if explicitly configured and not localhost

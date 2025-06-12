@@ -173,6 +173,10 @@ pub struct Config {
     /// Admin contact email for when email service is disabled
     pub admin_contact_email: String,
 
+    // CORS settings
+    /// Comma-separated list of allowed CORS origins (e.g., "http://localhost:3000,https://example.com")
+    pub cors_allowed_origins: String,
+
     pub cache_ttl_seconds: u64,
     pub max_cache_size: usize,
     pub enable_query_cache: bool,
@@ -255,6 +259,15 @@ impl Config {
     /// Checks if accounts should be auto-activated (when email is not configured)
     pub fn should_auto_activate_accounts(&self) -> bool {
         !self.is_email_enabled()
+    }
+
+    /// Get the list of allowed CORS origins
+    pub fn get_cors_origins(&self) -> Vec<String> {
+        self.cors_allowed_origins
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
     }
 
     /// Loads application configuration from environment variables
@@ -380,6 +393,9 @@ impl Config {
 
             // Admin contact
             admin_contact_email: get_with_default("ADMIN_CONTACT_EMAIL", "admin@histtext.com"),
+
+            // CORS settings
+            cors_allowed_origins: get_with_default("CORS_ALLOWED_ORIGINS", "http://localhost:3000"),
 
             cache_ttl_seconds: parse_with_default::<u64>("CACHE_TTL_SECONDS", 3600),
             max_cache_size: parse_with_default::<usize>("MAX_CACHE_SIZE", 1000),
