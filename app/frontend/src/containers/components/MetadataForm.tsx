@@ -541,17 +541,20 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
     const fieldsWithValues = getFieldsWithValues();
     const emptyFields = visibleFields.filter(field => !fieldsWithValues.includes(field));
     
-    // Group fields by importance
+    // Group fields by importance - ensure no overlaps
     const primaryFields = visibleFields.filter(field => 
       isTextField(field.name, collectionInfo) || 
       getFieldPriority(field) <= 2
     );
     
     const secondaryFields = visibleFields.filter(field => 
+      !primaryFields.includes(field) && 
       getFieldPriority(field) > 2 && getFieldPriority(field) < 10
     );
     
     const metadataFields = visibleFields.filter(field => 
+      !primaryFields.includes(field) && 
+      !secondaryFields.includes(field) && 
       getFieldPriority(field) >= 10
     );
 

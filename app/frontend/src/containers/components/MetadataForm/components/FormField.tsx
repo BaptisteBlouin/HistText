@@ -551,7 +551,7 @@ const FormField: React.FC<FormFieldProps> = ({
                 <Box sx={{ 
                   mb: 2, 
                   p: 2, 
-                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.50',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.15)' : 'primary.50',
                   borderRadius: 2,
                   border: 1,
                   borderColor: "primary.main"
