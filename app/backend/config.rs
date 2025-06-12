@@ -39,6 +39,8 @@ pub struct Config {
 
     /// Secret key for token signing and password hashing
     pub secret_key: String,
+    #[serde(default)]
+    pub cookie_domain: Option<String>,
 
     // Solr connection settings
     /// Default path to word embedding files
@@ -261,6 +263,7 @@ impl Config {
             // Database and authentication
             database_url: get("DATABASE_URL")?,
             secret_key: get("SECRET_KEY")?,
+            cookie_domain: std::env::var("COOKIE_DOMAIN").ok(),
 
             // Solr connection settings
             embed_path: get("EMBED_PATH")?,

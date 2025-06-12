@@ -876,15 +876,22 @@ pub mod handlers {
         let handler = AuthHandler::new(config.get_ref().clone());
         let (access_token, refresh_token) = handler.login(db, item).await?;
 
+        let is_secure = !cfg!(debug_assertions);
+        debug!("Setting login cookie - secure: {}, name: {}, domain: {:?}", 
+               is_secure, COOKIE_NAME, config.cookie_domain);
+
+        let mut cookie_builder = Cookie::build(COOKIE_NAME, refresh_token)
+            .secure(is_secure) // Secure in release, allow HTTP in debug
+            .http_only(true)
+            .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
+            .path("/");
+
+        if let Some(domain) = &config.cookie_domain {
+            cookie_builder = cookie_builder.domain(domain);
+        }
+
         Ok(HttpResponse::Ok()
-            .cookie(
-                Cookie::build(COOKIE_NAME, refresh_token)
-                    .secure(!cfg!(debug_assertions)) // Secure in release, allow HTTP in debug
-                    .http_only(true)
-                    .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
-                    .path("/")
-                    .finish(),
-            )
+            .cookie(cookie_builder.finish())
             .json(serde_json::json!({
                 "access_token": access_token
             })))
@@ -975,6 +982,10 @@ pub mod handlers {
 
         // Clear the refresh token cookie
         let mut cookie = Cookie::named(COOKIE_NAME);
+        if let Some(domain) = &config.cookie_domain {
+            cookie.set_domain(domain);
+        }
+        cookie.set_path("/");
         cookie.make_removal();
 
         response.add_cookie(&cookie).map_err(|e| {
@@ -1004,12 +1015,20 @@ pub mod handlers {
         ) -> Result<HttpResponse, AppError> {
         debug!("Refresh endpoint called");
         
+        // Debug: Log all received cookies
+        let all_cookies: Vec<String> = req.cookies()
+            .map(|cookies| cookies.iter().map(|c| format!("{}={}", c.name(), c.value())).collect())
+            .unwrap_or_default();
+        debug!("All received cookies: {:?}", all_cookies);
+        
         let refresh_token = req
             .cookie(COOKIE_NAME)
             .map(|cookie| cookie.value().to_string());
 
         if refresh_token.is_none() {
             warn!("No refresh token found in cookies");
+            warn!("Expected cookie name: {}", COOKIE_NAME);
+            warn!("Available cookies: {:?}", all_cookies);
             return Err(AppError::auth(AuthErrorReason::InvalidToken, "No refresh token provided"));
         }
 
@@ -1017,17 +1036,22 @@ pub mod handlers {
         let handler = AuthHandler::new(config.get_ref().clone());
         let (access_token, new_refresh_token) = handler.refresh(db, refresh_token.as_deref()).await?;
 
-        debug!("Sending new refresh token in response (secure: {})", !cfg!(debug_assertions));
+        let is_secure = !cfg!(debug_assertions);
+        debug!("Sending new refresh token in response (secure: {}, domain: {:?})", 
+               is_secure, config.cookie_domain);
+        
+        let mut cookie_builder = Cookie::build(COOKIE_NAME, new_refresh_token)
+            .secure(is_secure) // Secure in release, allow HTTP in debug
+            .http_only(true)
+            .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
+            .path("/");
+
+        if let Some(domain) = &config.cookie_domain {
+            cookie_builder = cookie_builder.domain(domain);
+        }
         
         Ok(HttpResponse::Ok()
-            .cookie(
-                Cookie::build(COOKIE_NAME, new_refresh_token)
-                    .secure(!cfg!(debug_assertions)) // Secure in release, allow HTTP in debug
-                    .http_only(true)
-                    .same_site(SameSite::Lax) // Changed from Strict to Lax for better compatibility
-                    .path("/")
-                    .finish(),
-            )
+            .cookie(cookie_builder.finish())
             .json(serde_json::json!({
                 "access_token": access_token
             })))

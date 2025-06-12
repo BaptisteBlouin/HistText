@@ -38,7 +38,7 @@ import {
   Refresh,
 } from '@mui/icons-material';
 import { useAuth } from '../../../../../hooks/useAuth';
-import UserList from '../../../../../components/ui/UserList';
+import { UserList } from '../../../../../components/ui';
 
 interface AffectedUser {
   user_id: number;
@@ -304,7 +304,7 @@ const EnhancedApiAnalytics: React.FC<EnhancedApiAnalyticsProps> = ({
                                       user_id: user.user_id,
                                       username: user.username,
                                       error_count: user.error_count,
-                                      last_activity: user.last_error,
+                                      last_error: user.last_error,
                                     }))}
                                     variant="compact"
                                     title="Affected Users"
