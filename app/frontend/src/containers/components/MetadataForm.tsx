@@ -809,52 +809,140 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
                 </Accordion>
               </Box>
             ) : (
-              /* Desktop: Original Layout */
+              /* Desktop: Enhanced Layout */
               <Box>
-                <Typography
-                  variant="h6"
-                  gutterBottom
-                  sx={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: 1,
-                    mb: 3
-                  }}
-                >
-                  <QueryStats />
-                  Search Fields
-                </Typography>
-                
-                <Grid container spacing={3} sx={{ mb: 3 }}>
-                  {visibleFields.map((field) => (
-                    <Grid 
-                      item 
-                      xs={12} 
-                      sm={isTablet ? 6 : 6} 
-                      md={6} 
-                      lg={4} 
-                      key={field.name}
-                    >
-                      <FormField
-                        field={field}
-                        formData={formData}
-                        collectionInfo={collectionInfo}
-                        hasEmbeddings={hasEmbeddings}
-                        neighbors={neighbors}
-                        loadingNeighbors={loadingNeighbors}
-                        metadata={metadata}
-                        onFormChange={handleFormChange}
-                        onSelectChange={handleSelectChange}
-                        onToggleNot={toggleNotCondition}
-                        onAddBooleanField={addBooleanField}
-                        onRemoveBooleanField={removeBooleanField}
-                        onFetchNeighbors={getNeighbors}
-                        onRemoveNeighborDropdown={removeNeighborDropdown}
-                        shouldAutoFocus={field.name === autoFocusFieldName}
-                      />
-                    </Grid>
-                  ))}
-                </Grid>
+
+                {/* Enhanced Fields Grid */}
+                <Box sx={{ mb: 3 }}>
+                  {/* Primary Fields Section */}
+                  {organizeFields().primaryFields.length > 0 && (
+                    <Box sx={{ mb: 4 }}>
+                      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600, color: "text.primary" }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Search sx={{ fontSize: 20 }} />
+                          Primary Search Fields
+                          <Chip size="small" label={organizeFields().primaryFields.length} />
+                        </Box>
+                      </Typography>
+                      <Grid container spacing={3}>
+                        {organizeFields().primaryFields.map((field) => (
+                          <Grid 
+                            item 
+                            xs={12} 
+                            sm={isTablet ? 6 : 6} 
+                            md={6} 
+                            lg={4} 
+                            key={field.name}
+                          >
+                            <FormField
+                              field={field}
+                              formData={formData}
+                              collectionInfo={collectionInfo}
+                              hasEmbeddings={hasEmbeddings}
+                              neighbors={neighbors}
+                              loadingNeighbors={loadingNeighbors}
+                              metadata={metadata}
+                              onFormChange={handleFormChange}
+                              onSelectChange={handleSelectChange}
+                              onToggleNot={toggleNotCondition}
+                              onAddBooleanField={addBooleanField}
+                              onRemoveBooleanField={removeBooleanField}
+                              onFetchNeighbors={getNeighbors}
+                              onRemoveNeighborDropdown={removeNeighborDropdown}
+                              shouldAutoFocus={field.name === autoFocusFieldName}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {/* Secondary Fields Section */}
+                  {organizeFields().secondaryFields.length > 0 && (
+                    <Box sx={{ mb: 4 }}>
+                      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600, color: "text.secondary" }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <FilterList sx={{ fontSize: 20 }} />
+                          Additional Filters
+                          <Chip size="small" label={organizeFields().secondaryFields.length} />
+                        </Box>
+                      </Typography>
+                      <Grid container spacing={3}>
+                        {organizeFields().secondaryFields.map((field) => (
+                          <Grid 
+                            item 
+                            xs={12} 
+                            sm={isTablet ? 6 : 6} 
+                            md={6} 
+                            lg={4} 
+                            key={field.name}
+                          >
+                            <FormField
+                              field={field}
+                              formData={formData}
+                              collectionInfo={collectionInfo}
+                              hasEmbeddings={hasEmbeddings}
+                              neighbors={neighbors}
+                              loadingNeighbors={loadingNeighbors}
+                              metadata={metadata}
+                              onFormChange={handleFormChange}
+                              onSelectChange={handleSelectChange}
+                              onToggleNot={toggleNotCondition}
+                              onAddBooleanField={addBooleanField}
+                              onRemoveBooleanField={removeBooleanField}
+                              onFetchNeighbors={getNeighbors}
+                              onRemoveNeighborDropdown={removeNeighborDropdown}
+                              shouldAutoFocus={field.name === autoFocusFieldName}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {/* Metadata Fields Section */}
+                  {organizeFields().metadataFields.length > 0 && (
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600, color: "text.secondary" }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <QueryStats sx={{ fontSize: 20 }} />
+                          Metadata Fields
+                          <Chip size="small" label={organizeFields().metadataFields.length} />
+                        </Box>
+                      </Typography>
+                      <Grid container spacing={3}>
+                        {organizeFields().metadataFields.map((field) => (
+                          <Grid 
+                            item 
+                            xs={12} 
+                            sm={isTablet ? 6 : 6} 
+                            md={6} 
+                            lg={4} 
+                            key={field.name}
+                          >
+                            <FormField
+                              field={field}
+                              formData={formData}
+                              collectionInfo={collectionInfo}
+                              hasEmbeddings={hasEmbeddings}
+                              neighbors={neighbors}
+                              loadingNeighbors={loadingNeighbors}
+                              metadata={metadata}
+                              onFormChange={handleFormChange}
+                              onSelectChange={handleSelectChange}
+                              onToggleNot={toggleNotCondition}
+                              onAddBooleanField={addBooleanField}
+                              onRemoveBooleanField={removeBooleanField}
+                              onFetchNeighbors={getNeighbors}
+                              onRemoveNeighborDropdown={removeNeighborDropdown}
+                              shouldAutoFocus={field.name === autoFocusFieldName}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+                </Box>
 
                 <DateRangeField
                   dateRange={dateRange}
@@ -880,89 +968,198 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
               </Box>
             )}
 
-            {/* Form Validation Summary */}
-            <Box sx={{ mb: 3 }}>
-              <Alert
-                severity={
-                  formValidation.overallStatus === "error"
-                    ? "error"
-                    : formValidation.overallStatus === "ready"
-                      ? "success"
-                      : "info"
-                }
-                sx={{ mb: 2 }}
-              >
+            {/* Enhanced Form Validation Summary */}
+            <Card variant="outlined" sx={{ mb: 3, overflow: "visible" }}>
+              <CardContent sx={{ pb: 2 }}>
                 <Box
                   sx={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    mb: 2,
                   }}
                 >
-                  <Typography variant="body2">
-                    {formValidation.summary}
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "primary.main" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <CheckCircle />
+                      Search Status
+                    </Box>
                   </Typography>
+                  <Chip
+                    label={formValidation.overallStatus === "ready" ? "Ready" : formValidation.overallStatus === "error" ? "Issues Found" : "Review Required"}
+                    color={
+                      formValidation.overallStatus === "error"
+                        ? "error"
+                        : formValidation.overallStatus === "ready"
+                          ? "success"
+                          : "warning"
+                    }
+                    size="small"
+                    sx={{ fontWeight: 600 }}
+                  />
                 </Box>
-              </Alert>
-            </Box>
+                
+                <Alert
+                  severity={
+                    formValidation.overallStatus === "error"
+                      ? "error"
+                      : formValidation.overallStatus === "ready"
+                        ? "success"
+                        : "info"
+                  }
+                  sx={{ 
+                    borderRadius: 2,
+                    "& .MuiAlert-message": {
+                      width: "100%"
+                    }
+                  }}
+                  icon={false}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {formValidation.summary}
+                    </Typography>
+                    {formValidation.overallStatus === "ready" && (
+                      <CheckCircle sx={{ color: "success.main", ml: 1 }} />
+                    )}
+                  </Box>
+                </Alert>
+              </CardContent>
+            </Card>
 
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 2,
-                flexWrap: "wrap",
-              }}
-            >
-              <Button
-                variant="contained"
-                color="primary"
-                type="submit"
-                size="large"
-                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <PlayArrow />}
-                disabled={!formValidation.canSubmit || isLoading}
-                sx={{
-                  minWidth: 120,
-                  opacity: formValidation.canSubmit && !isLoading ? 1 : 0.6,
-                  cursor: formValidation.canSubmit && !isLoading ? "pointer" : "not-allowed",
-                }}
-              >
-                {isLoading ? "Processing..." : "Execute Query"}
-              </Button>
-
-              {hasSearchContent && (
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  size="large"
-                  startIcon={<ClearAll />}
-                  onClick={clearAllFields}
-                  disabled={isLoading}
+            <Card variant="outlined" sx={{ overflow: "visible" }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: "primary.main", textAlign: "center" }}>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                    <PlayArrow />
+                    Execute Search
+                  </Box>
+                </Typography>
+                
+                <Box
                   sx={{
-                    minWidth: 120,
-                    "&:hover": {
-                      backgroundColor: "secondary.light",
-                      color: "white",
-                    },
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: 2,
+                    flexWrap: "wrap",
+                    mb: 2,
                   }}
                 >
-                  Clear All
-                </Button>
-              )}
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    type="submit"
+                    size="large"
+                    startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <PlayArrow />}
+                    disabled={!formValidation.canSubmit || isLoading}
+                    sx={{
+                      minWidth: 180,
+                      height: 48,
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      borderRadius: 3,
+                      boxShadow: formValidation.canSubmit && !isLoading ? 4 : 0,
+                      transform: formValidation.canSubmit && !isLoading ? "translateY(-2px)" : "none",
+                      "&:hover": {
+                        boxShadow: 6,
+                        transform: "translateY(-3px)",
+                      },
+                      "&:disabled": {
+                        opacity: 0.6,
+                        transform: "none",
+                        boxShadow: 0,
+                      },
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    }}
+                  >
+                    {isLoading ? "Processing..." : "Execute Query"}
+                  </Button>
 
-              {solrDatabaseId && (
-                <CodeGeneration
-                  formData={formData}
-                  dateRange={dateRange}
-                  selectedAlias={selectedAlias}
-                  solrDatabaseId={solrDatabaseId}
-                  getNER={getNER}
-                  downloadOnly={downloadOnly}
-                  statsLevel={statsLevel}
-                  accessToken={accessToken || ""}
-                />
-              )}
-            </Box>
+                  {hasSearchContent && (
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      size="large"
+                      startIcon={<ClearAll />}
+                      onClick={clearAllFields}
+                      disabled={isLoading}
+                      sx={{
+                        minWidth: 140,
+                        height: 48,
+                        fontSize: "0.95rem",
+                        fontWeight: 600,
+                        borderRadius: 3,
+                        borderWidth: 2,
+                        "&:hover": {
+                          backgroundColor: "secondary.main",
+                          color: "white",
+                          borderWidth: 2,
+                          transform: "translateY(-2px)",
+                          boxShadow: 3,
+                        },
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                    >
+                      Clear All
+                    </Button>
+                  )}
+
+                  {solrDatabaseId && (
+                    <CodeGeneration
+                      formData={formData}
+                      dateRange={dateRange}
+                      selectedAlias={selectedAlias}
+                      solrDatabaseId={solrDatabaseId}
+                      getNER={getNER}
+                      downloadOnly={downloadOnly}
+                      statsLevel={statsLevel}
+                      accessToken={accessToken || ""}
+                    />
+                  )}
+                </Box>
+                
+                {/* Progress indicator when loading */}
+                {isLoading && (
+                  <Box sx={{ mt: 2 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, mb: 1 }}>
+                      <CircularProgress size={16} />
+                      <Typography variant="caption" color="text.secondary">
+                        Executing search query...
+                      </Typography>
+                    </Box>
+                    <Box 
+                      sx={{ 
+                        width: "100%", 
+                        height: 4, 
+                        bgcolor: "grey.200", 
+                        borderRadius: 2,
+                        overflow: "hidden"
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          bgcolor: "primary.main",
+                          animation: "progress-loading 2s ease-in-out infinite",
+                          "@keyframes progress-loading": {
+                            "0%": { transform: "translateX(-100%)" },
+                            "50%": { transform: "translateX(0%)" },
+                            "100%": { transform: "translateX(100%)" },
+                          },
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
           </Box>
         </CardContent>
       </Card>

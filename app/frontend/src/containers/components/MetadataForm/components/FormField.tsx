@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import {
-  Paper,
+  Card,
+  CardContent,
   Typography,
   TextField,
   Autocomplete,
@@ -206,10 +207,9 @@ const FormField: React.FC<FormFieldProps> = ({
   const validationIcon = getValidationIcon();
 
   return (
-    <Paper
+    <Card
       variant="outlined"
       sx={{
-        p: 2,
         height: "100%",
         border: isTextField ? "2px solid" : "1px solid",
         borderColor: isTextField
@@ -222,18 +222,30 @@ const FormField: React.FC<FormFieldProps> = ({
                 ? "success.light"
                 : "divider",
         position: "relative",
-        transition: "all 0.2s ease",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        overflow: "visible",
+        "&:hover": {
+          transform: "translateY(-2px)",
+          boxShadow: isTextField ? 6 : 3,
+          borderColor: isTextField ? "primary.dark" : validation.status === "error" ? "error.main" : "primary.light",
+        },
+        ...(isTextField && {
+          background: (theme) => `linear-gradient(135deg, 
+            ${theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.08)' : 'rgba(25, 118, 210, 0.04)'} 0%, 
+            ${theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.02)' : 'rgba(25, 118, 210, 0.01)'} 100%)`,
+        }),
       }}
     >
-      {/* Field Header with Help */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          mb: 2,
-        }}
-      >
+      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+        {/* Field Header with Help */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 2,
+          }}
+        >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
             {field.name}
@@ -321,34 +333,34 @@ const FormField: React.FC<FormFieldProps> = ({
               >
                 <Tooltip
                   title={
-                    entry.not ? "Exclude this value" : "Include this value"
+                    entry.not ? "Click to include this value" : "Click to exclude this value"
                   }
                 >
                   <Button
                     variant={entry.not ? "contained" : "outlined"}
-                    color={entry.not ? "error" : "inherit"}
+                    color={entry.not ? "error" : "success"}
                     size="small"
                     onClick={() => onToggleNot(field.name, idx)}
                     sx={{
-                      minWidth: 60,
+                      minWidth: 80,
                       fontWeight: 600,
-                      boxShadow: entry.not ? 2 : 0,
+                      borderRadius: 2,
+                      textTransform: "none",
+                      fontSize: "0.75rem",
                       backgroundColor: entry.not ? "error.main" : "transparent",
-                      borderColor: entry.not ? "error.main" : "grey.400",
-                      color: entry.not ? "white" : "text.primary",
+                      borderColor: entry.not ? "error.main" : "success.main",
+                      color: entry.not ? "white" : "success.main",
                       "&:hover": {
-                        backgroundColor: entry.not
-                          ? "error.dark"
-                          : "error.light",
-                        borderColor: "error.main",
-                        color: entry.not ? "white" : "error.main",
+                        backgroundColor: entry.not ? "error.dark" : "success.light",
+                        borderColor: entry.not ? "error.dark" : "success.main",
+                        color: entry.not ? "white" : "white",
                         transform: "translateY(-1px)",
-                        boxShadow: entry.not ? 3 : 1,
+                        boxShadow: 3,
                       },
-                      transition: "all 0.2s ease",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                     }}
                   >
-                    NOT
+                    {entry.not ? "Exclude" : "Include"}
                   </Button>
                 </Tooltip>
 
@@ -386,17 +398,19 @@ const FormField: React.FC<FormFieldProps> = ({
               </Box>
 
               {idx === formData[field.name].length - 1 && entry.value && entry.value.trim() && (
-                <ButtonGroup size="small" variant="outlined" sx={{ mt: 1 }}>
+                <ButtonGroup size="small" variant="contained" sx={{ mt: 2, width: "100%" }}>
                   <Button
                     onClick={() => onAddBooleanField(field.name, "AND")}
                     color="success"
                     startIcon={<Add />}
                     sx={{
+                      flex: 1,
                       fontWeight: 600,
                       "&:hover": {
-                        boxShadow: 2,
+                        boxShadow: 3,
                         transform: "translateY(-1px)",
                       },
+                      transition: "all 0.2s ease",
                     }}
                   >
                     AND
@@ -411,11 +425,13 @@ const FormField: React.FC<FormFieldProps> = ({
                     color="info"
                     startIcon={<Add />}
                     sx={{
+                      flex: 1,
                       fontWeight: 600,
                       "&:hover": {
-                        boxShadow: 2,
+                        boxShadow: 3,
                         transform: "translateY(-1px)",
                       },
+                      transition: "all 0.2s ease",
                     }}
                   >
                     OR
@@ -442,34 +458,34 @@ const FormField: React.FC<FormFieldProps> = ({
               >
                 <Tooltip
                   title={
-                    entry.not ? "Exclude this value" : "Include this value"
+                    entry.not ? "Click to include this value" : "Click to exclude this value"
                   }
                 >
                   <Button
                     variant={entry.not ? "contained" : "outlined"}
-                    color={entry.not ? "error" : "inherit"}
+                    color={entry.not ? "error" : "success"}
                     size="small"
                     onClick={() => onToggleNot(field.name, idx)}
                     sx={{
-                      minWidth: 60,
+                      minWidth: 80,
                       fontWeight: 600,
-                      boxShadow: entry.not ? 2 : 0,
+                      borderRadius: 2,
+                      textTransform: "none",
+                      fontSize: "0.75rem",
                       backgroundColor: entry.not ? "error.main" : "transparent",
-                      borderColor: entry.not ? "error.main" : "grey.400",
-                      color: entry.not ? "white" : "text.primary",
+                      borderColor: entry.not ? "error.main" : "success.main",
+                      color: entry.not ? "white" : "success.main",
                       "&:hover": {
-                        backgroundColor: entry.not
-                          ? "error.dark"
-                          : "error.light",
-                        borderColor: "error.main",
-                        color: entry.not ? "white" : "error.main",
+                        backgroundColor: entry.not ? "error.dark" : "success.light",
+                        borderColor: entry.not ? "error.dark" : "success.main",
+                        color: entry.not ? "white" : "white",
                         transform: "translateY(-1px)",
-                        boxShadow: entry.not ? 3 : 1,
+                        boxShadow: 3,
                       },
-                      transition: "all 0.2s ease",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                     }}
                   >
-                    NOT
+                    {entry.not ? "Exclude" : "Include"}
                   </Button>
                 </Tooltip>
 
@@ -532,26 +548,55 @@ const FormField: React.FC<FormFieldProps> = ({
               </Box>
 
               {neighbors[field.name] && idx === 0 && (
-                <Box sx={{ mb: 2 }}>
+                <Box sx={{ 
+                  mb: 2, 
+                  p: 2, 
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.50',
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: "primary.main"
+                }}>
                   <Box
                     sx={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 1,
-                      mb: 1,
+                      justifyContent: "space-between",
+                      mb: 2,
                     }}
                   >
-                    <Star sx={{ fontSize: 16, color: "primary.main" }} />
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ fontWeight: 600 }}
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Star sx={{ fontSize: 18, color: "primary.main" }} />
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ fontWeight: 600, color: "primary.main" }}
+                      >
+                        AI Suggestions
+                      </Typography>
+                      <Chip 
+                        label={neighbors[field.name].length} 
+                        size="small" 
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => onRemoveNeighborDropdown(field.name)}
+                      sx={{ 
+                        fontSize: "0.75rem",
+                        color: "primary.main",
+                        "&:hover": {
+                          bgcolor: "primary.light",
+                          color: "white",
+                        }
+                      }}
                     >
-                      AI Suggestions:
-                    </Typography>
+                      Hide
+                    </Button>
                   </Box>
                   <Box
-                    sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1 }}
+                    sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}
                   >
                     {neighbors[field.name].map(
                       (neighbor: string, index: number) => (
@@ -560,44 +605,43 @@ const FormField: React.FC<FormFieldProps> = ({
                           label={neighbor}
                           size="small"
                           clickable
+                          variant="outlined"
+                          color="primary"
                           onClick={() =>
                             onSelectChange(field.name, neighbor, idx)
                           }
                           sx={{
                             fontSize: "0.75rem",
+                            fontWeight: 500,
                             "&:hover": {
-                              bgcolor: "primary.light",
+                              bgcolor: "primary.main",
                               color: "white",
-                              transform: "translateY(-1px)",
+                              transform: "translateY(-2px)",
+                              boxShadow: 2,
                             },
+                            transition: "all 0.2s ease",
                           }}
                         />
                       ),
                     )}
                   </Box>
-                  <Button
-                    size="small"
-                    variant="text"
-                    onClick={() => onRemoveNeighborDropdown(field.name)}
-                    sx={{ fontSize: "0.75rem" }}
-                  >
-                    Hide suggestions
-                  </Button>
                 </Box>
               )}
 
               {idx === formData[field.name].length - 1 && entry.value && entry.value.trim() && (
-                <ButtonGroup size="small" variant="outlined" sx={{ mt: 1 }}>
+                <ButtonGroup size="small" variant="contained" sx={{ mt: 2, width: "100%" }}>
                   <Button
                     onClick={() => onAddBooleanField(field.name, "AND")}
                     color="success"
                     startIcon={<Add />}
                     sx={{
+                      flex: 1,
                       fontWeight: 600,
                       "&:hover": {
-                        boxShadow: 2,
+                        boxShadow: 3,
                         transform: "translateY(-1px)",
                       },
+                      transition: "all 0.2s ease",
                     }}
                   >
                     AND
@@ -612,11 +656,13 @@ const FormField: React.FC<FormFieldProps> = ({
                     color="info"
                     startIcon={<Add />}
                     sx={{
+                      flex: 1,
                       fontWeight: 600,
                       "&:hover": {
-                        boxShadow: 2,
+                        boxShadow: 3,
                         transform: "translateY(-1px)",
                       },
+                      transition: "all 0.2s ease",
                     }}
                   >
                     OR
@@ -632,7 +678,8 @@ const FormField: React.FC<FormFieldProps> = ({
           ))}
         </Box>
       )}
-    </Paper>
+      </CardContent>
+    </Card>
   );
 };
 
