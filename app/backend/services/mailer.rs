@@ -6,8 +6,8 @@ use lettre::transport::smtp::authentication::{Credentials, Mechanism};
 use lettre::{SmtpTransport, Transport};
 use log::{error, info, warn};
 use oauth2::{
-    basic::BasicClient, reqwest::async_http_client, AuthUrl, ClientId, ClientSecret,
-    RefreshToken, TokenResponse, TokenUrl,
+    basic::BasicClient, reqwest::async_http_client, AuthUrl, ClientId, ClientSecret, RefreshToken,
+    TokenResponse, TokenUrl,
 };
 use reqwest::Client;
 use serde_json::json;
@@ -39,26 +39,26 @@ pub struct Mailer {
     pub from_email: String,
     pub app_url: String,
     pub actually_send: bool,
-    
+
     // SMTP settings
     pub smtp_server: String,
     pub smtp_username: String,
     pub smtp_password: String,
-    
+
     // OAuth2 settings
     pub oauth2_client_id: String,
     pub oauth2_client_secret: String,
     pub oauth2_refresh_token: String,
     pub oauth2_redirect_uri: String,
-    
+
     // HTTP API settings
     pub email_api_key: String,
     pub email_api_endpoint: String,
     pub mailgun_domain: String,
-    
+
     // HTTP client for API calls
     pub http_client: Client,
-    
+
     // Retry settings
     pub max_retries: u32,
     pub retry_delay_ms: u64,
@@ -72,26 +72,26 @@ impl Mailer {
             from_email: config.smtp_from_address.clone(),
             app_url: config.app_url.clone(),
             actually_send: config.send_mail,
-            
+
             // SMTP settings
             smtp_server: config.smtp_server.clone(),
             smtp_username: config.smtp_username.clone(),
             smtp_password: config.smtp_password.clone(),
-            
+
             // OAuth2 settings
             oauth2_client_id: config.oauth2_client_id.clone(),
             oauth2_client_secret: config.oauth2_client_secret.clone(),
             oauth2_refresh_token: config.oauth2_refresh_token.clone(),
             oauth2_redirect_uri: config.oauth2_redirect_uri.clone(),
-            
+
             // HTTP API settings
             email_api_key: config.email_api_key.clone(),
             email_api_endpoint: config.email_api_endpoint.clone(),
             mailgun_domain: config.mailgun_domain.clone(),
-            
+
             // HTTP client
             http_client: Client::new(),
-            
+
             // Retry settings
             max_retries: 3,
             retry_delay_ms: 1000,
@@ -100,7 +100,10 @@ impl Mailer {
 
     /// Send an email (text and html body) with retry logic
     pub async fn send(&self, to_email: &str, subject: &str, text_body: &str, html_body: &str) {
-        info!("📧 Email Request: to={}, subject={}, provider={:?}", to_email, subject, self.provider);
+        info!(
+            "📧 Email Request: to={}, subject={}, provider={:?}",
+            to_email, subject, self.provider
+        );
 
         if !self.actually_send {
             self.log_email_preview(to_email, subject, text_body, html_body);
@@ -108,16 +111,26 @@ impl Mailer {
         }
 
         let mut last_error = None;
-        
+
         for attempt in 0..=self.max_retries {
             if attempt > 0 {
-                warn!("Retrying email send (attempt {}/{})", attempt + 1, self.max_retries + 1);
+                warn!(
+                    "Retrying email send (attempt {}/{})",
+                    attempt + 1,
+                    self.max_retries + 1
+                );
                 sleep(Duration::from_millis(self.retry_delay_ms * attempt as u64)).await;
             }
 
-            match self.send_internal(to_email, subject, text_body, html_body).await {
+            match self
+                .send_internal(to_email, subject, text_body, html_body)
+                .await
+            {
                 Ok(_) => {
-                    info!("Email sent successfully to {} via {:?}", to_email, self.provider);
+                    info!(
+                        "Email sent successfully to {} via {:?}",
+                        to_email, self.provider
+                    );
                     return;
                 }
                 Err(e) => {
@@ -126,25 +139,56 @@ impl Mailer {
                 }
             }
         }
-        
-        error!("Failed to send email after {} attempts: {:?}", self.max_retries + 1, last_error);
+
+        error!(
+            "Failed to send email after {} attempts: {:?}",
+            self.max_retries + 1,
+            last_error
+        );
     }
-    
+
     /// Internal send method that handles different providers
-    async fn send_internal(&self, to_email: &str, subject: &str, text_body: &str, html_body: &str) -> Result<()> {
+    async fn send_internal(
+        &self,
+        to_email: &str,
+        subject: &str,
+        text_body: &str,
+        html_body: &str,
+    ) -> Result<()> {
         match self.provider {
-            EmailProvider::Smtp => self.send_smtp(to_email, subject, text_body, html_body).await,
-            EmailProvider::OAuth2 => self.send_oauth2(to_email, subject, text_body, html_body).await,
-            EmailProvider::SendGrid => self.send_sendgrid(to_email, subject, text_body, html_body).await,
-            EmailProvider::Mailgun => self.send_mailgun(to_email, subject, text_body, html_body).await,
+            EmailProvider::Smtp => {
+                self.send_smtp(to_email, subject, text_body, html_body)
+                    .await
+            }
+            EmailProvider::OAuth2 => {
+                self.send_oauth2(to_email, subject, text_body, html_body)
+                    .await
+            }
+            EmailProvider::SendGrid => {
+                self.send_sendgrid(to_email, subject, text_body, html_body)
+                    .await
+            }
+            EmailProvider::Mailgun => {
+                self.send_mailgun(to_email, subject, text_body, html_body)
+                    .await
+            }
         }
     }
-    
+
     /// Send email via SMTP
-    async fn send_smtp(&self, to_email: &str, subject: &str, text_body: &str, html_body: &str) -> Result<()> {
-        let sender = self.from_email.parse()
+    async fn send_smtp(
+        &self,
+        to_email: &str,
+        subject: &str,
+        text_body: &str,
+        html_body: &str,
+    ) -> Result<()> {
+        let sender = self
+            .from_email
+            .parse()
             .map_err(|e| anyhow!("Invalid sender email '{}': {}", self.from_email, e))?;
-        let recipient = to_email.parse()
+        let recipient = to_email
+            .parse()
             .map_err(|e| anyhow!("Invalid recipient email '{}': {}", to_email, e))?;
 
         let email = Message::builder()
@@ -174,20 +218,30 @@ impl Mailer {
             ))
             .build();
 
-        mailer.send(&email)
+        mailer
+            .send(&email)
             .map_err(|e| anyhow!("SMTP send failed: {}", e))?;
-            
+
         Ok(())
     }
-    
+
     /// Send email via OAuth2 (Gmail)
-    async fn send_oauth2(&self, to_email: &str, subject: &str, text_body: &str, html_body: &str) -> Result<()> {
+    async fn send_oauth2(
+        &self,
+        to_email: &str,
+        subject: &str,
+        text_body: &str,
+        html_body: &str,
+    ) -> Result<()> {
         // First get a fresh access token
         let access_token = self.get_oauth2_access_token().await?;
-        
-        let sender = self.from_email.parse()
+
+        let sender = self
+            .from_email
+            .parse()
             .map_err(|e| anyhow!("Invalid sender email '{}': {}", self.from_email, e))?;
-        let recipient = to_email.parse()
+        let recipient = to_email
+            .parse()
             .map_err(|e| anyhow!("Invalid recipient email '{}': {}", to_email, e))?;
 
         let email = Message::builder()
@@ -213,25 +267,25 @@ impl Mailer {
         let mailer = SmtpTransport::relay("smtp.gmail.com")
             .map_err(|e| anyhow!("Failed to create Gmail SMTP transport: {}", e))?
             .authentication(vec![Mechanism::Xoauth2])
-            .credentials(Credentials::new(
-                self.smtp_username.clone(),
-                access_token,
-            ))
+            .credentials(Credentials::new(self.smtp_username.clone(), access_token))
             .build();
 
-        mailer.send(&email)
+        mailer
+            .send(&email)
             .map_err(|e| anyhow!("OAuth2 SMTP send failed: {}", e))?;
-            
+
         Ok(())
     }
-    
+
     /// Get OAuth2 access token using refresh token
     async fn get_oauth2_access_token(&self) -> Result<String> {
         let client = BasicClient::new(
             ClientId::new(self.oauth2_client_id.clone()),
             Some(ClientSecret::new(self.oauth2_client_secret.clone())),
             AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string())?,
-            Some(TokenUrl::new("https://www.googleapis.com/oauth2/v3/token".to_string())?),
+            Some(TokenUrl::new(
+                "https://www.googleapis.com/oauth2/v3/token".to_string(),
+            )?),
         );
 
         let token_result = client
@@ -242,9 +296,15 @@ impl Mailer {
 
         Ok(token_result.access_token().secret().clone())
     }
-    
+
     /// Send email via SendGrid API
-    async fn send_sendgrid(&self, to_email: &str, subject: &str, text_body: &str, html_body: &str) -> Result<()> {
+    async fn send_sendgrid(
+        &self,
+        to_email: &str,
+        subject: &str,
+        text_body: &str,
+        html_body: &str,
+    ) -> Result<()> {
         let payload = json!({
             "personalizations": [{
                 "to": [{"email": to_email}]
@@ -257,7 +317,8 @@ impl Mailer {
             ]
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post("https://api.sendgrid.com/v3/mail/send")
             .header("Authorization", format!("Bearer {}", self.email_api_key))
             .header("Content-Type", "application/json")
@@ -274,11 +335,20 @@ impl Mailer {
 
         Ok(())
     }
-    
+
     /// Send email via Mailgun API
-    async fn send_mailgun(&self, to_email: &str, subject: &str, text_body: &str, html_body: &str) -> Result<()> {
-        let url = format!("https://api.mailgun.net/v3/{}/messages", self.mailgun_domain);
-        
+    async fn send_mailgun(
+        &self,
+        to_email: &str,
+        subject: &str,
+        text_body: &str,
+        html_body: &str,
+    ) -> Result<()> {
+        let url = format!(
+            "https://api.mailgun.net/v3/{}/messages",
+            self.mailgun_domain
+        );
+
         let mut form = HashMap::new();
         form.insert("from", self.from_email.as_str());
         form.insert("to", to_email);
@@ -287,11 +357,12 @@ impl Mailer {
         form.insert("html", html_body);
 
         let auth_header = format!(
-            "Basic {}", 
+            "Basic {}",
             base64::engine::general_purpose::STANDARD.encode(format!("api:{}", self.email_api_key))
         );
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&url)
             .header("Authorization", auth_header)
             .form(&form)
@@ -332,7 +403,7 @@ impl Mailer {
         let link = format!("{}/{}", self.app_url, register_link);
         crate::mail::auth_recover_nonexistent_account::send(self, to_email, &link).await;
     }
-    
+
     /// Log email preview when actually_send is false
     fn log_email_preview(&self, to_email: &str, subject: &str, text_body: &str, html_body: &str) {
         info!("📧 EMAIL PREVIEW (send_mail=false)");
@@ -342,12 +413,12 @@ impl Mailer {
         info!("🌐 Provider: {:?}", self.provider);
         info!("📄 Text Body:");
         info!("{}", "-".repeat(40));
-        
+
         // Log text body with line numbers for better readability
         for (i, line) in text_body.lines().enumerate() {
             info!("{:3} | {}", i + 1, line);
         }
-        
+
         info!("{}", "-".repeat(40));
         info!("🎨 HTML Body (first 500 chars):");
         let html_preview = if html_body.len() > 500 {
@@ -357,58 +428,64 @@ impl Mailer {
         };
         info!("{}", html_preview);
         info!("{}", "=".repeat(60));
-        
+
         // Add helpful development message
         if self.provider == EmailProvider::Smtp && self.smtp_server == "localhost" {
-            warn!("💡 Email not sent - To enable emails, configure EMAIL_PROVIDER and SEND_MAIL=true");
+            warn!(
+                "💡 Email not sent - To enable emails, configure EMAIL_PROVIDER and SEND_MAIL=true"
+            );
         } else {
             warn!("💡 Email preview only - Set SEND_MAIL=true to actually send emails");
         }
     }
-    
+
     /// Check if email service is properly configured and enabled
     pub fn is_email_service_ready(&self) -> bool {
         if !self.actually_send {
             return false;
         }
-        
+
         match self.provider {
             EmailProvider::Smtp => {
-                !self.smtp_server.is_empty() && 
-                self.smtp_server != "localhost" &&
-                !self.smtp_username.is_empty() &&
-                !self.smtp_password.is_empty()
-            },
+                !self.smtp_server.is_empty()
+                    && self.smtp_server != "localhost"
+                    && !self.smtp_username.is_empty()
+                    && !self.smtp_password.is_empty()
+            }
             EmailProvider::OAuth2 => {
-                !self.oauth2_client_id.is_empty() &&
-                !self.oauth2_client_secret.is_empty() &&
-                !self.oauth2_refresh_token.is_empty()
-            },
-            EmailProvider::SendGrid => {
-                !self.email_api_key.is_empty()
-            },
+                !self.oauth2_client_id.is_empty()
+                    && !self.oauth2_client_secret.is_empty()
+                    && !self.oauth2_refresh_token.is_empty()
+            }
+            EmailProvider::SendGrid => !self.email_api_key.is_empty(),
             EmailProvider::Mailgun => {
-                !self.email_api_key.is_empty() &&
-                !self.mailgun_domain.is_empty()
-            },
+                !self.email_api_key.is_empty() && !self.mailgun_domain.is_empty()
+            }
         }
     }
-    
+
     /// Get user-friendly status message about email configuration
     pub fn get_email_status_message(&self) -> String {
         if !self.actually_send {
-            return "Email sending is disabled (SEND_MAIL=false). Accounts are auto-activated.".to_string();
+            return "Email sending is disabled (SEND_MAIL=false). Accounts are auto-activated."
+                .to_string();
         }
-        
+
         if !self.is_email_service_ready() {
             return format!("Email service ({:?}) is not properly configured. Check your environment variables.", self.provider);
         }
-        
+
         format!("Email service ready using {:?} provider", self.provider)
     }
-    
+
     /// Queue an email to be sent via background job system
-    pub async fn queue_email(&self, to_email: &str, subject: &str, text_body: &str, html_body: &str) -> Result<()> {
+    pub async fn queue_email(
+        &self,
+        to_email: &str,
+        subject: &str,
+        text_body: &str,
+        html_body: &str,
+    ) -> Result<()> {
         // For now, just send directly - in the future this could integrate with the existing Fang job system
         self.send(to_email, subject, text_body, html_body).await;
         Ok(())

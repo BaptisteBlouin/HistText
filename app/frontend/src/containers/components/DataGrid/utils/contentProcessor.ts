@@ -4,11 +4,13 @@ import {
   getHighlightTermsForField,
   debugFormData,
 } from "./queryParser";
-import config from "../../../../../config.json";
 
-const NER_LABELS_COLORS = config.NER_LABELS_COLORS;
-const NERLABELS2FULL = config.NERLABELS2FULL;
-const viewNERFields = config.viewNERFields;
+// Configuration interface for processContent functions
+interface ProcessContentConfig {
+  NER_LABELS_COLORS: Record<string, string>;
+  NERLABELS2FULL: Record<string, string>;
+  viewNERFields: string[];
+}
 
 interface ProcessedElement {
   type: "text" | "ner" | "highlight";
@@ -36,13 +38,14 @@ export const processContentWithNER = (
   nerData: any,
   viewNER: boolean,
   showConcordance: boolean,
+  config: ProcessContentConfig,
 ): ProcessedElement[] => {
   let elements: ProcessedElement[] = [];
   let lastIndex = 0;
 
   const shouldHighlightNER =
     viewNER &&
-    viewNERFields.some(
+    config.viewNERFields.some(
       (fieldValue) => field === fieldValue || field.includes(fieldValue),
     ) &&
     nerData?.[documentId]?.t &&
@@ -69,12 +72,12 @@ export const processContentWithNER = (
           const endPos = Math.min(e, stringValue.length);
           const label = l[0];
           const color =
-            label in NER_LABELS_COLORS
-              ? NER_LABELS_COLORS[label as keyof typeof NER_LABELS_COLORS]
+            label in config.NER_LABELS_COLORS
+              ? config.NER_LABELS_COLORS[label as keyof typeof config.NER_LABELS_COLORS]
               : "#gray";
           const fullLabel =
-            label in NERLABELS2FULL
-              ? NERLABELS2FULL[label as keyof typeof NERLABELS2FULL]
+            label in config.NERLABELS2FULL
+              ? config.NERLABELS2FULL[label as keyof typeof config.NERLABELS2FULL]
               : label;
 
           elements.push({
@@ -179,6 +182,7 @@ export const processContent = (
   formData: any,
   showConcordance: boolean,
   mainTextColumn: string,
+  config: ProcessContentConfig,
 ): ProcessedElement[] => {
   // Early return for empty values
   if (!value && value !== 0) return [];
@@ -223,6 +227,7 @@ export const processContent = (
     nerData,
     viewNER,
     showConcordance,
+    config,
   );
 
   // Apply search highlighting with limited terms for performance (keep this optimization)

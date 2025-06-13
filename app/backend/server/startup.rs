@@ -4,10 +4,10 @@ use crate::config::Config;
 use crate::schema::solr_database_info::dsl as info_dsl;
 use crate::schema::solr_databases::dsl::*;
 use crate::server::error::AppError;
-use crate::services::database::{DbPool, Database};
+use crate::services::database::{Database, DbPool};
+use crate::services::role_assignment::get_role_assignment_service;
 use crate::services::solr_database::SolrDatabase;
 use crate::services::solr_database_info::SolrDatabaseInfo;
-use crate::services::role_assignment::get_role_assignment_service;
 use actix_web::web::Data;
 use anyhow::{self, Context};
 use diesel::prelude::*;
@@ -19,12 +19,18 @@ pub async fn initialize_application(pool: DbPool) -> Result<(), AppError> {
 
     // Initialize embeddings (existing functionality)
     if let Err(e) = preload_embeddings(pool.clone()).await {
-        return Err(AppError::External(anyhow::Error::msg(format!("Failed to preload embeddings: {}", e))));
+        return Err(AppError::External(anyhow::Error::msg(format!(
+            "Failed to preload embeddings: {}",
+            e
+        ))));
     }
 
     // Initialize default roles
     if let Err(e) = initialize_default_roles(pool.clone()).await {
-        return Err(AppError::External(anyhow::Error::msg(format!("Failed to initialize default roles: {}", e))));
+        return Err(AppError::External(anyhow::Error::msg(format!(
+            "Failed to initialize default roles: {}",
+            e
+        ))));
     }
 
     info!("Application initialization completed successfully");
@@ -39,17 +45,41 @@ async fn initialize_default_roles(_pool: DbPool) -> Result<(), AppError> {
     let role_service = get_role_assignment_service();
 
     // Ensure the default role exists
-    role_service.ensure_default_role_exists(db_data.clone()).await
-        .map_err(|e| AppError::External(anyhow::Error::msg(format!("Failed to ensure default role exists: {}", e))))?;
+    role_service
+        .ensure_default_role_exists(db_data.clone())
+        .await
+        .map_err(|e| {
+            AppError::External(anyhow::Error::msg(format!(
+                "Failed to ensure default role exists: {}",
+                e
+            )))
+        })?;
 
     // Check for and fix any users missing the default role
-    let missing_users = role_service.get_users_missing_default_role(db_data.clone()).await
-        .map_err(|e| AppError::External(anyhow::Error::msg(format!("Failed to get users missing default role: {}", e))))?;
-    
+    let missing_users = role_service
+        .get_users_missing_default_role(db_data.clone())
+        .await
+        .map_err(|e| {
+            AppError::External(anyhow::Error::msg(format!(
+                "Failed to get users missing default role: {}",
+                e
+            )))
+        })?;
+
     if !missing_users.is_empty() {
-        info!("Found {} activated users missing default role, assigning now...", missing_users.len());
-        role_service.batch_assign_default_role(db_data, missing_users, None).await
-            .map_err(|e| AppError::External(anyhow::Error::msg(format!("Failed to batch assign default role: {}", e))))?;
+        info!(
+            "Found {} activated users missing default role, assigning now...",
+            missing_users.len()
+        );
+        role_service
+            .batch_assign_default_role(db_data, missing_users, None)
+            .await
+            .map_err(|e| {
+                AppError::External(anyhow::Error::msg(format!(
+                    "Failed to batch assign default role: {}",
+                    e
+                )))
+            })?;
     }
 
     info!("Default roles initialization completed");

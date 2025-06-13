@@ -1,8 +1,8 @@
 import React from "react";
 import { Box, Typography, Chip, Tooltip } from "@mui/material";
-import config from "../../../../../config.json";
+import { useConfig } from "../../../../contexts/ConfigurationContext";
 
-type NerLabelKey = keyof typeof config.NER_LABELS_COLORS;
+// Will be dynamically typed based on config
 
 /**
  * Props for FieldRenderer, which renders a document field's value,
@@ -25,6 +25,8 @@ interface FieldRendererProps {
  */
 const FieldRenderer: React.FC<FieldRendererProps> = React.memo(
   ({ fieldName, content, showNER, nerData, documentId }) => {
+    const config = useConfig();
+    
     const NER_LABELS_COLORS = config.NER_LABELS_COLORS;
     const NERLABELS2FULL = config.NERLABELS2FULL;
     const viewNERFields = config.viewNERFields;

@@ -76,14 +76,14 @@ pub fn has_permission_or_own_resource(ctx: &GuardContext, user_id_param: &str) -
                         .permissions
                         .iter()
                         .any(|p| p.permission == "admin");
-                    
+
                     if is_admin {
                         return true;
                     }
 
                     // Check if user is accessing their own resource
                     let auth_user_id = token_data.claims.sub;
-                    
+
                     // Extract user ID from path
                     if let Some(path_segments) = req_head.uri.path().split('/').nth_back(0) {
                         if let Ok(resource_user_id) = path_segments.parse::<i32>() {
@@ -102,10 +102,10 @@ pub fn has_permission_or_own_resource(ctx: &GuardContext, user_id_param: &str) -
 pub fn can_access_user_resource(ctx: &GuardContext) -> bool {
     // This is a more robust way to extract user ID from the path
     let path = ctx.head().uri.path();
-    
+
     // For paths like /api/users/123, extract the user ID
     let path_segments: Vec<&str> = path.split('/').collect();
-    
+
     // Look for the user ID in the path (should be after "users")
     if let Some(users_index) = path_segments.iter().position(|&segment| segment == "users") {
         if users_index + 1 < path_segments.len() {
@@ -114,7 +114,7 @@ pub fn can_access_user_resource(ctx: &GuardContext) -> bool {
             }
         }
     }
-    
+
     false
 }
 

@@ -38,6 +38,7 @@ import {
   Home,
   DarkMode,
   LightMode,
+  Settings,
 } from "@mui/icons-material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -62,6 +63,9 @@ const PrecomputeNER = React.lazy(() => import("./components/PrecomputedNER"));
 const TokenizeSolr = React.lazy(() => import("./components/TokenizeSolr"));
 const ComputeWordEmbeddings = React.lazy(
   () => import("./components/ComputeWordEmbeddings"),
+);
+const SystemConfiguration = React.lazy(
+  () => import("./components/SystemConfiguration"),
 );
 
 /**
@@ -329,7 +333,7 @@ const AdminPanelContent: React.FC = () => {
   const handleMainTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setMainTab(newValue);
     localStorage.setItem("adminMainTab", newValue.toString());
-    if (newValue !== 3) setSubTab(0);
+    if (newValue !== 4) setSubTab(0);
     if (isMobile) setMobileDrawerOpen(false);
   };
 
@@ -345,6 +349,7 @@ const AdminPanelContent: React.FC = () => {
     { label: "Dashboard", icon: <DashboardIcon />, color: "primary" },
     { label: "User Management", icon: <People />, color: "secondary" },
     { label: "Data Management", icon: <Storage />, color: "success" },
+    { label: "System Configuration", icon: <Settings />, color: "error" },
     { label: "NLP Tools", icon: <Psychology />, color: "warning" },
     { label: "API Docs", icon: <MenuBook />, color: "info" },
   ];
@@ -477,6 +482,13 @@ const AdminPanelContent: React.FC = () => {
 
       case 3:
         return (
+          <Suspense fallback={<LinearProgress />}>
+            <SystemConfiguration />
+          </Suspense>
+        );
+
+      case 4:
+        return (
           <Box>
             <Tabs
               value={subTab}
@@ -501,7 +513,7 @@ const AdminPanelContent: React.FC = () => {
           </Box>
         );
 
-      case 4:
+      case 5:
         return <ApiDocumentation />;
 
       default:

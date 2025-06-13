@@ -230,8 +230,9 @@ where
             // Add Content-Security-Policy if enabled
             if config.include_csp {
                 let csp_value = match &config.custom_csp {
-                    Some(custom) => header::HeaderValue::from_str(custom)
-                        .unwrap_or_else(|_| header::HeaderValue::from_static(SecurityHeaders::default_csp())),
+                    Some(custom) => header::HeaderValue::from_str(custom).unwrap_or_else(|_| {
+                        header::HeaderValue::from_static(SecurityHeaders::default_csp())
+                    }),
                     None => header::HeaderValue::from_static(SecurityHeaders::default_csp()),
                 };
 

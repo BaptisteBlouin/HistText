@@ -26,22 +26,18 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import enp from "../images/logo.png";
-import config from "../../config.json";
+import { useConfig } from "../contexts/ConfigurationContext";
 
 export const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
   const [isNavigating, setIsNavigating] = useState(false);
+  const config = useConfig();
+  
   const contactAddress = config.CONTACT_ADDRESS || "feedback@histtext.com";
-
-  const homeMessage =
-    config.HOME_MESSAGE ||
-    "The application is currently in beta version. Don't hesitate to send us your feedback.";
-
-  const iframeUrl =
-    config.HOME_URL || "https://www.enpchina.eu/2024/09/03/poc/";
-
+  const homeMessage = config.HOME_MESSAGE || "The application is currently in beta version. Don't hesitate to send us your feedback.";
+  const iframeUrl = config.HOME_URL || "https://www.enpchina.eu/2024/09/03/poc/";
   const displayLogo = config.USE_HOME_LOGO !== false;
 
   const features = [

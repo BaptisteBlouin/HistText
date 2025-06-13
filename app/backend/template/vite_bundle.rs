@@ -55,17 +55,17 @@ fn create_inject(bundle_name: &str) -> String {
     #[cfg(not(debug_assertions))]
     {
         println!("Production mode bundle injection");
-        
+
         // Try multiple possible keys since Vite manifest can have different formats
         let possible_keys = vec![
-            bundle_name.to_string(),                    // "index.tsx"
-            format!("bundles/{}", bundle_name),         // "bundles/index.tsx"
-            format!("src/{}", bundle_name),             // "src/index.tsx"
+            bundle_name.to_string(),            // "index.tsx"
+            format!("bundles/{}", bundle_name), // "bundles/index.tsx"
+            format!("src/{}", bundle_name),     // "src/index.tsx"
         ];
-        
+
         let mut found_entry = None;
         let mut used_key = String::new();
-        
+
         for key in possible_keys {
             if let Some(entry) = VITE_MANIFEST.entries.get(&key) {
                 found_entry = Some(entry);
@@ -73,16 +73,19 @@ fn create_inject(bundle_name: &str) -> String {
                 break;
             }
         }
-        
+
         match found_entry {
             Some(entry) => {
                 println!("Found entry with key: {}", used_key);
-                
+
                 let css_files = entry
                     .css
                     .iter()
                     .map(|css_file| {
-                        format!(r#"<link rel="stylesheet" href="/{file}" />"#, file = css_file)
+                        format!(
+                            r#"<link rel="stylesheet" href="/{file}" />"#,
+                            file = css_file
+                        )
                     })
                     .collect::<Vec<String>>()
                     .join("\n");
@@ -99,14 +102,20 @@ fn create_inject(bundle_name: &str) -> String {
     {entry_file}
     "#
                 );
-                
+
                 println!("Production bundle injection created successfully");
                 result
             }
             None => {
-                println!("Warning: Could not find bundle '{}' in manifest", bundle_name);
-                println!("Available entries: {:?}", VITE_MANIFEST.entries.keys().collect::<Vec<_>>());
-                
+                println!(
+                    "Warning: Could not find bundle '{}' in manifest",
+                    bundle_name
+                );
+                println!(
+                    "Available entries: {:?}",
+                    VITE_MANIFEST.entries.keys().collect::<Vec<_>>()
+                );
+
                 // Fallback - try to serve a basic script
                 format!(
                     r#"<script type="module" src="/assets/{}.js"></script>"#,

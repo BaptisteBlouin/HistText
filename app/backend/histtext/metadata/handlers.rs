@@ -3,19 +3,19 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use diesel::prelude::*;
 use jsonwebtoken::{decode, DecodingKey, Validation};
+use log::error;
 use reqwest::Client;
 use serde_json::{json, Value};
 use std::collections::HashSet;
-use log::error;
 
 use crate::config::Config;
 use crate::models::solr_database_permissions::SolrDatabasePermission;
+use crate::schema::solr_database_permissions::dsl::*;
 use crate::services::auth::AccessTokenClaims;
 use crate::services::database::DbPool;
-use crate::schema::solr_database_permissions::dsl::*;
 
-use super::types::{DatabaseIdQueryParams, MetadataQueryParams};
 use super::database::get_solr_database;
+use super::types::{DatabaseIdQueryParams, MetadataQueryParams};
 
 #[utoipa::path(
     get,
@@ -72,8 +72,7 @@ pub async fn get_aliases(
         Ok(conn) => conn,
         Err(e) => {
             error!("Database connection error: {}", e);
-            return HttpResponse::InternalServerError()
-                .body("Database connection error");
+            return HttpResponse::InternalServerError().body("Database connection error");
         }
     };
 
@@ -96,8 +95,7 @@ pub async fn get_aliases(
                 .collect(),
             Err(e) => {
                 error!("Failed to load permissions: {}", e);
-                return HttpResponse::InternalServerError()
-                    .body("Failed to load permissions");
+                return HttpResponse::InternalServerError().body("Failed to load permissions");
             }
         }
     };
@@ -166,7 +164,25 @@ pub async fn get_collection_metadata(
     let config = Config::global();
     let database_id = query.solr_database_id;
     let collection = &query.collection;
-    let max_metadata_select = config.max_metadata_select;
+
+    // Get metadata select limit from database configuration
+    let max_metadata_select = {
+        use crate::models::app_configurations::AppConfigurations;
+        use crate::services::database::Database;
+
+        let db = Database::new();
+        let db_data = web::Data::new(db);
+
+        crate::services::crud::execute_db_query(db_data, |conn| {
+            Ok(AppConfigurations::get_number_value(
+                conn,
+                "MAX_METADATA_SELECT",
+                config.max_metadata_select as i64,
+            ) as usize)
+        })
+        .await
+        .unwrap_or(config.max_metadata_select)
+    };
 
     let solr_db = match get_solr_database(&pool, database_id).await {
         Ok(db) => db,
@@ -354,7 +370,10 @@ pub async fn get_date_range(
                     }
                 }
             } else {
-                error!("Failed to fetch date range, HTTP status: {}", response.status());
+                error!(
+                    "Failed to fetch date range, HTTP status: {}",
+                    response.status()
+                );
                 HttpResponse::InternalServerError().body("Failed to fetch date range")
             }
         }

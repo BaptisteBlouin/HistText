@@ -3,6 +3,7 @@
 //! This module provides functionality to track API usage patterns,
 //! response times, and error rates for operational monitoring.
 
+use crate::services::database::Database;
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     Error,
@@ -11,7 +12,6 @@ use futures::future::{ready, LocalBoxFuture, Ready};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::services::database::Database;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
@@ -176,7 +176,7 @@ impl AnalyticsStore {
         error_context: Option<ErrorContext>,
     ) {
         let mut records = self.records.write().await;
-        
+
         let record = RequestRecord {
             path,
             method,
@@ -184,8 +184,12 @@ impl AnalyticsStore {
             response_time,
             timestamp: SystemTime::now(),
             error_type: error_context.as_ref().map(|ctx| ctx.error_type.clone()),
-            error_message: error_context.as_ref().and_then(|ctx| ctx.error_message.clone()),
-            user_agent: error_context.as_ref().and_then(|ctx| ctx.user_agent.clone()),
+            error_message: error_context
+                .as_ref()
+                .and_then(|ctx| ctx.error_message.clone()),
+            user_agent: error_context
+                .as_ref()
+                .and_then(|ctx| ctx.user_agent.clone()),
             user_id: error_context.as_ref().and_then(|ctx| ctx.user_id),
             username: error_context.as_ref().and_then(|ctx| ctx.username.clone()),
         };
@@ -248,25 +252,32 @@ impl AnalyticsStore {
 
             let request_count = records.len() as u64;
             let error_count = records.iter().filter(|r| r.status_code >= 400).count() as u64;
-            let total_time: u64 = records.iter().map(|r| r.response_time.as_millis() as u64).sum();
+            let total_time: u64 = records
+                .iter()
+                .map(|r| r.response_time.as_millis() as u64)
+                .sum();
             let average_time = total_time as f64 / request_count as f64;
-            let success_rate = ((request_count - error_count) as f64 / request_count as f64) * 100.0;
+            let success_rate =
+                ((request_count - error_count) as f64 / request_count as f64) * 100.0;
             let last_accessed = records
                 .iter()
                 .map(|r| r.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs())
                 .max()
                 .unwrap_or(0);
 
-            endpoint_stats.insert(key.clone(), EndpointStats {
-                path_pattern: path,
-                method,
-                request_count,
-                total_response_time_ms: total_time,
-                average_response_time_ms: average_time,
-                error_count,
-                last_accessed,
-                success_rate_percent: success_rate,
-            });
+            endpoint_stats.insert(
+                key.clone(),
+                EndpointStats {
+                    path_pattern: path,
+                    method,
+                    request_count,
+                    total_response_time_ms: total_time,
+                    average_response_time_ms: average_time,
+                    error_count,
+                    last_accessed,
+                    success_rate_percent: success_rate,
+                },
+            );
         }
 
         // Calculate error statistics
@@ -282,7 +293,7 @@ impl AnalyticsStore {
         for hour_offset in 0..24 {
             let hour_start = now - Duration::from_secs((hour_offset + 1) * 60 * 60);
             let hour_end = now - Duration::from_secs(hour_offset * 60 * 60);
-            
+
             let hour_records: Vec<_> = recent_records
                 .iter()
                 .filter(|r| r.timestamp >= hour_start && r.timestamp < hour_end)
@@ -290,7 +301,7 @@ impl AnalyticsStore {
 
             let request_count = hour_records.len() as u64;
             let error_count = hour_records.iter().filter(|r| r.status_code >= 400).count() as u64;
-            
+
             hourly_requests.push(HourlyRequestCount {
                 hour: hour_start.duration_since(UNIX_EPOCH).unwrap().as_secs() / 3600,
                 request_count,
@@ -310,18 +321,30 @@ impl AnalyticsStore {
                 request_count: stats.request_count,
             })
             .collect();
-        
-        slow_endpoints.sort_by(|a, b| b.average_response_time_ms.partial_cmp(&a.average_response_time_ms).unwrap());
+
+        slow_endpoints.sort_by(|a, b| {
+            b.average_response_time_ms
+                .partial_cmp(&a.average_response_time_ms)
+                .unwrap()
+        });
         slow_endpoints.truncate(10); // Top 10 slowest
 
         // Calculate overall metrics
-        let total_response_time: u64 = recent_records.iter().map(|r| r.response_time.as_millis() as u64).sum();
+        let total_response_time: u64 = recent_records
+            .iter()
+            .map(|r| r.response_time.as_millis() as u64)
+            .sum();
         let average_response_time = total_response_time as f64 / total_requests as f64;
-        let error_count = recent_records.iter().filter(|r| r.status_code >= 400).count() as u64;
+        let error_count = recent_records
+            .iter()
+            .filter(|r| r.status_code >= 400)
+            .count() as u64;
         let error_rate = (error_count as f64 / total_requests as f64) * 100.0;
 
         // Calculate enhanced error tracking
-        let enhanced_error_tracking = self.calculate_enhanced_error_tracking(&recent_records).await;
+        let enhanced_error_tracking = self
+            .calculate_enhanced_error_tracking(&recent_records)
+            .await;
 
         RequestAnalytics {
             endpoint_stats,
@@ -336,7 +359,10 @@ impl AnalyticsStore {
         }
     }
 
-    async fn calculate_enhanced_error_tracking(&self, recent_records: &[&RequestRecord]) -> EnhancedErrorTracking {
+    async fn calculate_enhanced_error_tracking(
+        &self,
+        recent_records: &[&RequestRecord],
+    ) -> EnhancedErrorTracking {
         let error_records: Vec<_> = recent_records
             .iter()
             .filter(|r| r.status_code >= 400)
@@ -347,8 +373,14 @@ impl AnalyticsStore {
         for record in error_records.iter() {
             let normalized_path = self.normalize_path(&record.path);
             let endpoint = format!("{} {}", record.method, normalized_path);
-            let error_type = record.error_type.clone().unwrap_or(self.classify_error_type(record.status_code));
-            error_groups.entry((endpoint, error_type)).or_default().push(record);
+            let error_type = record
+                .error_type
+                .clone()
+                .unwrap_or(self.classify_error_type(record.status_code));
+            error_groups
+                .entry((endpoint, error_type))
+                .or_default()
+                .push(record);
         }
 
         let mut error_details = Vec::new();
@@ -368,15 +400,23 @@ impl AnalyticsStore {
             let mut user_error_counts: HashMap<i32, (String, u64, u64)> = HashMap::new(); // user_id -> (username, error_count, last_error)
             for record in &records {
                 if let (Some(user_id), Some(username)) = (record.user_id, &record.username) {
-                    let last_error = record.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs();
-                    let entry = user_error_counts.entry(user_id).or_insert((username.clone(), 0, last_error));
+                    let last_error = record
+                        .timestamp
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs();
+                    let entry = user_error_counts.entry(user_id).or_insert((
+                        username.clone(),
+                        0,
+                        last_error,
+                    ));
                     entry.1 += 1; // increment error count
                     if last_error > entry.2 {
                         entry.2 = last_error; // update last error time
                     }
                 }
             }
-            
+
             let affected_users = user_error_counts.len() as u64;
             // Get real user display names
             let user_ids: Vec<i32> = user_error_counts.keys().cloned().collect();
@@ -388,15 +428,20 @@ impl AnalyticsStore {
                     user_display_names.insert(user_id, format!("User {}", user_id));
                 }
             }
-            
+
             let affected_user_list: Vec<AffectedUser> = user_error_counts
                 .into_iter()
-                .map(|(user_id, (_username, error_count, last_error))| AffectedUser {
-                    user_id,
-                    username: user_display_names.get(&user_id).cloned().unwrap_or_else(|| format!("User {}", user_id)),
-                    error_count,
-                    last_error,
-                })
+                .map(
+                    |(user_id, (_username, error_count, last_error))| AffectedUser {
+                        user_id,
+                        username: user_display_names
+                            .get(&user_id)
+                            .cloned()
+                            .unwrap_or_else(|| format!("User {}", user_id)),
+                        error_count,
+                        last_error,
+                    },
+                )
                 .collect();
             let status_code = records[0].status_code;
             let error_message = records
@@ -425,24 +470,36 @@ impl AnalyticsStore {
 
         for record in error_records.iter() {
             // Time of day correlation (hour of day)
-            let hour = (record.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs() / 3600) % 24;
+            let hour = (record
+                .timestamp
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                / 3600)
+                % 24;
             *time_of_day_correlation.entry(hour as u8).or_insert(0) += 1;
 
             // User agent correlation
             if let Some(user_agent) = &record.user_agent {
-                *user_agent_correlation.entry(user_agent.clone()).or_insert(0) += 1;
+                *user_agent_correlation
+                    .entry(user_agent.clone())
+                    .or_insert(0) += 1;
             }
 
             // Endpoint correlation
-            let normalized_endpoint = format!("{} {}", record.method, self.normalize_path(&record.path));
+            let normalized_endpoint =
+                format!("{} {}", record.method, self.normalize_path(&record.path));
             *endpoint_correlation.entry(normalized_endpoint).or_insert(0) += 1;
         }
 
         // Calculate top failing endpoints
         let mut endpoint_failure_stats: HashMap<String, (u64, u64)> = HashMap::new(); // (errors, total)
         for record in recent_records.iter() {
-            let normalized_endpoint = format!("{} {}", record.method, self.normalize_path(&record.path));
-            let (errors, total) = endpoint_failure_stats.entry(normalized_endpoint).or_insert((0, 0));
+            let normalized_endpoint =
+                format!("{} {}", record.method, self.normalize_path(&record.path));
+            let (errors, total) = endpoint_failure_stats
+                .entry(normalized_endpoint)
+                .or_insert((0, 0));
             *total += 1;
             if record.status_code >= 400 {
                 *errors += 1;
@@ -475,7 +532,11 @@ impl AnalyticsStore {
             })
             .collect();
 
-        top_failing_endpoints.sort_by(|a, b| b.failure_rate_percent.partial_cmp(&a.failure_rate_percent).unwrap());
+        top_failing_endpoints.sort_by(|a, b| {
+            b.failure_rate_percent
+                .partial_cmp(&a.failure_rate_percent)
+                .unwrap()
+        });
         top_failing_endpoints.truncate(10); // Top 10 failing endpoints
 
         EnhancedErrorTracking {
@@ -500,24 +561,26 @@ impl AnalyticsStore {
         }
     }
 
-
     fn normalize_path(&self, path: &str) -> String {
         // Normalize dynamic path segments to reduce noise
         let path = path.to_string();
-        
+
         // Replace common ID patterns
         let patterns = [
             (r"/\d+", "/{id}"),
-            (r"/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "/{uuid}"),
+            (
+                r"/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+                "/{uuid}",
+            ),
         ];
-        
+
         let mut normalized = path;
         for (pattern, replacement) in patterns {
             if let Ok(re) = regex::Regex::new(pattern) {
                 normalized = re.replace_all(&normalized, replacement).to_string();
             }
         }
-        
+
         normalized
     }
 }
@@ -545,7 +608,7 @@ impl RequestAnalyticsMiddleware {
     pub fn new() -> Self {
         Self { db: None }
     }
-    
+
     pub fn with_db(db: Arc<Database>) -> Self {
         Self { db: Some(db) }
     }
@@ -588,29 +651,31 @@ where
         let start_time = Instant::now();
         let path = req.path().to_string();
         let method = req.method().to_string();
-        
+
         // Extract user information from request
-        let user_agent = req.headers()
+        let user_agent = req
+            .headers()
             .get("user-agent")
             .and_then(|h| h.to_str().ok())
             .map(|s| s.to_string());
-            
+
         // Try to extract user information from JWT token
-        let (user_id, username) = req.headers()
+        let (user_id, username) = req
+            .headers()
             .get("authorization")
             .and_then(|h| h.to_str().ok())
             .and_then(|auth_header| {
                 if let Some(token) = auth_header.strip_prefix("Bearer ") {
                     // Try to decode JWT token to get real user ID
-                    use jsonwebtoken::{decode, DecodingKey, Validation};
-                    use crate::services::auth::AccessTokenClaims;
                     use crate::config::Config;
-                    
+                    use crate::services::auth::AccessTokenClaims;
+                    use jsonwebtoken::{decode, DecodingKey, Validation};
+
                     let config = Config::global();
                     // Use a more lenient validation for analytics purposes (ignore expiration)
                     let mut validation = Validation::default();
                     validation.validate_exp = false; // Don't validate expiration for analytics
-                    
+
                     if let Ok(token_data) = decode::<AccessTokenClaims>(
                         token,
                         &DecodingKey::from_secret(config.secret_key.as_ref()),
@@ -632,41 +697,44 @@ where
             .or_else(|| {
                 // If no Authorization header, try to extract from refresh token cookie (for /api/auth/refresh)
                 if path == "/api/auth/refresh" {
+                    use crate::config::Config;
+                    use crate::services::auth::RefreshTokenClaims;
                     use crate::services::auth::COOKIE_NAME;
                     use jsonwebtoken::{decode, DecodingKey, Validation};
-                    use crate::services::auth::RefreshTokenClaims;
-                    use crate::config::Config;
-                    
-                    req.cookie(COOKIE_NAME)
-                        .and_then(|cookie| {
-                            let config = Config::global();
-                            let mut validation = Validation::default();
-                            validation.validate_exp = false; // Don't validate expiration for analytics
-                            
-                            if let Ok(token_data) = decode::<RefreshTokenClaims>(
-                                cookie.value(),
-                                &DecodingKey::from_secret(config.secret_key.as_ref()),
-                                &validation,
-                            ) {
-                                let user_id = token_data.claims.sub;
-                                debug!("Extracted user_id {} from refresh token cookie for analytics", user_id);
-                                let username = format!("User {}", user_id);
-                                Some((user_id, username))
-                            } else {
-                                debug!("Failed to decode refresh token cookie for analytics");
-                                None
-                            }
-                        })
+
+                    req.cookie(COOKIE_NAME).and_then(|cookie| {
+                        let config = Config::global();
+                        let mut validation = Validation::default();
+                        validation.validate_exp = false; // Don't validate expiration for analytics
+
+                        if let Ok(token_data) = decode::<RefreshTokenClaims>(
+                            cookie.value(),
+                            &DecodingKey::from_secret(config.secret_key.as_ref()),
+                            &validation,
+                        ) {
+                            let user_id = token_data.claims.sub;
+                            debug!(
+                                "Extracted user_id {} from refresh token cookie for analytics",
+                                user_id
+                            );
+                            let username = format!("User {}", user_id);
+                            Some((user_id, username))
+                        } else {
+                            debug!("Failed to decode refresh token cookie for analytics");
+                            None
+                        }
+                    })
                 } else {
                     None
                 }
             })
             .unwrap_or((0, "Anonymous".to_string()));
-        
+
         let user_id = if user_id > 0 { Some(user_id) } else { None };
 
         // Extract session ID from cookies
-        let session_id = req.headers()
+        let session_id = req
+            .headers()
             .get("cookie")
             .and_then(|h| h.to_str().ok())
             .and_then(|cookies| {
@@ -679,25 +747,29 @@ where
                 None
             })
             .unwrap_or_else(|| format!("anonymous_{}", start_time.elapsed().as_nanos()));
-        
+
         let fut = self.service.call(req);
 
         Box::pin(async move {
             let result = fut.await;
             let response_time = start_time.elapsed();
-            
+
             match &result {
                 Ok(response) => {
                     let status_code = response.status().as_u16();
                     let _success = status_code < 400;
-                    
+
                     // Clone data before moving into async closure
                     let path_clone = path.clone();
                     let method_clone = method.clone();
                     let user_agent_clone = user_agent.clone();
-                    let username_clone = if user_id.is_some() { Some(username.clone()) } else { None };
+                    let username_clone = if user_id.is_some() {
+                        Some(username.clone())
+                    } else {
+                        None
+                    };
                     let _session_id_clone = session_id.clone();
-                    
+
                     // Record the request asynchronously
                     tokio::spawn(async move {
                         // Record request analytics
@@ -721,14 +793,20 @@ where
                         };
 
                         get_analytics_store()
-                            .record_request(path_clone.clone(), method_clone.clone(), status_code, response_time, error_context)
+                            .record_request(
+                                path_clone.clone(),
+                                method_clone.clone(),
+                                status_code,
+                                response_time,
+                                error_context,
+                            )
                             .await;
 
                         // TODO: Integrate with other analytics services
                         // For now, only collect basic request analytics
                         // Full integration will be added in separate commits
                     });
-                    
+
                     // Log slow requests (use original path and method here)
                     if response_time > Duration::from_millis(1000) {
                         warn!("Slow request: {} {} took {:?}", method, path, response_time);
@@ -741,21 +819,31 @@ where
                     let path_clone = path.clone();
                     let method_clone = method.clone();
                     let user_agent_clone = user_agent.clone();
-                    let username_clone = if user_id.is_some() { Some(username.clone()) } else { None };
+                    let username_clone = if user_id.is_some() {
+                        Some(username.clone())
+                    } else {
+                        None
+                    };
                     tokio::spawn(async move {
                         get_analytics_store()
-                            .record_request(path_clone, method_clone, 500, response_time, Some(ErrorContext {
-                                error_type: ErrorType::ServerError,
-                                error_message: Some("Request processing failed".to_string()),
-                                user_agent: user_agent_clone,
-                                user_id,
-                                username: username_clone,
-                            }))
+                            .record_request(
+                                path_clone,
+                                method_clone,
+                                500,
+                                response_time,
+                                Some(ErrorContext {
+                                    error_type: ErrorType::ServerError,
+                                    error_message: Some("Request processing failed".to_string()),
+                                    user_agent: user_agent_clone,
+                                    user_id,
+                                    username: username_clone,
+                                }),
+                            )
                             .await;
                     });
                 }
             }
-            
+
             result
         })
     }
@@ -776,71 +864,83 @@ pub async fn get_user_display_name(user_id: i32) -> Result<String, String> {
         let cache = get_user_cache().read().await;
         if let Some((display_name, cached_at)) = cache.get(&user_id) {
             let now = SystemTime::now();
-            if now.duration_since(*cached_at).unwrap_or(Duration::from_secs(CACHE_TTL_SECONDS + 1)).as_secs() < CACHE_TTL_SECONDS {
+            if now
+                .duration_since(*cached_at)
+                .unwrap_or(Duration::from_secs(CACHE_TTL_SECONDS + 1))
+                .as_secs()
+                < CACHE_TTL_SECONDS
+            {
                 return Ok(display_name.clone());
             }
         }
     }
-    
+
     // Fetch from database
     let display_name = fetch_user_from_db(user_id).await;
-    
+
     // Check if fetch was successful (doesn't start with "User ")
     if display_name.starts_with("User ") && display_name != format!("User {}", user_id) {
         return Err(format!("Failed to fetch user {}", user_id));
     }
-    
+
     // Update cache
     {
         let mut cache = get_user_cache().write().await;
         cache.insert(user_id, (display_name.clone(), SystemTime::now()));
-        
+
         // Clean old entries (simple cleanup)
         if cache.len() > 1000 {
             let now = SystemTime::now();
             cache.retain(|_, (_, cached_at)| {
-                now.duration_since(*cached_at).unwrap_or(Duration::from_secs(CACHE_TTL_SECONDS + 1)).as_secs() < CACHE_TTL_SECONDS
+                now.duration_since(*cached_at)
+                    .unwrap_or(Duration::from_secs(CACHE_TTL_SECONDS + 1))
+                    .as_secs()
+                    < CACHE_TTL_SECONDS
             });
         }
     }
-    
+
     Ok(display_name)
 }
 
 async fn fetch_user_from_db(user_id: i32) -> String {
-    use diesel::prelude::*;
     use crate::schema::users::dsl::*;
-    
+    use diesel::prelude::*;
+
     // Get database URL from environment
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:password@localhost/historicaltext".to_string());
-    
+
     // Spawn blocking task for database operation
-    let result = tokio::task::spawn_blocking(move || {
-        match PgConnection::establish(&db_url) {
-            Ok(mut conn) => {
-                let user_result: Result<(String, String, String), diesel::result::Error> = users
-                    .select((email, firstname, lastname))
-                    .filter(id.eq(user_id))
-                    .first(&mut conn);
-                    
-                match user_result {
-                    Ok((user_email, first_name, last_name)) => {
-                        if !first_name.trim().is_empty() && !last_name.trim().is_empty() {
-                            format!("{} {} <{}>", first_name.trim(), last_name.trim(), user_email)
-                        } else if !first_name.trim().is_empty() {
-                            format!("{} <{}>", first_name.trim(), user_email)
-                        } else {
+    let result = tokio::task::spawn_blocking(move || match PgConnection::establish(&db_url) {
+        Ok(mut conn) => {
+            let user_result: Result<(String, String, String), diesel::result::Error> = users
+                .select((email, firstname, lastname))
+                .filter(id.eq(user_id))
+                .first(&mut conn);
+
+            match user_result {
+                Ok((user_email, first_name, last_name)) => {
+                    if !first_name.trim().is_empty() && !last_name.trim().is_empty() {
+                        format!(
+                            "{} {} <{}>",
+                            first_name.trim(),
+                            last_name.trim(),
                             user_email
-                        }
+                        )
+                    } else if !first_name.trim().is_empty() {
+                        format!("{} <{}>", first_name.trim(), user_email)
+                    } else {
+                        user_email
                     }
-                    Err(_) => format!("User {}", user_id),
                 }
+                Err(_) => format!("User {}", user_id),
             }
-            Err(_) => format!("User {}", user_id),
         }
-    }).await;
-    
+        Err(_) => format!("User {}", user_id),
+    })
+    .await;
+
     result.unwrap_or_else(|_| format!("User {}", user_id))
 }
 
@@ -853,7 +953,7 @@ fn extract_collection_from_path(path: &str) -> Option<String> {
             return Some(collection_name.to_string());
         }
     }
-    
+
     if path.contains("/solr/") {
         // From path: /api/solr/collection_name/...
         let parts: Vec<&str> = path.split('/').collect();
@@ -863,6 +963,6 @@ fn extract_collection_from_path(path: &str) -> Option<String> {
             }
         }
     }
-    
+
     None
 }

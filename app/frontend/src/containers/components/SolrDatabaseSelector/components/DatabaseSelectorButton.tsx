@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { ExpandMore, Close, DnsRounded } from "@mui/icons-material";
 import { useTheme } from "@mui/material/styles";
-import config from "../../../../../config.json";
+import { useConfig } from "../../../../contexts/ConfigurationContext";
 import {
   getDatabaseInitials,
   truncateDescription,
@@ -38,6 +38,7 @@ const DatabaseSelectorButton: React.FC<DatabaseSelectorButtonProps> =
       onToggle,
       onClear,
     }) => {
+      const config = useConfig();
       const theme = useTheme();
 
       return (

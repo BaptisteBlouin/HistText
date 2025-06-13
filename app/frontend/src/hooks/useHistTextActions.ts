@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import config from "../../config.json";
+import { useConfig } from "../contexts/ConfigurationContext";
 import { buildQueryString } from "../containers/components/buildQueryString";
 
 
@@ -65,6 +65,8 @@ export const useHistTextActions = ({
   setViewNER,
   setSelectedAlias, // Add this to the destructuring
 }: UseHistTextActionsProps) => {
+  const config = useConfig();
+  
   const handleAliasChange = useCallback(
     async (alias: string) => {
       setLoading(true);
@@ -223,7 +225,7 @@ export const useHistTextActions = ({
       let nerTimeoutId: NodeJS.Timeout | null = null;
 
       try {
-        const queryString = buildQueryString(formData, dateRange);
+        const queryString = buildQueryString(formData, dateRange, config.default_date_name);
         const batchSize = config.batch_size;
         const maxDocuments = Number(selectedDocLevel);
         let start = 0;
@@ -602,7 +604,7 @@ export const useHistTextActions = ({
   }, [selectedAlias, handleAliasChange]);
 
   const shareQuery = useCallback(() => {
-    const queryString = buildQueryString(formData, dateRange);
+    const queryString = buildQueryString(formData, dateRange, config.default_date_name);
     navigator.clipboard.writeText(
       window.location.href + "?query=" + encodeURIComponent(queryString),
     );

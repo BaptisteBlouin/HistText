@@ -14,8 +14,8 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::schema::user_roles;
 use crate::services::crud::execute_db_query;
-use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
+use crate::services::error::{AppError, AppResult};
 
 /// User role assignment record
 ///
@@ -81,11 +81,12 @@ impl UserRoleHandler {
     /// Ok(()) if valid, or a CrudError with validation details
     fn validate_new(&self, item: &NewUserRole) -> AppResult<()> {
         if item.user_id <= 0 {
-            return Err(AppError::validation("Invalid user_id",Some("user_id")));
+            return Err(AppError::validation("Invalid user_id", Some("user_id")));
         }
         if item.role.is_empty() || item.role.len() > 50 {
             return Err(AppError::validation(
-                "Role must be between 1 and 50 characters",Some("role")
+                "Role must be between 1 and 50 characters",
+                Some("role"),
             ));
         }
         Ok(())
@@ -212,9 +213,7 @@ pub async fn get_user_roles(
     config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
     let handler = UserRoleHandler::new(config.get_ref().clone());
-    handler
-        .list(db)
-        .await
+    handler.list(db).await
 }
 
 /// Retrieves a specific user role assignment
@@ -251,9 +250,7 @@ pub async fn get_user_role_by_user_id_and_role(
     config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
     let handler = UserRoleHandler::new(config.get_ref().clone());
-    handler
-        .get_by_user_id_and_role(db, path)
-        .await
+    handler.get_by_user_id_and_role(db, path).await
 }
 
 /// Creates a new user role assignment

@@ -227,7 +227,6 @@ impl Config {
         web::Data::new(CONFIG.clone())
     }
 
-
     pub fn is_email_enabled(&self) -> bool {
         if !self.send_mail {
             return false;
@@ -235,24 +234,19 @@ impl Config {
 
         match self.email_provider.as_str() {
             "smtp" => {
-                !self.smtp_server.is_empty() && 
-                self.smtp_server != "localhost" &&
-                !self.smtp_username.is_empty() &&
-                !self.smtp_password.is_empty()
-            },
+                !self.smtp_server.is_empty()
+                    && self.smtp_server != "localhost"
+                    && !self.smtp_username.is_empty()
+                    && !self.smtp_password.is_empty()
+            }
             "oauth2" => {
-                !self.oauth2_client_id.is_empty() &&
-                !self.oauth2_client_secret.is_empty() &&
-                !self.oauth2_refresh_token.is_empty()
-            },
-            "sendgrid" => {
-                !self.email_api_key.is_empty()
-            },
-            "mailgun" => {
-                !self.email_api_key.is_empty() &&
-                !self.mailgun_domain.is_empty()
-            },
-            _ => false
+                !self.oauth2_client_id.is_empty()
+                    && !self.oauth2_client_secret.is_empty()
+                    && !self.oauth2_refresh_token.is_empty()
+            }
+            "sendgrid" => !self.email_api_key.is_empty(),
+            "mailgun" => !self.email_api_key.is_empty() && !self.mailgun_domain.is_empty(),
+            _ => false,
         }
     }
 
@@ -400,7 +394,10 @@ impl Config {
             cache_ttl_seconds: parse_with_default::<u64>("CACHE_TTL_SECONDS", 3600),
             max_cache_size: parse_with_default::<usize>("MAX_CACHE_SIZE", 1000),
             enable_query_cache: parse_with_default::<bool>("ENABLE_QUERY_CACHE", true),
-            enable_response_streaming: parse_with_default::<bool>("ENABLE_RESPONSE_STREAMING", false),
+            enable_response_streaming: parse_with_default::<bool>(
+                "ENABLE_RESPONSE_STREAMING",
+                false,
+            ),
         })
     }
 }

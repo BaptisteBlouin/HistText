@@ -97,7 +97,10 @@ impl Database {
     ///
     /// # Returns
     /// A pooled connection or an error if a connection cannot be obtained  
-    pub fn get(&self) -> Result<diesel::r2d2::PooledConnection<diesel::r2d2::ConnectionManager<DbCon>>, anyhow::Error> {
+    pub fn get(
+        &self,
+    ) -> Result<diesel::r2d2::PooledConnection<diesel::r2d2::ConnectionManager<DbCon>>, anyhow::Error>
+    {
         Ok(self.pool.get()?)
     }
 
@@ -121,7 +124,9 @@ impl Database {
             diesel::r2d2::Pool::builder()
                 .connection_timeout(std::time::Duration::from_secs(5))
                 .max_size(10) // Set a reasonable maximum pool size
-                .build(diesel::r2d2::ConnectionManager::<DbCon>::new(Self::connection_url()))
+                .build(diesel::r2d2::ConnectionManager::<DbCon>::new(
+                    Self::connection_url(),
+                ))
                 .expect("Failed to create database connection pool")
         })
     }
@@ -143,7 +148,9 @@ impl Database {
             diesel::r2d2::Pool::builder()
                 .connection_timeout(std::time::Duration::from_secs(5))
                 .max_size(10) // Set a reasonable maximum pool size
-                .build(diesel::r2d2::ConnectionManager::<DbCon>::new(config.database_url.clone()))
+                .build(diesel::r2d2::ConnectionManager::<DbCon>::new(
+                    config.database_url.clone(),
+                ))
                 .expect("Failed to create database connection pool with config")
         })
     }

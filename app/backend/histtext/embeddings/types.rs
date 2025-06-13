@@ -197,7 +197,7 @@ impl EmbeddingFormat {
     /// Detect format from file extension
     pub fn from_extension(path: &str) -> Self {
         let path_lower = path.to_lowercase();
-        
+
         if path_lower.ends_with(".bin") {
             // Try to detect if it's Word2Vec or FastText by file size and structure
             Self::Auto
@@ -270,15 +270,22 @@ impl std::fmt::Display for EmbeddingError {
         match self {
             Self::Io(e) => write!(f, "IO error: {}", e),
             Self::Format(s) => write!(f, "Format error: {}", s),
-            Self::DimensionMismatch { expected, actual } => 
-                write!(f, "Dimension mismatch: expected {}, got {}", expected, actual),
+            Self::DimensionMismatch { expected, actual } => write!(
+                f,
+                "Dimension mismatch: expected {}, got {}",
+                expected, actual
+            ),
             Self::InvalidWord(s) => write!(f, "Invalid word: {}", s),
             Self::FileNotFound(s) => write!(f, "File not found: {}", s),
             Self::UnsupportedFormat(s) => write!(f, "Unsupported format: {}", s),
             Self::Parse(s) => write!(f, "Parse error: {}", s),
             Self::Cache(s) => write!(f, "Cache error: {}", s),
             Self::Encoding(s) => write!(f, "Encoding error: {}", s),
-            Self::TooManyWords(n) => write!(f, "Too many words in file: {} (consider setting max_words)", n),
+            Self::TooManyWords(n) => write!(
+                f,
+                "Too many words in file: {} (consider setting max_words)",
+                n
+            ),
         }
     }
 }

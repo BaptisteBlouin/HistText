@@ -1,4 +1,4 @@
-import config from "../../../config.json";
+import { useConfig } from "../../contexts/ConfigurationContext";
 
 /**
  * Builds a Solr query string from formData and dateRange, correctly handling
@@ -21,6 +21,7 @@ export const buildQueryString = (
     { value: string; operator?: string; not?: boolean }[]
   >,
   dateRange: { min: string; max: string } | null,
+  defaultDateName: string = "date_rdt",
 ): string => {
   const parts: string[] = [];
 
@@ -78,7 +79,7 @@ export const buildQueryString = (
     formData.max_date?.[0]?.value
   ) {
     parts.push(
-      `${config.default_date_name}:[${formData.min_date[0].value}T00:00:00Z TO ${formData.max_date[0].value}T23:59:59Z]`,
+      `${defaultDateName}:[${formData.min_date[0].value}T00:00:00Z TO ${formData.max_date[0].value}T23:59:59Z]`,
     );
   }
 

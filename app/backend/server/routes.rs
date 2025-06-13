@@ -11,13 +11,14 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::{SwaggerUi, Url};
 
 use crate::openapi::{HistTextApiDoc, SolrApiDoc, UserApiDoc};
-use crate::server::guards::{has_permission, can_access_user_resource};
+use crate::server::guards::{can_access_user_resource, has_permission};
 use crate::server::state::AppState;
-use crate::services::database::DbPool;
 use crate::services::database::Database;
+use crate::services::database::DbPool;
 
 // Import route handlers
 use crate::histtext;
+use crate::services::app_configurations;
 use crate::services::auth::handlers as auth_handlers;
 use crate::services::role_permissions::*;
 use crate::services::solr_database::*;
@@ -75,20 +76,20 @@ fn configure_admin_routes(api_scope: Scope) -> Scope {
             .guard(guard::fn_guard(has_permission)) // Require admin permission
             .service(
                 web::resource("/role-assignment-stats")
-                    .route(web::get().to(role_management::get_role_assignment_stats))
+                    .route(web::get().to(role_management::get_role_assignment_stats)),
             )
             .service(
                 web::resource("/fix-missing-roles")
-                    .route(web::post().to(role_management::fix_missing_role_assignments))
+                    .route(web::post().to(role_management::fix_missing_role_assignments)),
             )
             .service(
                 web::resource("/assign-roles")
-                    .route(web::post().to(role_management::assign_roles_to_users))
+                    .route(web::post().to(role_management::assign_roles_to_users)),
             )
             .service(
                 web::resource("/users-missing-roles")
-                    .route(web::get().to(role_management::get_users_missing_default_role))
-            )
+                    .route(web::get().to(role_management::get_users_missing_default_role)),
+            ),
     )
 }
 
@@ -120,45 +121,19 @@ pub fn configure_routes(
     // Configure auth routes
     api_scope = api_scope.service(
         web::scope("/auth")
-        .service(
-            web::resource("/login")
-                .route(web::post().to(auth_handlers::login))
-        )
-        .service(
-            web::resource("/logout")
-                .route(web::post().to(auth_handlers::logout))
-        )
-        .service(
-            web::resource("/refresh")
-                .route(web::post().to(auth_handlers::refresh))
-        )
-        .service(
-            web::resource("/register")
-                .route(web::post().to(auth_handlers::register))
-        )
-        .service(
-            web::resource("/activate")
-                .route(web::get().to(auth_handlers::activate))
-        )
-        .service(
-            web::resource("/check")
-                .route(web::post().to(auth_handlers::check))
-        )
-        .service(
-            web::resource("/forgot")
-                .route(web::post().to(auth_handlers::forgot_password))
-        )
-        .service(
-            web::resource("/change")
-                .route(web::post().to(auth_handlers::change_password))
-        )
-        .service(
-            web::resource("/reset")
-                .route(web::post().to(auth_handlers::reset_password))
-        )
+            .service(web::resource("/login").route(web::post().to(auth_handlers::login)))
+            .service(web::resource("/logout").route(web::post().to(auth_handlers::logout)))
+            .service(web::resource("/refresh").route(web::post().to(auth_handlers::refresh)))
+            .service(web::resource("/register").route(web::post().to(auth_handlers::register)))
+            .service(web::resource("/activate").route(web::get().to(auth_handlers::activate)))
+            .service(web::resource("/check").route(web::post().to(auth_handlers::check)))
+            .service(web::resource("/forgot").route(web::post().to(auth_handlers::forgot_password)))
+            .service(web::resource("/change").route(web::post().to(auth_handlers::change_password)))
+            .service(web::resource("/reset").route(web::post().to(auth_handlers::reset_password))),
     );
 
     // Configure all API endpoints by category
+    api_scope = configure_configuration_routes(api_scope);
     api_scope = configure_solr_routes(api_scope);
     api_scope = configure_hist_text_routes(api_scope);
     api_scope = configure_user_routes(api_scope);
@@ -273,13 +248,15 @@ fn configure_solr_routes(api_scope: Scope) -> Scope {
 fn configure_hist_text_routes(api_scope: Scope) -> Scope {
     api_scope
         .service(web::resource("/tokenize").route(web::post().to(histtext::tokenizer::tokenize)))
-        .service(web::resource("/tokenize/batch").route(web::post().to(histtext::tokenizer::batch_tokenize)))
+        .service(
+            web::resource("/tokenize/batch")
+                .route(web::post().to(histtext::tokenizer::batch_tokenize)),
+        )
         // Legacy embedding endpoint for backward compatibility
         .service(
             web::resource("/compute-neighbors")
                 .route(web::post().to(histtext::embeddings::compute_neighbors)),
         )
-        
         // New enhanced embedding endpoints
         .service(
             web::resource("/embeddings/neighbors")
@@ -297,7 +274,6 @@ fn configure_hist_text_routes(api_scope: Scope) -> Scope {
             web::resource("/embeddings/analogy")
                 .route(web::post().to(crate::histtext::embeddings::handlers::word_analogy)),
         )
-        
         // Embedding cache and statistics endpoints
         .service(
             web::resource("/embeddings/stats")
@@ -326,14 +302,14 @@ fn configure_user_routes(api_scope: Scope) -> Scope {
         .service(
             web::resource("/user/me")
                 .route(web::get().to(get_current_user))
-                .route(web::put().to(update_current_user))
+                .route(web::put().to(update_current_user)),
         )
         // Admin-only routes for managing all users
         .service(
             web::resource("/users")
                 .guard(guard::fn_guard(has_permission))
                 .route(web::get().to(get_users))
-                .route(web::post().to(create_user))
+                .route(web::post().to(create_user)),
         )
         // Routes that allow admin access OR user accessing their own resource for GET/PUT
         // But DELETE requires admin permission only
@@ -342,18 +318,18 @@ fn configure_user_routes(api_scope: Scope) -> Scope {
                 .route(
                     web::get()
                         .guard(guard::fn_guard(can_access_user_resource))
-                        .to(get_user_by_id)
+                        .to(get_user_by_id),
                 )
                 .route(
                     web::put()
                         .guard(guard::fn_guard(can_access_user_resource))
-                        .to(update_user)
+                        .to(update_user),
                 )
                 .route(
                     web::delete()
-                        .guard(guard::fn_guard(has_permission))  // Admin-only for DELETE
-                        .to(delete_user)
-                )
+                        .guard(guard::fn_guard(has_permission)) // Admin-only for DELETE
+                        .to(delete_user),
+                ),
         )
 }
 
@@ -482,51 +458,75 @@ fn configure_user_permission_routes(api_scope: Scope) -> Scope {
                 .route(web::get().to(get_user_permission_by_user_id_and_permission))
                 .route(web::delete().to(delete_user_permission)),
         )
-        
 }
 
 /// Configure application statistics routes
 fn configure_stats_routes(api_scope: Scope) -> Scope {
-    api_scope.service(
-        web::resource("/stats")
-            .guard(guard::fn_guard(has_permission))
-            .route(web::get().to(get_dashboard_stats)),
-    )
-    .service(
-        web::resource("/dashboard/comprehensive")
-            .guard(guard::fn_guard(has_permission))
-            .route(web::get().to(crate::services::stats::get_comprehensive_dashboard_stats)),
-    )
-    .service(
-        web::resource("/dashboard/analytics")
-            .guard(guard::fn_guard(has_permission))
-            .route(web::get().to(crate::services::stats::get_request_analytics)),
-    )
-    .service(
-        web::resource("/dashboard/user-activity")
-            .guard(guard::fn_guard(has_permission))
-            .route(web::get().to(crate::services::stats::get_user_activity)),
-    )
-    .service(
-        web::resource("/dashboard/enhanced-analytics")
-            .guard(guard::fn_guard(has_permission))
-            .route(web::get().to(crate::services::stats::get_enhanced_request_analytics)),
-    )
-    .service(
-        web::resource("/dashboard/user-behavior")
-            .guard(guard::fn_guard(has_permission))
-            .route(web::get().to(crate::services::stats::get_user_behavior_analytics)),
-    )
-    .service(
-        web::resource("/dashboard/query-analytics")
-            .guard(guard::fn_guard(has_permission))
-            .route(web::get().to(crate::services::stats::get_query_analytics)),
-    )
-    .service(
-        web::resource("/dashboard/collection-intelligence")
-            .guard(guard::fn_guard(has_permission))
-            .route(web::get().to(crate::services::stats::get_collection_intelligence)),
-    )
+    api_scope
+        .service(
+            web::resource("/stats")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(get_dashboard_stats)),
+        )
+        .service(
+            web::resource("/dashboard/comprehensive")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(crate::services::stats::get_comprehensive_dashboard_stats)),
+        )
+        .service(
+            web::resource("/dashboard/analytics")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(crate::services::stats::get_request_analytics)),
+        )
+        .service(
+            web::resource("/dashboard/user-activity")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(crate::services::stats::get_user_activity)),
+        )
+        .service(
+            web::resource("/dashboard/enhanced-analytics")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(crate::services::stats::get_enhanced_request_analytics)),
+        )
+        .service(
+            web::resource("/dashboard/user-behavior")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(crate::services::stats::get_user_behavior_analytics)),
+        )
+        .service(
+            web::resource("/dashboard/query-analytics")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(crate::services::stats::get_query_analytics)),
+        )
+        .service(
+            web::resource("/dashboard/collection-intelligence")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(crate::services::stats::get_collection_intelligence)),
+        )
+}
+
+/// Configure application configuration management routes
+fn configure_configuration_routes(api_scope: Scope) -> Scope {
+    api_scope
+        // Public endpoint for frontend configuration (read-only for all users)
+        .service(
+            web::resource("/config/frontend")
+                .route(web::get().to(app_configurations::get_frontend_config)),
+        )
+        // Admin-only configuration management endpoints
+        .service(
+            web::resource("/configurations")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(app_configurations::get_configurations))
+                .route(web::post().to(app_configurations::create_configuration)),
+        )
+        .service(
+            web::resource("/configurations/{key}")
+                .guard(guard::fn_guard(has_permission))
+                .route(web::get().to(app_configurations::get_configuration_by_key))
+                .route(web::put().to(app_configurations::update_configuration))
+                .route(web::delete().to(app_configurations::delete_configuration)),
+        )
 }
 
 /// Configure health check endpoint

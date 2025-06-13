@@ -2,10 +2,9 @@ use diesel::deserialize::{self, FromSql};
 use diesel::pg::{Pg, PgValue};
 use diesel::serialize::{self, IsNull, Output, ToSql};
 use diesel::sql_types::Jsonb;
+use diesel::{AsExpression, FromSqlRow};
 use serde_json::Value as JsonValue;
 use std::io::Write;
-use diesel::{AsExpression, FromSqlRow};
-
 
 #[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression)]
 #[diesel(sql_type = Jsonb)]

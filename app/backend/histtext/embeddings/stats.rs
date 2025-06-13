@@ -72,7 +72,7 @@ pub struct SystemInfo {
     pub build_timestamp: String,
 }
 
-static PERFORMANCE_TRACKER: std::sync::LazyLock<std::sync::Mutex<PerformanceTracker>> = 
+static PERFORMANCE_TRACKER: std::sync::LazyLock<std::sync::Mutex<PerformanceTracker>> =
     std::sync::LazyLock::new(|| std::sync::Mutex::new(PerformanceTracker::new()));
 
 struct PerformanceTracker {
@@ -98,7 +98,7 @@ impl PerformanceTracker {
 
     fn record_similarity_time(&mut self, time_us: u64) {
         self.total_similarities += 1;
-        
+
         if self.similarity_times.len() >= 1000 {
             self.similarity_times.remove(0);
         }
@@ -107,7 +107,7 @@ impl PerformanceTracker {
 
     fn record_search_time(&mut self, time_ms: u64) {
         self.total_searches += 1;
-        
+
         if self.search_times.len() >= 1000 {
             self.search_times.remove(0);
         }
@@ -180,9 +180,9 @@ pub fn reset_performance_metrics() {
 pub async fn get_cache_stats() -> CacheStats {
     let cache_stats = get_cache_statistics().await;
     let now = Utc::now();
-    
+
     let uptime_seconds = (now - cache_stats.created_at).num_seconds();
-    
+
     CacheStats {
         collection_cache_entries: 0,
         path_cache_entries: cache_stats.entries_count,
@@ -218,7 +218,7 @@ pub fn get_performance_metrics() -> PerformanceMetrics {
 
 pub fn get_resource_usage() -> ResourceUsage {
     let memory_info = get_memory_info();
-    
+
     ResourceUsage {
         cpu_usage_percent: get_cpu_usage(),
         memory_used_bytes: memory_info.0,
@@ -232,7 +232,7 @@ pub fn get_resource_usage() -> ResourceUsage {
 pub async fn get_system_stats() -> EmbeddingSystemStats {
     let cache_stats = get_cache_statistics().await;
     update_peak_memory(cache_stats.memory_usage);
-    
+
     EmbeddingSystemStats {
         cache: get_cache_stats().await,
         performance: get_performance_metrics(),
@@ -242,13 +242,12 @@ pub async fn get_system_stats() -> EmbeddingSystemStats {
     }
 }
 
-
 #[cfg(target_os = "linux")]
 fn get_memory_info() -> (usize, usize) {
     if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
         let mut total = 0;
         let mut available = 0;
-        
+
         for line in meminfo.lines() {
             if line.starts_with("MemTotal:") {
                 if let Some(kb) = line.split_whitespace().nth(1) {
@@ -260,7 +259,7 @@ fn get_memory_info() -> (usize, usize) {
                 }
             }
         }
-        
+
         (total - available, available)
     } else {
         (0, 0)
@@ -315,7 +314,7 @@ pub struct ComponentHealth {
 pub async fn health_check() -> HealthStatus {
     let mut components = Vec::new();
     let mut overall_healthy = true;
-    
+
     let cache_stats = get_cache_stats().await;
     let cache_status = if cache_stats.memory_usage_percent > 95.0 {
         overall_healthy = false;
@@ -338,7 +337,7 @@ pub async fn health_check() -> HealthStatus {
         }
     };
     components.push(cache_status);
-    
+
     let perf_metrics = get_performance_metrics();
     let perf_status = if perf_metrics.avg_search_time_ms > 1000.0 {
         overall_healthy = false;
@@ -361,9 +360,14 @@ pub async fn health_check() -> HealthStatus {
         }
     };
     components.push(perf_status);
-    
+
     HealthStatus {
-        status: if overall_healthy { "healthy" } else { "unhealthy" }.to_string(),
+        status: if overall_healthy {
+            "healthy"
+        } else {
+            "unhealthy"
+        }
+        .to_string(),
         components,
         checked_at: Utc::now(),
     }

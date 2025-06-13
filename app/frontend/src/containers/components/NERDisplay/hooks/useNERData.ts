@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import config from "../../../../../config.json";
+import { useConfig } from "../../../../contexts/ConfigurationContext";
 
 interface Annotation {
   t: string;
@@ -23,9 +23,10 @@ interface NerData {
  * Memoized for performance optimization.
  *
  * @param nerData Raw NER data keyed by document ID.
+ * @param config Configuration containing NER labels and colors.
  * @returns Object containing entities array and aggregated statistics.
  */
-const processNERData = (nerData: Record<string, NerData>) => {
+const processNERData = (nerData: Record<string, NerData>, config: any) => {
   const entities = [];
   const stats = {
     totalEntities: 0,
@@ -98,7 +99,8 @@ const processNERData = (nerData: Record<string, NerData>) => {
  * @returns Processed entities and statistics.
  */
 export const useNERData = (nerData: Record<string, NerData>) => {
-  const processedData = useMemo(() => processNERData(nerData), [nerData]);
+  const config = useConfig();
+  const processedData = useMemo(() => processNERData(nerData, config), [nerData, config]);
 
   return {
     entities: processedData.entities,

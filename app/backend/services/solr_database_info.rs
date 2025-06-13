@@ -14,8 +14,8 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::schema::solr_database_info;
 use crate::services::crud::execute_db_query;
-use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
+use crate::services::error::{AppError, AppResult};
 
 /// Solr collection metadata record
 ///
@@ -157,7 +157,10 @@ impl SolrDatabaseInfoHandler {
     /// Ok(()) if valid, or a CrudError with validation details
     fn validate_new(&self, item: &NewSolrDatabaseInfo) -> AppResult<()> {
         if item.solr_database_id <= 0 {
-            return Err(AppError::validation("Invalid solr_database_id", Some("solr_database_id")));
+            return Err(AppError::validation(
+                "Invalid solr_database_id",
+                Some("solr_database_id"),
+            ));
         }
         if item.collection_name.is_empty() || item.collection_name.len() > 100 {
             return Err(AppError::validation(
@@ -237,11 +240,11 @@ impl SolrDatabaseInfoHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(i32, String)>,
-        ) -> AppResult<HttpResponse> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::solr_database_info::dsl::*;
         let (solr_db_id, coll) = path.into_inner();
         let coll_clone = coll.clone(); // Clone before moving into closure
-        
+
         let result = execute_db_query(db, move |conn| {
             solr_database_info
                 .filter(solr_database_id.eq(solr_db_id))
@@ -351,7 +354,10 @@ impl SolrDatabaseInfoHandler {
         })
         .await?;
         if deleted == 0 {
-            return Err(AppError::not_found("SolrDatabaseInfo", Option::<String>::None));
+            return Err(AppError::not_found(
+                "SolrDatabaseInfo",
+                Option::<String>::None,
+            ));
         }
         Ok(HttpResponse::Ok().body("SolrDatabaseInfo deleted"))
     }
@@ -374,14 +380,17 @@ impl SolrDatabaseInfoHandler {
     ) -> AppResult<HttpResponse> {
         let (_solr_db_id, collection_name) = path.into_inner();
         let ner_collection_name = format!("{}-ner", collection_name);
-        
+
         // Check if collection exists in the NER Solr instance
         let solr_ner_url = format!("http://localhost:{}/solr", self.config.solr_ner_port);
-        
+
         // First check if the core exists in the status
-        let check_url = format!("{}/admin/cores?action=STATUS&core={}", solr_ner_url, ner_collection_name);
+        let check_url = format!(
+            "{}/admin/cores?action=STATUS&core={}",
+            solr_ner_url, ner_collection_name
+        );
         debug!("Checking NER collection existence at: {}", check_url);
-        
+
         match reqwest::get(&check_url).await {
             Ok(response) => {
                 debug!("Solr response status: {}", response.status());
@@ -389,37 +398,50 @@ impl SolrDatabaseInfoHandler {
                     match response.json::<serde_json::Value>().await {
                         Ok(json) => {
                             debug!("Solr response JSON: {}", json);
-                            
+
                             // First check if the collection appears in the status response
                             let core_in_status = json
                                 .get("status")
                                 .and_then(|status| status.get(&ner_collection_name))
                                 .is_some();
-                            
+
                             if !core_in_status {
-                                debug!("NER collection '{}' not found in status", ner_collection_name);
+                                debug!(
+                                    "NER collection '{}' not found in status",
+                                    ner_collection_name
+                                );
                                 return Ok(HttpResponse::Ok().json(serde_json::json!({
                                     "collection_name": collection_name,
                                     "ner_collection_name": ner_collection_name,
                                     "exists": false
                                 })));
                             }
-                            
+
                             // Core exists in status, now verify it's actually functional by checking if it has documents
-                            let query_url = format!("{}/{}/select?q=*:*&rows=0", solr_ner_url, ner_collection_name);
+                            let query_url = format!(
+                                "{}/{}/select?q=*:*&rows=0",
+                                solr_ner_url, ner_collection_name
+                            );
                             debug!("Verifying NER collection functionality at: {}", query_url);
-                            
+
                             match reqwest::get(&query_url).await {
                                 Ok(query_response) => {
                                     if query_response.status().is_success() {
-                                        debug!("NER collection '{}' is functional", ner_collection_name);
+                                        debug!(
+                                            "NER collection '{}' is functional",
+                                            ner_collection_name
+                                        );
                                         Ok(HttpResponse::Ok().json(serde_json::json!({
                                             "collection_name": collection_name,
                                             "ner_collection_name": ner_collection_name,
                                             "exists": true
                                         })))
                                     } else {
-                                        debug!("NER collection '{}' query failed with status: {}", ner_collection_name, query_response.status());
+                                        debug!(
+                                            "NER collection '{}' query failed with status: {}",
+                                            ner_collection_name,
+                                            query_response.status()
+                                        );
                                         Ok(HttpResponse::Ok().json(serde_json::json!({
                                             "collection_name": collection_name,
                                             "ner_collection_name": ner_collection_name,
@@ -428,7 +450,10 @@ impl SolrDatabaseInfoHandler {
                                     }
                                 }
                                 Err(e) => {
-                                    debug!("NER collection '{}' query failed: {}", ner_collection_name, e);
+                                    debug!(
+                                        "NER collection '{}' query failed: {}",
+                                        ner_collection_name, e
+                                    );
                                     Ok(HttpResponse::Ok().json(serde_json::json!({
                                         "collection_name": collection_name,
                                         "ner_collection_name": ner_collection_name,
@@ -494,11 +519,11 @@ impl SolrDatabaseInfoHandler {
     )
 )]
 pub async fn get_solr_database_infos(
-   db: web::Data<Database>,
-   config: web::Data<Arc<Config>>,
+    db: web::Data<Database>,
+    config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
-   let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
-   handler.list(db).await
+    let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
+    handler.list(db).await
 }
 
 /// Retrieves a specific Solr collection metadata record
@@ -536,8 +561,7 @@ pub async fn get_solr_database_info(
     config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseInfoHandler::new(config.get_ref().clone());
-    handler
-        .get_by_id_and_collection(db, path).await
+    handler.get_by_id_and_collection(db, path).await
 }
 
 /// Creates a new Solr collection metadata record

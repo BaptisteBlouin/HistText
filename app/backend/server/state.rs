@@ -8,7 +8,6 @@ use std::sync::Arc;
 use tokio::process::Child;
 use tokio::sync::Mutex;
 
-
 /// Application shared state structure
 ///
 /// This structure contains all shared resources that need to be

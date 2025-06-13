@@ -1,19 +1,19 @@
+use crate::config::Config;
 use crate::histtext::embeddings::{
     cache::get_cached_embeddings,
-    similarity::{SimilaritySearcher, SimilarityMetric},
-    types::{NeighborsRequest, NeighborsResponse, NeighborResult},
+    similarity::{SimilarityMetric, SimilaritySearcher},
     stats,
+    types::{NeighborResult, NeighborsRequest, NeighborsResponse},
 };
+use crate::services::auth::AccessTokenClaims;
 use crate::services::database::Database;
-use crate::services::{user_behavior_analytics, collection_intelligence};
-use actix_web::{web, HttpResponse, Responder, HttpRequest};
+use crate::services::{collection_intelligence, user_behavior_analytics};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 use std::time::Instant;
-use crate::services::auth::AccessTokenClaims;
-use jsonwebtoken::{decode, DecodingKey, Validation};
-use crate::config::Config;
+use utoipa::ToSchema;
 
 #[derive(Deserialize, ToSchema)]
 pub struct EnhancedNeighborsRequest {
@@ -170,7 +170,7 @@ pub async fn enhanced_neighbors(
 ) -> impl Responder {
     let start_time = Instant::now();
     let enhanced_request = request.into_inner();
-    
+
     let metric = match enhanced_request.metric.as_deref() {
         Some("cosine") | None => SimilarityMetric::Cosine,
         Some("euclidean") => SimilarityMetric::Euclidean,
@@ -184,19 +184,21 @@ pub async fn enhanced_neighbors(
             }));
         }
     };
-    
+
     let standard_request: NeighborsRequest = enhanced_request.into();
-    
+
     info!(
         "Enhanced neighbors request for '{}' using {:?} metric",
         standard_request.word, metric
     );
-    
+
     let embeddings = match get_cached_embeddings(
         &db,
         standard_request.solr_database_id,
         &standard_request.collection_name,
-    ).await {
+    )
+    .await
+    {
         Some(embeddings) => embeddings,
         None => {
             warn!(
@@ -213,10 +215,9 @@ pub async fn enhanced_neighbors(
             });
         }
     };
-    
-    let searcher = SimilaritySearcher::with_metric(metric)
-        .with_parallel(true);
-    
+
+    let searcher = SimilaritySearcher::with_metric(metric).with_parallel(true);
+
     let response = searcher.find_neighbors(&standard_request, &embeddings);
     stats::record_search_time(start_time.elapsed());
 
@@ -240,7 +241,7 @@ pub async fn batch_neighbors(
     request: web::Json<BatchNeighborsRequest>,
 ) -> impl Responder {
     let batch_request = request.into_inner();
-    
+
     if batch_request.words.len() > 50 {
         return HttpResponse::BadRequest().json(serde_json::json!({
             "error": "Too many words in batch request",
@@ -248,9 +249,9 @@ pub async fn batch_neighbors(
             "provided": batch_request.words.len()
         }));
     }
-    
+
     let start_time = Instant::now();
-    
+
     let metric = match batch_request.metric.as_deref() {
         Some("cosine") | None => SimilarityMetric::Cosine,
         Some("euclidean") => SimilarityMetric::Euclidean,
@@ -264,12 +265,14 @@ pub async fn batch_neighbors(
             }));
         }
     };
-    
+
     let embeddings = match get_cached_embeddings(
         &db,
         batch_request.solr_database_id,
         &batch_request.collection_name,
-    ).await {
+    )
+    .await
+    {
         Some(embeddings) => embeddings,
         None => {
             stats::record_search_time(start_time.elapsed());
@@ -284,16 +287,15 @@ pub async fn batch_neighbors(
             });
         }
     };
-    
-    let searcher = SimilaritySearcher::with_metric(metric)
-        .with_parallel(false);
-    
+
+    let searcher = SimilaritySearcher::with_metric(metric).with_parallel(false);
+
     let mut results = Vec::new();
     let mut words_with_embeddings = 0;
-    
+
     for word in batch_request.words {
         let word_start_time = Instant::now();
-        
+
         let standard_request = NeighborsRequest {
             word: word.clone(),
             solr_database_id: batch_request.solr_database_id,
@@ -302,23 +304,23 @@ pub async fn batch_neighbors(
             threshold: batch_request.threshold,
             include_scores: batch_request.include_scores,
         };
-        
+
         let response = searcher.find_neighbors(&standard_request, &embeddings);
-        
+
         if response.has_embeddings && !response.neighbors.is_empty() {
             words_with_embeddings += 1;
         }
-        
+
         results.push(WordNeighborsResult {
             word,
             neighbors: response,
             processing_time_ms: word_start_time.elapsed().as_millis() as u64,
         });
     }
-    
+
     let total_time = start_time.elapsed().as_millis() as u64;
     let words_processed = results.len();
-    
+
     let stats = BatchStats {
         total_time_ms: total_time,
         words_processed,
@@ -353,7 +355,7 @@ pub async fn word_similarity(
 ) -> impl Responder {
     let start_time = Instant::now();
     let similarity_request = request.into_inner();
-    
+
     let metric = match similarity_request.metric.as_deref() {
         Some("cosine") | None => SimilarityMetric::Cosine,
         Some("euclidean") => SimilarityMetric::Euclidean,
@@ -367,12 +369,14 @@ pub async fn word_similarity(
             }));
         }
     };
-    
+
     let embeddings = match get_cached_embeddings(
         &db,
         similarity_request.solr_database_id,
         &similarity_request.collection_name,
-    ).await {
+    )
+    .await
+    {
         Some(embeddings) => embeddings,
         None => {
             stats::record_search_time(start_time.elapsed());
@@ -385,13 +389,13 @@ pub async fn word_similarity(
             });
         }
     };
-    
+
     let word1_lower = similarity_request.word1.to_lowercase();
     let word2_lower = similarity_request.word2.to_lowercase();
-    
+
     let embedding1 = embeddings.get(&word1_lower);
     let embedding2 = embeddings.get(&word2_lower);
-    
+
     let (similarity, both_found) = match (embedding1, embedding2) {
         (Some(emb1), Some(emb2)) => {
             let sim_start = Instant::now();
@@ -404,7 +408,7 @@ pub async fn word_similarity(
     };
 
     stats::record_search_time(start_time.elapsed());
-    
+
     HttpResponse::Ok().json(SimilarityResponse {
         word1: similarity_request.word1,
         word2: similarity_request.word2,
@@ -433,58 +437,67 @@ pub async fn word_analogy(
     let start_time = Instant::now();
     let analogy_request = request.into_inner();
     let k = analogy_request.k.unwrap_or(5).min(20);
-    
+
     let embeddings = match get_cached_embeddings(
         &db,
         analogy_request.solr_database_id,
         &analogy_request.collection_name,
-    ).await {
+    )
+    .await
+    {
         Some(embeddings) => embeddings,
         None => {
             stats::record_search_time(start_time.elapsed());
             return HttpResponse::Ok().json(AnalogyResponse {
-                analogy: format!("{} is to {} as {} is to ?", 
-                    analogy_request.word_a, analogy_request.word_b, analogy_request.word_c),
+                analogy: format!(
+                    "{} is to {} as {} is to ?",
+                    analogy_request.word_a, analogy_request.word_b, analogy_request.word_c
+                ),
                 candidates: vec![],
                 all_words_found: false,
             });
         }
     };
-    
+
     let word_a_lower = analogy_request.word_a.to_lowercase();
     let word_b_lower = analogy_request.word_b.to_lowercase();
     let word_c_lower = analogy_request.word_c.to_lowercase();
-    
+
     let embedding_a = embeddings.get(&word_a_lower);
     let embedding_b = embeddings.get(&word_b_lower);
     let embedding_c = embeddings.get(&word_c_lower);
-    
+
     let candidates = match (embedding_a, embedding_b, embedding_c) {
         (Some(emb_a), Some(emb_b), Some(emb_c)) => {
             let mut analogy_vector = Vec::with_capacity(emb_a.vector.len());
-            for ((b_val, a_val), c_val) in emb_b.vector.iter()
+            for ((b_val, a_val), c_val) in emb_b
+                .vector
+                .iter()
                 .zip(emb_a.vector.iter())
-                .zip(emb_c.vector.iter()) {
+                .zip(emb_c.vector.iter())
+            {
                 analogy_vector.push(b_val - a_val + c_val);
             }
-            
-            let analogy_embedding = crate::histtext::embeddings::types::Embedding::new(analogy_vector);
-            
+
+            let analogy_embedding =
+                crate::histtext::embeddings::types::Embedding::new(analogy_vector);
+
             let searcher = SimilaritySearcher::with_metric(SimilarityMetric::Cosine);
             let mut scored_candidates = Vec::new();
-            
+
             for (word, embedding) in embeddings.iter() {
                 if word == &word_a_lower || word == &word_b_lower || word == &word_c_lower {
                     continue;
                 }
-                
+
                 let sim_start = Instant::now();
                 let similarity = searcher.compute_similarity(&analogy_embedding, embedding);
                 stats::record_similarity_time(sim_start.elapsed());
                 scored_candidates.push((word.clone(), similarity));
             }
-            
-            scored_candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+            scored_candidates
+                .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
             scored_candidates
                 .into_iter()
                 .take(k)
@@ -493,14 +506,16 @@ pub async fn word_analogy(
         }
         _ => vec![],
     };
-    
+
     let all_words_found = embedding_a.is_some() && embedding_b.is_some() && embedding_c.is_some();
-    
+
     stats::record_search_time(start_time.elapsed());
-    
+
     HttpResponse::Ok().json(AnalogyResponse {
-        analogy: format!("{} is to {} as {} is to ?", 
-            analogy_request.word_a, analogy_request.word_b, analogy_request.word_c),
+        analogy: format!(
+            "{} is to {} as {} is to ?",
+            analogy_request.word_a, analogy_request.word_b, analogy_request.word_c
+        ),
         candidates,
         all_words_found,
     })
@@ -512,14 +527,15 @@ pub async fn compute_neighbors(
     query: web::Json<NeighborsRequest>,
 ) -> impl Responder {
     let start_time = Instant::now();
-    
+
     info!(
         "Received request to compute neighbors for word: {} in collection: {} (database ID: {})",
         query.word, query.collection_name, query.solr_database_id
     );
- 
-    let embeddings_opt = get_cached_embeddings(&db, query.solr_database_id, &query.collection_name).await;
- 
+
+    let embeddings_opt =
+        get_cached_embeddings(&db, query.solr_database_id, &query.collection_name).await;
+
     let embeddings = match embeddings_opt {
         Some(emb) => emb,
         None => {
@@ -537,12 +553,12 @@ pub async fn compute_neighbors(
             });
         }
     };
- 
+
     let searcher = SimilaritySearcher::new();
     let response = searcher.find_neighbors(&query, &embeddings);
- 
+
     stats::record_search_time(start_time.elapsed());
- 
+
     if response.neighbors.is_empty() {
         warn!("No neighbors found for word: {}", query.word);
     } else {
@@ -563,7 +579,10 @@ pub async fn compute_neighbors(
                     &DecodingKey::from_secret(config.secret_key.as_ref()),
                     &Validation::default(),
                 ) {
-                    (Some(token_data.claims.sub), Some(format!("user_{}", token_data.claims.sub)))
+                    (
+                        Some(token_data.claims.sub),
+                        Some(format!("user_{}", token_data.claims.sub)),
+                    )
                 } else {
                     (None, None)
                 }
@@ -583,7 +602,7 @@ pub async fn compute_neighbors(
     let neighbors_count = response.neighbors.len() as u64;
     let collection_name = query.collection_name.clone();
     let _word = query.word.clone();
-    
+
     // Record analytics asynchronously
     tokio::spawn(async move {
         if let (Some(uid), Some(uname)) = (user_id, username) {
@@ -595,9 +614,10 @@ pub async fn compute_neighbors(
                     "embedding_search".to_string(),
                     collection_name.clone(),
                     format!("session_{}", uid), // session_id
-                    None, // user_agent
+                    None,                       // user_agent
                     success,
-                ).await;
+                )
+                .await;
         }
 
         // Record collection intelligence (even for anonymous usage)
@@ -610,8 +630,9 @@ pub async fn compute_neighbors(
                 response_time_ms as u64,
                 success,
                 vec!["embeddings".to_string(), "semantic_search".to_string()],
-            ).await;
+            )
+            .await;
     });
- 
+
     HttpResponse::Ok().json(response)
- }
+}

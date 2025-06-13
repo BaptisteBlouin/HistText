@@ -4,7 +4,7 @@ use super::types::Accumulator;
 
 impl Accumulator {
     /// Merges another accumulator into this one
-    /// 
+    ///
     /// # Arguments
     /// * `other` - Another accumulator to merge data from
     pub fn merge(&mut self, other: Accumulator) {
@@ -42,29 +42,29 @@ impl Accumulator {
         self.total_text_length += other.total_text_length;
         self.sentence_count += other.sentence_count;
         self.document_lengths.extend(other.document_lengths);
-        
+
         for (len, count) in other.word_lengths {
             *self.word_lengths.entry(len).or_insert(0) += count;
         }
-        
+
         self.capitalized_words += other.capitalized_words;
         self.numeric_values.extend(other.numeric_values);
-        
+
         for (lang, count) in other.languages_detected {
             *self.languages_detected.entry(lang).or_insert(0) += count;
         }
-        
+
         for (punct, count) in other.punctuation_counts {
             *self.punctuation_counts.entry(punct).or_insert(0) += count;
         }
-        
+
         self.paragraph_count += other.paragraph_count;
         self.empty_documents += other.empty_documents;
-        
+
         for (decade, count) in other.date_decades {
             *self.date_decades.entry(decade).or_insert(0) += count;
         }
-        
+
         for (field, count) in other.field_completeness {
             *self.field_completeness.entry(field).or_insert(0) += count;
         }

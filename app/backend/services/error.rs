@@ -19,55 +19,47 @@ pub enum AppError {
         message: String,
         source: Option<Box<dyn std::error::Error + Send + Sync>>,
     },
-    
+
     /// Authentication and authorization errors
     Auth {
         message: String,
         reason: AuthErrorReason,
     },
-    
+
     /// Input validation errors (malformed data, constraint violations)
     Validation {
         message: String,
         field: Option<String>,
     },
-    
+
     /// Resource not found errors
     NotFound {
         resource: String,
         identifier: Option<String>,
     },
-    
+
     /// External service errors (Solr, SMTP, etc.)
     External {
         service: String,
         message: String,
         source: Option<Box<dyn std::error::Error + Send + Sync>>,
     },
-    
+
     /// Configuration errors (missing env vars, invalid settings)
-    Config {
-        setting: String,
-        message: String,
-    },
-    
+    Config { setting: String, message: String },
+
     /// File system and I/O errors
-    Io {
-        operation: String,
-        message: String,
-    },
-    
+    Io { operation: String, message: String },
+
     /// JSON serialization/deserialization errors
-    Serialization {
-        message: String,
-    },
-    
+    Serialization { message: String },
+
     /// Rate limiting errors
     RateLimit {
         message: String,
         retry_after: Option<u64>,
     },
-    
+
     /// Internal server errors (unexpected conditions)
     Internal {
         message: String,
@@ -96,7 +88,9 @@ impl fmt::Display for AppError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AppError::Database { message, .. } => write!(f, "Database error: {}", message),
-            AppError::Auth { message, reason } => write!(f, "Authentication error ({}): {}", reason, message),
+            AppError::Auth { message, reason } => {
+                write!(f, "Authentication error ({}): {}", reason, message)
+            }
             AppError::Validation { message, field } => {
                 if let Some(field) = field {
                     write!(f, "Validation error in '{}': {}", field, message)
@@ -104,16 +98,25 @@ impl fmt::Display for AppError {
                     write!(f, "Validation error: {}", message)
                 }
             }
-            AppError::NotFound { resource, identifier } => {
+            AppError::NotFound {
+                resource,
+                identifier,
+            } => {
                 if let Some(id) = identifier {
                     write!(f, "{} '{}' not found", resource, id)
                 } else {
                     write!(f, "{} not found", resource)
                 }
             }
-            AppError::External { service, message, .. } => write!(f, "{} service error: {}", service, message),
-            AppError::Config { setting, message } => write!(f, "Configuration error in '{}': {}", setting, message),
-            AppError::Io { operation, message } => write!(f, "I/O error during '{}': {}", operation, message),
+            AppError::External {
+                service, message, ..
+            } => write!(f, "{} service error: {}", service, message),
+            AppError::Config { setting, message } => {
+                write!(f, "Configuration error in '{}': {}", setting, message)
+            }
+            AppError::Io { operation, message } => {
+                write!(f, "I/O error during '{}': {}", operation, message)
+            }
             AppError::Serialization { message } => write!(f, "Serialization error: {}", message),
             AppError::RateLimit { message, .. } => write!(f, "Rate limit exceeded: {}", message),
             AppError::Internal { message, .. } => write!(f, "Internal error: {}", message),
@@ -137,9 +140,15 @@ impl fmt::Display for AuthErrorReason {
 impl std::error::Error for AppError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            AppError::Database { source, .. } => source.as_ref().map(|e| e.as_ref() as &dyn std::error::Error),
-            AppError::External { source, .. } => source.as_ref().map(|e| e.as_ref() as &dyn std::error::Error),
-            AppError::Internal { source, .. } => source.as_ref().map(|e| e.as_ref() as &dyn std::error::Error),
+            AppError::Database { source, .. } => source
+                .as_ref()
+                .map(|e| e.as_ref() as &dyn std::error::Error),
+            AppError::External { source, .. } => source
+                .as_ref()
+                .map(|e| e.as_ref() as &dyn std::error::Error),
+            AppError::Internal { source, .. } => source
+                .as_ref()
+                .map(|e| e.as_ref() as &dyn std::error::Error),
             _ => None,
         }
     }
@@ -152,14 +161,14 @@ impl ResponseError for AppError {
                 actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
                 "database_error".to_string(),
                 "A database error occurred".to_string(),
-                Some(json!({ "details": message }))
+                Some(json!({ "details": message })),
             ),
-            
+
             AppError::Auth { message, reason } => {
                 let status = match reason {
-                    AuthErrorReason::MissingAuth | AuthErrorReason::InvalidToken | AuthErrorReason::ExpiredToken => {
-                        actix_web::http::StatusCode::UNAUTHORIZED
-                    }
+                    AuthErrorReason::MissingAuth
+                    | AuthErrorReason::InvalidToken
+                    | AuthErrorReason::ExpiredToken => actix_web::http::StatusCode::UNAUTHORIZED,
                     AuthErrorReason::InsufficientPermissions => {
                         actix_web::http::StatusCode::FORBIDDEN
                     }
@@ -170,61 +179,69 @@ impl ResponseError for AppError {
                 let error_code = format!("auth_{}", reason);
                 (status, error_code, message.clone(), None)
             }
-            
+
             AppError::Validation { message, field } => (
                 actix_web::http::StatusCode::BAD_REQUEST,
                 "validation_error".to_string(),
                 message.clone(),
-                field.as_ref().map(|f| json!({ "field": f }))
+                field.as_ref().map(|f| json!({ "field": f })),
             ),
-            
-            AppError::NotFound { resource, identifier } => (
+
+            AppError::NotFound {
+                resource,
+                identifier,
+            } => (
                 actix_web::http::StatusCode::NOT_FOUND,
                 "not_found".to_string(),
                 format!("{} not found", resource),
-                identifier.as_ref().map(|id| json!({ "identifier": id }))
+                identifier.as_ref().map(|id| json!({ "identifier": id })),
             ),
-            
-            AppError::External { service, message, .. } => (
+
+            AppError::External {
+                service, message, ..
+            } => (
                 actix_web::http::StatusCode::SERVICE_UNAVAILABLE,
                 "external_service_error".to_string(),
                 format!("{} service is currently unavailable", service),
-                Some(json!({ "service": service, "details": message }))
+                Some(json!({ "service": service, "details": message })),
             ),
-            
+
             AppError::Config { setting, message } => (
                 actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
                 "configuration_error".to_string(),
                 "Server configuration error".to_string(),
-                Some(json!({ "setting": setting, "details": message }))
+                Some(json!({ "setting": setting, "details": message })),
             ),
-            
+
             AppError::Io { operation, message } => (
                 actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
                 "io_error".to_string(),
                 "File system error occurred".to_string(),
-                Some(json!({ "operation": operation, "details": message }))
+                Some(json!({ "operation": operation, "details": message })),
             ),
-            
+
             AppError::Serialization { message } => (
                 actix_web::http::StatusCode::BAD_REQUEST,
                 "serialization_error".to_string(),
                 "Invalid data format".to_string(),
-                Some(json!({ "details": message }))
+                Some(json!({ "details": message })),
             ),
-            
-            AppError::RateLimit { message, retry_after } => (
+
+            AppError::RateLimit {
+                message,
+                retry_after,
+            } => (
                 actix_web::http::StatusCode::TOO_MANY_REQUESTS,
                 "rate_limit_exceeded".to_string(),
                 message.clone(),
-                retry_after.map(|seconds| json!({ "retry_after": seconds }))
+                retry_after.map(|seconds| json!({ "retry_after": seconds })),
             ),
-            
+
             AppError::Internal { message, .. } => (
                 actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_error".to_string(),
                 "An internal server error occurred".to_string(),
-                Some(json!({ "details": message }))
+                Some(json!({ "details": message })),
             ),
         };
 
@@ -242,10 +259,14 @@ impl ResponseError for AppError {
         let mut response = HttpResponse::build(status).json(response_body);
 
         // Add retry-after header for rate limiting
-        if let AppError::RateLimit { retry_after: Some(seconds), .. } = self {
+        if let AppError::RateLimit {
+            retry_after: Some(seconds),
+            ..
+        } = self
+        {
             response.headers_mut().insert(
                 actix_web::http::header::RETRY_AFTER,
-                actix_web::http::header::HeaderValue::from_str(&seconds.to_string()).unwrap()
+                actix_web::http::header::HeaderValue::from_str(&seconds.to_string()).unwrap(),
             );
         }
 
@@ -280,7 +301,7 @@ impl From<jsonwebtoken::errors::Error> for AppError {
             jsonwebtoken::errors::ErrorKind::InvalidToken => AuthErrorReason::InvalidToken,
             _ => AuthErrorReason::InvalidToken,
         };
-        
+
         AppError::Auth {
             message: "JWT token validation failed".to_string(),
             reason,

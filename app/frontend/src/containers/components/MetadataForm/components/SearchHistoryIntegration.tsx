@@ -21,6 +21,7 @@ import {
   SavedSearch,
 } from "../../../../hooks/useSearchHistory";
 import { buildQueryString } from "../../buildQueryString";
+import { useConfig } from "../../../../contexts/ConfigurationContext";
 
 /**
  * Props for SearchHistoryIntegration component.
@@ -53,6 +54,7 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
   resultsCount,
   onShowHistory,
 }) => {
+  const config = useConfig();
   const { addToHistory, saveAsBookmark, stats } = useSearchHistory();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [searchName, setSearchName] = useState("");
@@ -105,7 +107,7 @@ const SearchHistoryIntegration: React.FC<SearchHistoryIntegrationProps> = ({
   const handleConfirmSave = useCallback(() => {
     if (!searchName.trim()) return;
 
-    const queryString = buildQueryString(formData, dateRange);
+    const queryString = buildQueryString(formData, dateRange, config.default_date_name);
 
     const searchData: Omit<SavedSearch, "id" | "createdAt" | "lastUsed"> = {
       name: searchName.trim(),

@@ -1,10 +1,10 @@
+use crate::histtext::embeddings::{cache, stats};
 use actix_web::{HttpResponse, Responder};
 use chrono::{DateTime, Utc};
-use serde::Serialize;
-use utoipa::ToSchema;
-use crate::histtext::embeddings::{cache, stats};
-use serde_json::json;
 use log::info;
+use serde::Serialize;
+use serde_json::json;
+use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AdvancedCacheResponse {
@@ -57,7 +57,7 @@ pub async fn get_cache_stats_advanced() -> impl Responder {
     let cache_stats = cache::get_cache_statistics().await;
     let performance_metrics = stats::get_performance_metrics();
     let system_info = stats::get_system_info();
-    
+
     let response = AdvancedCacheResponse {
         cache: CacheInfo {
             entries_count: cache_stats.entries_count,
@@ -85,7 +85,7 @@ pub async fn get_cache_stats_advanced() -> impl Responder {
         },
         timestamp: Utc::now(),
     };
-    
+
     HttpResponse::Ok().json(response)
 }
 
@@ -101,7 +101,7 @@ pub async fn get_cache_stats_advanced() -> impl Responder {
 pub async fn reset_cache_metrics() -> impl Responder {
     stats::reset_performance_metrics();
     info!("Cache performance metrics reset");
-    
+
     HttpResponse::Ok().json(json!({
         "message": "Cache metrics reset successfully",
         "timestamp": chrono::Utc::now()

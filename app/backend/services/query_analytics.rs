@@ -3,13 +3,13 @@
 //! This module provides functionality to track search query patterns,
 //! performance metrics, and optimization insights for Solr operations.
 
+use crate::services::request_analytics::get_user_display_name;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use utoipa::ToSchema;
-use crate::services::request_analytics::get_user_display_name;
 
 /// Query analytics data structure
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -80,11 +80,11 @@ pub struct IndexUsageStats {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ResponseTimeDistribution {
-    pub very_fast: u64,    // < 100ms
-    pub fast: u64,         // 100-500ms
-    pub moderate: u64,     // 500ms-2s
-    pub slow: u64,         // 2s-10s
-    pub very_slow: u64,    // > 10s
+    pub very_fast: u64, // < 100ms
+    pub fast: u64,      // 100-500ms
+    pub moderate: u64,  // 500ms-2s
+    pub slow: u64,      // 2s-10s
+    pub very_slow: u64, // > 10s
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -114,9 +114,9 @@ pub struct EmergingTopic {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct QueryComplexityTrends {
-    pub simple_queries_percent: f64,    // Single term
-    pub moderate_queries_percent: f64,  // 2-5 terms
-    pub complex_queries_percent: f64,   // > 5 terms or advanced operators
+    pub simple_queries_percent: f64,   // Single term
+    pub moderate_queries_percent: f64, // 2-5 terms
+    pub complex_queries_percent: f64,  // > 5 terms or advanced operators
     pub avg_terms_per_query: f64,
 }
 
@@ -202,11 +202,11 @@ pub struct QueryRecord {
 
 #[derive(Debug, Clone)]
 pub enum QueryType {
-    Simple,    // Single term
-    Moderate,  // 2-5 terms
-    Complex,   // Advanced operators, many terms
-    Faceted,   // Using facets
-    Filtered,  // Using filters
+    Simple,   // Single term
+    Moderate, // 2-5 terms
+    Complex,  // Advanced operators, many terms
+    Faceted,  // Using facets
+    Filtered, // Using filters
 }
 
 /// Query analytics store
@@ -236,9 +236,9 @@ impl QueryAnalyticsStore {
         filters_used: Vec<String>,
     ) {
         let mut queries = self.queries.write().await;
-        
+
         let query_type = self.classify_query_type(&query, &filters_used);
-        
+
         let record = QueryRecord {
             query,
             collection,
@@ -268,10 +268,13 @@ impl QueryAnalyticsStore {
         }
 
         let term_count = query.split_whitespace().count();
-        let has_operators = query.contains(':') || query.contains('"') || 
-                           query.contains("AND") || query.contains("OR") || 
-                           query.contains("NOT") || query.contains('*') || 
-                           query.contains('?');
+        let has_operators = query.contains(':')
+            || query.contains('"')
+            || query.contains("AND")
+            || query.contains("OR")
+            || query.contains("NOT")
+            || query.contains('*')
+            || query.contains('?');
 
         if has_operators || term_count > 5 {
             QueryType::Complex
@@ -368,8 +371,15 @@ impl QueryAnalyticsStore {
     }
 
     async fn calculate_top_queries(&self, queries: &[&QueryRecord]) -> Vec<TopQuery> {
-        let mut query_stats: HashMap<String, (Vec<&QueryRecord>, std::collections::HashSet<i32>, std::collections::HashSet<String>)> = HashMap::new();
-        
+        let mut query_stats: HashMap<
+            String,
+            (
+                Vec<&QueryRecord>,
+                std::collections::HashSet<i32>,
+                std::collections::HashSet<String>,
+            ),
+        > = HashMap::new();
+
         for query in queries {
             let (records, users, collections) = query_stats.entry(query.query.clone()).or_default();
             records.push(query);
@@ -381,18 +391,29 @@ impl QueryAnalyticsStore {
 
         let mut top_queries = Vec::new();
         for (query_text, (records, users, collections)) in query_stats {
-            if records.len() < 2 { continue; } // At least 2 occurrences
-            
+            if records.len() < 2 {
+                continue;
+            } // At least 2 occurrences
+
             let frequency = records.len() as u64;
-            let avg_response_time = records.iter().map(|r| r.response_time_ms).sum::<u64>() as f64 / frequency as f64;
-            let avg_result_count = records.iter().map(|r| r.result_count).sum::<u64>() as f64 / frequency as f64;
-            let success_rate = (records.iter().filter(|r| r.success).count() as f64 / frequency as f64) * 100.0;
+            let avg_response_time =
+                records.iter().map(|r| r.response_time_ms).sum::<u64>() as f64 / frequency as f64;
+            let avg_result_count =
+                records.iter().map(|r| r.result_count).sum::<u64>() as f64 / frequency as f64;
+            let success_rate =
+                (records.iter().filter(|r| r.success).count() as f64 / frequency as f64) * 100.0;
             let unique_users = users.len() as u64;
-            
+
             // Calculate peak usage hour
             let mut hourly_usage = HashMap::new();
             for record in &records {
-                let hour = (record.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs() / 3600) % 24;
+                let hour = (record
+                    .timestamp
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    / 3600)
+                    % 24;
                 *hourly_usage.entry(hour as u8).or_insert(0u64) += 1;
             }
             let peak_usage_hour = hourly_usage
@@ -400,24 +421,27 @@ impl QueryAnalyticsStore {
                 .max_by_key(|(_, count)| *count)
                 .map(|(hour, _)| hour)
                 .unwrap_or(12);
-                
+
             // Build user list with real information
             let mut user_list = Vec::new();
             for &user_id in &users {
-                let user_records: Vec<_> = records.iter().filter(|r| r.user_id == Some(user_id)).collect();
+                let user_records: Vec<_> = records
+                    .iter()
+                    .filter(|r| r.user_id == Some(user_id))
+                    .collect();
                 let query_count = user_records.len() as u64;
                 let last_query = user_records
                     .iter()
                     .map(|r| r.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs())
                     .max()
                     .unwrap_or(0);
-                    
+
                 // Get real username
                 let username = match get_user_display_name(user_id).await {
                     Ok(display_name) => display_name,
                     Err(_) => format!("User {}", user_id),
                 };
-                
+
                 user_list.push(QueryUser {
                     user_id,
                     username,
@@ -425,7 +449,7 @@ impl QueryAnalyticsStore {
                     last_query,
                 });
             }
-            
+
             // Sort users by query count (most active first)
             user_list.sort_by(|a, b| b.query_count.cmp(&a.query_count));
 
@@ -452,14 +476,19 @@ impl QueryAnalyticsStore {
         let mut slow_queries: Vec<_> = queries
             .iter()
             .filter(|q| q.response_time_ms > 2000) // > 2 seconds
-            .fold(HashMap::new(), |mut acc: HashMap<String, Vec<&QueryRecord>>, query| {
-                acc.entry(query.query.clone()).or_default().push(query);
-                acc
-            })
+            .fold(
+                HashMap::new(),
+                |mut acc: HashMap<String, Vec<&QueryRecord>>, query| {
+                    acc.entry(query.query.clone()).or_default().push(query);
+                    acc
+                },
+            )
             .into_iter()
             .map(|(query_text, records)| {
                 let frequency = records.len() as u64;
-                let avg_response_time = records.iter().map(|r| r.response_time_ms).sum::<u64>() as f64 / frequency as f64;
+                let avg_response_time = records.iter().map(|r| r.response_time_ms).sum::<u64>()
+                    as f64
+                    / frequency as f64;
                 let collection = records[0].collection.clone();
                 let optimization_potential = (avg_response_time / 10000.0).min(100.0); // Simple scoring
 
@@ -472,17 +501,24 @@ impl QueryAnalyticsStore {
                 }
             })
             .collect();
-        slow_queries.sort_by(|a, b| b.avg_response_time_ms.partial_cmp(&a.avg_response_time_ms).unwrap());
+        slow_queries.sort_by(|a, b| {
+            b.avg_response_time_ms
+                .partial_cmp(&a.avg_response_time_ms)
+                .unwrap()
+        });
         slow_queries.truncate(10);
 
         // Calculate failed queries
         let mut failed_queries: Vec<_> = queries
             .iter()
             .filter(|q| !q.success)
-            .fold(HashMap::new(), |mut acc: HashMap<String, Vec<&QueryRecord>>, query| {
-                acc.entry(query.query.clone()).or_default().push(query);
-                acc
-            })
+            .fold(
+                HashMap::new(),
+                |mut acc: HashMap<String, Vec<&QueryRecord>>, query| {
+                    acc.entry(query.query.clone()).or_default().push(query);
+                    acc
+                },
+            )
             .into_iter()
             .map(|(query_text, records)| {
                 let frequency = records.len() as u64;
@@ -532,13 +568,16 @@ impl QueryAnalyticsStore {
         // Generate optimization suggestions
         let mut optimization_suggestions = Vec::new();
         if slow_queries.len() > 3 {
-            optimization_suggestions.push("Consider adding indexes for frequently slow queries".to_string());
+            optimization_suggestions
+                .push("Consider adding indexes for frequently slow queries".to_string());
         }
         if failed_queries.len() > 5 {
-            optimization_suggestions.push("Review query syntax validation and error handling".to_string());
+            optimization_suggestions
+                .push("Review query syntax validation and error handling".to_string());
         }
         if response_time_distribution.very_slow > 10 {
-            optimization_suggestions.push("Investigate very slow queries for potential optimization".to_string());
+            optimization_suggestions
+                .push("Investigate very slow queries for potential optimization".to_string());
         }
 
         QueryPerformance {
@@ -552,10 +591,13 @@ impl QueryAnalyticsStore {
 
     fn calculate_search_trends(&self, queries: &[&QueryRecord]) -> SearchTrends {
         // Calculate popular collections
-        let mut collection_stats: HashMap<String, (u64, std::collections::HashSet<i32>, Vec<u64>)> = HashMap::new();
-        
+        let mut collection_stats: HashMap<String, (u64, std::collections::HashSet<i32>, Vec<u64>)> =
+            HashMap::new();
+
         for query in queries {
-            let (count, users, response_times) = collection_stats.entry(query.collection.clone()).or_default();
+            let (count, users, response_times) = collection_stats
+                .entry(query.collection.clone())
+                .or_default();
             *count += 1;
             if let Some(user_id) = query.user_id {
                 users.insert(user_id);
@@ -579,7 +621,7 @@ impl QueryAnalyticsStore {
                     query_count,
                     unique_users,
                     avg_response_time_ms,
-                    growth_rate_percent: growth_rate
+                    growth_rate_percent: growth_rate,
                 }
             })
             .collect();
@@ -588,12 +630,30 @@ impl QueryAnalyticsStore {
 
         // Calculate query complexity trends
         let total_queries = queries.len() as f64;
-        let simple_count = queries.iter().filter(|q| matches!(q.query_type, QueryType::Simple)).count() as f64;
-        let moderate_count = queries.iter().filter(|q| matches!(q.query_type, QueryType::Moderate)).count() as f64;
-        let complex_count = queries.iter().filter(|q| matches!(q.query_type, QueryType::Complex | QueryType::Filtered | QueryType::Faceted)).count() as f64;
+        let simple_count = queries
+            .iter()
+            .filter(|q| matches!(q.query_type, QueryType::Simple))
+            .count() as f64;
+        let moderate_count = queries
+            .iter()
+            .filter(|q| matches!(q.query_type, QueryType::Moderate))
+            .count() as f64;
+        let complex_count = queries
+            .iter()
+            .filter(|q| {
+                matches!(
+                    q.query_type,
+                    QueryType::Complex | QueryType::Filtered | QueryType::Faceted
+                )
+            })
+            .count() as f64;
 
         let avg_terms_per_query = if total_queries > 0.0 {
-            queries.iter().map(|q| q.query.split_whitespace().count() as f64).sum::<f64>() / total_queries
+            queries
+                .iter()
+                .map(|q| q.query.split_whitespace().count() as f64)
+                .sum::<f64>()
+                / total_queries
         } else {
             0.0
         };
@@ -607,7 +667,7 @@ impl QueryAnalyticsStore {
 
         SearchTrends {
             popular_collections,
-            emerging_topics: Vec::new(), // Would need NLP analysis
+            emerging_topics: Vec::new(),       // Would need NLP analysis
             seasonal_patterns: HashMap::new(), // Would need longer-term data
             query_complexity_trends,
         }
@@ -617,14 +677,20 @@ impl QueryAnalyticsStore {
         // Calculate cache effectiveness based on query patterns
         let total_queries = queries.len() as f64;
         let fast_queries = queries.iter().filter(|q| q.response_time_ms < 100).count() as f64;
-        let hit_rate = if total_queries > 0.0 { (fast_queries / total_queries) * 100.0 } else { 0.0 };
-        
+        let hit_rate = if total_queries > 0.0 {
+            (fast_queries / total_queries) * 100.0
+        } else {
+            0.0
+        };
+
         // Calculate estimated cache size based on query complexity
         let avg_query_length = if total_queries > 0.0 {
             queries.iter().map(|q| q.query.len()).sum::<usize>() as f64 / total_queries
-        } else { 0.0 };
+        } else {
+            0.0
+        };
         let estimated_cache_size = (total_queries * avg_query_length * 0.001).min(2048.0); // Rough estimate in MB
-        
+
         let cache_effectiveness = CacheEffectiveness {
             hit_rate_percent: hit_rate,
             cache_size_mb: estimated_cache_size,
@@ -642,13 +708,19 @@ impl QueryAnalyticsStore {
         // Calculate resource utilization based on query patterns
         let avg_response_time = if total_queries > 0.0 {
             queries.iter().map(|q| q.response_time_ms).sum::<u64>() as f64 / total_queries
-        } else { 0.0 };
-        
+        } else {
+            0.0
+        };
+
         let resource_utilization = ResourceUtilization {
             cpu_usage_percent: (avg_response_time / 10.0).min(100.0), // Rough estimate
             memory_usage_percent: (estimated_cache_size / 16.0).min(100.0), // Assume 16GB total
             disk_io_rate: queries.iter().map(|q| q.result_count).sum::<u64>() as f64 / 1000.0, // Rough estimate
-            concurrent_queries_avg: if total_queries > 0.0 { (total_queries / 24.0 / 60.0).max(1.0) } else { 0.0 }, // Estimates per minute
+            concurrent_queries_avg: if total_queries > 0.0 {
+                (total_queries / 24.0 / 60.0).max(1.0)
+            } else {
+                0.0
+            }, // Estimates per minute
         };
 
         OptimizationInsights {
@@ -663,7 +735,9 @@ impl QueryAnalyticsStore {
         // Calculate session search depth
         let mut session_query_counts: HashMap<String, u64> = HashMap::new();
         for query in queries {
-            *session_query_counts.entry(query.session_id.clone()).or_insert(0) += 1;
+            *session_query_counts
+                .entry(query.session_id.clone())
+                .or_insert(0) += 1;
         }
 
         let total_sessions = session_query_counts.len() as f64;
@@ -673,8 +747,14 @@ impl QueryAnalyticsStore {
             0.0
         };
 
-        let single_query_sessions = session_query_counts.values().filter(|&&count| count == 1).count() as f64;
-        let deep_search_sessions = session_query_counts.values().filter(|&&count| count > 10).count() as f64;
+        let single_query_sessions = session_query_counts
+            .values()
+            .filter(|&&count| count == 1)
+            .count() as f64;
+        let deep_search_sessions = session_query_counts
+            .values()
+            .filter(|&&count| count > 10)
+            .count() as f64;
         let max_queries_in_session = session_query_counts.values().max().copied().unwrap_or(0);
 
         let session_search_depth = SessionSearchDepth {
@@ -689,21 +769,31 @@ impl QueryAnalyticsStore {
         let zero_result_queries = queries.iter().filter(|q| q.result_count == 0).count() as f64;
         let abandonment_rate = if total_queries > 0.0 {
             (zero_result_queries / total_queries) * 100.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
         // Calculate most productive search patterns based on high result queries
-        let mut pattern_counts: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+        let mut pattern_counts: std::collections::HashMap<String, u32> =
+            std::collections::HashMap::new();
         for q in queries.iter().filter(|q| q.result_count > 10) {
             let pattern = if q.filters_used.is_empty() {
                 "direct search".to_string()
             } else if q.filters_used.len() == 1 {
-                format!("{} → filter", if q.query.contains(' ') { "complex query" } else { "keyword" })
+                format!(
+                    "{} → filter",
+                    if q.query.contains(' ') {
+                        "complex query"
+                    } else {
+                        "keyword"
+                    }
+                )
             } else {
                 "keyword → multiple filters".to_string()
             };
             *pattern_counts.entry(pattern).or_insert(0) += 1;
         }
-        
+
         let productive_patterns: Vec<String> = pattern_counts
             .into_iter()
             .map(|(pattern, _count)| pattern)
@@ -743,7 +833,11 @@ impl QueryAnalyticsStore {
             .count() as f64;
 
         if previous_count == 0.0 {
-            if recent_count > 0.0 { 100.0 } else { 0.0 } // New collection or no data
+            if recent_count > 0.0 {
+                100.0
+            } else {
+                0.0
+            } // New collection or no data
         } else {
             ((recent_count - previous_count) / previous_count) * 100.0
         }
@@ -776,9 +870,14 @@ impl QueryAnalyticsStore {
             response_time.as_millis() as u64,
             0, // Result count unknown from middleware
             success,
-            if success { None } else { Some("Request failed".to_string()) },
+            if success {
+                None
+            } else {
+                Some("Request failed".to_string())
+            },
             Vec::new(), // Filters unknown from middleware
-        ).await;
+        )
+        .await;
     }
 }
 

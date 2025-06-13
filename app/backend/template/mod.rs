@@ -14,13 +14,13 @@ mod vite_bundle;
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
         println!("Initializing templates...");
-        
+
         // Simplified template loading with single path
         let template_paths = vec![
             "./backend/views/**/*.html",
             "./views/**/*.html",
         ];
-        
+
         for path in template_paths {
             match Tera::new(path) {
                 Ok(mut tera) => {
@@ -38,7 +38,7 @@ lazy_static! {
                 }
             }
         }
-        
+
         println!("Template initialization failed - no valid template paths found");
         std::process::exit(1);
     };
@@ -55,12 +55,12 @@ pub fn to_template_name(_request_path: &str) -> &'static str {
 /// Main request handler with simplified routing logic
 pub async fn render_views(req: HttpRequest) -> HttpResponse {
     let path = req.path();
-    
+
     // Handle static files first
     if let Some(response) = try_serve_static_file(path, &req).await {
         return response;
     }
-    
+
     // Handle development mode Vite requests
     #[cfg(debug_assertions)]
     if is_vite_request(path) {
@@ -68,26 +68,22 @@ pub async fn render_views(req: HttpRequest) -> HttpResponse {
             return response;
         }
     }
-    
+
     // Fallback to template rendering
     render_template_response(path)
 }
 
 async fn try_serve_static_file(path: &str, req: &HttpRequest) -> Option<HttpResponse> {
     #[cfg(debug_assertions)]
-    let mut static_paths = vec![
-        format!("frontend/dist{}", path),
-    ];
-    
+    let mut static_paths = vec![format!("frontend/dist{}", path)];
+
     #[cfg(not(debug_assertions))]
-    let static_paths = vec![
-        format!("frontend/dist{}", path),
-    ];
-    
+    let static_paths = vec![format!("frontend/dist{}", path)];
+
     // Only add public path in development
     #[cfg(debug_assertions)]
     static_paths.push(format!("frontend/public{}", path));
-    
+
     for static_path in static_paths {
         if Path::new(&static_path).is_file() {
             if let Ok(file) = NamedFile::open(&static_path) {
@@ -95,7 +91,7 @@ async fn try_serve_static_file(path: &str, req: &HttpRequest) -> Option<HttpResp
             }
         }
     }
-    
+
     None
 }
 
@@ -109,7 +105,6 @@ fn is_vite_request(path: &str) -> bool {
         || path.starts_with("/bundles/")
         || path.starts_with("/src/")
 }
-
 
 /// Enhance content with development tools when in debug mode
 fn enhance_content_with_dev_tools(content: String) -> String {
@@ -145,7 +140,7 @@ fn enhance_content_with_dev_tools(content: String) -> String {
             )
         }
     }
-    
+
     #[cfg(not(debug_assertions))]
     {
         content // Return unchanged in production
@@ -154,7 +149,7 @@ fn enhance_content_with_dev_tools(content: String) -> String {
 /// Render template with simplified logic
 fn render_template_response(path: &str) -> HttpResponse {
     let template_name = to_template_name(path);
-    
+
     match TEMPLATES.render(template_name, &Context::new()) {
         Ok(content) => {
             let final_content = enhance_content_with_dev_tools(content);
@@ -214,16 +209,16 @@ async fn proxy_to_vite_server(path: &str) -> Result<HttpResponse, Box<dyn std::e
 
     let client = Client::new();
     let vite_url = format!("http://localhost:21012{}", path);
-    
+
     let response = client.get(&vite_url).send().await?;
     let status = response.status().as_u16();
-    
+
     let content_type = response
         .headers()
         .get("content-type")
         .map(|v| v.to_str().unwrap_or("text/plain").to_owned())
         .unwrap_or_else(|| "text/plain".to_owned());
-    
+
     let headers = response
         .headers()
         .iter()
@@ -235,15 +230,15 @@ async fn proxy_to_vite_server(path: &str) -> Result<HttpResponse, Box<dyn std::e
                 .map(|v| (key.as_str().to_owned(), v.to_owned()))
         })
         .collect::<Vec<(String, String)>>();
-    
+
     let body = response.bytes().await?;
-    
+
     let mut http_response = HttpResponse::build(StatusCode::from_u16(status)?);
     http_response.content_type(content_type);
-    
+
     for (key, value) in headers {
         http_response.append_header((key, value));
     }
-    
+
     Ok(http_response.body(body))
 }

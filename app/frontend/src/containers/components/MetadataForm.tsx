@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { PlayArrow, QueryStats, CheckCircle, ClearAll, ExpandMore, Search, FilterList } from "@mui/icons-material";
 import axios from "axios";
-import config from "../../../config.json";
+import { useConfig } from "../../contexts/ConfigurationContext";
 import { buildQueryString } from "./buildQueryString";
 import { useAuth } from "../../hooks/useAuth";
 import { useResponsive } from "../../lib/responsive-utils";
@@ -40,8 +40,9 @@ import EmbeddingTools from "./MetadataForm/components/EmbeddingTools";
 import SearchHistoryIntegration from "./MetadataForm/components/SearchHistoryIntegration";
 import SearchHistoryPanel from "./SearchHistory/SearchHistoryPanel";
 
-type StatsLevel = (typeof config.statsLevelOptions)[number];
-type DocLevel = (typeof config.docLevelOptions)[number];
+// Types will be inferred from the dynamic config
+type StatsLevel = string;
+type DocLevel = string;
 
 interface CollectionInfo {
   solr_database_id: number;
@@ -120,6 +121,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   onDatabaseChange,
   onAliasChange,
 }) => {
+  const config = useConfig();
   const { accessToken } = useAuth();
   const { isMobile, isTablet } = useResponsive();
   const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(
@@ -304,7 +306,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       if (formValidation.canSubmit) {
         // Save to history before executing query
         if (selectedAlias && solrDatabaseId) {
-          const queryString = buildQueryString(formData, dateRange);
+          const queryString = buildQueryString(formData, dateRange, config.default_date_name);
 
           // Generate a default name for the search
           const keyTerms: string[] = [];

@@ -5,15 +5,15 @@ use serde_json::Value;
 use std::collections::HashSet;
 use whatlang::detect;
 
-use crate::histtext::tokenizer::tokenize_text_fast;
 use super::types::Accumulator;
+use crate::histtext::tokenizer::tokenize_text_fast;
 
 /// Processes documents with ultra-optimized parallel processing
-/// 
+///
 /// This function analyzes documents in parallel chunks, extracting various
 /// statistical features including word frequencies, n-grams, metadata
 /// distributions, and linguistic features.
-/// 
+///
 /// # Arguments
 /// * `docs` - Collection of documents to process
 /// * `text_general_fields` - Fields containing text content
@@ -21,7 +21,7 @@ use super::types::Accumulator;
 /// * `stats_level` - Level of analysis detail ("All", "Partial", "None")
 /// * `relevant_fields` - Fields relevant for metadata analysis
 /// * `main_date_field` - Primary date field for temporal analysis
-/// 
+///
 /// # Returns
 /// Accumulator containing all extracted statistics
 pub fn process_documents_ultra_optimized(
@@ -33,16 +33,18 @@ pub fn process_documents_ultra_optimized(
     main_date_field: &str,
 ) -> Accumulator {
     let chunk_size = if docs.len() > 10000 { 1000 } else { 500 };
-    
+
     docs.par_chunks(chunk_size)
-        .map(|chunk| process_document_chunk(
-            chunk,
-            text_general_fields,
-            stopwords,
-            stats_level,
-            relevant_fields,
-            main_date_field,
-        ))
+        .map(|chunk| {
+            process_document_chunk(
+                chunk,
+                text_general_fields,
+                stopwords,
+                stats_level,
+                relevant_fields,
+                main_date_field,
+            )
+        })
         .reduce(Accumulator::default, |mut a, b| {
             a.merge(b);
             a
@@ -59,7 +61,7 @@ fn process_document_chunk(
     main_date_field: &str,
 ) -> Accumulator {
     let mut acc = Accumulator::default();
-    
+
     for doc in chunk {
         process_single_document(
             doc,
@@ -71,7 +73,7 @@ fn process_document_chunk(
             &mut acc,
         );
     }
-    
+
     acc
 }
 
@@ -86,13 +88,13 @@ fn process_single_document(
     acc: &mut Accumulator,
 ) {
     let mut doc_has_content = false;
-    
+
     // Process date information
     if let Some(Value::String(date_str)) = doc.get(main_date_field) {
         if date_str.len() >= 4 {
             if let Some(year) = date_str.get(0..4) {
                 *acc.date_counts.entry(year.to_string()).or_insert(0) += 1;
-                
+
                 if let Ok(year_num) = year.parse::<u32>() {
                     let decade = (year_num / 10) * 10;
                     *acc.date_decades.entry(format!("{}s", decade)).or_insert(0) += 1;
@@ -157,18 +159,18 @@ fn process_document_text(
     let doc_length = doc_text.len();
     acc.document_lengths.push(doc_length);
     acc.total_text_length += doc_length;
-    
+
     let sentence_count = doc_text.matches('.').count() as u64;
     acc.sentence_count += sentence_count;
     acc.paragraph_count += doc_text.matches('\n').count() as u64 + 1;
-    
+
     // Count punctuation
     for ch in doc_text.chars() {
         if ch.is_ascii_punctuation() {
             *acc.punctuation_counts.entry(ch).or_insert(0) += 1;
         }
     }
-    
+
     // Language detection
     if doc_text.len() > 100 {
         let sample: String = doc_text.chars().take(200).collect();
@@ -177,27 +179,27 @@ fn process_document_text(
             *acc.languages_detected.entry(lang_code).or_insert(0) += 1;
         }
     }
-    
+
     acc.aggregated_text.push_str(doc_text);
-    
+
     // Tokenize and process words
     let tokens = tokenize_text_fast(doc_text, true);
-    
+
     for token in &tokens {
         if !stopwords.contains(token) && token.len() > 1 && token.len() < 20 {
             *acc.word_counts.entry(token.clone()).or_insert(0) += 1;
             *acc.word_lengths.entry(token.len()).or_insert(0) += 1;
-            
+
             if token.chars().next().is_some_and(|c| c.is_uppercase()) {
                 acc.capitalized_words += 1;
             }
-            
+
             if token.chars().any(|c| c.is_numeric()) {
                 acc.numeric_values.push(token.clone());
             }
         }
     }
-    
+
     // Process n-grams for detailed analysis
     if stats_level == "All" && tokens.len() > 1 {
         process_ngrams(&tokens, acc);
@@ -220,17 +222,13 @@ fn process_ngrams(tokens: &[String], acc: &mut Accumulator) {
 }
 
 /// Processes metadata field distributions
-fn process_metadata_distributions(
-    doc: &Value,
-    relevant_fields: &[String],
-    acc: &mut Accumulator,
-) {
+fn process_metadata_distributions(doc: &Value, relevant_fields: &[String], acc: &mut Accumulator) {
     if let Some(obj) = doc.as_object() {
         for (key, value) in obj.iter().take(15) {
             if !relevant_fields.contains(key) {
                 continue;
             }
-            
+
             let key_lc = key.to_lowercase();
             if key_lc.contains("date") {
                 continue;

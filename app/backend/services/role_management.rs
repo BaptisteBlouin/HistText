@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::services::crud::execute_db_query;
-use crate::services::error::AppError;
 use crate::services::database::Database;
+use crate::services::error::AppError;
 use crate::services::role_assignment::{get_role_assignment_service, DEFAULT_USER_ROLE};
 use crate::services::security_events::SecurityEventLogger;
 
@@ -50,12 +50,10 @@ pub struct BatchRoleAssignmentResponse {
     ),
     security(("bearer_auth" = []))
 )]
-pub async fn get_role_assignment_stats(
-    db: web::Data<Database>,
-) -> Result<HttpResponse, AppError> {
+pub async fn get_role_assignment_stats(db: web::Data<Database>) -> Result<HttpResponse, AppError> {
     let stats = execute_db_query(db, |conn| {
-        use crate::schema::users::dsl as users_dsl;
         use crate::schema::user_roles::dsl as user_roles_dsl;
+        use crate::schema::users::dsl as users_dsl;
 
         // Count total activated users
         let total_activated_users = users_dsl::users
@@ -77,7 +75,8 @@ pub async fn get_role_assignment_stats(
             users_missing_default_role,
             default_role_name: DEFAULT_USER_ROLE.to_string(),
         })
-    }).await?;
+    })
+    .await?;
 
     Ok(HttpResponse::Ok().json(stats))
 }
@@ -98,10 +97,12 @@ pub async fn fix_missing_role_assignments(
     req: HttpRequest,
 ) -> Result<HttpResponse, AppError> {
     let role_service = get_role_assignment_service();
-    
+
     // Get users missing the default role
-    let missing_users = role_service.get_users_missing_default_role(db.clone()).await?;
-    
+    let missing_users = role_service
+        .get_users_missing_default_role(db.clone())
+        .await?;
+
     if missing_users.is_empty() {
         return Ok(HttpResponse::Ok().json(BatchRoleAssignmentResponse {
             assigned_count: 0,
@@ -111,9 +112,11 @@ pub async fn fix_missing_role_assignments(
     }
 
     let user_count = missing_users.len();
-    
+
     // Batch assign the default role
-    role_service.batch_assign_default_role(db.clone(), missing_users, Some(&req)).await?;
+    role_service
+        .batch_assign_default_role(db.clone(), missing_users, Some(&req))
+        .await?;
 
     // Log the administrative action
     if let Err(e) = SecurityEventLogger::log_event(
@@ -121,10 +124,15 @@ pub async fn fix_missing_role_assignments(
         "admin_batch_role_fix",
         None,
         None,
-        &format!("Administrator fixed missing role assignments for {} users", user_count),
+        &format!(
+            "Administrator fixed missing role assignments for {} users",
+            user_count
+        ),
         "medium",
         Some(&req),
-    ).await {
+    )
+    .await
+    {
         log::warn!("Failed to log batch role fix: {}", e);
     }
 
@@ -154,43 +162,56 @@ pub async fn assign_roles_to_users(
     payload: web::Json<BatchRoleAssignmentRequest>,
 ) -> Result<HttpResponse, AppError> {
     let request_data = payload.into_inner();
-    
+
     if request_data.user_ids.is_empty() {
-        return Err(AppError::validation("User IDs list cannot be empty", Some("user_ids")));
+        return Err(AppError::validation(
+            "User IDs list cannot be empty",
+            Some("user_ids"),
+        ));
     }
 
     if request_data.user_ids.len() > 100 {
-        return Err(AppError::validation("Cannot assign roles to more than 100 users at once", Some("user_ids")));
+        return Err(AppError::validation(
+            "Cannot assign roles to more than 100 users at once",
+            Some("user_ids"),
+        ));
     }
 
     let role_service = get_role_assignment_service();
-    
+
     // Clone the user_ids to avoid borrowing issues
     let user_ids_for_query = request_data.user_ids.clone();
-    
+
     // Verify that all user IDs exist and are activated
     let valid_users = execute_db_query(db.clone(), move |conn| {
         use crate::schema::users::dsl::*;
-        
+
         users
             .filter(id.eq_any(&user_ids_for_query))
             .filter(activated.eq(true))
             .select(id)
             .load::<i32>(conn)
-    }).await?;
+    })
+    .await?;
 
     if valid_users.is_empty() {
-        return Err(AppError::validation("No valid activated users found", Some("user_ids")));
+        return Err(AppError::validation(
+            "No valid activated users found",
+            Some("user_ids"),
+        ));
     }
 
-    let failed_user_ids: Vec<i32> = request_data.user_ids
+    let failed_user_ids: Vec<i32> = request_data
+        .user_ids
         .iter()
         .filter(|&&uid| !valid_users.contains(&uid))
         .cloned()
         .collect();
 
     // Batch assign the default role to valid users
-    role_service.batch_assign_default_role(db.clone(), valid_users.clone(), Some(&req)).await?;
+    role_service
+        .batch_assign_default_role(db.clone(), valid_users.clone(), Some(&req))
+        .await?;
 
     // Log the administrative action
     if let Err(e) = SecurityEventLogger::log_event(
@@ -198,17 +219,25 @@ pub async fn assign_roles_to_users(
         "admin_manual_role_assignment",
         None,
         None,
-        &format!("Administrator manually assigned roles to {} users", valid_users.len()),
+        &format!(
+            "Administrator manually assigned roles to {} users",
+            valid_users.len()
+        ),
         "medium",
         Some(&req),
-    ).await {
+    )
+    .await
+    {
         log::warn!("Failed to log manual role assignment: {}", e);
     }
 
     Ok(HttpResponse::Ok().json(BatchRoleAssignmentResponse {
         assigned_count: valid_users.len(),
         failed_user_ids,
-        message: format!("Successfully assigned default role to {} users", valid_users.len()),
+        message: format!(
+            "Successfully assigned default role to {} users",
+            valid_users.len()
+        ),
     }))
 }
 
@@ -228,6 +257,6 @@ pub async fn get_users_missing_default_role(
 ) -> Result<HttpResponse, AppError> {
     let role_service = get_role_assignment_service();
     let missing_users = role_service.get_users_missing_default_role(db).await?;
-    
+
     Ok(HttpResponse::Ok().json(missing_users))
 }

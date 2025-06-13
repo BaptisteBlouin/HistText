@@ -7,6 +7,34 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    _sqlx_migrations (version) {
+        version -> Int8,
+        description -> Text,
+        installed_on -> Timestamptz,
+        success -> Bool,
+        checksum -> Bytea,
+        execution_time -> Int8,
+    }
+}
+
+diesel::table! {
+    app_configurations (id) {
+        id -> Int4,
+        #[max_length = 255]
+        config_key -> Varchar,
+        config_value -> Text,
+        #[max_length = 50]
+        config_type -> Varchar,
+        #[max_length = 100]
+        category -> Varchar,
+        description -> Nullable<Text>,
+        is_system -> Bool,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     attachment_blobs (id) {
         id -> Int4,
         key -> Text,
@@ -109,15 +137,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    todos (id) {
-        id -> Int4,
-        text -> Text,
-        created_at -> Timestamptz,
-        updated_at -> Timestamptz,
-    }
-}
-
-diesel::table! {
     user_oauth2_links (id) {
         id -> Int4,
         provider -> Text,
@@ -183,6 +202,8 @@ diesel::joinable!(user_roles -> users (user_id));
 diesel::joinable!(user_sessions -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    _sqlx_migrations,
+    app_configurations,
     attachment_blobs,
     attachments,
     fang_tasks,
@@ -191,7 +212,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     solr_database_info,
     solr_database_permissions,
     solr_databases,
-    todos,
     user_oauth2_links,
     user_permissions,
     user_roles,

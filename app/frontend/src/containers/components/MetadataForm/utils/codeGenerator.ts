@@ -1,5 +1,4 @@
 import { buildQueryString } from "../../buildQueryString";
-import config from "../../../../../config.json";
 
 /**
  * Generate a cURL command string to execute the current API query.
@@ -12,6 +11,8 @@ import config from "../../../../../config.json";
  * @param downloadOnly - Whether to only download results without displaying.
  * @param statsLevel - Level of statistics detail to request.
  * @param accessToken - Authorization bearer token.
+ * @param batchSize - Batch size for the query.
+ * @param defaultDateName - Default date field name.
  * @returns A string containing the complete cURL command.
  */
 export const generateCurlCommand = (
@@ -23,13 +24,13 @@ export const generateCurlCommand = (
   downloadOnly: boolean,
   statsLevel: string,
   accessToken: string,
+  batchSize: number = 100,
+  defaultDateName: string = "date_rdt",
 ): string => {
-  const queryString = buildQueryString(formData, dateRange);
+  const queryString = buildQueryString(formData, dateRange, defaultDateName);
   if (!queryString) {
     throw new Error("Query string is empty.");
   }
-
-  const batchSize = config.batch_size;
   const baseUrl = window.location.origin;
   const url = `${baseUrl}/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(queryString)}&start=0&rows=${batchSize}&get_ner=${getNER}&download_only=${downloadOnly}&stats_level=${statsLevel}&solr_database_id=${solrDatabaseId}&is_first=true`;
 
@@ -47,6 +48,8 @@ export const generateCurlCommand = (
  * @param downloadOnly - Whether to only download results without displaying.
  * @param statsLevel - Level of statistics detail to request.
  * @param accessToken - Authorization bearer token.
+ * @param batchSize - Batch size for the query.
+ * @param defaultDateName - Default date field name.
  * @returns A string containing the Python script.
  */
 export const generatePythonScript = (
@@ -58,9 +61,10 @@ export const generatePythonScript = (
   downloadOnly: boolean,
   statsLevel: string,
   accessToken: string,
+  batchSize: number = 100,
+  defaultDateName: string = "date_rdt",
 ): string => {
-  const queryString = buildQueryString(formData, dateRange);
-  const batchSize = config.batch_size;
+  const queryString = buildQueryString(formData, dateRange, defaultDateName);
   const baseUrl = window.location.origin;
   const url = `${baseUrl}/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(queryString)}&start=0&rows=${batchSize}&get_ner=${getNER}&download_only=${downloadOnly}&stats_level=${statsLevel}&solr_database_id=${solrDatabaseId}&is_first=true`;
 
@@ -90,6 +94,8 @@ print(df)
  * @param downloadOnly - Whether to only download results without displaying.
  * @param statsLevel - Level of statistics detail to request.
  * @param accessToken - Authorization bearer token.
+ * @param batchSize - Batch size for the query.
+ * @param defaultDateName - Default date field name.
  * @returns A string containing the R script.
  */
 export const generateRScript = (
@@ -101,9 +107,10 @@ export const generateRScript = (
   downloadOnly: boolean,
   statsLevel: string,
   accessToken: string,
+  batchSize: number = 100,
+  defaultDateName: string = "date_rdt",
 ): string => {
-  const queryString = buildQueryString(formData, dateRange);
-  const batchSize = config.batch_size;
+  const queryString = buildQueryString(formData, dateRange, defaultDateName);
   const baseUrl = window.location.origin;
   const url = `${baseUrl}/api/solr/query?collection=${encodeURIComponent(selectedAlias)}&query=${encodeURIComponent(queryString)}&start=0&rows=${batchSize}&get_ner=${getNER}&download_only=${downloadOnly}&stats_level=${statsLevel}&solr_database_id=${solrDatabaseId}&is_first=true`;
 

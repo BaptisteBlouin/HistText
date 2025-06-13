@@ -4,14 +4,14 @@ use actix_web::{web, Error, HttpResponse};
 use anyhow::Result;
 use log::{error, info};
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
 use serde_json::{json, Map, Value};
 use std::time::Instant;
-use rustc_hash::FxHashMap;
 
-use crate::config::Config;
-use super::types::{PathQueryParams, Accumulator};
-use super::utils::{read_cache_file, detect_language_fast, get_stopwords};
 use super::processing::process_documents_ultra_optimized;
+use super::types::{Accumulator, PathQueryParams};
+use super::utils::{detect_language_fast, get_stopwords, read_cache_file};
+use crate::config::Config;
 
 #[utoipa::path(
     get,
@@ -43,9 +43,11 @@ pub async fn calculate_statistics(
         }
     };
 
-    info!("Processing {} documents with stats level: {}", 
-          cache_config.concatenated_docs.len(), 
-          cache_config.stats_level);
+    info!(
+        "Processing {} documents with stats level: {}",
+        cache_config.concatenated_docs.len(),
+        cache_config.stats_level
+    );
 
     let is_chinese_like = detect_language_fast(
         &cache_config.concatenated_docs,
@@ -54,7 +56,7 @@ pub async fn calculate_statistics(
 
     let stopwords = get_stopwords(is_chinese_like);
     let config = Config::global();
-    
+
     let accumulator = process_documents_ultra_optimized(
         &cache_config.concatenated_docs,
         &cache_config.text_general_fields,
@@ -64,11 +66,13 @@ pub async fn calculate_statistics(
         &config.main_date_value,
     );
 
-    info!("Generated {} metadata distributions, {} words, {} bigrams, {} trigrams",
-          accumulator.metadata_distributions.len(),
-          accumulator.word_counts.len(),
-          accumulator.ngram_counts_2.len(),
-          accumulator.ngram_counts_3.len());
+    info!(
+        "Generated {} metadata distributions, {} words, {} bigrams, {} trigrams",
+        accumulator.metadata_distributions.len(),
+        accumulator.word_counts.len(),
+        accumulator.ngram_counts_2.len(),
+        accumulator.ngram_counts_3.len()
+    );
 
     let stats_result = match calculate_final_statistics_optimized(
         cache_config.total_results,
@@ -96,12 +100,12 @@ pub async fn calculate_statistics(
 }
 
 /// Calculates final statistics from the accumulated data
-/// 
+///
 /// # Arguments
 /// * `total_results` - Total number of documents processed
 /// * `accumulator` - Accumulated statistical data
 /// * `stats_level` - Level of detail for statistics
-/// 
+///
 /// # Returns
 /// Result containing the final statistics map
 fn calculate_final_statistics_optimized(
@@ -181,12 +185,26 @@ fn calculate_final_statistics_optimized(
     }
 
     // Add corpus overview
-    add_corpus_overview(&mut stats, total_results, &word_counts, empty_documents, 
-                       paragraph_count, sentence_count, capitalized_words, &numeric_values);
+    add_corpus_overview(
+        &mut stats,
+        total_results,
+        &word_counts,
+        empty_documents,
+        paragraph_count,
+        sentence_count,
+        capitalized_words,
+        &numeric_values,
+    );
 
     // Add word frequency analysis
     if (stats_level == "All" || stats_level == "Partial") && !word_counts.is_empty() {
-        add_word_frequency_stats(&mut stats, word_counts, total_results, sentence_count, stats_level);
+        add_word_frequency_stats(
+            &mut stats,
+            word_counts,
+            total_results,
+            sentence_count,
+            stats_level,
+        );
     }
 
     // Add n-gram analysis for detailed statistics
@@ -202,43 +220,55 @@ fn calculate_final_statistics_optimized(
 fn add_document_length_stats(stats: &mut Map<String, Value>, document_lengths: &[usize]) {
     let min_doc_length = *document_lengths.iter().min().unwrap_or(&0);
     let max_doc_length = *document_lengths.iter().max().unwrap_or(&0);
-    let avg_doc_length = document_lengths.iter().sum::<usize>() as f64 / document_lengths.len() as f64;
-    
+    let avg_doc_length =
+        document_lengths.iter().sum::<usize>() as f64 / document_lengths.len() as f64;
+
     let mut sorted_lengths = document_lengths.to_vec();
     sorted_lengths.sort_unstable();
     let median_doc_length = if sorted_lengths.len() % 2 == 0 {
-        (sorted_lengths[sorted_lengths.len() / 2 - 1] + sorted_lengths[sorted_lengths.len() / 2]) as f64 / 2.0
+        (sorted_lengths[sorted_lengths.len() / 2 - 1] + sorted_lengths[sorted_lengths.len() / 2])
+            as f64
+            / 2.0
     } else {
         sorted_lengths[sorted_lengths.len() / 2] as f64
     };
 
-    stats.insert("document_length_stats".into(), json!({
-        "min": min_doc_length,
-        "max": max_doc_length,
-        "average": avg_doc_length,
-        "median": median_doc_length
-    }));
+    stats.insert(
+        "document_length_stats".into(),
+        json!({
+            "min": min_doc_length,
+            "max": max_doc_length,
+            "average": avg_doc_length,
+            "median": median_doc_length
+        }),
+    );
 }
 
 /// Adds field completeness statistics
 fn add_field_completeness_stats(
-    stats: &mut Map<String, Value>, 
-    field_completeness: &FxHashMap<String, u64>, 
-    total_results: u64
+    stats: &mut Map<String, Value>,
+    field_completeness: &FxHashMap<String, u64>,
+    total_results: u64,
 ) {
     let total_docs = total_results as f64;
     let completeness_percentages: FxHashMap<String, f64> = field_completeness
         .iter()
         .map(|(field, count)| (field.clone(), (*count as f64 / total_docs) * 100.0))
         .collect();
-    stats.insert("field_completeness_percentage".into(), json!(completeness_percentages));
+    stats.insert(
+        "field_completeness_percentage".into(),
+        json!(completeness_percentages),
+    );
 }
 
 /// Adds punctuation statistics
 fn add_punctuation_stats(stats: &mut Map<String, Value>, punctuation_counts: FxHashMap<char, u64>) {
     let mut punct_vec: Vec<_> = punctuation_counts.into_iter().collect();
     punct_vec.sort_by(|a, b| b.1.cmp(&a.1));
-    stats.insert("most_common_punctuation".into(), json!(punct_vec.into_iter().take(10).collect::<Vec<_>>()));
+    stats.insert(
+        "most_common_punctuation".into(),
+        json!(punct_vec.into_iter().take(10).collect::<Vec<_>>()),
+    );
 }
 
 /// Adds corpus overview statistics
@@ -277,13 +307,13 @@ fn add_word_frequency_stats(
 ) {
     let total_words: u64 = word_counts.values().sum();
     let unique_words = word_counts.len();
-    
+
     let avg_words_per_doc = if total_results > 0 {
         total_words as f64 / total_results as f64
     } else {
         0.0
     };
-    
+
     let avg_sentence_length = if sentence_count > 0 {
         total_words as f64 / sentence_count as f64
     } else {
@@ -291,8 +321,10 @@ fn add_word_frequency_stats(
     };
 
     stats.insert("average_words_per_doc".into(), json!(avg_words_per_doc));
-    stats.insert("average_unique_words_per_doc".into(), 
-        json!(unique_words as f64 / total_results as f64));
+    stats.insert(
+        "average_unique_words_per_doc".into(),
+        json!(unique_words as f64 / total_results as f64),
+    );
     stats.insert("vocabulary_size".into(), json!(unique_words));
     stats.insert("average_sentence_length".into(), json!(avg_sentence_length));
 

@@ -1,24 +1,26 @@
 use actix_web::{web, HttpResponse, Responder};
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 use diesel::prelude::*;
 use log::info;
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use tokio::time::{timeout, Duration};
+use utoipa::ToSchema;
 
-use crate::schema::users::dsl::*;
-use crate::schema::solr_databases::dsl as solr_dsl;
+use crate::histtext::embeddings::{cache, stats as embedding_stats};
 use crate::schema::solr_database_info::dsl as info_dsl;
+use crate::schema::solr_databases::dsl as solr_dsl;
 use crate::schema::user_sessions::dsl as session_dsl;
+use crate::schema::users::dsl::*;
+use crate::services::crud::execute_db_query;
 use crate::services::database::Database;
 use crate::services::error::AppError;
-use crate::services::crud::execute_db_query;
-use crate::histtext::embeddings::{cache, stats as embedding_stats};
 use crate::services::request_analytics::{get_analytics_store, RequestAnalytics};
-use crate::services::{request_analytics, user_behavior_analytics, query_analytics, collection_intelligence};
+use crate::services::{
+    collection_intelligence, query_analytics, request_analytics, user_behavior_analytics,
+};
 
-use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use crate::services::security_events::SecurityEventLogger;
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UserActivity {
@@ -80,7 +82,6 @@ pub struct SecurityEvent {
     pub severity: String,
     pub ip_address: Option<String>,
 }
-
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct DashboardStats {
@@ -146,23 +147,24 @@ async fn check_solr_database_status(
     db_pool: &web::Data<Database>,
 ) -> SolrDatabaseStatus {
     let start_time = std::time::Instant::now();
-    
+
     // Test basic connectivity
     let base_url = format!("http://localhost:{}/solr", db.local_port);
     let status_check = timeout(
         Duration::from_secs(5),
-        client.get(&format!("{}/admin/cores?action=STATUS&wt=json", base_url)).send()
-    ).await;
+        client
+            .get(&format!("{}/admin/cores?action=STATUS&wt=json", base_url))
+            .send(),
+    )
+    .await;
 
     match status_check {
         Ok(Ok(response)) if response.status().is_success() => {
             let response_time = start_time.elapsed().as_millis() as u64;
-            
+
             // Get collections info
             let collections = get_collections_status(client, db, db_pool).await;
-            let total_docs: i64 = collections.iter()
-                .filter_map(|c| c.document_count)
-                .sum();
+            let total_docs: i64 = collections.iter().filter_map(|c| c.document_count).sum();
 
             SolrDatabaseStatus {
                 id: db.id,
@@ -173,40 +175,34 @@ async fn check_solr_database_status(
                 response_time_ms: Some(response_time),
                 error_message: None,
             }
-        },
-        Ok(Ok(response)) => {
-            SolrDatabaseStatus {
-                id: db.id,
-                name: db.name.clone(),
-                status: "error".to_string(),
-                document_count: None,
-                collections: vec![],
-                response_time_ms: Some(start_time.elapsed().as_millis() as u64),
-                error_message: Some(format!("HTTP {}", response.status())),
-            }
-        },
-        Ok(Err(e)) => {
-            SolrDatabaseStatus {
-                id: db.id,
-                name: db.name.clone(),
-                status: "error".to_string(),
-                document_count: None,
-                collections: vec![],
-                response_time_ms: None,
-                error_message: Some(e.to_string()),
-            }
-        },
-        Err(_) => {
-            SolrDatabaseStatus {
-                id: db.id,
-                name: db.name.clone(),
-                status: "offline".to_string(),
-                document_count: None,
-                collections: vec![],
-                response_time_ms: None,
-                error_message: Some("Connection timeout".to_string()),
-            }
         }
+        Ok(Ok(response)) => SolrDatabaseStatus {
+            id: db.id,
+            name: db.name.clone(),
+            status: "error".to_string(),
+            document_count: None,
+            collections: vec![],
+            response_time_ms: Some(start_time.elapsed().as_millis() as u64),
+            error_message: Some(format!("HTTP {}", response.status())),
+        },
+        Ok(Err(e)) => SolrDatabaseStatus {
+            id: db.id,
+            name: db.name.clone(),
+            status: "error".to_string(),
+            document_count: None,
+            collections: vec![],
+            response_time_ms: None,
+            error_message: Some(e.to_string()),
+        },
+        Err(_) => SolrDatabaseStatus {
+            id: db.id,
+            name: db.name.clone(),
+            status: "offline".to_string(),
+            document_count: None,
+            collections: vec![],
+            response_time_ms: None,
+            error_message: Some("Connection timeout".to_string()),
+        },
     }
 }
 
@@ -216,18 +212,20 @@ async fn get_collections_status(
     db_pool: &web::Data<Database>,
 ) -> Vec<CollectionStatus> {
     let mut collections = vec![];
-    
+
     // Get collection info from database
-    let solr_db_id = db.id;  // Copy the i32 value instead of capturing the reference
+    let solr_db_id = db.id; // Copy the i32 value instead of capturing the reference
     let db_infos = execute_db_query(db_pool.clone(), move |conn| {
         info_dsl::solr_database_info
             .filter(info_dsl::solr_database_id.eq(solr_db_id))
             .load::<crate::services::solr_database_info::SolrDatabaseInfo>(conn)
-    }).await.unwrap_or_default();
+    })
+    .await
+    .unwrap_or_default();
 
     for info in db_infos {
         let doc_count = get_collection_document_count(client, db, &info.collection_name).await;
-        
+
         collections.push(CollectionStatus {
             name: info.collection_name,
             document_count: doc_count,
@@ -239,7 +237,7 @@ async fn get_collections_status(
             },
         });
     }
-    
+
     collections
 }
 
@@ -252,7 +250,7 @@ async fn get_collection_document_count(
         "http://localhost:{}/solr/{}/select?q=*:*&rows=0&wt=json",
         db.local_port, collection
     );
-    
+
     match timeout(Duration::from_secs(10), client.get(&url).send()).await {
         Ok(Ok(response)) if response.status().is_success() => {
             if let Ok(json) = response.json::<serde_json::Value>().await {
@@ -262,8 +260,8 @@ async fn get_collection_document_count(
             } else {
                 None
             }
-        },
-        _ => None
+        }
+        _ => None,
     }
 }
 
@@ -278,20 +276,22 @@ async fn get_collection_document_count(
     security(("bearer_auth" = []))
 )]
 pub async fn get_dashboard_stats(db: web::Data<Database>) -> Result<HttpResponse, AppError> {
-    let user_count = execute_db_query(db.clone(), |conn| {
-        users.count().get_result::<i64>(conn)
-    }).await?;
+    let user_count =
+        execute_db_query(db.clone(), |conn| users.count().get_result::<i64>(conn)).await?;
 
     let collection_count = execute_db_query(db.clone(), |conn| {
         solr_dsl::solr_databases.count().get_result::<i64>(conn)
-    }).await?;
+    })
+    .await?;
 
     let active_collections = execute_db_query(db.clone(), |conn| {
         info_dsl::solr_database_info
             .filter(info_dsl::embeddings.ne("none"))
             .count()
             .get_result::<i64>(conn)
-    }).await.unwrap_or(0);
+    })
+    .await
+    .unwrap_or(0);
 
     let cache_info = cache::get_cache_info().await;
     let total_docs = cache_info.2 as i64;
@@ -317,56 +317,64 @@ pub async fn get_dashboard_stats(db: web::Data<Database>) -> Result<HttpResponse
     security(("bearer_auth" = []))
 )]
 pub async fn get_comprehensive_dashboard_stats(
-    db: web::Data<Database>
+    db: web::Data<Database>,
 ) -> Result<HttpResponse, AppError> {
     let client = Client::new();
-    
+
     // Get basic user stats
-    let user_count = execute_db_query(db.clone(), |conn| {
-        users.count().get_result::<i64>(conn)
-    }).await?;
+    let user_count =
+        execute_db_query(db.clone(), |conn| users.count().get_result::<i64>(conn)).await?;
 
     let collection_count = execute_db_query(db.clone(), |conn| {
         solr_dsl::solr_databases.count().get_result::<i64>(conn)
-    }).await?;
+    })
+    .await?;
 
     let active_collections = execute_db_query(db.clone(), |conn| {
         info_dsl::solr_database_info
             .filter(info_dsl::embeddings.ne("none"))
             .count()
             .get_result::<i64>(conn)
-    }).await.unwrap_or(0);
+    })
+    .await
+    .unwrap_or(0);
 
     // Get active sessions (sessions from last 24 hours)
     let active_sessions = execute_db_query(db.clone(), |conn| {
-        use chrono::{Utc, Duration as ChronoDuration};
+        use chrono::{Duration as ChronoDuration, Utc};
         let yesterday = Utc::now().naive_utc() - ChronoDuration::hours(24);
-        
+
         session_dsl::user_sessions
             .filter(session_dsl::updated_at.gt(yesterday))
             .count()
             .get_result::<i64>(conn)
-    }).await.unwrap_or(0);
+    })
+    .await
+    .unwrap_or(0);
 
     // Get recent registrations (last 24 hours)
     let recent_registrations = execute_db_query(db.clone(), |conn| {
-        use chrono::{Utc, Duration as ChronoDuration};
+        use chrono::{Duration as ChronoDuration, Utc};
         let yesterday = Utc::now().naive_utc() - ChronoDuration::hours(24);
-        
-        users.filter(created_at.gt(yesterday))
+
+        users
+            .filter(created_at.gt(yesterday))
             .count()
             .get_result::<i64>(conn)
-    }).await.unwrap_or(0);
+    })
+    .await
+    .unwrap_or(0);
 
     // Get all Solr databases
     let solr_databases_list = execute_db_query(db.clone(), |conn| {
         solr_dsl::solr_databases.load::<crate::services::solr_database::SolrDatabase>(conn)
-    }).await?;
+    })
+    .await?;
 
     // Check status of each Solr database
     let mut solr_statuses = vec![];
     let mut total_documents = 0i64;
-    
+
     for solr_db in solr_databases_list {
         let status = check_solr_database_status(&client, &solr_db, &db).await;
         if let Some(doc_count) = status.document_count {
@@ -425,7 +433,7 @@ pub async fn get_embeddings_stats() -> impl Responder {
 pub async fn clear_embeddings_cache() -> impl Responder {
     cache::clear_caches().await;
     info!("Embedding cache cleared by admin request");
-    
+
     HttpResponse::Ok().json(serde_json::json!({
         "message": "Embedding cache cleared successfully",
         "timestamp": chrono::Utc::now()
@@ -459,9 +467,7 @@ pub async fn get_request_analytics() -> Result<HttpResponse, AppError> {
     ),
     security(("bearer_auth" = []))
 )]
-pub async fn get_user_activity(
-    db: web::Data<Database>
-) -> Result<HttpResponse, AppError> {
+pub async fn get_user_activity(db: web::Data<Database>) -> Result<HttpResponse, AppError> {
     let now = Utc::now().naive_utc();
     let twenty_four_hours_ago = now - ChronoDuration::hours(24);
     let one_week_ago = now - ChronoDuration::weeks(1);
@@ -470,7 +476,7 @@ pub async fn get_user_activity(
     // Get recent successful logins (from sessions)
     let recent_logins = execute_db_query(db.clone(), move |conn| {
         use crate::schema::users::dsl as users_dsl;
-        
+
         session_dsl::user_sessions
             .inner_join(users_dsl::users.on(users_dsl::id.eq(session_dsl::user_id)))
             .filter(session_dsl::created_at.gt(twenty_four_hours_ago))
@@ -484,29 +490,40 @@ pub async fn get_user_activity(
                 session_dsl::created_at,
                 session_dsl::device,
             ))
-            .load::<(i32, String, String, String, chrono::NaiveDateTime, Option<String>)>(conn)
-    }).await.unwrap_or_default();
+            .load::<(
+                i32,
+                String,
+                String,
+                String,
+                chrono::NaiveDateTime,
+                Option<String>,
+            )>(conn)
+    })
+    .await
+    .unwrap_or_default();
 
     let recent_logins: Vec<RecentLogin> = recent_logins
         .into_iter()
-        .map(|(user_id, user_email, user_firstname, user_lastname, login_time, device)| {
-            RecentLogin {
-                user_id,
-                email: user_email,
-                firstname: user_firstname,
-                lastname: user_lastname,
-                login_time: DateTime::from_naive_utc_and_offset(login_time, Utc),
-                device,
-                ip_address: None, // Would need to be tracked separately
-                success: true,
-            }
-        })
+        .map(
+            |(user_id, user_email, user_firstname, user_lastname, login_time, device)| {
+                RecentLogin {
+                    user_id,
+                    email: user_email,
+                    firstname: user_firstname,
+                    lastname: user_lastname,
+                    login_time: DateTime::from_naive_utc_and_offset(login_time, Utc),
+                    device,
+                    ip_address: None, // Would need to be tracked separately
+                    success: true,
+                }
+            },
+        )
         .collect();
 
     // Get recent user registrations
     let user_registrations = execute_db_query(db.clone(), move |conn| {
         use crate::schema::users::dsl as users_dsl;
-        
+
         users_dsl::users
             .filter(users_dsl::created_at.gt(one_week_ago))
             .order(users_dsl::created_at.desc())
@@ -520,21 +537,32 @@ pub async fn get_user_activity(
                 users_dsl::activated,
             ))
             .load::<(i32, String, String, String, chrono::NaiveDateTime, bool)>(conn)
-    }).await.unwrap_or_default();
+    })
+    .await
+    .unwrap_or_default();
 
     let user_registrations: Vec<UserRegistration> = user_registrations
         .into_iter()
-        .map(|(user_id, user_email, user_firstname, user_lastname, registration_time, user_activated)| {
-            UserRegistration {
+        .map(
+            |(
                 user_id,
-                email: user_email,
-                firstname: user_firstname,
-                lastname: user_lastname,
-                registration_time: DateTime::from_naive_utc_and_offset(registration_time, Utc),
-                activated: user_activated,
-                activation_time: None, // Would need to be tracked separately
-            }
-        })
+                user_email,
+                user_firstname,
+                user_lastname,
+                registration_time,
+                user_activated,
+            )| {
+                UserRegistration {
+                    user_id,
+                    email: user_email,
+                    firstname: user_firstname,
+                    lastname: user_lastname,
+                    registration_time: DateTime::from_naive_utc_and_offset(registration_time, Utc),
+                    activated: user_activated,
+                    activation_time: None, // Would need to be tracked separately
+                }
+            },
+        )
         .collect();
 
     // Calculate session statistics
@@ -566,7 +594,9 @@ pub async fn get_user_activity(
             .get_result::<i64>(conn)?;
 
         Ok((total_active, sessions_24h, sessions_week, unique_users_24h))
-    }).await.unwrap_or((0, 0, 0, 0));
+    })
+    .await
+    .unwrap_or((0, 0, 0, 0));
 
     let session_statistics = SessionStatistics {
         total_active_sessions: session_stats.0,
@@ -576,8 +606,9 @@ pub async fn get_user_activity(
         unique_users_24h: session_stats.3,
     };
 
-
-    let security_events_data = SecurityEventLogger::get_recent_events(db.clone(), 20).await.unwrap_or_default();
+    let security_events_data = SecurityEventLogger::get_recent_events(db.clone(), 20)
+        .await
+        .unwrap_or_default();
 
     let security_events: Vec<SecurityEvent> = security_events_data
         .into_iter()
@@ -594,14 +625,16 @@ pub async fn get_user_activity(
     // Get real failed login attempts from security events
     let failed_login_events = execute_db_query(db.clone(), move |conn| {
         use crate::schema::security_events::dsl::*;
-        
+
         security_events
             .filter(event_type.eq("failed_login"))
             .filter(created_at.gt(twenty_four_hours_ago))
             .order(created_at.desc())
             .limit(10)
             .load::<crate::services::security_events::SecurityEvent>(conn)
-    }).await.unwrap_or_default();
+    })
+    .await
+    .unwrap_or_default();
 
     let failed_login_attempts: Vec<FailedLoginAttempt> = failed_login_events
         .into_iter()
@@ -638,7 +671,9 @@ pub async fn get_user_activity(
     security(("bearer_auth" = []))
 )]
 pub async fn get_enhanced_request_analytics() -> Result<HttpResponse, AppError> {
-    let analytics = request_analytics::get_analytics_store().get_analytics().await;
+    let analytics = request_analytics::get_analytics_store()
+        .get_analytics()
+        .await;
     Ok(HttpResponse::Ok().json(analytics))
 }
 
@@ -654,7 +689,9 @@ pub async fn get_enhanced_request_analytics() -> Result<HttpResponse, AppError> 
     security(("bearer_auth" = []))
 )]
 pub async fn get_user_behavior_analytics() -> Result<HttpResponse, AppError> {
-    let analytics = user_behavior_analytics::get_user_behavior_store().get_user_behavior_analytics().await;
+    let analytics = user_behavior_analytics::get_user_behavior_store()
+        .get_user_behavior_analytics()
+        .await;
     Ok(HttpResponse::Ok().json(analytics))
 }
 
@@ -670,7 +707,9 @@ pub async fn get_user_behavior_analytics() -> Result<HttpResponse, AppError> {
     security(("bearer_auth" = []))
 )]
 pub async fn get_query_analytics() -> Result<HttpResponse, AppError> {
-    let analytics = query_analytics::get_query_analytics_store().get_query_analytics().await;
+    let analytics = query_analytics::get_query_analytics_store()
+        .get_query_analytics()
+        .await;
     Ok(HttpResponse::Ok().json(analytics))
 }
 
@@ -686,6 +725,8 @@ pub async fn get_query_analytics() -> Result<HttpResponse, AppError> {
     security(("bearer_auth" = []))
 )]
 pub async fn get_collection_intelligence() -> Result<HttpResponse, AppError> {
-    let intelligence = collection_intelligence::get_collection_intelligence_store().get_collection_intelligence().await;
+    let intelligence = collection_intelligence::get_collection_intelligence_store()
+        .get_collection_intelligence()
+        .await;
     Ok(HttpResponse::Ok().json(intelligence))
 }

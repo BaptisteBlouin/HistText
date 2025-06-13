@@ -1,3 +1,5 @@
+pub mod app_configurations;
+pub mod common;
 pub mod solr_database_permissions;
 pub mod solr_databases;
 

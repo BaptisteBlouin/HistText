@@ -10,12 +10,14 @@ import { ResetPage } from "./containers/ResetPage";
 import { ProtectedRoute } from "./components/RouteGuards";
 import { LogoutButton } from "./components/LogoutButton";
 import { KeyboardShortcutsHelp, MobileBottomNavigation } from "./components/ui";
+import AlertBanner from "./components/AlertBanner";
 import React, { useState } from "react";
 import "./App.css";
 import "./styles/ag-grid-dark-theme.css";
 import "./styles/responsive.css";
 import { CustomThemeProvider, useThemeMode } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { ConfigurationProvider } from "./contexts/ConfigurationContext";
 import { useResponsive } from "./lib/responsive-utils";
 import { Home } from "./containers/Home";
 import { Route, useNavigate, Routes } from "react-router-dom";
@@ -64,12 +66,20 @@ const AppContent = () => {
   const { darkMode, toggleDarkMode } = useThemeMode();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [alertDismissed, setAlertDismissed] = useState(() => {
+    return localStorage.getItem("alertDismissed") === "true";
+  });
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
   const handleSidebarToggle = () => {
     setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  const handleAlertDismiss = () => {
+    setAlertDismissed(true);
+    localStorage.setItem("alertDismissed", "true");
   };
 
   // Global keyboard navigation
@@ -584,7 +594,16 @@ const AppContent = () => {
       : drawerWidth;
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <>
+      {/* System-wide Alert Banner */}
+      <AlertBanner 
+        onDismiss={handleAlertDismiss} 
+        dismissed={alertDismissed}
+        sidebarCollapsed={sidebarCollapsed}
+        currentDrawerWidth={currentDrawerWidth}
+      />
+      
+      <Box sx={{ display: "flex", minHeight: "100vh" }}>
       {/* Mobile Menu Button */}
       {isMobile && (
         <Fab
@@ -675,7 +694,7 @@ const AppContent = () => {
           bgcolor: "background.default",
           minHeight: "100vh",
           paddingBottom: { xs: '80px', sm: 0 }, // Space for mobile bottom nav
-          pt: isMobile ? { xs: 7, sm: 8 } : 0,
+          pt: isMobile ? { xs: 7, sm: 8 } : (!alertDismissed ? '56px' : 0), // Add padding for alert banner when shown
           px: { xs: 1, sm: 0 },
           transition: theme.transitions.create(["margin", "padding"], {
             easing: theme.transitions.easing.sharp,
@@ -732,6 +751,7 @@ const AppContent = () => {
       {/* Mobile Bottom Navigation */}
       <MobileBottomNavigation />
     </Box>
+    </>
   );
 };
 
@@ -740,9 +760,11 @@ const App = () => {
   return (
     <CustomThemeProvider>
       <NotificationProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
+        <ConfigurationProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ConfigurationProvider>
       </NotificationProvider>
     </CustomThemeProvider>
   );

@@ -1,7 +1,7 @@
+use crate::histtext::embeddings::stats::{record_search_time, record_similarity_time};
 use crate::histtext::embeddings::types::{
     Embedding, EmbeddingMap, NeighborResult, NeighborsRequest, NeighborsResponse,
 };
-use crate::histtext::embeddings::stats::{record_similarity_time, record_search_time};
 use log::{debug, warn};
 use rayon::prelude::*;
 use std::cmp::Ordering;
@@ -66,7 +66,7 @@ impl SimilaritySearcher {
         embeddings: &EmbeddingMap,
     ) -> NeighborsResponse {
         let search_start = Instant::now();
-        
+
         let query_word = request.word.to_lowercase();
         let k = request.get_k();
         let threshold = request.get_threshold();
@@ -93,9 +93,23 @@ impl SimilaritySearcher {
         };
 
         let neighbors = if self.use_parallel && embeddings.len() > self.parallel_threshold {
-            self.parallel_search(query_embedding, embeddings, &query_word, k, threshold, include_scores)
+            self.parallel_search(
+                query_embedding,
+                embeddings,
+                &query_word,
+                k,
+                threshold,
+                include_scores,
+            )
         } else {
-            self.sequential_search(query_embedding, embeddings, &query_word, k, threshold, include_scores)
+            self.sequential_search(
+                query_embedding,
+                embeddings,
+                &query_word,
+                k,
+                threshold,
+                include_scores,
+            )
         };
 
         record_search_time(search_start.elapsed());
@@ -152,7 +166,7 @@ impl SimilaritySearcher {
             let sim_start = Instant::now();
             let similarity = self.compute_similarity(query_embedding, embedding);
             record_similarity_time(sim_start.elapsed());
-            
+
             if similarity < threshold {
                 continue;
             }
@@ -173,7 +187,11 @@ impl SimilaritySearcher {
         }
 
         let mut results: Vec<_> = heap.into_vec();
-        results.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap_or(Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.similarity
+                .partial_cmp(&a.similarity)
+                .unwrap_or(Ordering::Equal)
+        });
 
         results
             .into_iter()
@@ -193,9 +211,7 @@ impl SimilaritySearcher {
         k: usize,
         include_scores: bool,
     ) -> Vec<NeighborResult> {
-        candidates.par_sort_unstable_by(|a, b| {
-            b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal)
-        });
+        candidates.par_sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
 
         candidates
             .into_iter()
@@ -212,10 +228,21 @@ impl SimilaritySearcher {
 
     pub fn compute_similarity(&self, embedding1: &Embedding, embedding2: &Embedding) -> f32 {
         match self.metric {
-            SimilarityMetric::Cosine => cosine_similarity(&embedding1.vector, embedding1.norm, &embedding2.vector, embedding2.norm),
-            SimilarityMetric::Euclidean => euclidean_similarity(&embedding1.vector, &embedding2.vector),
-            SimilarityMetric::DotProduct => dot_product_similarity(&embedding1.vector, &embedding2.vector),
-            SimilarityMetric::Manhattan => manhattan_similarity(&embedding1.vector, &embedding2.vector),
+            SimilarityMetric::Cosine => cosine_similarity(
+                &embedding1.vector,
+                embedding1.norm,
+                &embedding2.vector,
+                embedding2.norm,
+            ),
+            SimilarityMetric::Euclidean => {
+                euclidean_similarity(&embedding1.vector, &embedding2.vector)
+            }
+            SimilarityMetric::DotProduct => {
+                dot_product_similarity(&embedding1.vector, &embedding2.vector)
+            }
+            SimilarityMetric::Manhattan => {
+                manhattan_similarity(&embedding1.vector, &embedding2.vector)
+            }
         }
     }
 }
@@ -260,14 +287,11 @@ pub fn cosine_similarity(vec1: &[f32], norm1: f32, vec2: &[f32], norm2: f32) -> 
 pub fn dot_product(vec1: &[f32], vec2: &[f32]) -> f32 {
     debug_assert_eq!(vec1.len(), vec2.len());
     dot_product_scalar(vec1, vec2)
-}   
+}
 
 #[inline]
 fn dot_product_scalar(vec1: &[f32], vec2: &[f32]) -> f32 {
-    vec1.iter()
-        .zip(vec2.iter())
-        .map(|(a, b)| a * b)
-        .sum()
+    vec1.iter().zip(vec2.iter()).map(|(a, b)| a * b).sum()
 }
 
 #[inline]
@@ -280,7 +304,7 @@ pub fn euclidean_similarity(vec1: &[f32], vec2: &[f32]) -> f32 {
             diff * diff
         })
         .sum();
-    
+
     let distance = distance_squared.sqrt();
     1.0 / (1.0 + distance)
 }
@@ -288,10 +312,10 @@ pub fn euclidean_similarity(vec1: &[f32], vec2: &[f32]) -> f32 {
 #[inline]
 pub fn dot_product_similarity(vec1: &[f32], vec2: &[f32]) -> f32 {
     let dot = dot_product(vec1, vec2);
-    
+
     let norm1: f32 = vec1.iter().map(|x| x * x).sum::<f32>().sqrt();
     let norm2: f32 = vec2.iter().map(|x| x * x).sum::<f32>().sqrt();
-    
+
     if norm1 == 0.0 || norm2 == 0.0 {
         0.0
     } else {
@@ -306,7 +330,7 @@ pub fn manhattan_similarity(vec1: &[f32], vec2: &[f32]) -> f32 {
         .zip(vec2.iter())
         .map(|(a, b)| (a - b).abs())
         .sum();
-    
+
     1.0 / (1.0 + distance)
 }
 
@@ -324,9 +348,15 @@ pub fn batch_similarities(
                     SimilarityMetric::Cosine => {
                         cosine_similarity(&query.vector, query.norm, &target.vector, target.norm)
                     }
-                    SimilarityMetric::Euclidean => euclidean_similarity(&query.vector, &target.vector),
-                    SimilarityMetric::DotProduct => dot_product_similarity(&query.vector, &target.vector),
-                    SimilarityMetric::Manhattan => manhattan_similarity(&query.vector, &target.vector),
+                    SimilarityMetric::Euclidean => {
+                        euclidean_similarity(&query.vector, &target.vector)
+                    }
+                    SimilarityMetric::DotProduct => {
+                        dot_product_similarity(&query.vector, &target.vector)
+                    }
+                    SimilarityMetric::Manhattan => {
+                        manhattan_similarity(&query.vector, &target.vector)
+                    }
                 })
                 .collect()
         })

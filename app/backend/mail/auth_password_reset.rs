@@ -28,7 +28,7 @@ use crate::services::mailer::Mailer;
 /// ```
 pub async fn send(mailer: &Mailer, to_email: &str) {
     let subject = "HistText Password Reset Complete";
-    
+
     let text = r"(This is an automated message.)
 
 Hello,

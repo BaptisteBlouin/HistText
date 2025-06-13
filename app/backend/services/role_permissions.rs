@@ -13,8 +13,8 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::schema::role_permissions;
 use crate::services::crud::execute_db_query;
-use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
+use crate::services::error::{AppError, AppResult};
 
 /// Role permission record from the database
 ///
@@ -122,7 +122,7 @@ impl RolePermissionHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(String, String)>,
-        ) -> AppResult<HttpResponse> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::role_permissions::dsl::*;
         let (role_param, permission_param) = path.into_inner();
         let result = execute_db_query(db, move |conn| {
@@ -171,7 +171,7 @@ impl RolePermissionHandler {
         &self,
         db: web::Data<Database>,
         path: web::Path<(String, String)>,
-        ) -> AppResult<HttpResponse> {
+    ) -> AppResult<HttpResponse> {
         use crate::schema::role_permissions::dsl::*;
         let (role_param, permission_param) = path.into_inner();
         let identifier = format!("{}/{}", role_param, permission_param);
@@ -216,11 +216,11 @@ impl RolePermissionHandler {
     )
 )]
 pub async fn get_role_permissions(
-   db: web::Data<Database>,
-   config: web::Data<Arc<Config>>,
+    db: web::Data<Database>,
+    config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
-   let handler = RolePermissionHandler::new(config.get_ref().clone());
-   handler.list(db).await
+    let handler = RolePermissionHandler::new(config.get_ref().clone());
+    handler.list(db).await
 }
 
 /// Retrieves a specific role-permission mapping
@@ -253,12 +253,12 @@ pub async fn get_role_permissions(
     )
 )]
 pub async fn get_role_permission_by_role_and_permission(
-   db: web::Data<Database>,
-   path: web::Path<(String, String)>,
-   config: web::Data<Arc<Config>>,
+    db: web::Data<Database>,
+    path: web::Path<(String, String)>,
+    config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
-   let handler = RolePermissionHandler::new(config.get_ref().clone());
-   handler.get_by_role_and_permission(db, path).await
+    let handler = RolePermissionHandler::new(config.get_ref().clone());
+    handler.get_by_role_and_permission(db, path).await
 }
 
 /// Creates a new role-permission mapping
@@ -288,12 +288,12 @@ pub async fn get_role_permission_by_role_and_permission(
     )
 )]
 pub async fn create_role_permission(
-   db: web::Data<Database>,
-   item: web::Json<NewRolePermission>,
-   config: web::Data<Arc<Config>>,
+    db: web::Data<Database>,
+    item: web::Json<NewRolePermission>,
+    config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
-   let handler = RolePermissionHandler::new(config.get_ref().clone());
-   handler.create(db, item).await
+    let handler = RolePermissionHandler::new(config.get_ref().clone());
+    handler.create(db, item).await
 }
 
 /// Deletes a role-permission mapping
@@ -327,10 +327,10 @@ pub async fn create_role_permission(
     )
 )]
 pub async fn delete_role_permission(
-   db: web::Data<Database>,
-   path: web::Path<(String, String)>,
-   config: web::Data<Arc<Config>>,
+    db: web::Data<Database>,
+    path: web::Path<(String, String)>,
+    config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
-   let handler = RolePermissionHandler::new(config.get_ref().clone());
-   handler.delete(db, path).await
+    let handler = RolePermissionHandler::new(config.get_ref().clone());
+    handler.delete(db, path).await
 }

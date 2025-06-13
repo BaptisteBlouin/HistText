@@ -1,16 +1,16 @@
 //! Document search and retrieval functionality.
 
+use percent_encoding::percent_decode_str;
+use regex::Regex;
 use reqwest::Client;
 use serde_json::Value;
-use regex::Regex;
-use percent_encoding::percent_decode_str;
 
-use super::utils::{find_all_occurrences_case_insensitive, extract_context, empty_solr_response};
+use super::utils::{empty_solr_response, extract_context, find_all_occurrences_case_insensitive};
 
 const CONTEXT_LENGTH: usize = 150;
 
 /// Fetches documents from Solr with optional text highlighting
-/// 
+///
 /// # Arguments
 /// * `client` - HTTP client for Solr requests
 /// * `port` - Solr instance port
@@ -19,7 +19,7 @@ const CONTEXT_LENGTH: usize = 150;
 /// * `start` - Result offset for pagination
 /// * `rows` - Number of results to return
 /// * `is_first` - Skip text processing for initial requests
-/// 
+///
 /// # Returns
 /// JSON response containing documents and metadata
 pub async fn fetch_documents(
@@ -81,7 +81,8 @@ pub async fn fetch_documents(
 
                     if let Some(matching_key) = matching_key_opt {
                         if let Some(full_text_value) = obj[matching_key].as_str() {
-                            let matches = find_all_occurrences_case_insensitive(full_text_value, &term);
+                            let matches =
+                                find_all_occurrences_case_insensitive(full_text_value, &term);
 
                             if !matches.is_empty() {
                                 if occurrence_mode == "first" {

@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Box, Chip } from "@mui/material";
 import { isIdField, processContent } from "../utils";
+import { useConfig } from "../../../../contexts/ConfigurationContext";
 
 /**
  * Props for the CellRenderer component, which renders table/grid cell values.
@@ -39,6 +40,7 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
     mainTextColumn,
   } = props;
 
+  const config = useConfig();
   const field = colDef.field;
   const isId = useMemo(() => isIdField(field), [field]);
 
@@ -52,6 +54,11 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
       formData,
       showConcordance,
       mainTextColumn || "",
+      {
+        NER_LABELS_COLORS: config.NER_LABELS_COLORS || {},
+        NERLABELS2FULL: config.NERLABELS2FULL || {},
+        viewNERFields: config.viewNERFields || [],
+      },
     );
   }, [
     value,
@@ -62,6 +69,9 @@ const CellRenderer: React.FC<CellRendererProps> = React.memo((props) => {
     formData,
     showConcordance,
     mainTextColumn,
+    config.NER_LABELS_COLORS,
+    config.NERLABELS2FULL,
+    config.viewNERFields,
   ]);
 
   if (!value && value !== 0) return null;

@@ -1,9 +1,12 @@
 // Update .cargo/bin/fullstack.rs
 mod dsync;
 mod tsync;
-use std::{net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6, TcpListener, ToSocketAddrs}, 
-          process::{Command, Stdio}, sync::mpsc};
 use std::thread;
+use std::{
+    net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6, TcpListener, ToSocketAddrs},
+    process::{Command, Stdio},
+    sync::mpsc,
+};
 
 // Port checking functionality
 fn test_bind<A: ToSocketAddrs>(addr: A) -> bool {
@@ -43,12 +46,13 @@ pub fn main() {
 
     // Set up a channel for Ctrl+C handling
     let (tx, rx) = mpsc::channel();
-    
+
     // Set up Ctrl+C handler
     ctrlc::set_handler(move || {
         println!("Received Ctrl+C, shutting down...");
         tx.send(()).expect("Could not send signal");
-    }).expect("Error setting Ctrl+C handler");
+    })
+    .expect("Error setting Ctrl+C handler");
 
     // Run frontend server in a separate thread
     let frontend_dir = format!("{}/frontend", project_dir);
@@ -61,11 +65,11 @@ pub fn main() {
             .stderr(Stdio::inherit())
             .spawn()
             .expect("Failed to start frontend server");
-            
+
         // Return the process handle
         frontend
     });
-    
+
     // Run backend server in the main thread
     println!("Starting backend server...");
     let mut backend = Command::new("cargo")
@@ -75,14 +79,14 @@ pub fn main() {
         .stderr(Stdio::inherit())
         .spawn()
         .expect("Failed to start backend server");
-    
+
     // Wait for Ctrl+C or process termination
     let _ = rx.recv();
-    
+
     // Kill both processes
     backend.kill().expect("Failed to kill backend process");
     let mut frontend = frontend_handle.join().unwrap();
     frontend.kill().expect("Failed to kill frontend process");
-    
+
     println!("Development servers shut down");
 }

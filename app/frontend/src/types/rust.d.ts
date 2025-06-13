@@ -1,5 +1,63 @@
 /* This file is generated and managed by tsync */
 
+/** Struct representing a row in table `app_configurations` */
+interface AppConfigurations {
+  /** Field representing column `id` */
+  id: number;
+  /** Field representing column `config_key` */
+  config_key: string;
+  /** Field representing column `config_value` */
+  config_value: string;
+  /** Field representing column `config_type` */
+  config_type: string;
+  /** Field representing column `category` */
+  category: string;
+  /** Field representing column `description` */
+  description?: string;
+  /** Field representing column `is_system` */
+  is_system: boolean;
+  /** Field representing column `created_at` */
+  created_at: Date;
+  /** Field representing column `updated_at` */
+  updated_at: Date;
+}
+
+/** Create Struct for a row in table `app_configurations` for [`AppConfigurations`] */
+interface CreateAppConfigurations {
+  /** Field representing column `config_key` */
+  config_key: string;
+  /** Field representing column `config_value` */
+  config_value: string;
+  /** Field representing column `config_type` */
+  config_type: string;
+  /** Field representing column `category` */
+  category: string;
+  /** Field representing column `description` */
+  description?: string;
+  /** Field representing column `is_system` */
+  is_system: boolean;
+}
+
+/** Update Struct for a row in table `app_configurations` for [`AppConfigurations`] */
+interface UpdateAppConfigurations {
+  /** Field representing column `config_key` */
+  config_key?: string;
+  /** Field representing column `config_value` */
+  config_value?: string;
+  /** Field representing column `config_type` */
+  config_type?: string;
+  /** Field representing column `category` */
+  category?: string;
+  /** Field representing column `description` */
+  description?: string;
+  /** Field representing column `is_system` */
+  is_system?: boolean;
+  /** Field representing column `created_at` */
+  created_at?: Date;
+  /** Field representing column `updated_at` */
+  updated_at?: Date;
+}
+
 /** Result of a `.paginate` function */
 interface PaginationResult<T> {
   /** Resulting items that are from the current page */
@@ -128,4 +186,50 @@ interface PaginationResult<T> {
   page: number;
   page_size: number;
   num_pages: number;
+}
+
+/** Struct representing a row in table `_sqlx_migrations` */
+interface SqlxMigrations {
+  /** Field representing column `version` */
+  version: number;
+  /** Field representing column `description` */
+  description: string;
+  /** Field representing column `installed_on` */
+  installed_on: Date;
+  /** Field representing column `success` */
+  success: boolean;
+  /** Field representing column `checksum` */
+  checksum: Array<number>;
+  /** Field representing column `execution_time` */
+  execution_time: number;
+}
+
+/** Create Struct for a row in table `_sqlx_migrations` for [`SqlxMigrations`] */
+interface CreateSqlxMigrations {
+  /** Field representing column `version` */
+  version: number;
+  /** Field representing column `description` */
+  description: string;
+  /** Field representing column `installed_on` */
+  installed_on: Date;
+  /** Field representing column `success` */
+  success: boolean;
+  /** Field representing column `checksum` */
+  checksum: Array<number>;
+  /** Field representing column `execution_time` */
+  execution_time: number;
+}
+
+/** Update Struct for a row in table `_sqlx_migrations` for [`SqlxMigrations`] */
+interface UpdateSqlxMigrations {
+  /** Field representing column `description` */
+  description?: string;
+  /** Field representing column `installed_on` */
+  installed_on?: Date;
+  /** Field representing column `success` */
+  success?: boolean;
+  /** Field representing column `checksum` */
+  checksum?: Array<number>;
+  /** Field representing column `execution_time` */
+  execution_time?: number;
 }

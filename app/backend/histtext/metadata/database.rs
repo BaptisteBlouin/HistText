@@ -1,30 +1,30 @@
 //! Database operations for metadata retrieval.
 
-use reqwest::Client;
-use serde_json::Value;
 use diesel::prelude::*;
 use log::error;
+use reqwest::Client;
+use serde_json::Value;
 
 use crate::config::Config;
+use crate::schema::solr_databases::dsl::*;
 use crate::services::database::DbPool;
 use crate::services::solr_database::SolrDatabase;
-use crate::schema::solr_databases::dsl::*;
 
-use super::cache::{generate_cache_key, get_cached_fields, cache_fields};
+use super::cache::{cache_fields, generate_cache_key, get_cached_fields};
 
 /// Fetches and categorizes field metadata for a collection
-/// 
+///
 /// This function retrieves field schema information from Solr and categorizes
 /// fields into relevant fields, text fields, and ID fields based on configuration.
 /// Results are cached to improve performance on subsequent requests.
-/// 
+///
 /// # Arguments
 /// * `client` - HTTP client for Solr requests
 /// * `pool` - Database connection pool
 /// * `solr_database_id` - Database identifier
 /// * `collection` - Collection name
 /// * `ids` - Mutable vector to store discovered ID field names
-/// 
+///
 /// # Returns
 /// Tuple containing (relevant_fields, text_general_fields)
 pub async fn fetch_metadata(
@@ -35,7 +35,7 @@ pub async fn fetch_metadata(
     ids: &mut Vec<String>,
 ) -> (Vec<String>, Vec<String>) {
     let cache_key = generate_cache_key(solr_database_id, collection);
-    
+
     if let Some((relevant, text_general, id_fields)) = get_cached_fields(&cache_key) {
         ids.extend(id_fields);
         return (relevant, text_general);
@@ -119,7 +119,7 @@ pub async fn fetch_metadata(
             }
         }
     }
-    
+
     (Vec::new(), Vec::new())
 }
 
@@ -128,12 +128,13 @@ pub async fn get_solr_database(
     pool: &DbPool,
     database_id: i32,
 ) -> Result<SolrDatabase, diesel::result::Error> {
-    let mut conn = pool.get()
-        .map_err(|_| diesel::result::Error::DatabaseError(
+    let mut conn = pool.get().map_err(|_| {
+        diesel::result::Error::DatabaseError(
             diesel::result::DatabaseErrorKind::UnableToSendCommand,
-            Box::new("Failed to get database connection".to_string())
-        ))?;
-    
+            Box::new("Failed to get database connection".to_string()),
+        )
+    })?;
+
     solr_databases
         .filter(id.eq(database_id))
         .first::<SolrDatabase>(&mut conn)

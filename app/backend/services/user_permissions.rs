@@ -13,8 +13,8 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::schema::user_permissions;
 use crate::services::crud::execute_db_query;
-use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
+use crate::services::error::{AppError, AppResult};
 
 /// User permission assignment record
 ///
@@ -80,10 +80,13 @@ impl UserPermissionHandler {
     /// Ok(()) if valid, or a CrudError with validation details
     fn validate_new(&self, item: &NewUserPermission) -> AppResult<()> {
         if item.user_id <= 0 {
-            return Err(AppError::validation("Invalid user_id",Some("user_id")));
+            return Err(AppError::validation("Invalid user_id", Some("user_id")));
         }
         if item.permission.is_empty() || item.permission.len() > 50 {
-            return Err(AppError::validation("Permission must be between 1 and 50 characters",Some("permission")));
+            return Err(AppError::validation(
+                "Permission must be between 1 and 50 characters",
+                Some("permission"),
+            ));
         }
         Ok(())
     }
@@ -176,7 +179,10 @@ impl UserPermissionHandler {
         })
         .await?;
         if deleted_count == 0 {
-            return Err(AppError::not_found("UserPermission", Option::<String>::None));
+            return Err(AppError::not_found(
+                "UserPermission",
+                Option::<String>::None,
+            ));
         }
         Ok(HttpResponse::Ok().body("UserPermission deleted"))
     }
@@ -211,9 +217,7 @@ pub async fn get_user_permissions(
     config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
     let handler = UserPermissionHandler::new(config.get_ref().clone());
-    handler
-        .list(db)
-        .await
+    handler.list(db).await
 }
 
 /// Retrieves a specific user permission assignment
@@ -251,9 +255,7 @@ pub async fn get_user_permission_by_user_id_and_permission(
     config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
     let handler = UserPermissionHandler::new(config.get_ref().clone());
-    handler
-        .get_by_user_id_and_permission(db, path)
-        .await
+    handler.get_by_user_id_and_permission(db, path).await
 }
 
 /// Creates a new direct user permission assignment

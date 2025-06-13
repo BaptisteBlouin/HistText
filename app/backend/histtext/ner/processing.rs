@@ -1,23 +1,23 @@
 //! NER processing logic and Solr integration.
 
+use log::{debug, error, info};
 use reqwest::Client;
 use serde_json::Value as SerdeValue;
 use std::collections::HashMap;
 use std::io;
-use log::{debug, error, info};
 
 use crate::config::Config;
 
 /// Processes NER annotations for a batch of document IDs
-/// 
+///
 /// This function queries a Solr NER collection to retrieve named entity
 /// annotations for the provided document IDs. It processes documents in
 /// chunks to handle large batches efficiently.
-/// 
+///
 /// # Arguments
 /// * `collection` - Base collection name (NER collection will be derived)
 /// * `ids` - Document IDs to process
-/// 
+///
 /// # Returns
 /// Result containing HashMap of document_id -> NER annotations
 pub async fn get_ner_annotation_batch(
@@ -42,7 +42,7 @@ pub async fn get_ner_annotation_batch(
     debug!("Processing {} IDs for NER", ids.len());
     let client = Client::new();
     let mut results = HashMap::with_capacity(ids.len());
-    
+
     for (chunk_index, ids_chunk) in ids.chunks(50).enumerate() {
         debug!(
             "Processing NER chunk {} with {} IDs",
@@ -50,7 +50,14 @@ pub async fn get_ner_annotation_batch(
             ids_chunk.len()
         );
 
-        let chunk_results = process_ner_chunk(&client, &solr_base_url, &solr_collection, ids_chunk, config.solr_ner_port).await?;
+        let chunk_results = process_ner_chunk(
+            &client,
+            &solr_base_url,
+            &solr_collection,
+            ids_chunk,
+            config.solr_ner_port,
+        )
+        .await?;
         results.extend(chunk_results);
     }
 
@@ -97,18 +104,22 @@ async fn process_ner_chunk(
         ));
     }
 
-    let response_text = response.text().await
-        .map_err(|e| {
-            error!("Failed to read Solr NER response: {}", e);
-            io::Error::new(io::ErrorKind::InvalidData, format!("Failed to read response: {}", e))
-        })?;
+    let response_text = response.text().await.map_err(|e| {
+        error!("Failed to read Solr NER response: {}", e);
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Failed to read response: {}", e),
+        )
+    })?;
 
-    let response_json: SerdeValue = serde_json::from_str(&response_text)
-        .map_err(|e| {
-            error!("Failed to parse Solr NER response as JSON: {}", e);
-            error!("Response text (truncated): {:.200}...", response_text);
-            io::Error::new(io::ErrorKind::InvalidData, format!("Failed to parse Solr response: {}", e))
-        })?;
+    let response_json: SerdeValue = serde_json::from_str(&response_text).map_err(|e| {
+        error!("Failed to parse Solr NER response as JSON: {}", e);
+        error!("Response text (truncated): {:.200}...", response_text);
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Failed to parse Solr response: {}", e),
+        )
+    })?;
 
     let docs = response_json
         .get("response")
@@ -136,12 +147,12 @@ async fn process_ner_chunk(
 }
 
 /// Extracts document ID from a NER document
-/// 
+///
 /// Tries multiple field names to find the document identifier
-/// 
+///
 /// # Arguments
 /// * `doc` - JSON document from Solr NER response
-/// 
+///
 /// # Returns
 /// Optional document ID string
 pub fn extract_doc_id(doc: &SerdeValue) -> Option<String> {

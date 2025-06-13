@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { Card, CardContent, Box, useTheme } from "@mui/material";
-import { COLUMN_DEFS } from "../constants/columnDefs";
+import { getResponsiveColumnDefs } from "../constants/columnDefs";
+import { useConfig } from "../../../../contexts/ConfigurationContext";
 
 interface StatisticsGridProps {
   rowData: any[];
@@ -17,6 +18,25 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
   onGridReady,
 }) => {
   const theme = useTheme();
+  const config = useConfig();
+  
+  // Get responsive breakpoints from configuration
+  const breakpoints = React.useMemo(() => {
+    try {
+      return config.ui_statistics_responsive_breakpoints 
+        ? (typeof config.ui_statistics_responsive_breakpoints === 'string' 
+           ? JSON.parse(config.ui_statistics_responsive_breakpoints) 
+           : config.ui_statistics_responsive_breakpoints)
+        : { mobile: 480, tablet: 768, desktop: 1024 };
+    } catch {
+      return { mobile: 480, tablet: 768, desktop: 1024 };
+    }
+  }, [config.ui_statistics_responsive_breakpoints]);
+
+  // Get responsive column definitions
+  const COLUMN_DEFS = React.useMemo(() => {
+    return getResponsiveColumnDefs(window.innerWidth, breakpoints);
+  }, [breakpoints]);
   
   // Inject theme-aware styles for AG Grid
   useEffect(() => {

@@ -32,6 +32,7 @@ import {
   generatePythonScript,
   generateRScript,
 } from "../utils/codeGenerator";
+import { useConfig } from "../../../../contexts/ConfigurationContext";
 
 /**
  * Props for the CodeGeneration component.
@@ -89,6 +90,7 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
   statsLevel,
   accessToken,
 }) => {
+  const config = useConfig();
   const theme = useTheme();
   const [codeModalOpen, setCodeModalOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
@@ -111,6 +113,8 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
           downloadOnly,
           statsLevel,
           accessToken,
+          config.batch_size,
+          config.default_date_name,
         ),
     },
     {
@@ -129,6 +133,8 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
           downloadOnly,
           statsLevel,
           accessToken,
+          config.batch_size,
+          config.default_date_name,
         ),
     },
     {
@@ -147,6 +153,8 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
           downloadOnly,
           statsLevel,
           accessToken,
+          config.batch_size,
+          config.default_date_name,
         ),
     },
   ];

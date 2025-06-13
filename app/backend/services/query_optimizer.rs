@@ -3,14 +3,9 @@ use serde_json::Value;
 pub struct QueryOptimizer;
 
 impl QueryOptimizer {
-    pub fn optimize_solr_query(
-        collection: &str,
-        query: &str,
-        start: u32,
-        rows: u32,
-    ) -> String {
+    pub fn optimize_solr_query(collection: &str, query: &str, start: u32, rows: u32) -> String {
         let mut optimized_query = query.to_string();
-        
+
         if query == "*:*" {
             optimized_query = format!("{}:*", Self::get_primary_field(collection));
         }
@@ -27,21 +22,17 @@ impl QueryOptimizer {
 
     pub fn optimize_field_list(collection: &str, fields: &[String]) -> Vec<String> {
         let mut optimized = fields.to_vec();
-        
+
         if collection.contains("large") {
             optimized.retain(|f| !f.ends_with("_txt") || f.len() < 50);
         }
-        
+
         optimized
     }
 
     pub fn estimate_response_size(docs: &[Value]) -> usize {
         docs.iter()
-            .map(|doc| {
-                serde_json::to_string(doc)
-                    .map(|s| s.len())
-                    .unwrap_or(100)
-            })
+            .map(|doc| serde_json::to_string(doc).map(|s| s.len()).unwrap_or(100))
             .sum()
     }
 

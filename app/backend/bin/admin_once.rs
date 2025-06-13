@@ -9,7 +9,6 @@
 //!
 //! It's typically run once during initial setup or deployment.
 
-
 use dotenvy::dotenv;
 use log::{info, warn};
 use sqlx::PgPool;
@@ -25,16 +24,15 @@ fn generate_salt() -> [u8; 16] {
 
 /// Hash password using Argon2id
 fn hash_password(password: &str) -> Result<String, argon2::Error> {
-    let secret_key = env::var("SECRET_KEY")
-        .unwrap_or_else(|_| "default_secret_key".to_string());
-    
+    let secret_key = env::var("SECRET_KEY").unwrap_or_else(|_| "default_secret_key".to_string());
+
     let config = argon2::Config {
         variant: argon2::Variant::Argon2id,
         version: argon2::Version::Version13,
         secret: secret_key.as_bytes(),
         ..Default::default()
     };
-    
+
     let salt = generate_salt();
     argon2::hash_encoded(password.as_bytes(), &salt, &config)
 }
@@ -52,7 +50,7 @@ fn hash_password(password: &str) -> Result<String, argon2::Error> {
 /// # Errors
 /// Returns a database error if any operation fails
 #[tokio::main]
-async fn main() -> Result<(), sqlx::Error> {    
+async fn main() -> Result<(), sqlx::Error> {
     // Load environment variables
     dotenv().ok();
 
@@ -62,7 +60,6 @@ async fn main() -> Result<(), sqlx::Error> {
 
     info!("Connected to database, starting admin initialization");
 
-
     // Check if admin user exists
     let existing_admin: Option<(i32,)> = sqlx::query_as("SELECT id FROM users WHERE email = $1")
         .bind("admin")
@@ -71,22 +68,23 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // Create admin user if it doesn't exist
     let user_id = if let Some((id,)) = existing_admin {
-        info!("Admin user already exists with ID: {}. Skipping creation.", id);
+        info!(
+            "Admin user already exists with ID: {}. Skipping creation.",
+            id
+        );
         id
     } else {
         info!("Creating new admin user");
 
         // Generate secure password or use environment variable
-        let admin_password = env::var("ADMIN_PASSWORD")
-            .unwrap_or_else(|_| {
-                warn!("ADMIN_PASSWORD not set, using default password 'admin'");
-                warn!("SECURITY WARNING: Change the default password immediately!");
-                "admin".to_string()
-            });
+        let admin_password = env::var("ADMIN_PASSWORD").unwrap_or_else(|_| {
+            warn!("ADMIN_PASSWORD not set, using default password 'admin'");
+            warn!("SECURITY WARNING: Change the default password immediately!");
+            "admin".to_string()
+        });
 
         // Hash the password using the centralized service
-        let hashed_password = hash_password(&admin_password)
-        .map_err(|e| {
+        let hashed_password = hash_password(&admin_password).map_err(|e| {
             eprintln!("Password hashing error: {:?}", e);
             sqlx::Error::Protocol("Password hashing failed".into())
         })?;
@@ -105,7 +103,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .await?;
 
         info!("Admin user created with ID: {}", inserted_admin.id);
-        
+
         if admin_password == "admin" {
             warn!("==========================================");
             warn!("SECURITY WARNING: Default password in use!");
@@ -113,7 +111,7 @@ async fn main() -> Result<(), sqlx::Error> {
             warn!("Default credentials: admin / admin");
             warn!("==========================================");
         }
-        
+
         inserted_admin.id
     };
 
@@ -182,7 +180,10 @@ async fn create_default_roles_and_permissions(pool: &PgPool) -> Result<(), sqlx:
         ("User", vec!["read"]),
         ("Editor", vec!["read", "write"]),
         ("Moderator", vec!["read", "write", "moderate"]),
-        ("Admin", vec!["admin", "read", "write", "moderate", "manage_users"]),
+        (
+            "Admin",
+            vec!["admin", "read", "write", "moderate", "manage_users"],
+        ),
     ];
 
     for (role_name, permissions) in default_setup {
@@ -208,7 +209,10 @@ async fn create_default_roles_and_permissions(pool: &PgPool) -> Result<(), sqlx:
                 .execute(pool)
                 .await?;
 
-                info!("Created role-permission mapping: {} -> {}", role_name, permission);
+                info!(
+                    "Created role-permission mapping: {} -> {}",
+                    role_name, permission
+                );
             }
         }
     }

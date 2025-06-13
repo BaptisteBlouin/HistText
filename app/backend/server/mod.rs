@@ -1,10 +1,10 @@
 pub mod error;
 pub mod guards;
 pub mod routes;
+pub mod security;
 pub mod ssh;
 pub mod startup;
 pub mod state;
-pub mod security;
 
 pub async fn run_server() -> std::io::Result<()> {
     use crate::app_data::{AppConfig, AppData};
@@ -12,12 +12,12 @@ pub async fn run_server() -> std::io::Result<()> {
     use crate::graphql;
     use crate::server::ssh::establish_ssh_tunnels;
     use crate::server::startup::preload_embeddings;
+    use crate::services::cache_manager::CacheManager;
     use crate::services::database::Database;
     use crate::services::mailer::Mailer;
-    use crate::services::cache_manager::CacheManager;
     use crate::services::response_pool::ResponsePool;
-    use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
     use actix_cors::Cors;
+    use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
     use actix_web::web::PayloadConfig;
     use actix_web::{
         web::{self, Data},
@@ -26,9 +26,9 @@ pub async fn run_server() -> std::io::Result<()> {
     use std::sync::Arc;
     use tokio::signal;
     use tokio::signal::unix::{signal, SignalKind};
-    
-    use crate::services::request_analytics::RequestAnalyticsMiddleware;
+
     use crate::server::security::SecurityHeaders;
+    use crate::services::request_analytics::RequestAnalyticsMiddleware;
 
     let config = match Config::load() {
         Ok(config) => Arc::new(config),

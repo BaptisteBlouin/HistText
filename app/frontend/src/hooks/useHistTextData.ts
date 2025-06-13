@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "./useAuth";
 import axios, { AxiosHeaders } from "axios";
-import config from "../../config.json";
+import { useConfig } from "../contexts/ConfigurationContext";
 
-type StatsLevel = (typeof config.statsLevelOptions)[number];
-type DocLevel = (typeof config.docLevelOptions)[number];
+type StatsLevel = string;
+type DocLevel = string;
 
 export const useHistTextData = () => {
+  const config = useConfig();
   const { accessToken } = useAuth();
 
   // Create authenticated axios instance

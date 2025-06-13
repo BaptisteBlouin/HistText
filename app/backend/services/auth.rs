@@ -8,17 +8,20 @@
 //! - Email-based account activation and password recovery
 //!
 //! ## Cookie Security
-//! 
+//!
 //! Cookies automatically adapt security settings based on build mode:
 //! - Debug builds: `secure: false` (allows HTTP for local development)
 //! - Release builds: `secure: true` (requires HTTPS for production)
 
 use crate::config::Config;
-use crate::services::error::{AppError, AppResult, AuthErrorReason};
 use crate::services::crud::execute_db_query;
+use crate::services::crud::execute_db_transaction_named;
 use crate::services::database::Database;
+use crate::services::error::{AppError, AppResult, AuthErrorReason};
 use crate::services::mailer::Mailer;
 use crate::services::password::PasswordService;
+use crate::services::role_assignment::get_role_assignment_service;
+use actix_web::web::Query;
 use actix_web::{
     dev::Payload,
     error::{Error as ActixError, ErrorUnauthorized},
@@ -34,9 +37,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
-use actix_web::web::Query;
-use crate::services::crud::execute_db_transaction_named;
-use crate::services::role_assignment::get_role_assignment_service;
 
 pub const COOKIE_NAME: &str = "refresh_token";
 
@@ -266,7 +266,10 @@ pub struct AuthHandler {
 impl AuthHandler {
     pub fn new(config: Arc<Config>) -> Self {
         let password_service = PasswordService::new(config.clone());
-        Self { config, password_service }
+        Self {
+            config,
+            password_service,
+        }
     }
 
     /// Creates JWT tokens for a user
@@ -283,7 +286,7 @@ impl AuthHandler {
         debug!("Creating tokens for user {}", user_id);
 
         // Fetch user permissions and roles
-        let (permissions, roles) = execute_db_query(db, move |conn| {
+        let (permissions, roles) = execute_db_query(db.clone(), move |conn| {
             // Get roles
             let user_roles: Vec<String> = user_roles_dsl::user_roles
                 .filter(user_roles_dsl::user_id.eq(user_id))
@@ -299,7 +302,7 @@ impl AuthHandler {
                     .filter(role_perms_dsl::role.eq(role))
                     .select(role_perms_dsl::permission)
                     .load(conn)?;
-                
+
                 for perm in perms {
                     role_permissions.push(Permission {
                         permission: perm,
@@ -314,7 +317,11 @@ impl AuthHandler {
                 .select(user_perms_dsl::permission)
                 .load(conn)?;
 
-            debug!("Found {} direct permissions for user {}", direct_perms.len(), user_id);
+            debug!(
+                "Found {} direct permissions for user {}",
+                direct_perms.len(),
+                user_id
+            );
 
             for perm in direct_perms {
                 role_permissions.push(Permission {
@@ -324,10 +331,33 @@ impl AuthHandler {
             }
 
             Ok((role_permissions, user_roles))
-        }).await?;
+        })
+        .await?;
 
-        let access_token_duration = Duration::seconds(ttl.unwrap_or(15 * 60));
-        let refresh_token_duration = Duration::hours(24);
+        // Get token durations from configuration database with fallbacks
+        let (access_token_ttl, refresh_token_ttl) = {
+            use crate::models::app_configurations::AppConfigurations;
+
+            let db_clone = db.clone();
+            execute_db_query(db_clone, |conn| {
+                let access_ttl = AppConfigurations::get_number_value(
+                    conn,
+                    "auth_access_token_ttl_seconds",
+                    15 * 60i64,
+                );
+                let refresh_ttl = AppConfigurations::get_number_value(
+                    conn,
+                    "auth_refresh_token_ttl_hours",
+                    24i64,
+                );
+                Ok((access_ttl, refresh_ttl))
+            })
+            .await
+            .unwrap_or((15 * 60i64, 24i64))
+        };
+
+        let access_token_duration = Duration::seconds(ttl.unwrap_or(access_token_ttl));
+        let refresh_token_duration = Duration::hours(refresh_token_ttl);
 
         let access_token_claims = AccessTokenClaims {
             exp: (Utc::now() + access_token_duration).timestamp() as usize,
@@ -350,10 +380,7 @@ impl AuthHandler {
         )
         .map_err(|e| {
             warn!("Failed to create access token: {}", e);
-            AppError::auth(
-                AuthErrorReason::InvalidToken,
-                "Token creation failed"
-            )
+            AppError::auth(AuthErrorReason::InvalidToken, "Token creation failed")
         })?;
 
         let refresh_token = encode(
@@ -363,10 +390,7 @@ impl AuthHandler {
         )
         .map_err(|e| {
             warn!("Failed to create refresh token: {}", e);
-            AppError::auth(
-                AuthErrorReason::InvalidToken,
-                "Token creation failed"
-            )
+            AppError::auth(AuthErrorReason::InvalidToken, "Token creation failed")
         })?;
 
         debug!("Successfully created tokens for user {}", user_id);
@@ -378,9 +402,9 @@ impl AuthHandler {
         &self,
         db: web::Data<Database>,
         item: web::Json<LoginInput>,
-    ) -> AppResult<(String, String)> {  
-        use crate::schema::users::dsl as users_dsl;
+    ) -> AppResult<(String, String)> {
         use crate::schema::user_sessions::dsl as sessions_dsl;
+        use crate::schema::users::dsl as users_dsl;
 
         let login_data = item.into_inner();
 
@@ -396,29 +420,34 @@ impl AuthHandler {
         .await
         .map_err(|e| match e {
             AppError::NotFound { .. } => {
-        warn!("Login attempt for non-existent user: {}", login_data.email);
+                warn!("Login attempt for non-existent user: {}", login_data.email);
                 AppError::auth(
                     AuthErrorReason::InvalidCredentials,
-                    "Invalid email or password"
+                    "Invalid email or password",
                 )
-            },
+            }
             _ => e,
         })?;
 
-        if !self.password_service.verify_password(&login_data.password, &user.hash_password)? {
+        if !self
+            .password_service
+            .verify_password(&login_data.password, &user.hash_password)?
+        {
             warn!("Invalid password for user: {}", login_data.email);
             return Err(AppError::auth(
                 AuthErrorReason::InvalidCredentials,
-                "Invalid email or password"
+                "Invalid email or password",
             ));
         }
 
         info!("Successful login for user: {}", login_data.email);
 
-        let (access_token, refresh_token) = self.create_tokens(db.clone(), user.id, login_data.ttl).await?;
+        let (access_token, refresh_token) = self
+            .create_tokens(db.clone(), user.id, login_data.ttl)
+            .await?;
 
         let refresh_token_clone = refresh_token.clone();
-        
+
         execute_db_query(db, move |conn| {
             diesel::insert_into(sessions_dsl::user_sessions)
                 .values((
@@ -427,7 +456,8 @@ impl AuthHandler {
                     sessions_dsl::device.eq(&login_data.device),
                 ))
                 .execute(conn)
-        }).await?;
+        })
+        .await?;
 
         Ok((access_token, refresh_token))
     }
@@ -447,7 +477,8 @@ impl AuthHandler {
         debug!("Attempting registration for user: {}", email_clone);
 
         // Validate password strength
-        self.password_service.validate_password_strength(&register_data.password)?;
+        self.password_service
+            .validate_password_strength(&register_data.password)?;
 
         // Check if user already exists
         let existing_user = execute_db_query(db.clone(), move |conn| {
@@ -455,26 +486,36 @@ impl AuthHandler {
                 .filter(users_dsl::email.eq(&register_data.email))
                 .first::<crate::services::users::User>(conn)
                 .optional()
-        }).await?;
+        })
+        .await?;
 
         if let Some(user) = existing_user {
             if user.activated {
-                warn!("Registration attempt for existing active user: {}", email_clone);
-                return Err(AppError::validation("User already registered", Some("email")));
+                warn!(
+                    "Registration attempt for existing active user: {}",
+                    email_clone
+                );
+                return Err(AppError::validation(
+                    "User already registered",
+                    Some("email"),
+                ));
             }
             // Delete unactivated account
             debug!("Removing existing unactivated account for: {}", email_clone);
             execute_db_query(db.clone(), move |conn| {
                 diesel::delete(users_dsl::users.filter(users_dsl::id.eq(user.id))).execute(conn)
-            }).await?;
+            })
+            .await?;
         }
 
-        let hashed_password = self.password_service.hash_password(&register_data.password)?;
+        let hashed_password = self
+            .password_service
+            .hash_password(&register_data.password)?;
         let email_clone2 = email_clone.clone();
 
         // Check if we should auto-activate the account
         let should_auto_activate = self.config.should_auto_activate_accounts();
-        
+
         debug!("Auto-activation enabled: {}", should_auto_activate);
 
         let new_user = execute_db_query(db.clone(), move |conn| {
@@ -487,28 +528,40 @@ impl AuthHandler {
                     users_dsl::activated.eq(should_auto_activate), // Auto-activate if email is not configured
                 ))
                 .get_result::<crate::services::users::User>(conn)
-        }).await?;
+        })
+        .await?;
 
         if should_auto_activate {
-            info!("Auto-activated user account during registration: {}", email_clone);
+            info!(
+                "Auto-activated user account during registration: {}",
+                email_clone
+            );
 
             // Still send activation email (for logging/preview when email is disabled)
             let activation_token = "auto-activated"; // Dummy token since account is already active
-            let activation_link = format!("{}/activate?token={}", self.config.app_url, activation_token);
+            let activation_link = format!(
+                "{}/activate?token={}",
+                self.config.app_url, activation_token
+            );
             mailer.send_register(&email_clone, &activation_link).await;
 
             // Automatically assign default role to newly activated user
             let role_service = get_role_assignment_service();
-            if let Err(e) = role_service.assign_default_role_to_user(
-                db.clone(),
-                new_user.id,
-                &new_user.email,
-                "auto_registration",
-                None, // No HTTP request context in this flow
-            ).await {
+            if let Err(e) = role_service
+                .assign_default_role_to_user(
+                    db.clone(),
+                    new_user.id,
+                    &new_user.email,
+                    "auto_registration",
+                    None, // No HTTP request context in this flow
+                )
+                .await
+            {
                 // Log error but don't fail registration
-                warn!("Failed to assign default role to auto-activated user {}: {}", 
-                    new_user.id, e);
+                warn!(
+                    "Failed to assign default role to auto-activated user {}: {}",
+                    new_user.id, e
+                );
             }
 
             // Send a different response for auto-activated accounts
@@ -520,9 +573,22 @@ impl AuthHandler {
             })))
         } else {
             // Original email-based activation flow
-            // Create activation token
+            // Create activation token with configurable duration
+            let activation_token_ttl = {
+                use crate::models::app_configurations::AppConfigurations;
+                execute_db_query(db.clone(), |conn| {
+                    Ok(AppConfigurations::get_number_value(
+                        conn,
+                        "auth_activation_token_ttl_days",
+                        30i64,
+                    ))
+                })
+                .await
+                .unwrap_or(30i64)
+            };
+
             let activation_claims = RefreshTokenClaims {
-                exp: (Utc::now() + Duration::days(30)).timestamp() as usize,
+                exp: (Utc::now() + Duration::days(activation_token_ttl)).timestamp() as usize,
                 sub: new_user.id,
                 token_type: "activation_token".to_string(),
             };
@@ -534,14 +600,14 @@ impl AuthHandler {
             )
             .map_err(|e| {
                 warn!("Failed to create activation token: {}", e);
-                AppError::auth(
-                    AuthErrorReason::InvalidToken,
-                    "Token creation failed"
-                )
+                AppError::auth(AuthErrorReason::InvalidToken, "Token creation failed")
             })?;
 
             // Send activation email
-            let activation_link = format!("{}/activate?token={}", self.config.app_url, activation_token);
+            let activation_link = format!(
+                "{}/activate?token={}",
+                self.config.app_url, activation_token
+            );
             mailer.send_register(&email_clone, &activation_link).await;
 
             info!("Successfully registered user: {}", email_clone);
@@ -569,16 +635,17 @@ impl AuthHandler {
 
         debug!("Password reset request for: {}", email_clone);
 
-        let user_result = execute_db_query(db, move |conn| {
+        let user_result = execute_db_query(db.clone(), move |conn| {
             users_dsl::users
                 .filter(users_dsl::email.eq(&forgot_data.email))
                 .first::<crate::services::users::User>(conn)
                 .optional()
-        }).await?;
+        })
+        .await?;
 
         // Check if email is enabled to provide appropriate response
         let email_enabled = self.config.is_email_enabled();
-        
+
         if !email_enabled {
             // Email is disabled - provide admin contact info
             return Ok(HttpResponse::Ok().json(serde_json::json!({
@@ -591,8 +658,22 @@ impl AuthHandler {
         }
 
         if let Some(user) = user_result {
+            // Get reset token duration from configuration
+            let reset_token_ttl = {
+                use crate::models::app_configurations::AppConfigurations;
+                execute_db_query(db.clone(), |conn| {
+                    Ok(AppConfigurations::get_number_value(
+                        conn,
+                        "auth_reset_token_ttl_hours",
+                        24i64,
+                    ))
+                })
+                .await
+                .unwrap_or(24i64)
+            };
+
             let reset_claims = RefreshTokenClaims {
-                exp: (Utc::now() + Duration::hours(24)).timestamp() as usize,
+                exp: (Utc::now() + Duration::hours(reset_token_ttl)).timestamp() as usize,
                 sub: user.id,
                 token_type: "reset_token".to_string(),
             };
@@ -604,18 +685,19 @@ impl AuthHandler {
             )
             .map_err(|e| {
                 warn!("Failed to create reset token: {}", e);
-                AppError::auth(
-                    AuthErrorReason::InvalidToken,
-                    "Token creation failed"
-                )
+                AppError::auth(AuthErrorReason::InvalidToken, "Token creation failed")
             })?;
 
             let reset_link = format!("reset?token={}", reset_token);
-            mailer.send_recover_existent_account(&user.email, &reset_link).await;
+            mailer
+                .send_recover_existent_account(&user.email, &reset_link)
+                .await;
             info!("Sent password reset email to: {}", user.email);
         } else {
             let register_link = "register";
-            mailer.send_recover_nonexistent_account(&email_clone, register_link).await;
+            mailer
+                .send_recover_nonexistent_account(&email_clone, register_link)
+                .await;
             debug!("Sent registration suggestion to: {}", email_clone);
         }
 
@@ -643,22 +725,33 @@ impl AuthHandler {
         }
 
         if item.old_password == item.new_password {
-            return Err(AppError::validation("The new password must be different", Some("new_password")));
+            return Err(AppError::validation(
+                "The new password must be different",
+                Some("new_password"),
+            ));
         }
 
         // Validate new password strength
-        self.password_service.validate_password_strength(&item.new_password)?;
+        self.password_service
+            .validate_password_strength(&item.new_password)?;
 
         let user = execute_db_query(db.clone(), move |conn| {
             users_dsl::users
                 .filter(users_dsl::id.eq(auth.user_id))
                 .filter(users_dsl::activated.eq(true))
                 .first::<crate::services::users::User>(conn)
-        }).await?;
+        })
+        .await?;
 
-        if !self.password_service.verify_password(&item.old_password, &user.hash_password)? {
+        if !self
+            .password_service
+            .verify_password(&item.old_password, &user.hash_password)?
+        {
             warn!("Invalid old password for user: {}", auth.user_id);
-            return Err(AppError::auth(AuthErrorReason::InvalidCredentials, "Invalid credentials"));
+            return Err(AppError::auth(
+                AuthErrorReason::InvalidCredentials,
+                "Invalid credentials",
+            ));
         }
 
         let new_hash = self.password_service.hash_password(&item.new_password)?;
@@ -667,7 +760,8 @@ impl AuthHandler {
             diesel::update(users_dsl::users.filter(users_dsl::id.eq(auth.user_id)))
                 .set(users_dsl::hash_password.eq(&new_hash))
                 .execute(conn)
-        }).await?;
+        })
+        .await?;
 
         mailer.send_password_changed(&user.email).await;
         info!("Password changed for user: {}", auth.user_id);
@@ -691,7 +785,8 @@ impl AuthHandler {
         }
 
         // Validate new password strength
-        self.password_service.validate_password_strength(&item.new_password)?;
+        self.password_service
+            .validate_password_strength(&item.new_password)?;
 
         let token_data = decode::<RefreshTokenClaims>(
             &item.reset_token,
@@ -704,8 +799,14 @@ impl AuthHandler {
         })?;
 
         if token_data.claims.token_type != "reset_token" {
-            warn!("Wrong token type for reset: {}", token_data.claims.token_type);
-            return Err(AppError::auth(AuthErrorReason::InvalidToken, "Invalid token type"));
+            warn!(
+                "Wrong token type for reset: {}",
+                token_data.claims.token_type
+            );
+            return Err(AppError::auth(
+                AuthErrorReason::InvalidToken,
+                "Invalid token type",
+            ));
         }
 
         let user = execute_db_query(db.clone(), move |conn| {
@@ -713,7 +814,8 @@ impl AuthHandler {
                 .filter(users_dsl::id.eq(token_data.claims.sub))
                 .filter(users_dsl::activated.eq(true))
                 .first::<crate::services::users::User>(conn)
-        }).await?;
+        })
+        .await?;
 
         let new_hash = self.password_service.hash_password(&item.new_password)?;
 
@@ -721,7 +823,8 @@ impl AuthHandler {
             diesel::update(users_dsl::users.filter(users_dsl::id.eq(user.id)))
                 .set(users_dsl::hash_password.eq(&new_hash))
                 .execute(conn)
-        }).await?;
+        })
+        .await?;
 
         mailer.send_password_reset(&user.email).await;
         info!("Password reset for user: {}", user.id);
@@ -753,8 +856,14 @@ impl AuthHandler {
         })?;
 
         if token_data.claims.token_type != "activation_token" {
-            warn!("Wrong token type for activation: {}", token_data.claims.token_type);
-            return Err(AppError::auth(AuthErrorReason::InvalidToken, "Invalid token type"));
+            warn!(
+                "Wrong token type for activation: {}",
+                token_data.claims.token_type
+            );
+            return Err(AppError::auth(
+                AuthErrorReason::InvalidToken,
+                "Invalid token type",
+            ));
         }
 
         // Get user before activation for role assignment
@@ -763,34 +872,48 @@ impl AuthHandler {
                 .filter(users_dsl::id.eq(token_data.claims.sub))
                 .filter(users_dsl::activated.eq(false))
                 .first::<crate::services::users::User>(conn)
-        }).await?;
+        })
+        .await?;
 
         // Activate the user in a transaction
-        execute_db_transaction_named(db.clone(), move |conn| {
-            diesel::update(users_dsl::users.filter(users_dsl::id.eq(user_before_activation.id)))
-                .set(users_dsl::activated.eq(true))
-                .execute(conn)
-        }, Some("user_activation")).await?;
+        execute_db_transaction_named(
+            db.clone(),
+            move |conn| {
+                diesel::update(users_dsl::users.filter(users_dsl::id.eq(user_before_activation.id)))
+                    .set(users_dsl::activated.eq(true))
+                    .execute(conn)
+            },
+            Some("user_activation"),
+        )
+        .await?;
 
         // Send activation confirmation email only if email is enabled
         if self.config.is_email_enabled() {
             mailer.send_activated(&user_before_activation.email).await;
         }
-        
-        info!("Account activated for user: {}", user_before_activation.email);
+
+        info!(
+            "Account activated for user: {}",
+            user_before_activation.email
+        );
 
         // Automatically assign default role to newly activated user
         let role_service = get_role_assignment_service();
-        if let Err(e) = role_service.assign_default_role_to_user(
-            db,
-            user_before_activation.id,
-            &user_before_activation.email,
-            "token_activation",
-            None, // No HTTP request context in this flow
-        ).await {
+        if let Err(e) = role_service
+            .assign_default_role_to_user(
+                db,
+                user_before_activation.id,
+                &user_before_activation.email,
+                "token_activation",
+                None, // No HTTP request context in this flow
+            )
+            .await
+        {
             // Log error but don't fail activation
-            warn!("Failed to assign default role to user {}: {}", 
-                user_before_activation.id, e);
+            warn!(
+                "Failed to assign default role to user {}: {}",
+                user_before_activation.id, e
+            );
         }
 
         Ok(HttpResponse::Ok().json(serde_json::json!({
@@ -806,7 +929,10 @@ impl AuthHandler {
         use crate::schema::user_sessions::dsl as sessions_dsl;
 
         let Some(refresh_token) = refresh_token else {
-            return Err(AppError::auth(AuthErrorReason::InvalidToken, "Invalid session"));
+            return Err(AppError::auth(
+                AuthErrorReason::InvalidToken,
+                "Invalid session",
+            ));
         };
 
         let refresh_token_owned = refresh_token.to_string();
@@ -815,12 +941,14 @@ impl AuthHandler {
             sessions_dsl::user_sessions
                 .filter(sessions_dsl::refresh_token.eq(&refresh_token_owned))
                 .first::<UserSession>(conn)
-        }).await?;
+        })
+        .await?;
 
         execute_db_query(db, move |conn| {
             diesel::delete(sessions_dsl::user_sessions.filter(sessions_dsl::id.eq(session.id)))
                 .execute(conn)
-        }).await?;
+        })
+        .await?;
 
         info!("User logged out: {}", session.user_id);
 
@@ -838,7 +966,10 @@ impl AuthHandler {
         use crate::schema::user_sessions::dsl as sessions_dsl;
 
         let Some(refresh_token_str) = refresh_token_str else {
-            return Err(AppError::auth(AuthErrorReason::InvalidToken, "Invalid session"));
+            return Err(AppError::auth(
+                AuthErrorReason::InvalidToken,
+                "Invalid session",
+            ));
         };
 
         let _refresh_token = decode::<RefreshTokenClaims>(
@@ -857,9 +988,12 @@ impl AuthHandler {
             sessions_dsl::user_sessions
                 .filter(sessions_dsl::refresh_token.eq(&refresh_token_owned))
                 .first::<UserSession>(conn)
-        }).await?;
+        })
+        .await?;
 
-        let (access_token, new_refresh_token) = self.create_tokens(db.clone(), session.user_id, None).await?;
+        let (access_token, new_refresh_token) = self
+            .create_tokens(db.clone(), session.user_id, None)
+            .await?;
 
         let new_refresh_token_clone = new_refresh_token.clone();
 
@@ -868,7 +1002,8 @@ impl AuthHandler {
             diesel::update(sessions_dsl::user_sessions.filter(sessions_dsl::id.eq(session.id)))
                 .set(sessions_dsl::refresh_token.eq(&new_refresh_token_clone))
                 .execute(conn)
-        }).await?;
+        })
+        .await?;
 
         debug!("Refreshed tokens for user: {}", session.user_id);
 
@@ -897,18 +1032,24 @@ pub mod handlers {
         db: web::Data<Database>,
         item: web::Json<LoginInput>,
         config: web::Data<Arc<Config>>,
-        ) -> Result<HttpResponse, AppError> {
+    ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
         let (access_token, refresh_token) = handler.login(db, item).await?;
 
         let is_secure = !cfg!(debug_assertions);
-        debug!("Setting login cookie - secure: {}, name: {}, domain: {:?}", 
-               is_secure, COOKIE_NAME, config.cookie_domain);
+        debug!(
+            "Setting login cookie - secure: {}, name: {}, domain: {:?}",
+            is_secure, COOKIE_NAME, config.cookie_domain
+        );
 
         let mut cookie_builder = Cookie::build(COOKIE_NAME, refresh_token)
             .secure(is_secure) // Secure in release, allow HTTP in debug
             .http_only(true)
-            .same_site(if is_secure { SameSite::None } else { SameSite::Lax }) // None for cross-domain HTTPS, Lax for local
+            .same_site(if is_secure {
+                SameSite::None
+            } else {
+                SameSite::Lax
+            }) // None for cross-domain HTTPS, Lax for local
             .path("/");
 
         // Only set domain if explicitly configured and not localhost
@@ -917,7 +1058,10 @@ pub mod handlers {
                 cookie_builder = cookie_builder.domain(domain);
                 debug!("Setting cookie domain to: {}", domain);
             } else {
-                debug!("Skipping domain setting for localhost/127.0.0.1: {}", domain);
+                debug!(
+                    "Skipping domain setting for localhost/127.0.0.1: {}",
+                    domain
+                );
             }
         } else {
             debug!("No cookie domain configured, using default");
@@ -947,11 +1091,11 @@ pub mod handlers {
         item: web::Json<RegisterInput>,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-        ) -> Result<HttpResponse, AppError> {
+    ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
         handler.register(db, item, mailer).await
     }
-    
+
     /// Account activation endpoint
     #[utoipa::path(
         get,
@@ -969,7 +1113,7 @@ pub mod handlers {
         query: web::Query<ActivationInput>,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-        ) -> Result<HttpResponse, AppError> {
+    ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
         handler.activate(db, query, mailer).await
     }
@@ -1005,7 +1149,7 @@ pub mod handlers {
         db: web::Data<Database>,
         req: HttpRequest,
         config: web::Data<Arc<Config>>,
-        ) -> Result<HttpResponse, AppError> {
+    ) -> Result<HttpResponse, AppError> {
         let refresh_token = req
             .cookie(COOKIE_NAME)
             .map(|cookie| cookie.value().to_string());
@@ -1023,15 +1167,19 @@ pub mod handlers {
         }
         cookie.set_path("/");
         cookie.set_secure(is_secure);
-        cookie.set_same_site(if is_secure { SameSite::None } else { SameSite::Lax });
+        cookie.set_same_site(if is_secure {
+            SameSite::None
+        } else {
+            SameSite::Lax
+        });
         cookie.make_removal();
 
-        response.add_cookie(&cookie).map_err(|e| {
-            AppError::Internal {
+        response
+            .add_cookie(&cookie)
+            .map_err(|e| AppError::Internal {
                 message: format!("Cookie error: {}", e),
                 source: None,
-            }
-        })?;
+            })?;
 
         Ok(response)
     }
@@ -1050,21 +1198,27 @@ pub mod handlers {
         db: web::Data<Database>,
         req: HttpRequest,
         config: web::Data<Arc<Config>>,
-        ) -> Result<HttpResponse, AppError> {
+    ) -> Result<HttpResponse, AppError> {
         debug!("Refresh endpoint called");
-        
+
         // Enhanced debugging: Log request details
         debug!("Request URI: {}", req.uri());
         debug!("Request method: {}", req.method());
         debug!("Request headers: {:?}", req.headers());
-        
+
         // Debug: Log all received cookies
-        let all_cookies: Vec<String> = req.cookies()
-            .map(|cookies| cookies.iter().map(|c| format!("{}={}", c.name(), c.value())).collect())
+        let all_cookies: Vec<String> = req
+            .cookies()
+            .map(|cookies| {
+                cookies
+                    .iter()
+                    .map(|c| format!("{}={}", c.name(), c.value()))
+                    .collect()
+            })
             .unwrap_or_default();
         debug!("All received cookies: {:?}", all_cookies);
         debug!("Cookie header raw: {:?}", req.headers().get("cookie"));
-        
+
         let refresh_token = req
             .cookie(COOKIE_NAME)
             .map(|cookie| cookie.value().to_string());
@@ -1075,21 +1229,31 @@ pub mod handlers {
             warn!("Available cookies: {:?}", all_cookies);
             warn!("Request came from: {:?}", req.headers().get("origin"));
             warn!("User-Agent: {:?}", req.headers().get("user-agent"));
-            return Err(AppError::auth(AuthErrorReason::InvalidToken, "No refresh token provided"));
+            return Err(AppError::auth(
+                AuthErrorReason::InvalidToken,
+                "No refresh token provided",
+            ));
         }
 
         debug!("Found refresh token in cookies");
         let handler = AuthHandler::new(config.get_ref().clone());
-        let (access_token, new_refresh_token) = handler.refresh(db, refresh_token.as_deref()).await?;
+        let (access_token, new_refresh_token) =
+            handler.refresh(db, refresh_token.as_deref()).await?;
 
         let is_secure = !cfg!(debug_assertions);
-        debug!("Sending new refresh token in response (secure: {}, domain: {:?})", 
-               is_secure, config.cookie_domain);
-        
+        debug!(
+            "Sending new refresh token in response (secure: {}, domain: {:?})",
+            is_secure, config.cookie_domain
+        );
+
         let mut cookie_builder = Cookie::build(COOKIE_NAME, new_refresh_token)
             .secure(is_secure) // Secure in release, allow HTTP in debug
             .http_only(true)
-            .same_site(if is_secure { SameSite::None } else { SameSite::Lax }) // None for cross-domain HTTPS, Lax for local
+            .same_site(if is_secure {
+                SameSite::None
+            } else {
+                SameSite::Lax
+            }) // None for cross-domain HTTPS, Lax for local
             .path("/");
 
         // Only set domain if explicitly configured and not localhost
@@ -1098,12 +1262,15 @@ pub mod handlers {
                 cookie_builder = cookie_builder.domain(domain);
                 debug!("Setting refresh cookie domain to: {}", domain);
             } else {
-                debug!("Skipping refresh domain setting for localhost/127.0.0.1: {}", domain);
+                debug!(
+                    "Skipping refresh domain setting for localhost/127.0.0.1: {}",
+                    domain
+                );
             }
         } else {
             debug!("No cookie domain configured for refresh, using default");
         }
-        
+
         Ok(HttpResponse::Ok()
             .cookie(cookie_builder.finish())
             .json(serde_json::json!({
@@ -1126,7 +1293,7 @@ pub mod handlers {
         item: web::Json<ForgotInput>,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-        ) -> Result<HttpResponse, AppError> {
+    ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
         handler.forgot_password(db, item, mailer).await
     }
@@ -1150,7 +1317,7 @@ pub mod handlers {
         auth: Auth,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-        ) -> Result<HttpResponse, AppError> {
+    ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
         handler.change_password(db, item, auth, mailer).await
     }
@@ -1171,7 +1338,7 @@ pub mod handlers {
         item: web::Json<ResetInput>,
         mailer: web::Data<Mailer>,
         config: web::Data<Arc<Config>>,
-        ) -> Result<HttpResponse, AppError> {
+    ) -> Result<HttpResponse, AppError> {
         let handler = AuthHandler::new(config.get_ref().clone());
         handler.reset_password(db, item, mailer).await
     }

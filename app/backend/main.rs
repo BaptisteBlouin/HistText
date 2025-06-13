@@ -5,14 +5,13 @@ extern crate diesel;
 mod app_data;
 mod config;
 mod graphql;
+mod mail;
 mod models;
 mod openapi;
 mod schema;
 mod server;
 mod services;
 mod template;
-mod mail;
-
 
 mod histtext {
     pub mod documents;

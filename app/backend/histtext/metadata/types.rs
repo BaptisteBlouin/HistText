@@ -9,7 +9,7 @@ pub struct MetadataQueryParams {
     /// Collection name to retrieve metadata for
     #[schema(example = "my_collection")]
     pub collection: String,
-    
+
     /// Solr database identifier
     #[schema(example = 1)]
     pub solr_database_id: i32,

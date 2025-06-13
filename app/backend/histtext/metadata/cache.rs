@@ -22,10 +22,10 @@ pub fn get_cached_fields(cache_key: &str) -> Option<(Vec<String>, Vec<String>, V
 
 /// Stores field metadata in cache
 pub fn cache_fields(
-    cache_key: String, 
-    relevant: Vec<String>, 
-    text_general: Vec<String>, 
-    id_fields: Vec<String>
+    cache_key: String,
+    relevant: Vec<String>,
+    text_general: Vec<String>,
+    id_fields: Vec<String>,
 ) {
     FIELD_CACHE.insert(cache_key, (relevant, text_general, id_fields));
 }

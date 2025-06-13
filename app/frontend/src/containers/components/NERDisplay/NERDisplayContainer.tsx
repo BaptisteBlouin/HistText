@@ -37,7 +37,7 @@ import NERInsights from "./NERInsights"; // Updated modular component
 import { useNERData } from "./hooks/useNERData";
 import { useNERFilters } from "./hooks/useNERFilters";
 import NERAnalyticsLimitDialog from "./NERAnalyticsLimitDialog";
-import config from "../../../../config.json";
+import { useConfig } from "../../../contexts/ConfigurationContext";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
@@ -56,6 +56,7 @@ const NERDisplayContainer: React.FC<NERDisplayContainerProps> = ({
   selectedSolrDatabase,
   viewNER = false,
 }) => {
+  const config = useConfig();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 

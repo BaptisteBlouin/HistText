@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { ExpandMore, Close, CollectionsBookmark } from "@mui/icons-material";
 import { useTheme } from "@mui/material/styles";
-import config from "../../../../../config.json";
+import { useConfig } from "../../../../contexts/ConfigurationContext";
 import {
   getCollectionInitials,
   truncateDescription,
@@ -51,6 +51,7 @@ const SelectorButton: React.FC<SelectorButtonProps> = React.memo(
     onToggle,
     onClear,
   }) => {
+    const config = useConfig();
     const theme = useTheme();
 
     return (

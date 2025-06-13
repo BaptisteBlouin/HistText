@@ -13,11 +13,11 @@ lazy_static! {
 }
 
 /// Generates a cache key for NER results
-/// 
+///
 /// # Arguments
 /// * `collection` - Collection name
 /// * `ids` - Document IDs to include in the key
-/// 
+///
 /// # Returns
 /// String cache key for the given collection and IDs
 pub fn generate_cache_key(collection: &str, ids: &[String]) -> String {
@@ -25,10 +25,10 @@ pub fn generate_cache_key(collection: &str, ids: &[String]) -> String {
 }
 
 /// Retrieves cached NER results if available
-/// 
+///
 /// # Arguments
 /// * `cache_key` - Cache key to look up
-/// 
+///
 /// # Returns
 /// Optional HashMap containing cached NER results
 pub fn get_cached_ner_results(cache_key: &str) -> Option<HashMap<String, SerdeValue>> {
@@ -36,7 +36,7 @@ pub fn get_cached_ner_results(cache_key: &str) -> Option<HashMap<String, SerdeVa
 }
 
 /// Stores NER results in cache
-/// 
+///
 /// # Arguments
 /// * `cache_key` - Cache key for storage
 /// * `results` - NER results to cache

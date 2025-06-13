@@ -10,13 +10,15 @@ use uuid::Uuid;
 use crate::config::Config;
 
 /// Prepares a CSV writer with headers extracted from document fields
-/// 
+///
 /// # Arguments
 /// * `all_docs` - Collection of documents to extract field names from
-/// 
+///
 /// # Returns
 /// Tuple containing (Writer, headers vector, file path)
-pub fn prepare_csv_writer(all_docs: &[Value]) -> Result<(Writer<std::fs::File>, Vec<String>, String), Error> {
+pub fn prepare_csv_writer(
+    all_docs: &[Value],
+) -> Result<(Writer<std::fs::File>, Vec<String>, String), Error> {
     let config = Config::global();
     let csv_filename = format!("data_{}.csv", Uuid::new_v4());
     let csv_filepath = format!("{}/{}", config.path_store_files, csv_filename);
@@ -47,7 +49,7 @@ pub fn prepare_csv_writer(all_docs: &[Value]) -> Result<(Writer<std::fs::File>, 
 }
 
 /// Writes document data to CSV file
-/// 
+///
 /// # Arguments
 /// * `wtr` - CSV writer instance
 /// * `all_docs` - Documents to write

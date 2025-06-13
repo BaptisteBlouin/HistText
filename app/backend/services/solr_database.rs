@@ -14,8 +14,8 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::schema::solr_databases;
 use crate::services::crud::execute_db_query;
-use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
+use crate::services::error::{AppError, AppResult};
 
 /// Solr database configuration record
 ///
@@ -130,27 +130,24 @@ impl SolrDatabaseHandler {
     fn validate_new(&self, item: &NewSolrDatabase) -> AppResult<()> {
         if item.name.is_empty() || item.name.len() > 100 {
             return Err(AppError::validation(
-                    "Name must be between 1 and 100 characters",
-                    Some("name"),
-                ));
+                "Name must be between 1 and 100 characters",
+                Some("name"),
+            ));
         }
         if item.url.is_empty() {
-            return Err(AppError::validation(
-                    "URL cannot be empty",
-                    Some("url"),
-                ));  
+            return Err(AppError::validation("URL cannot be empty", Some("url")));
         }
         if item.server_port < 1 || item.server_port > 65535 {
             return Err(AppError::validation(
-                    "Server port must be between 1 and 65535",
-                    Some("server_port"),
-                ));  
+                "Server port must be between 1 and 65535",
+                Some("server_port"),
+            ));
         }
         if item.local_port < 1 || item.local_port > 65535 {
             return Err(AppError::validation(
-                    "Local port must be between 1 and 65535",
-                    Some("local_port"),
-                ));
+                "Local port must be between 1 and 65535",
+                Some("local_port"),
+            ));
         }
         Ok(())
     }
@@ -164,7 +161,7 @@ impl SolrDatabaseHandler {
     ///
     /// # Returns
     /// Ok(()) if valid, or a CrudError with validation details
-    fn validate_update(&self, item: &UpdateSolrDatabase) ->AppResult<()> {
+    fn validate_update(&self, item: &UpdateSolrDatabase) -> AppResult<()> {
         if let Some(ref name) = item.name {
             if name.is_empty() || name.len() > 100 {
                 return Err(AppError::validation(
@@ -175,17 +172,15 @@ impl SolrDatabaseHandler {
         }
         if let Some(ref url) = item.url {
             if url.is_empty() {
-                return Err(AppError::validation(
-                    "URL cannot be empty",
-                    Some("url"),
-                ));            }
+                return Err(AppError::validation("URL cannot be empty", Some("url")));
+            }
         }
         if let Some(port) = item.server_port {
             if !(1..=65535).contains(&port) {
                 return Err(AppError::validation(
                     "Server port must be between 1 and 65535",
                     Some("server_port"),
-                ));  
+                ));
             }
         }
         if let Some(port) = item.local_port {
@@ -342,9 +337,7 @@ pub async fn get_solr_databases(
     config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabaseHandler::new(config.get_ref().clone());
-    handler
-        .list(db)
-        .await
+    handler.list(db).await
 }
 
 /// Retrieves a specific Solr database configuration

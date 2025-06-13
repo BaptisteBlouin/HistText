@@ -3,14 +3,14 @@
 //! This module provides functionality to track user behavior patterns,
 //! usage analytics, and user journey analysis for administrative insights.
 
+use crate::services::request_analytics::get_user_display_name;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use utoipa::ToSchema;
-use itertools::Itertools;
-use crate::services::request_analytics::get_user_display_name;
 
 /// User behavior analytics data structure
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -153,7 +153,7 @@ impl UserBehaviorStore {
         success: bool,
     ) {
         let mut activities = self.activities.write().await;
-        
+
         let activity = UserActivity {
             user_id,
             username,
@@ -264,13 +264,23 @@ impl UserBehaviorStore {
         // Calculate peak hours
         let mut hourly_activity = HashMap::new();
         for activity in activities {
-            let hour = (activity.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs() / 3600) % 24;
+            let hour = (activity
+                .timestamp
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                / 3600)
+                % 24;
             *hourly_activity.entry(hour as u8).or_insert(0u64) += 1;
         }
 
         let mut peak_hours: Vec<_> = hourly_activity.into_iter().collect();
         peak_hours.sort_by(|a, b| b.1.cmp(&a.1));
-        let peak_hours: Vec<u8> = peak_hours.into_iter().take(3).map(|(hour, _)| hour).collect();
+        let peak_hours: Vec<u8> = peak_hours
+            .into_iter()
+            .take(3)
+            .map(|(hour, _)| hour)
+            .collect();
 
         // Calculate common workflows (sequences of actions by session)
         let mut session_workflows: HashMap<String, Vec<String>> = HashMap::new();
@@ -297,36 +307,47 @@ impl UserBehaviorStore {
                 } else {
                     format!("{} → ... → {}", sequence[0], sequence.last().unwrap())
                 };
-                
+
                 // Calculate real completion time and success rate for this workflow
                 let workflow_activities: Vec<_> = activities
                     .iter()
                     .filter(|a| sequence.contains(&a.action))
                     .collect();
-                
+
                 let avg_completion_time = if workflow_activities.len() > 1 {
                     // Calculate time between first and last action in workflow
                     let mut session_times: Vec<f64> = Vec::new();
-                    for (_, user_activities) in &workflow_activities.iter().group_by(|a| a.user_id) {
+                    for (_, user_activities) in &workflow_activities.iter().group_by(|a| a.user_id)
+                    {
                         let user_activities: Vec<_> = user_activities.collect();
                         if user_activities.len() >= 2 {
                             let start_time = user_activities.first().unwrap().timestamp;
                             let end_time = user_activities.last().unwrap().timestamp;
-                            if let (Ok(start), Ok(end)) = (start_time.duration_since(UNIX_EPOCH), end_time.duration_since(UNIX_EPOCH)) {
-                                let duration_minutes = (end.as_secs() - start.as_secs()) as f64 / 60.0;
-                                if duration_minutes > 0.0 && duration_minutes < 480.0 { // Reasonable session limit
+                            if let (Ok(start), Ok(end)) = (
+                                start_time.duration_since(UNIX_EPOCH),
+                                end_time.duration_since(UNIX_EPOCH),
+                            ) {
+                                let duration_minutes =
+                                    (end.as_secs() - start.as_secs()) as f64 / 60.0;
+                                if duration_minutes > 0.0 && duration_minutes < 480.0 {
+                                    // Reasonable session limit
                                     session_times.push(duration_minutes);
                                 }
                             }
                         }
                     }
-                    if session_times.is_empty() { 5.0 } else { session_times.iter().sum::<f64>() / session_times.len() as f64 }
-                } else { 5.0 };
+                    if session_times.is_empty() {
+                        5.0
+                    } else {
+                        session_times.iter().sum::<f64>() / session_times.len() as f64
+                    }
+                } else {
+                    5.0
+                };
 
-                let success_rate = workflow_activities
-                    .iter()
-                    .filter(|a| a.success)
-                    .count() as f64 / workflow_activities.len().max(1) as f64 * 100.0;
+                let success_rate = workflow_activities.iter().filter(|a| a.success).count() as f64
+                    / workflow_activities.len().max(1) as f64
+                    * 100.0;
 
                 WorkflowPattern {
                     name: workflow_name,
@@ -351,9 +372,13 @@ impl UserBehaviorStore {
                     if session_activities.len() >= 2 {
                         let start_time = session_activities.first().unwrap().timestamp;
                         let end_time = session_activities.last().unwrap().timestamp;
-                        if let (Ok(start), Ok(end)) = (start_time.duration_since(UNIX_EPOCH), end_time.duration_since(UNIX_EPOCH)) {
+                        if let (Ok(start), Ok(end)) = (
+                            start_time.duration_since(UNIX_EPOCH),
+                            end_time.duration_since(UNIX_EPOCH),
+                        ) {
                             let duration_minutes = (end.as_secs() - start.as_secs()) as f64 / 60.0;
-                            if duration_minutes > 0.1 && duration_minutes < 480.0 { // Between 6 seconds and 8 hours
+                            if duration_minutes > 0.1 && duration_minutes < 480.0 {
+                                // Between 6 seconds and 8 hours
                                 session_durations.push(duration_minutes);
                             }
                         }
@@ -374,9 +399,12 @@ impl UserBehaviorStore {
             session_durations.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let average = session_durations.iter().sum::<f64>() / session_durations.len() as f64;
             let median = session_durations[session_durations.len() / 2];
-            
+
             let short_count = session_durations.iter().filter(|&&d| d < 5.0).count() as f64;
-            let medium_count = session_durations.iter().filter(|&&d| d >= 5.0 && d <= 30.0).count() as f64;
+            let medium_count = session_durations
+                .iter()
+                .filter(|&&d| d >= 5.0 && d <= 30.0)
+                .count() as f64;
             let long_count = session_durations.iter().filter(|&&d| d > 30.0).count() as f64;
             let total = session_durations.len() as f64;
 
@@ -423,7 +451,7 @@ impl UserBehaviorStore {
                     *acc.entry(activity.action.clone()).or_insert(0) += 1;
                     acc
                 });
-            
+
             let mut favorite_features: Vec<(String, u64)> = user_actions.into_iter().collect();
             favorite_features.sort_by(|a, b| b.1.cmp(&a.1));
             let favorite_features: Vec<String> = favorite_features
@@ -472,7 +500,8 @@ impl UserBehaviorStore {
     }
 
     fn calculate_user_segments(&self, activities: &[&UserActivity]) -> UserSegments {
-        let unique_users: std::collections::HashSet<i32> = activities.iter().map(|a| a.user_id).collect();
+        let unique_users: std::collections::HashSet<i32> =
+            activities.iter().map(|a| a.user_id).collect();
         let total_users = unique_users.len() as f64;
 
         if total_users == 0.0 {
@@ -510,9 +539,18 @@ impl UserBehaviorStore {
         let power_user_threshold = 50; // 50+ activities
         let casual_user_threshold = 10; // 10+ activities
 
-        let power_users_count = user_activity_count.values().filter(|&&count| count >= power_user_threshold).count() as u64;
-        let casual_users_count = user_activity_count.values().filter(|&&count| count >= casual_user_threshold && count < power_user_threshold).count() as u64;
-        let new_users_count = user_activity_count.values().filter(|&&count| count < casual_user_threshold).count() as u64;
+        let power_users_count = user_activity_count
+            .values()
+            .filter(|&&count| count >= power_user_threshold)
+            .count() as u64;
+        let casual_users_count = user_activity_count
+            .values()
+            .filter(|&&count| count >= casual_user_threshold && count < power_user_threshold)
+            .count() as u64;
+        let new_users_count = user_activity_count
+            .values()
+            .filter(|&&count| count < casual_user_threshold)
+            .count() as u64;
 
         UserSegments {
             power_users: UserSegment {
@@ -564,7 +602,11 @@ impl UserBehaviorStore {
     }
 
     fn calculate_feature_adoption(&self, activities: &[&UserActivity]) -> HashMap<String, f64> {
-        let total_users = activities.iter().map(|a| a.user_id).collect::<std::collections::HashSet<_>>().len() as f64;
+        let total_users = activities
+            .iter()
+            .map(|a| a.user_id)
+            .collect::<std::collections::HashSet<_>>()
+            .len() as f64;
         let mut feature_users: HashMap<String, std::collections::HashSet<i32>> = HashMap::new();
 
         for activity in activities {
@@ -591,13 +633,12 @@ impl UserBehaviorStore {
         // Calculate entry points (first action in session)
         let mut session_first_actions: HashMap<String, String> = HashMap::new();
         let mut session_last_actions: HashMap<String, String> = HashMap::new();
-        
+
         for activity in activities {
             session_first_actions
                 .entry(activity.session_id.clone())
                 .or_insert(activity.action.clone());
-            session_last_actions
-                .insert(activity.session_id.clone(), activity.action.clone());
+            session_last_actions.insert(activity.session_id.clone(), activity.action.clone());
         }
 
         let mut entry_points = HashMap::new();
@@ -618,32 +659,30 @@ impl UserBehaviorStore {
         }
 
         // Create sample conversion funnels
-        let conversion_funnels = vec![
-            ConversionFunnel {
-                name: "Document Search to Analysis".to_string(),
-                steps: vec![
-                    FunnelStep {
-                        step_name: "Search".to_string(),
-                        users_count: 100,
-                        completion_rate: 100.0,
-                        drop_off_rate: 0.0,
-                    },
-                    FunnelStep {
-                        step_name: "View Results".to_string(),
-                        users_count: 85,
-                        completion_rate: 85.0,
-                        drop_off_rate: 15.0,
-                    },
-                    FunnelStep {
-                        step_name: "Analyze Document".to_string(),
-                        users_count: 60,
-                        completion_rate: 70.6,
-                        drop_off_rate: 29.4,
-                    },
-                ],
-                overall_conversion_rate: 60.0,
-            },
-        ];
+        let conversion_funnels = vec![ConversionFunnel {
+            name: "Document Search to Analysis".to_string(),
+            steps: vec![
+                FunnelStep {
+                    step_name: "Search".to_string(),
+                    users_count: 100,
+                    completion_rate: 100.0,
+                    drop_off_rate: 0.0,
+                },
+                FunnelStep {
+                    step_name: "View Results".to_string(),
+                    users_count: 85,
+                    completion_rate: 85.0,
+                    drop_off_rate: 15.0,
+                },
+                FunnelStep {
+                    step_name: "Analyze Document".to_string(),
+                    users_count: 60,
+                    completion_rate: 70.6,
+                    drop_off_rate: 29.4,
+                },
+            ],
+            overall_conversion_rate: 60.0,
+        }];
 
         UserJourneyAnalysis {
             entry_points,
@@ -653,7 +692,11 @@ impl UserBehaviorStore {
         }
     }
 
-    fn calculate_engagement_metrics(&self, activities: &[&UserActivity], now: SystemTime) -> EngagementMetrics {
+    fn calculate_engagement_metrics(
+        &self,
+        activities: &[&UserActivity],
+        now: SystemTime,
+    ) -> EngagementMetrics {
         let one_day_ago = now - Duration::from_secs(24 * 60 * 60);
         let one_week_ago = now - Duration::from_secs(7 * 24 * 60 * 60);
         let one_month_ago = now - Duration::from_secs(30 * 24 * 60 * 60);
@@ -684,11 +727,15 @@ impl UserBehaviorStore {
         let mut monthly_feature_usage = HashMap::new();
 
         for activity in activities.iter().filter(|a| a.timestamp > one_day_ago) {
-            *daily_feature_usage.entry(activity.action.clone()).or_insert(0u64) += 1;
+            *daily_feature_usage
+                .entry(activity.action.clone())
+                .or_insert(0u64) += 1;
         }
 
         for activity in activities.iter().filter(|a| a.timestamp > one_month_ago) {
-            *monthly_feature_usage.entry(activity.action.clone()).or_insert(0u64) += 1;
+            *monthly_feature_usage
+                .entry(activity.action.clone())
+                .or_insert(0u64) += 1;
         }
 
         let feature_stickiness = monthly_feature_usage
@@ -709,9 +756,9 @@ impl UserBehaviorStore {
             weekly_active_users,
             monthly_active_users,
             user_retention_rates: RetentionRates {
-                day_1: 78.5,   // Placeholder
-                day_7: 45.2,   // Placeholder  
-                day_30: 23.8,  // Placeholder
+                day_1: 78.5,  // Placeholder
+                day_7: 45.2,  // Placeholder
+                day_30: 23.8, // Placeholder
             },
             feature_stickiness,
         }
@@ -737,6 +784,8 @@ pub async fn record_user_activity(
     success: bool,
 ) {
     get_user_behavior_store()
-        .record_activity(user_id, username, action, endpoint, session_id, user_agent, success)
+        .record_activity(
+            user_id, username, action, endpoint, session_id, user_agent, success,
+        )
         .await;
 }

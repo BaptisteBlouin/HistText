@@ -1,15 +1,15 @@
 //! Utility functions for document processing and text manipulation.
 
-use serde_json::{json, Value};
 use actix_web::Error;
-use std::time::Instant;
 use log::info;
+use serde_json::{json, Value};
+use std::time::Instant;
 
-use crate::services::solr_database::SolrDatabase;
-use crate::services::database::DbPool;
 use crate::schema::solr_databases::dsl::*;
-use diesel::prelude::*;
+use crate::services::database::DbPool;
+use crate::services::solr_database::SolrDatabase;
 use actix_web::web;
+use diesel::prelude::*;
 
 /// Creates an empty Solr response structure
 pub fn empty_solr_response() -> Value {
@@ -22,11 +22,11 @@ pub fn empty_solr_response() -> Value {
 }
 
 /// Finds all case-insensitive occurrences of a needle in haystack
-/// 
+///
 /// # Arguments
 /// * `haystack` - Text to search in
 /// * `needle` - Text to find
-/// 
+///
 /// # Returns
 /// Vector of (start, end) position tuples
 pub fn find_all_occurrences_case_insensitive(haystack: &str, needle: &str) -> Vec<(usize, usize)> {
@@ -46,13 +46,13 @@ pub fn find_all_occurrences_case_insensitive(haystack: &str, needle: &str) -> Ve
 }
 
 /// Extracts text context around a specific position with character boundary safety
-/// 
+///
 /// # Arguments
 /// * `full_text` - Source text
 /// * `start_idx` - Start position of highlighted term
 /// * `end_idx` - End position of highlighted term
 /// * `context_len` - Number of characters to include on each side
-/// 
+///
 /// # Returns
 /// Text snippet with context around the highlighted term
 pub fn extract_context(
@@ -86,11 +86,11 @@ fn clamp_to_char_boundary(s: &str, byte_index: usize) -> usize {
 }
 
 /// Retrieves Solr database configuration by ID
-/// 
+///
 /// # Arguments
 /// * `pool` - Database connection pool
 /// * `solr_database_id` - Database identifier
-/// 
+///
 /// # Returns
 /// Result containing SolrDatabase configuration
 pub async fn get_solr_database(

@@ -14,8 +14,8 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::schema::solr_database_permissions;
 use crate::services::crud::execute_db_query;
-use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
+use crate::services::error::{AppError, AppResult};
 
 /// Solr database permission record
 ///
@@ -87,7 +87,10 @@ impl SolrDatabasePermissionHandler {
     /// Ok(()) if valid, or a CrudError with validation details
     fn validate_new(&self, item: &NewSolrDatabasePermission) -> AppResult<()> {
         if item.solr_database_id <= 0 {
-            return Err(AppError::validation("Invalid solr_database_id", Some("solr_database_id")));
+            return Err(AppError::validation(
+                "Invalid solr_database_id",
+                Some("solr_database_id"),
+            ));
         }
         if item.collection_name.is_empty() || item.collection_name.len() > 100 {
             return Err(AppError::validation(
@@ -196,7 +199,10 @@ impl SolrDatabasePermissionHandler {
         })
         .await?;
         if deleted == 0 {
-            return Err(AppError::not_found("SolrDatabasePermission", Option::<String>::None));
+            return Err(AppError::not_found(
+                "SolrDatabasePermission",
+                Option::<String>::None,
+            ));
         }
         Ok(HttpResponse::Ok().body("SolrDatabasePermission deleted"))
     }
@@ -231,9 +237,7 @@ pub async fn get_solr_database_permissions(
     config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabasePermissionHandler::new(config.get_ref().clone());
-    handler
-        .list(db)
-        .await
+    handler.list(db).await
 }
 
 /// Retrieves a specific Solr collection permission requirement
@@ -272,9 +276,7 @@ pub async fn get_solr_database_permission(
     config: web::Data<Arc<Config>>,
 ) -> Result<HttpResponse, AppError> {
     let handler = SolrDatabasePermissionHandler::new(config.get_ref().clone());
-    handler
-        .get_by_composite_key(db, path)
-        .await
+    handler.get_by_composite_key(db, path).await
 }
 
 /// Creates a new Solr collection permission requirement

@@ -33,7 +33,7 @@ use crate::services::mailer::Mailer;
 /// ```
 pub async fn send(mailer: &Mailer, to_email: &str, link: &str) {
     let subject = "HistText Account Not Found";
-    
+
     let text = format!(
         r#"(This is an automated message.)
 

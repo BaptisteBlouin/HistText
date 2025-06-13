@@ -7,9 +7,9 @@ pub fn main() {
     println!("Running dsync (generating model code from `backend/schema.rs`)");
     let schema_file = PathBuf::from_iter([dir, "backend/schema.rs"]);
     let models_dir = PathBuf::from_iter([dir, "backend/models"]);
-    
+
     ensure_schema_is_generated(&schema_file);
-    
+
     // Create table options map with &str keys
     let mut table_options = HashMap::new();
     // plugin_storage
@@ -24,8 +24,11 @@ pub fn main() {
     table_options.insert("user_oauth2_links", dsync::TableOptions::default().ignore());
     // plugin_tasks
     table_options.insert("fang_tasks", dsync::TableOptions::default().ignore());
-    table_options.insert("solr_database_info", dsync::TableOptions::default().ignore());
-    
+    table_options.insert(
+        "solr_database_info",
+        dsync::TableOptions::default().ignore(),
+    );
+
     // Based on the latest errors
     let config = dsync::GenerationConfig {
         connection_type: "crate::services::database::Connection".to_string(),
@@ -44,12 +47,8 @@ pub fn main() {
             schema_path: "crate::schema::".to_string(),
         },
     };
-    
-    let _ = dsync::generate_files(
-        schema_file.as_path(),
-        models_dir.as_path(),
-        config,
-    );
+
+    let _ = dsync::generate_files(schema_file.as_path(), models_dir.as_path(), config);
 }
 
 pub fn ensure_schema_is_generated(schema_file: &PathBuf) {

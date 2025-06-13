@@ -15,7 +15,7 @@ use log::info;
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::resource("/compute-neighbors")
-            .route(web::post().to(handlers::compute_neighbors_handler))
+            .route(web::post().to(handlers::compute_neighbors_handler)),
     );
 }
 
@@ -37,31 +37,37 @@ pub async fn shutdown() {
     note = "Use crate::histtext::embedding::formats::load_embeddings instead"
 )]
 pub fn load_embeddings_t(filename: &str) -> std::collections::HashMap<String, Embedding> {
-    use log::warn;
     use crate::histtext::embeddings::{formats, types::EmbeddingConfig};
-    
-    warn!("Using deprecated load_embeddings_t function. Please migrate to the new embedding module.");
-    
+    use log::warn;
+
+    warn!(
+        "Using deprecated load_embeddings_t function. Please migrate to the new embedding module."
+    );
+
     let config = EmbeddingConfig {
         normalize_on_load: false,
         parallel_workers: num_cpus::get(),
         ..EmbeddingConfig::default()
     };
-    
-    let rt = tokio::runtime::Handle::try_current()
-        .unwrap_or_else(|_| {
-            tokio::runtime::Runtime::new()
-                .expect("Failed to create tokio runtime")
-                .handle()
-                .clone()
-        });
-    
+
+    let rt = tokio::runtime::Handle::try_current().unwrap_or_else(|_| {
+        tokio::runtime::Runtime::new()
+            .expect("Failed to create tokio runtime")
+            .handle()
+            .clone()
+    });
+
     match rt.block_on(formats::load_embeddings(filename, &config)) {
         Ok((embeddings, stats)) => {
-            info!("Loaded {} embeddings from {} using legacy function", 
-                  embeddings.len(), filename);
-            info!("File stats: {} words, {} bytes, {}ms load time", 
-                  stats.word_count, stats.file_size, stats.load_time_ms);
+            info!(
+                "Loaded {} embeddings from {} using legacy function",
+                embeddings.len(),
+                filename
+            );
+            info!(
+                "File stats: {} words, {} bytes, {}ms load time",
+                stats.word_count, stats.file_size, stats.load_time_ms
+            );
             embeddings
         }
         Err(e) => {

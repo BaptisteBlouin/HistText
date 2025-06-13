@@ -1,21 +1,20 @@
 //! HTTP request handlers for NER operations.
 
-use actix_web::{web, HttpResponse, HttpRequest};
+use actix_web::{web, HttpRequest, HttpResponse};
+use jsonwebtoken::{decode, DecodingKey, Validation};
+use log::{error, info};
 use serde_json::{Map, Value};
 use std::io;
 use std::time::Instant;
-use log::{error, info};
 use tokio::fs;
-use jsonwebtoken::{decode, DecodingKey, Validation};
 
-use super::types::PathQueryParams;
-use super::cache::{generate_cache_key, get_cached_ner_results, cache_ner_results};
+use super::cache::{cache_ner_results, generate_cache_key, get_cached_ner_results};
 use super::processing::get_ner_annotation_batch;
-use crate::services::{user_behavior_analytics, collection_intelligence};
-use crate::services::auth::AccessTokenClaims;
+use super::types::PathQueryParams;
 use crate::config::Config;
+use crate::services::auth::AccessTokenClaims;
+use crate::services::{collection_intelligence, user_behavior_analytics};
 use log::debug;
-
 
 #[utoipa::path(
     get,
@@ -32,7 +31,7 @@ use log::debug;
 )]
 pub async fn fetch_ner_data(
     req: HttpRequest,
-    query: web::Query<PathQueryParams>
+    query: web::Query<PathQueryParams>,
 ) -> Result<HttpResponse, io::Error> {
     let start_time = Instant::now();
     let ner_path = query.path.as_deref().unwrap_or("");
@@ -44,7 +43,10 @@ pub async fn fetch_ner_data(
     let collected_ids = extract_document_ids(&ner_data)?;
 
     debug!("Processing NER for collection: {}", collection);
-    debug!("Found {} document IDs for NER processing", collected_ids.len());
+    debug!(
+        "Found {} document IDs for NER processing",
+        collected_ids.len()
+    );
 
     if collected_ids.is_empty() {
         info!("No document IDs found for NER processing, returning null");
@@ -52,10 +54,10 @@ pub async fn fetch_ner_data(
     }
 
     let cache_key = generate_cache_key(&collection, &collected_ids);
-    
+
     if let Some(cached_results) = get_cached_ner_results(&cache_key) {
         let ner_data_map: Map<String, Value> = cached_results.into_iter().collect();
-        
+
         // Extract user information for analytics (cached case)
         let (user_id, username) = if let Some(auth_header) = req.headers().get("Authorization") {
             if let Ok(auth_str) = auth_header.to_str() {
@@ -66,7 +68,10 @@ pub async fn fetch_ner_data(
                         &DecodingKey::from_secret(config.secret_key.as_ref()),
                         &Validation::default(),
                     ) {
-                        (Some(token_data.claims.sub), Some(format!("user_{}", token_data.claims.sub)))
+                        (
+                            Some(token_data.claims.sub),
+                            Some(format!("user_{}", token_data.claims.sub)),
+                        )
                     } else {
                         (None, None)
                     }
@@ -84,7 +89,7 @@ pub async fn fetch_ner_data(
         let response_time_ms = start_time.elapsed().as_millis() as f64;
         let entities_count = ner_data_map.len() as u64;
         let collection_name = collection.clone();
-        
+
         // Record analytics asynchronously
         tokio::spawn(async move {
             if let (Some(uid), Some(uname)) = (user_id, username) {
@@ -96,9 +101,10 @@ pub async fn fetch_ner_data(
                         "ner_processing_cached".to_string(),
                         collection_name.clone(),
                         format!("session_{}", uid), // session_id
-                        None, // user_agent
-                        true, // success
-                    ).await;
+                        None,                       // user_agent
+                        true,                       // success
+                    )
+                    .await;
             }
 
             // Record collection intelligence
@@ -110,10 +116,15 @@ pub async fn fetch_ner_data(
                     (entities_count as f64) / 1000.0, // rough estimate of data size in MB
                     response_time_ms as u64,
                     true, // success
-                    vec!["ner".to_string(), "entity_extraction".to_string(), "cached".to_string()],
-                ).await;
+                    vec![
+                        "ner".to_string(),
+                        "entity_extraction".to_string(),
+                        "cached".to_string(),
+                    ],
+                )
+                .await;
         });
-        
+
         return Ok(HttpResponse::Ok().json(Some(ner_data_map)));
     }
 
@@ -150,7 +161,10 @@ pub async fn fetch_ner_data(
                     &DecodingKey::from_secret(config.secret_key.as_ref()),
                     &Validation::default(),
                 ) {
-                    (Some(token_data.claims.sub), Some(format!("user_{}", token_data.claims.sub)))
+                    (
+                        Some(token_data.claims.sub),
+                        Some(format!("user_{}", token_data.claims.sub)),
+                    )
                 } else {
                     (None, None)
                 }
@@ -168,7 +182,7 @@ pub async fn fetch_ner_data(
     let response_time_ms = start_time.elapsed().as_millis() as f64;
     let entities_count = ner_data_map.len() as u64;
     let collection_name = collection.clone();
-    
+
     // Record analytics asynchronously
     tokio::spawn(async move {
         if let (Some(uid), Some(uname)) = (user_id, username) {
@@ -180,9 +194,10 @@ pub async fn fetch_ner_data(
                     "ner_processing".to_string(),
                     collection_name.clone(),
                     format!("session_{}", uid), // session_id
-                    None, // user_agent
-                    true, // success
-                ).await;
+                    None,                       // user_agent
+                    true,                       // success
+                )
+                .await;
         }
 
         // Record collection intelligence
@@ -195,29 +210,31 @@ pub async fn fetch_ner_data(
                 response_time_ms as u64,
                 true, // success
                 vec!["ner".to_string(), "entity_extraction".to_string()],
-            ).await;
+            )
+            .await;
     });
 
-    info!("Successfully processed NER data for collection: {}", collection);
+    info!(
+        "Successfully processed NER data for collection: {}",
+        collection
+    );
     Ok(HttpResponse::Ok().json(Some(ner_data_map)))
 }
 
 /// Reads and parses the NER cache file
 async fn read_ner_cache_file(path: &str) -> Result<Value, io::Error> {
-    let cached_ner_data = fs::read_to_string(path).await
-        .map_err(|e| {
-            error!("Failed to read NER cache file: {}", e);
-            e
-        })?;
+    let cached_ner_data = fs::read_to_string(path).await.map_err(|e| {
+        error!("Failed to read NER cache file: {}", e);
+        e
+    })?;
 
-    serde_json::from_str(&cached_ner_data)
-        .map_err(|e| {
-            error!("Failed to parse NER cache JSON: {}", e);
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Failed to parse NER cache JSON: {}", e),
-            )
-        })
+    serde_json::from_str(&cached_ner_data).map_err(|e| {
+        error!("Failed to parse NER cache JSON: {}", e);
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Failed to parse NER cache JSON: {}", e),
+        )
+    })
 }
 
 /// Extracts collection name from NER data
@@ -236,14 +253,13 @@ fn extract_collection_name(ner_data: &Value) -> Result<String, io::Error> {
 
 /// Extracts document IDs from NER data
 fn extract_document_ids(ner_data: &Value) -> Result<Vec<String>, io::Error> {
-    serde_json::from_value(ner_data["collected_ids"].clone())
-        .map_err(|e| {
-            error!("Failed to extract collected_ids from NER cache: {}", e);
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Failed to extract collected_ids: {}", e),
-            )
-        })
+    serde_json::from_value(ner_data["collected_ids"].clone()).map_err(|e| {
+        error!("Failed to extract collected_ids from NER cache: {}", e);
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Failed to extract collected_ids: {}", e),
+        )
+    })
 }
 
 /// Cleans up the temporary cache file

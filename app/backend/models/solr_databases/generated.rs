@@ -5,7 +5,6 @@ use crate::schema::*;
 use diesel::QueryResult;
 use serde::{Deserialize, Serialize};
 
-
 type Connection = crate::services::database::Connection;
 
 #[tsync::tsync]
@@ -55,11 +54,12 @@ pub struct PaginationResult<T> {
 }
 
 impl basis {
-
     pub fn create(db: &mut Connection, item: &Createbasis) -> QueryResult<Self> {
         use crate::schema::solr_databases::dsl::*;
 
-        insert_into(solr_databases).values(item).get_result::<Self>(db)
+        insert_into(solr_databases)
+            .values(item)
+            .get_result::<Self>(db)
     }
 
     pub fn read(db: &mut Connection, param_id: i32) -> QueryResult<Self> {
@@ -69,12 +69,19 @@ impl basis {
     }
 
     /// Paginates through the table where page is a 0-based index (i.e. page 0 is the first page)
-    pub fn paginate(db: &mut Connection, page: i64, page_size: i64) -> QueryResult<PaginationResult<Self>> {
+    pub fn paginate(
+        db: &mut Connection,
+        page: i64,
+        page_size: i64,
+    ) -> QueryResult<PaginationResult<Self>> {
         use crate::schema::solr_databases::dsl::*;
 
         let page_size = if page_size < 1 { 1 } else { page_size };
         let total_items = solr_databases.count().get_result(db)?;
-        let items = solr_databases.limit(page_size).offset(page * page_size).load::<Self>(db)?;
+        let items = solr_databases
+            .limit(page_size)
+            .offset(page * page_size)
+            .load::<Self>(db)?;
 
         Ok(PaginationResult {
             items,
@@ -82,14 +89,16 @@ impl basis {
             page,
             page_size,
             /* ceiling division of integers */
-            num_pages: total_items / page_size + i64::from(total_items % page_size != 0)
+            num_pages: total_items / page_size + i64::from(total_items % page_size != 0),
         })
     }
 
     pub fn update(db: &mut Connection, param_id: i32, item: &Updatebasis) -> QueryResult<Self> {
         use crate::schema::solr_databases::dsl::*;
 
-        diesel::update(solr_databases.filter(id.eq(param_id))).set(item).get_result(db)
+        diesel::update(solr_databases.filter(id.eq(param_id)))
+            .set(item)
+            .get_result(db)
     }
 
     pub fn delete(db: &mut Connection, param_id: i32) -> QueryResult<usize> {
@@ -97,5 +106,4 @@ impl basis {
 
         diesel::delete(solr_databases.filter(id.eq(param_id))).execute(db)
     }
-
 }

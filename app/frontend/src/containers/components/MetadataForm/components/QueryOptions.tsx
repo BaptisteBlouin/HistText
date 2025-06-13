@@ -26,16 +26,16 @@ import {
   ExpandMore,
   ExpandLess 
 } from "@mui/icons-material";
-import config from "../../../../../config.json";
+import { useConfig } from "../../../../contexts/ConfigurationContext";
 
 /**
- * Stats level type, defined by config.
+ * Stats level type, inferred from dynamic config.
  */
-type StatsLevel = (typeof config.statsLevelOptions)[number];
+type StatsLevel = string;
 /**
- * Document level type, defined by config.
+ * Document level type, inferred from dynamic config.
  */
-type DocLevel = (typeof config.docLevelOptions)[number];
+type DocLevel = string;
 
 /**
  * Props for the QueryOptions component.
@@ -89,6 +89,7 @@ const QueryOptions: React.FC<QueryOptionsProps> = ({
   setShowAdvanced,
   showNER = true,
 }) => {
+  const config = useConfig();
   return (
     <Card variant="outlined" sx={{ mb: 3, overflow: "visible" }}>
       <CardContent sx={{ pb: 2 }}>

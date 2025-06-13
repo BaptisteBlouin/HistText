@@ -7,7 +7,7 @@
 
 use actix_web::{web, HttpRequest, HttpResponse};
 use diesel::prelude::*;
-use log::{debug, info, warn, error};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -15,11 +15,11 @@ use utoipa::ToSchema;
 use crate::config::Config;
 use crate::schema::users;
 use crate::services::crud::{execute_db_query, execute_db_transaction_named};
-use crate::services::error::{AppError, AppResult};
 use crate::services::database::Database;
+use crate::services::error::{AppError, AppResult};
 use crate::services::password::PasswordService;
-use crate::services::security_events::SecurityEventLogger;
 use crate::services::role_assignment::get_role_assignment_service;
+use crate::services::security_events::SecurityEventLogger;
 
 /// User account record
 ///
@@ -128,7 +128,6 @@ pub struct SelfUpdateUser {
     /// User can update their last name
     #[schema(example = "NewLastName")]
     pub lastname: Option<String>,
-
     // Note: activated is NOT included - users cannot change their activation status
 }
 
@@ -153,7 +152,10 @@ impl UserHandler {
     /// A new UserHandler instance
     pub fn new(config: Arc<Config>) -> Self {
         let password_service = PasswordService::new(config.clone());
-        Self { config, password_service }
+        Self {
+            config,
+            password_service,
+        }
     }
 
     /// Validates a new user account
@@ -170,38 +172,45 @@ impl UserHandler {
         if item.email.is_empty() {
             return Err(AppError::validation("Email cannot be empty", Some("email")));
         }
-        
+
         if !item.email.contains('@') || !item.email.contains('.') {
             return Err(AppError::validation("Invalid email format", Some("email")));
         }
-        
+
         if item.email.len() > 254 {
             return Err(AppError::validation("Email is too long", Some("email")));
         }
 
         // Validate password using centralized service
-        self.password_service.validate_password_strength(&item.hash_password)?;
+        self.password_service
+            .validate_password_strength(&item.hash_password)?;
 
         // Validate name fields
         if item.firstname.is_empty() {
-            return Err(AppError::validation("First name cannot be empty", Some("firstname")));
-        }
-        
-        if item.firstname.len() > 100 {
             return Err(AppError::validation(
-                "First name must be no more than 100 characters", 
-                Some("firstname")
+                "First name cannot be empty",
+                Some("firstname"),
             ));
         }
-        
-        if item.lastname.is_empty() {
-            return Err(AppError::validation("Last name cannot be empty", Some("lastname")));
+
+        if item.firstname.len() > 100 {
+            return Err(AppError::validation(
+                "First name must be no more than 100 characters",
+                Some("firstname"),
+            ));
         }
-        
+
+        if item.lastname.is_empty() {
+            return Err(AppError::validation(
+                "Last name cannot be empty",
+                Some("lastname"),
+            ));
+        }
+
         if item.lastname.len() > 100 {
             return Err(AppError::validation(
-                "Last name must be no more than 100 characters", 
-                Some("lastname")
+                "Last name must be no more than 100 characters",
+                Some("lastname"),
             ));
         }
 
@@ -209,15 +218,15 @@ impl UserHandler {
         let forbidden_chars = ['<', '>', '"', '\'', '&'];
         if item.firstname.chars().any(|c| forbidden_chars.contains(&c)) {
             return Err(AppError::validation(
-                "First name contains invalid characters", 
-                Some("firstname")
+                "First name contains invalid characters",
+                Some("firstname"),
             ));
         }
-        
+
         if item.lastname.chars().any(|c| forbidden_chars.contains(&c)) {
             return Err(AppError::validation(
-                "Last name contains invalid characters", 
-                Some("lastname")
+                "Last name contains invalid characters",
+                Some("lastname"),
             ));
         }
 
@@ -239,11 +248,11 @@ impl UserHandler {
             if email.is_empty() {
                 return Err(AppError::validation("Email cannot be empty", Some("email")));
             }
-            
+
             if !email.contains('@') || !email.contains('.') {
                 return Err(AppError::validation("Invalid email format", Some("email")));
             }
-            
+
             if email.len() > 254 {
                 return Err(AppError::validation("Email is too long", Some("email")));
             }
@@ -257,21 +266,24 @@ impl UserHandler {
         // Validate first name if provided
         if let Some(ref firstname) = item.firstname {
             if firstname.is_empty() {
-                return Err(AppError::validation("First name cannot be empty", Some("firstname")));
-            }
-            
-            if firstname.len() > 100 {
                 return Err(AppError::validation(
-                    "First name must be no more than 100 characters", 
-                    Some("firstname")
+                    "First name cannot be empty",
+                    Some("firstname"),
                 ));
             }
-            
+
+            if firstname.len() > 100 {
+                return Err(AppError::validation(
+                    "First name must be no more than 100 characters",
+                    Some("firstname"),
+                ));
+            }
+
             let forbidden_chars = ['<', '>', '"', '\'', '&'];
             if firstname.chars().any(|c| forbidden_chars.contains(&c)) {
                 return Err(AppError::validation(
-                    "First name contains invalid characters", 
-                    Some("firstname")
+                    "First name contains invalid characters",
+                    Some("firstname"),
                 ));
             }
         }
@@ -279,21 +291,24 @@ impl UserHandler {
         // Validate last name if provided
         if let Some(ref lastname) = item.lastname {
             if lastname.is_empty() {
-                return Err(AppError::validation("Last name cannot be empty", Some("lastname")));
-            }
-            
-            if lastname.len() > 100 {
                 return Err(AppError::validation(
-                    "Last name must be no more than 100 characters", 
-                    Some("lastname")
+                    "Last name cannot be empty",
+                    Some("lastname"),
                 ));
             }
-            
+
+            if lastname.len() > 100 {
+                return Err(AppError::validation(
+                    "Last name must be no more than 100 characters",
+                    Some("lastname"),
+                ));
+            }
+
             let forbidden_chars = ['<', '>', '"', '\'', '&'];
             if lastname.chars().any(|c| forbidden_chars.contains(&c)) {
                 return Err(AppError::validation(
-                    "Last name contains invalid characters", 
-                    Some("lastname")
+                    "Last name contains invalid characters",
+                    Some("lastname"),
                 ));
             }
         }
@@ -308,11 +323,11 @@ impl UserHandler {
             if email.is_empty() {
                 return Err(AppError::validation("Email cannot be empty", Some("email")));
             }
-            
+
             if !email.contains('@') || !email.contains('.') {
                 return Err(AppError::validation("Invalid email format", Some("email")));
             }
-            
+
             if email.len() > 254 {
                 return Err(AppError::validation("Email is too long", Some("email")));
             }
@@ -324,42 +339,48 @@ impl UserHandler {
 
         if let Some(ref firstname) = item.firstname {
             if firstname.is_empty() {
-                return Err(AppError::validation("First name cannot be empty", Some("firstname")));
-            }
-            
-            if firstname.len() > 100 {
                 return Err(AppError::validation(
-                    "First name must be no more than 100 characters", 
-                    Some("firstname")
+                    "First name cannot be empty",
+                    Some("firstname"),
                 ));
             }
-            
+
+            if firstname.len() > 100 {
+                return Err(AppError::validation(
+                    "First name must be no more than 100 characters",
+                    Some("firstname"),
+                ));
+            }
+
             let forbidden_chars = ['<', '>', '"', '\'', '&'];
             if firstname.chars().any(|c| forbidden_chars.contains(&c)) {
                 return Err(AppError::validation(
-                    "First name contains invalid characters", 
-                    Some("firstname")
+                    "First name contains invalid characters",
+                    Some("firstname"),
                 ));
             }
         }
 
         if let Some(ref lastname) = item.lastname {
             if lastname.is_empty() {
-                return Err(AppError::validation("Last name cannot be empty", Some("lastname")));
-            }
-            
-            if lastname.len() > 100 {
                 return Err(AppError::validation(
-                    "Last name must be no more than 100 characters", 
-                    Some("lastname")
+                    "Last name cannot be empty",
+                    Some("lastname"),
                 ));
             }
-            
+
+            if lastname.len() > 100 {
+                return Err(AppError::validation(
+                    "Last name must be no more than 100 characters",
+                    Some("lastname"),
+                ));
+            }
+
             let forbidden_chars = ['<', '>', '"', '\'', '&'];
             if lastname.chars().any(|c| forbidden_chars.contains(&c)) {
                 return Err(AppError::validation(
-                    "Last name contains invalid characters", 
-                    Some("lastname")
+                    "Last name contains invalid characters",
+                    Some("lastname"),
                 ));
             }
         }
@@ -375,15 +396,17 @@ impl UserHandler {
     ///
     /// # Returns
     /// HTTP response with all user accounts as JSON
-    pub async fn list(&self, db: web::Data<Database>, req: Option<&HttpRequest>) -> AppResult<HttpResponse> {
+    pub async fn list(
+        &self,
+        db: web::Data<Database>,
+        req: Option<&HttpRequest>,
+    ) -> AppResult<HttpResponse> {
         use crate::schema::users::dsl::*;
-        
+
         debug!("Admin fetching all user accounts");
-        
-        let results = execute_db_query(db.clone(), |conn| {
-            users.load::<User>(conn)
-        }).await?;
-        
+
+        let results = execute_db_query(db.clone(), |conn| users.load::<User>(conn)).await?;
+
         info!("Successfully fetched {} user accounts", results.len());
 
         // Log administrative access to user list
@@ -395,7 +418,9 @@ impl UserHandler {
             &format!("Administrator accessed user list ({} users)", results.len()),
             "low",
             req,
-        ).await {
+        )
+        .await
+        {
             warn!("Failed to log user list access event: {}", e);
         }
 
@@ -418,14 +443,15 @@ impl UserHandler {
         req: Option<&HttpRequest>,
     ) -> AppResult<HttpResponse> {
         use crate::schema::users::dsl::*;
-        
+
         let user_id = path.into_inner();
         debug!("Fetching user account with ID: {}", user_id);
-        
+
         let result = execute_db_query(db.clone(), move |conn| {
             users.find(user_id).first::<User>(conn)
-        }).await?;
-        
+        })
+        .await?;
+
         debug!("Successfully fetched user account: {}", result.email);
 
         // Log access to specific user account
@@ -437,7 +463,9 @@ impl UserHandler {
             &format!("Administrator accessed user profile: {}", result.email),
             "low",
             req,
-        ).await {
+        )
+        .await
+        {
             warn!("Failed to log user access event: {}", e);
         }
 
@@ -460,9 +488,9 @@ impl UserHandler {
         req: Option<&HttpRequest>,
     ) -> AppResult<HttpResponse> {
         let user_data = item.into_inner();
-        
+
         debug!("Creating new user account for: {}", user_data.email);
-        
+
         // Validate the new user data
         self.validate_new(&user_data)?;
 
@@ -470,13 +498,18 @@ impl UserHandler {
         let email_clone = user_data.email.clone();
         let existing_user = execute_db_query(db.clone(), move |conn| {
             use crate::schema::users::dsl::*;
-            users.filter(email.eq(&email_clone))
+            users
+                .filter(email.eq(&email_clone))
                 .first::<User>(conn)
                 .optional()
-        }).await?;
+        })
+        .await?;
 
         if existing_user.is_some() {
-            warn!("Attempted to create user with existing email: {}", user_data.email);
+            warn!(
+                "Attempted to create user with existing email: {}",
+                user_data.email
+            );
 
             // Log failed user creation attempt
             if let Err(e) = SecurityEventLogger::log_event(
@@ -484,22 +517,29 @@ impl UserHandler {
                 "user_creation_failed",
                 None,
                 Some(user_data.email.clone()),
-                &format!("Failed user creation: Email {} already exists", user_data.email),
+                &format!(
+                    "Failed user creation: Email {} already exists",
+                    user_data.email
+                ),
                 "medium",
                 req,
-            ).await {
+            )
+            .await
+            {
                 warn!("Failed to log user creation failure: {}", e);
             }
 
             return Err(AppError::validation(
-                "A user with this email already exists", 
-                Some("email")
+                "A user with this email already exists",
+                Some("email"),
             ));
         }
 
         // Hash the password
-        let hashed_password = self.password_service.hash_password(&user_data.hash_password)?;
-        
+        let hashed_password = self
+            .password_service
+            .hash_password(&user_data.hash_password)?;
+
         let new_user = NewUser {
             email: user_data.email.clone(),
             hash_password: hashed_password,
@@ -512,23 +552,32 @@ impl UserHandler {
             diesel::insert_into(users::table)
                 .values(&new_user)
                 .get_result::<User>(conn)
-        }).await?;
+        })
+        .await?;
 
-        info!("Successfully created user account: {} (ID: {})", result.email, result.id);
+        info!(
+            "Successfully created user account: {} (ID: {})",
+            result.email, result.id
+        );
 
         // If the user was created as activated, automatically assign default role
         if result.activated {
             let role_service = get_role_assignment_service();
-            if let Err(e) = role_service.assign_default_role_to_user(
-                db.clone(),
-                result.id,
-                &result.email,
-                "admin_creation",
-                req,
-            ).await {
+            if let Err(e) = role_service
+                .assign_default_role_to_user(
+                    db.clone(),
+                    result.id,
+                    &result.email,
+                    "admin_creation",
+                    req,
+                )
+                .await
+            {
                 // Log error but don't fail user creation
-                warn!("Failed to assign default role to newly created user {}: {}", 
-                    result.id, e);
+                warn!(
+                    "Failed to assign default role to newly created user {}: {}",
+                    result.id, e
+                );
             }
         }
 
@@ -538,11 +587,20 @@ impl UserHandler {
             "user_creation_success",
             Some(result.id),
             Some(result.email.clone()),
-            &format!("Administrator created user account: {} ({})", result.email, 
-                if result.activated { "activated" } else { "pending activation" }),
+            &format!(
+                "Administrator created user account: {} ({})",
+                result.email,
+                if result.activated {
+                    "activated"
+                } else {
+                    "pending activation"
+                }
+            ),
             "medium",
             req,
-        ).await {
+        )
+        .await
+        {
             warn!("Failed to log user creation success: {}", e);
         }
 
@@ -568,15 +626,16 @@ impl UserHandler {
     ) -> AppResult<HttpResponse> {
         let user_id = path.into_inner();
         let mut update_data = item.into_inner();
-        
+
         debug!("Updating user account with ID: {}", user_id);
-        
+
         // Get original user data for change tracking
         let original_user = execute_db_query(db.clone(), move |conn| {
             use crate::schema::users::dsl::*;
             users.find(user_id).first::<User>(conn)
-        }).await?;
-        
+        })
+        .await?;
+
         // Validate the update data
         self.validate_update(&update_data)?;
 
@@ -585,14 +644,19 @@ impl UserHandler {
             let email_clone = new_email.clone();
             let existing_user = execute_db_query(db.clone(), move |conn| {
                 use crate::schema::users::dsl::*;
-                users.filter(email.eq(&email_clone))
+                users
+                    .filter(email.eq(&email_clone))
                     .filter(id.ne(user_id))
                     .first::<User>(conn)
                     .optional()
-            }).await?;
+            })
+            .await?;
 
             if existing_user.is_some() {
-                warn!("Attempted to update user {} with existing email: {}", user_id, new_email);
+                warn!(
+                    "Attempted to update user {} with existing email: {}",
+                    user_id, new_email
+                );
 
                 // Log failed email change attempt
                 if let Err(e) = SecurityEventLogger::log_event(
@@ -600,16 +664,21 @@ impl UserHandler {
                     "user_update_failed",
                     Some(user_id),
                     Some(original_user.email.clone()),
-                    &format!("Failed email update for {}: {} already exists", original_user.email, new_email),
+                    &format!(
+                        "Failed email update for {}: {} already exists",
+                        original_user.email, new_email
+                    ),
                     "medium",
                     req,
-                ).await {
+                )
+                .await
+                {
                     warn!("Failed to log user update failure: {}", e);
                 }
 
                 return Err(AppError::validation(
-                    "A user with this email already exists", 
-                    Some("email")
+                    "A user with this email already exists",
+                    Some("email"),
                 ));
             }
         }
@@ -618,7 +687,7 @@ impl UserHandler {
         let mut changes = Vec::new();
         let password_changed = update_data.hash_password.is_some();
         let activation_changed = update_data.activated.is_some();
-        
+
         if let Some(ref new_email) = update_data.email {
             if *new_email != original_user.email {
                 changes.push(format!("email: {} -> {}", original_user.email, new_email));
@@ -627,19 +696,28 @@ impl UserHandler {
 
         if let Some(ref new_firstname) = update_data.firstname {
             if *new_firstname != original_user.firstname {
-                changes.push(format!("firstname: {} -> {}", original_user.firstname, new_firstname));
+                changes.push(format!(
+                    "firstname: {} -> {}",
+                    original_user.firstname, new_firstname
+                ));
             }
         }
 
         if let Some(ref new_lastname) = update_data.lastname {
             if *new_lastname != original_user.lastname {
-                changes.push(format!("lastname: {} -> {}", original_user.lastname, new_lastname));
+                changes.push(format!(
+                    "lastname: {} -> {}",
+                    original_user.lastname, new_lastname
+                ));
             }
         }
 
         if let Some(new_activated) = update_data.activated {
             if new_activated != original_user.activated {
-                changes.push(format!("activated: {} -> {}", original_user.activated, new_activated));
+                changes.push(format!(
+                    "activated: {} -> {}",
+                    original_user.activated, new_activated
+                ));
             }
         }
 
@@ -661,26 +739,44 @@ impl UserHandler {
             diesel::update(users.find(user_id))
                 .set(&update_data)
                 .get_result::<User>(conn)
-        }).await?;
+        })
+        .await?;
 
-        info!("Successfully updated user account: {} (ID: {})", result.email, result.id);
+        info!(
+            "Successfully updated user account: {} (ID: {})",
+            result.email, result.id
+        );
 
         // Log the update with detailed change information
         let change_description = if changes.is_empty() {
             "No changes made".to_string()
         } else {
-            format!("Administrator updated user {}: {}", result.email, changes.join(", "))
+            format!(
+                "Administrator updated user {}: {}",
+                result.email,
+                changes.join(", ")
+            )
         };
 
         if let Err(e) = SecurityEventLogger::log_event(
             db.clone(),
-            if password_changed { "admin_password_change" } else { "user_profile_update" },
+            if password_changed {
+                "admin_password_change"
+            } else {
+                "user_profile_update"
+            },
             Some(result.id),
             Some(result.email.clone()),
             &change_description,
-            if password_changed || activation_changed { "medium" } else { "low" },
+            if password_changed || activation_changed {
+                "medium"
+            } else {
+                "low"
+            },
             req,
-        ).await {
+        )
+        .await
+        {
             warn!("Failed to log user update: {}", e);
         }
 
@@ -691,10 +787,15 @@ impl UserHandler {
                 "admin_forced_password_change",
                 Some(result.id),
                 Some(result.email.clone()),
-                &format!("Administrator forced password change for user: {}", result.email),
+                &format!(
+                    "Administrator forced password change for user: {}",
+                    result.email
+                ),
                 "high",
                 req,
-            ).await {
+            )
+            .await
+            {
                 warn!("Failed to log password change: {}", e);
             }
         }
@@ -725,7 +826,8 @@ impl UserHandler {
         let user_to_delete = execute_db_query(db.clone(), move |conn| {
             use crate::schema::users::dsl::*;
             users.find(user_id).first::<User>(conn).optional()
-        }).await?;
+        })
+        .await?;
 
         if user_to_delete.is_none() {
             debug!("No user found with ID: {}", user_id);
@@ -736,50 +838,63 @@ impl UserHandler {
         let user_email = user.email.clone();
 
         // Delete related records in a transaction
-        execute_db_transaction_named(db.clone(), move |conn| {
-            // Delete user sessions
-            diesel::delete(
-                crate::schema::user_sessions::dsl::user_sessions
-                    .filter(crate::schema::user_sessions::dsl::user_id.eq(user_id))
-            ).execute(conn)?;
+        execute_db_transaction_named(
+            db.clone(),
+            move |conn| {
+                // Delete user sessions
+                diesel::delete(
+                    crate::schema::user_sessions::dsl::user_sessions
+                        .filter(crate::schema::user_sessions::dsl::user_id.eq(user_id)),
+                )
+                .execute(conn)?;
 
-            // Delete user roles
-            diesel::delete(
-                crate::schema::user_roles::dsl::user_roles
-                    .filter(crate::schema::user_roles::dsl::user_id.eq(user_id))
-            ).execute(conn)?;
+                // Delete user roles
+                diesel::delete(
+                    crate::schema::user_roles::dsl::user_roles
+                        .filter(crate::schema::user_roles::dsl::user_id.eq(user_id)),
+                )
+                .execute(conn)?;
 
-            // Delete user permissions
-            diesel::delete(
-                crate::schema::user_permissions::dsl::user_permissions
-                    .filter(crate::schema::user_permissions::dsl::user_id.eq(user_id))
-            ).execute(conn)?;
+                // Delete user permissions
+                diesel::delete(
+                    crate::schema::user_permissions::dsl::user_permissions
+                        .filter(crate::schema::user_permissions::dsl::user_id.eq(user_id)),
+                )
+                .execute(conn)?;
 
-            // Delete OAuth links
-            diesel::delete(
-                crate::schema::user_oauth2_links::dsl::user_oauth2_links
-                    .filter(crate::schema::user_oauth2_links::dsl::user_id.eq(user_id))
-            ).execute(conn)?;
+                // Delete OAuth links
+                diesel::delete(
+                    crate::schema::user_oauth2_links::dsl::user_oauth2_links
+                        .filter(crate::schema::user_oauth2_links::dsl::user_id.eq(user_id)),
+                )
+                .execute(conn)?;
 
-            // Note: Don't delete security_events as they're audit logs
-            // Just nullify the user_id instead
-            diesel::update(
-                crate::schema::security_events::dsl::security_events
-                    .filter(crate::schema::security_events::dsl::user_id.eq(user_id))
-            )
-            .set(crate::schema::security_events::dsl::user_id.eq(None::<i32>))
-            .execute(conn)?;
+                // Note: Don't delete security_events as they're audit logs
+                // Just nullify the user_id instead
+                diesel::update(
+                    crate::schema::security_events::dsl::security_events
+                        .filter(crate::schema::security_events::dsl::user_id.eq(user_id)),
+                )
+                .set(crate::schema::security_events::dsl::user_id.eq(None::<i32>))
+                .execute(conn)?;
 
-            // Finally delete the user
-            diesel::delete(
-                crate::schema::users::dsl::users
-                    .filter(crate::schema::users::dsl::id.eq(user_id))
-            ).execute(conn)?;
+                // Finally delete the user
+                diesel::delete(
+                    crate::schema::users::dsl::users
+                        .filter(crate::schema::users::dsl::id.eq(user_id)),
+                )
+                .execute(conn)?;
 
-            Ok::<(), diesel::result::Error>(())
-        }, Some("delete_user_cascade")).await?;
+                Ok::<(), diesel::result::Error>(())
+            },
+            Some("delete_user_cascade"),
+        )
+        .await?;
 
-        info!("Successfully deleted user account: {} (ID: {})", user_email, user.id);
+        info!(
+            "Successfully deleted user account: {} (ID: {})",
+            user_email, user.id
+        );
 
         // Log the user deletion
         if let Err(e) = SecurityEventLogger::log_event(
@@ -787,12 +902,20 @@ impl UserHandler {
             "user_deletion",
             None, // Don't use user.id since user is deleted
             Some(user_email.clone()),
-            &format!("Administrator deleted user account: {} ({})", 
-                user_email, 
-                if user.activated { "was active" } else { "was inactive" }),
+            &format!(
+                "Administrator deleted user account: {} ({})",
+                user_email,
+                if user.activated {
+                    "was active"
+                } else {
+                    "was inactive"
+                }
+            ),
             "high",
             req,
-        ).await {
+        )
+        .await
+        {
             warn!("Failed to log user deletion: {}", e);
         }
 
@@ -811,15 +934,16 @@ impl UserHandler {
     ) -> AppResult<HttpResponse> {
         let user_id = auth.user_id;
         let mut update_data = item.into_inner();
-        
+
         debug!("User {} updating their own account", user_id);
-        
+
         // Get original user data for change tracking
         let original_user = execute_db_query(db.clone(), move |conn| {
             use crate::schema::users::dsl::*;
             users.find(user_id).first::<User>(conn)
-        }).await?;
-        
+        })
+        .await?;
+
         // Validate the update data
         self.validate_self_update(&update_data)?;
 
@@ -828,15 +952,20 @@ impl UserHandler {
             let email_clone = new_email.clone();
             let existing_user = execute_db_query(db.clone(), move |conn| {
                 use crate::schema::users::dsl::*;
-                users.filter(email.eq(&email_clone))
+                users
+                    .filter(email.eq(&email_clone))
                     .filter(id.ne(user_id))
                     .first::<User>(conn)
                     .optional()
-            }).await?;
+            })
+            .await?;
 
             if existing_user.is_some() {
-                warn!("User {} attempted to use existing email: {}", user_id, new_email);
-                
+                warn!(
+                    "User {} attempted to use existing email: {}",
+                    user_id, new_email
+                );
+
                 // Log failed email change attempt
                 if let Err(e) = SecurityEventLogger::log_event(
                     db.clone(),
@@ -846,13 +975,15 @@ impl UserHandler {
                     &format!("Failed self email update: {} already exists", new_email),
                     "low",
                     req,
-                ).await {
+                )
+                .await
+                {
                     warn!("Failed to log self update failure: {}", e);
                 }
 
                 return Err(AppError::validation(
-                    "A user with this email already exists", 
-                    Some("email")
+                    "A user with this email already exists",
+                    Some("email"),
                 ));
             }
         }
@@ -860,7 +991,7 @@ impl UserHandler {
         // Track changes for security logging
         let mut changes = Vec::new();
         let password_changed = update_data.hash_password.is_some();
-        
+
         if let Some(ref new_email) = update_data.email {
             if *new_email != original_user.email {
                 changes.push(format!("email: {} -> {}", original_user.email, new_email));
@@ -869,13 +1000,19 @@ impl UserHandler {
 
         if let Some(ref new_firstname) = update_data.firstname {
             if *new_firstname != original_user.firstname {
-                changes.push(format!("firstname: {} -> {}", original_user.firstname, new_firstname));
+                changes.push(format!(
+                    "firstname: {} -> {}",
+                    original_user.firstname, new_firstname
+                ));
             }
         }
 
         if let Some(ref new_lastname) = update_data.lastname {
             if *new_lastname != original_user.lastname {
-                changes.push(format!("lastname: {} -> {}", original_user.lastname, new_lastname));
+                changes.push(format!(
+                    "lastname: {} -> {}",
+                    original_user.lastname, new_lastname
+                ));
             }
         }
 
@@ -904,7 +1041,8 @@ impl UserHandler {
             diesel::update(users.find(user_id))
                 .set(&db_update)
                 .get_result::<User>(conn)
-        }).await?;
+        })
+        .await?;
 
         info!("User {} successfully updated their own account", result.id);
 
@@ -917,24 +1055,27 @@ impl UserHandler {
 
         if let Err(e) = SecurityEventLogger::log_event(
             db.clone(),
-            if password_changed { "self_password_change" } else { "self_profile_update" },
+            if password_changed {
+                "self_password_change"
+            } else {
+                "self_profile_update"
+            },
             Some(result.id),
             Some(result.email.clone()),
             &change_description,
             if password_changed { "medium" } else { "low" },
             req,
-        ).await {
+        )
+        .await
+        {
             warn!("Failed to log self update: {}", e);
         }
 
         // If password was changed, log it separately
         if password_changed {
-            if let Err(e) = SecurityEventLogger::log_password_change(
-                db,
-                result.id,
-                &result.email,
-                req,
-            ).await {
+            if let Err(e) =
+                SecurityEventLogger::log_password_change(db, result.id, &result.email, req).await
+            {
                 warn!("Failed to log password change: {}", e);
             }
         }
@@ -950,14 +1091,15 @@ impl UserHandler {
         req: Option<&HttpRequest>,
     ) -> AppResult<HttpResponse> {
         use crate::schema::users::dsl::*;
-        
+
         let user_id = auth.user_id;
         debug!("User {} fetching their own account info", user_id);
-        
+
         let result = execute_db_query(db.clone(), move |conn| {
             users.find(user_id).first::<User>(conn)
-        }).await?;
-        
+        })
+        .await?;
+
         debug!("Successfully fetched self info for user: {}", result.email);
 
         // Log self-access (low priority, but useful for audit trails)
@@ -969,7 +1111,9 @@ impl UserHandler {
             "User accessed their own profile information",
             "low",
             req,
-        ).await {
+        )
+        .await
+        {
             warn!("Failed to log self profile access: {}", e);
         }
 
@@ -988,15 +1132,14 @@ impl UserHandler {
     /// # Returns
     /// True if the password should be rehashed
     pub async fn needs_password_rehash(
-        &self, 
-        db: web::Data<Database>, 
-        user_id: i32
+        &self,
+        db: web::Data<Database>,
+        user_id: i32,
     ) -> AppResult<bool> {
         use crate::schema::users::dsl::*;
-        
-        let user = execute_db_query(db, move |conn| {
-            users.find(user_id).first::<User>(conn)
-        }).await?;
+
+        let user =
+            execute_db_query(db, move |conn| users.find(user_id).first::<User>(conn)).await?;
 
         Ok(self.password_service.needs_rehash(&user.hash_password))
     }
@@ -1022,16 +1165,20 @@ impl UserHandler {
         req: Option<&HttpRequest>,
     ) -> AppResult<()> {
         use crate::schema::users::dsl::*;
-        
+
         debug!("Rehashing password for user: {}", user_id);
 
         // Get current user
         let user = execute_db_query(db.clone(), move |conn| {
             users.find(user_id).first::<User>(conn)
-        }).await?;
+        })
+        .await?;
 
         // Verify current password
-        if !self.password_service.verify_password(current_password, &user.hash_password)? {
+        if !self
+            .password_service
+            .verify_password(current_password, &user.hash_password)?
+        {
             // Log failed rehash attempt
             if let Err(e) = SecurityEventLogger::log_event(
                 db.clone(),
@@ -1041,13 +1188,15 @@ impl UserHandler {
                 "Failed password rehash: current password verification failed",
                 "medium",
                 req,
-            ).await {
+            )
+            .await
+            {
                 warn!("Failed to log password rehash failure: {}", e);
             }
 
             return Err(AppError::auth(
                 crate::services::error::AuthErrorReason::InvalidCredentials,
-                "Current password verification failed"
+                "Current password verification failed",
             ));
         }
 
@@ -1060,7 +1209,8 @@ impl UserHandler {
             diesel::update(users.filter(id.eq(user_id)))
                 .set(hash_password.eq(&new_hash))
                 .execute(conn)
-        }).await?;
+        })
+        .await?;
 
         info!("Successfully rehashed password for user: {}", user_id);
 
@@ -1073,7 +1223,9 @@ impl UserHandler {
             "Password hash updated to current security standards during login",
             "low",
             req,
-        ).await {
+        )
+        .await
+        {
             warn!("Failed to log password rehash success: {}", e);
         }
 
@@ -1096,60 +1248,62 @@ impl UserHandler {
         req: Option<&HttpRequest>,
     ) -> AppResult<()> {
         use crate::schema::users::dsl::*;
-       
-       debug!("Activating user account: {}", user_id);
 
-       // Get user info before activation
-       let user = execute_db_query(db.clone(), move |conn| {
-           users.find(user_id).first::<User>(conn)
-       }).await?;
+        debug!("Activating user account: {}", user_id);
 
-       if user.activated {
-           warn!("Attempted to activate already active user: {}", user.email);
-           return Ok(()); // Already activated, no error needed
-       }
+        // Get user info before activation
+        let user = execute_db_query(db.clone(), move |conn| {
+            users.find(user_id).first::<User>(conn)
+        })
+        .await?;
 
-       let user_email = user.email.clone(); // Clone before moving
+        if user.activated {
+            warn!("Attempted to activate already active user: {}", user.email);
+            return Ok(()); // Already activated, no error needed
+        }
 
-       // Activate the user
-       execute_db_query(db.clone(), move |conn| {
-           diesel::update(users.filter(id.eq(user_id)))
-               .set(activated.eq(true))
-               .execute(conn)
-       }).await?;
+        let user_email = user.email.clone(); // Clone before moving
 
-       info!("Successfully activated user account: {}", user_email);
+        // Activate the user
+        execute_db_query(db.clone(), move |conn| {
+            diesel::update(users.filter(id.eq(user_id)))
+                .set(activated.eq(true))
+                .execute(conn)
+        })
+        .await?;
 
-       // Automatically assign default role to newly activated user
-       let role_service = get_role_assignment_service();
-       if let Err(e) = role_service.assign_default_role_to_user(
-           db.clone(),
-           user_id,
-           &user_email,
-           "admin_activation",
-           req,
-       ).await {
-           // Log error but don't fail activation
-           warn!("Failed to assign default role to activated user {}: {}", 
-               user_id, e);
-       }
+        info!("Successfully activated user account: {}", user_email);
 
-       // Log account activation
-       if let Err(e) = SecurityEventLogger::log_event(
-           db,
-           "account_activation",
-           Some(user_id),
-           Some(user_email),
-           "User account successfully activated",
-           "medium",
-           req,
-       ).await {
-           warn!("Failed to log account activation: {}", e);
-       }
+        // Automatically assign default role to newly activated user
+        let role_service = get_role_assignment_service();
+        if let Err(e) = role_service
+            .assign_default_role_to_user(db.clone(), user_id, &user_email, "admin_activation", req)
+            .await
+        {
+            // Log error but don't fail activation
+            warn!(
+                "Failed to assign default role to activated user {}: {}",
+                user_id, e
+            );
+        }
 
-       Ok(())
-   }
+        // Log account activation
+        if let Err(e) = SecurityEventLogger::log_event(
+            db,
+            "account_activation",
+            Some(user_id),
+            Some(user_email),
+            "User account successfully activated",
+            "medium",
+            req,
+        )
+        .await
+        {
+            warn!("Failed to log account activation: {}", e);
+        }
 
+        Ok(())
+    }
 
     /// Deactivate a user account with security logging
     ///
@@ -1162,65 +1316,78 @@ impl UserHandler {
     /// # Returns
     /// Result indicating success or failure
     pub async fn deactivate_user(
-       &self,
-       db: web::Data<Database>,
-       user_id: i32,
-       reason: &str,
-       req: Option<&HttpRequest>,
-   ) -> AppResult<()> {
-       use crate::schema::users::dsl::*;
-       
-       debug!("Deactivating user account: {} (reason: {})", user_id, reason);
+        &self,
+        db: web::Data<Database>,
+        user_id: i32,
+        reason: &str,
+        req: Option<&HttpRequest>,
+    ) -> AppResult<()> {
+        use crate::schema::users::dsl::*;
 
-       // Get user info before deactivation
-       let user = execute_db_query(db.clone(), move |conn| {
-           users.find(user_id).first::<User>(conn)
-       }).await?;
+        debug!(
+            "Deactivating user account: {} (reason: {})",
+            user_id, reason
+        );
 
-       if !user.activated {
-           warn!("Attempted to deactivate already inactive user: {}", user.email);
-           return Ok(()); // Already deactivated, no error needed
-       }
+        // Get user info before deactivation
+        let user = execute_db_query(db.clone(), move |conn| {
+            users.find(user_id).first::<User>(conn)
+        })
+        .await?;
 
-       let user_email = user.email.clone(); // Clone before moving
+        if !user.activated {
+            warn!(
+                "Attempted to deactivate already inactive user: {}",
+                user.email
+            );
+            return Ok(()); // Already deactivated, no error needed
+        }
 
-       // Deactivate the user
-       execute_db_query(db.clone(), move |conn| {
-           diesel::update(users.filter(id.eq(user_id)))
-               .set(activated.eq(false))
-               .execute(conn)
-       }).await?;
+        let user_email = user.email.clone(); // Clone before moving
 
-       info!("Successfully deactivated user account: {} (reason: {})", user_email, reason);
+        // Deactivate the user
+        execute_db_query(db.clone(), move |conn| {
+            diesel::update(users.filter(id.eq(user_id)))
+                .set(activated.eq(false))
+                .execute(conn)
+        })
+        .await?;
 
-       // Optionally remove default role (you can choose whether to do this)
-       let role_service = get_role_assignment_service();
-       if let Err(e) = role_service.remove_default_role_from_user(
-           db.clone(),
-           user_id,
-           &user_email,
-           req,
-       ).await {
-           // Log error but don't fail deactivation
-           warn!("Failed to remove default role from deactivated user {}: {}", 
-               user_id, e);
-       }
+        info!(
+            "Successfully deactivated user account: {} (reason: {})",
+            user_email, reason
+        );
 
-       // Log account deactivation
-       if let Err(e) = SecurityEventLogger::log_event(
-           db,
-           "account_deactivation",
-           Some(user_id),
-           Some(user_email),
-           &format!("User account deactivated: {}", reason),
-           "high",
-           req,
-       ).await {
-           warn!("Failed to log account deactivation: {}", e);
-       }
+        // Optionally remove default role (you can choose whether to do this)
+        let role_service = get_role_assignment_service();
+        if let Err(e) = role_service
+            .remove_default_role_from_user(db.clone(), user_id, &user_email, req)
+            .await
+        {
+            // Log error but don't fail deactivation
+            warn!(
+                "Failed to remove default role from deactivated user {}: {}",
+                user_id, e
+            );
+        }
 
-       Ok(())
-   }
+        // Log account deactivation
+        if let Err(e) = SecurityEventLogger::log_event(
+            db,
+            "account_deactivation",
+            Some(user_id),
+            Some(user_email),
+            &format!("User account deactivated: {}", reason),
+            "high",
+            req,
+        )
+        .await
+        {
+            warn!("Failed to log account deactivation: {}", e);
+        }
+
+        Ok(())
+    }
 
     /// Lock a user account due to suspicious activity
     ///
@@ -1241,16 +1408,18 @@ impl UserHandler {
     ) -> AppResult<()> {
         // This would require additional database schema for account locking
         // For now, we'll deactivate and log as a security lock
-        
+
         let user = execute_db_query(db.clone(), move |conn| {
             use crate::schema::users::dsl::*;
             users.find(user_id).first::<User>(conn)
-        }).await?;
+        })
+        .await?;
 
         let user_email = user.email.clone(); // Clone before deactivation
 
         // Deactivate account
-        self.deactivate_user(db.clone(), user_id, reason, req).await?;
+        self.deactivate_user(db.clone(), user_id, reason, req)
+            .await?;
 
         // Log as security lock (high severity)
         if let Err(e) = SecurityEventLogger::log_event(
@@ -1261,7 +1430,9 @@ impl UserHandler {
             &format!("Account locked for security reasons: {}", reason),
             "high",
             req,
-        ).await {
+        )
+        .await
+        {
             warn!("Failed to log account lock: {}", e);
         }
 
@@ -1538,9 +1709,9 @@ pub async fn activate_user(
 ) -> Result<HttpResponse, AppError> {
     let handler = UserHandler::new(config.get_ref().clone());
     let user_id = user_id.into_inner();
-    
+
     handler.activate_user(db, user_id, Some(&req)).await?;
-    
+
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "message": "User account activated successfully"
     })))
@@ -1580,9 +1751,11 @@ pub async fn deactivate_user(
     let handler = UserHandler::new(config.get_ref().clone());
     let user_id = user_id.into_inner();
     let reason = &item.reason;
-    
-    handler.deactivate_user(db, user_id, reason, Some(&req)).await?;
-    
+
+    handler
+        .deactivate_user(db, user_id, reason, Some(&req))
+        .await?;
+
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "message": "User account deactivated successfully"
     })))
@@ -1610,7 +1783,7 @@ mod tests {
     async fn test_validate_new_user() {
         let config = test_config();
         let handler = UserHandler::new(config.get_ref().clone());
-        
+
         // Valid user
         let valid_user = NewUser {
             email: "test@example.com".to_string(),
@@ -1619,9 +1792,9 @@ mod tests {
             firstname: "John".to_string(),
             lastname: "Doe".to_string(),
         };
-        
+
         assert!(handler.validate_new(&valid_user).is_ok());
-        
+
         // Invalid email
         let invalid_email = NewUser {
             email: "invalid-email".to_string(),
@@ -1630,9 +1803,9 @@ mod tests {
             firstname: "John".to_string(),
             lastname: "Doe".to_string(),
         };
-        
+
         assert!(handler.validate_new(&invalid_email).is_err());
-        
+
         // Weak password
         let weak_password = NewUser {
             email: "test@example.com".to_string(),
@@ -1641,7 +1814,7 @@ mod tests {
             firstname: "John".to_string(),
             lastname: "Doe".to_string(),
         };
-        
+
         assert!(handler.validate_new(&weak_password).is_err());
     }
 
@@ -1649,18 +1822,27 @@ mod tests {
     async fn test_password_strength_validation() {
         let config = test_config();
         let handler = UserHandler::new(config.get_ref().clone());
-        
+
         // Test various password strengths
-        assert!(handler.password_service.validate_password_strength("SecurePass123!").is_ok());
-        assert!(handler.password_service.validate_password_strength("weak").is_err());
-        assert!(handler.password_service.validate_password_strength("password123").is_err()); // Common pattern
+        assert!(handler
+            .password_service
+            .validate_password_strength("SecurePass123!")
+            .is_ok());
+        assert!(handler
+            .password_service
+            .validate_password_strength("weak")
+            .is_err());
+        assert!(handler
+            .password_service
+            .validate_password_strength("password123")
+            .is_err()); // Common pattern
     }
 
     #[test]
     fn test_forbidden_characters() {
         let config = Arc::new(Config::load().expect("Failed to load config"));
         let handler = UserHandler::new(config);
-        
+
         let user_with_forbidden_chars = NewUser {
             email: "test@example.com".to_string(),
             hash_password: "SecurePass123!".to_string(),
@@ -1668,7 +1850,7 @@ mod tests {
             firstname: "John<script>".to_string(),
             lastname: "Doe".to_string(),
         };
-        
+
         assert!(handler.validate_new(&user_with_forbidden_chars).is_err());
     }
 }

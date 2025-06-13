@@ -32,7 +32,7 @@ use crate::services::mailer::Mailer;
 /// ```
 pub async fn send(mailer: &Mailer, to_email: &str, link: &str) {
     let subject = "Complete Your HistText Registration";
-    
+
     let text = format!(
         r#"(This is an automated message.)
 

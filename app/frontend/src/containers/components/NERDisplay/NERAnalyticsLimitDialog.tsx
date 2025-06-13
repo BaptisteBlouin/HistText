@@ -30,7 +30,7 @@ import {
   CheckBoxOutlineBlank,
   CheckBox,
 } from "@mui/icons-material";
-import config from "../../../../config.json";
+import { useConfig } from "../../../contexts/ConfigurationContext";
 
 const icon = <CheckBoxOutlineBlank fontSize="small" />;
 const checkedIcon = <CheckBox fontSize="small" />;
@@ -56,6 +56,7 @@ const NERAnalyticsLimitDialog: React.FC<NERAnalyticsLimitDialogProps> = ({
   entityTypeStats = {},
   entities = [],
 }) => {
+  const config = useConfig();
   const percentageToProcess = Math.min(
     (maxEntities / totalEntities) * 100,
     100,

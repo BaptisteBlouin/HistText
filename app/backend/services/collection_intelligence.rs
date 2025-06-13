@@ -3,13 +3,13 @@
 //! This module provides comprehensive analytics about Solr collection usage,
 //! performance optimization insights, and resource management recommendations.
 
+use crate::services::request_analytics::get_user_display_name;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use utoipa::ToSchema;
-use crate::services::request_analytics::get_user_display_name;
 
 /// Collection intelligence analytics data structure
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -303,7 +303,7 @@ pub struct DataGrowthTrends {
 pub struct CollectionGrowthTrend {
     pub collection_name: String,
     pub monthly_growth_rate: f64,
-    pub growth_stability: f64, // How consistent the growth is
+    pub growth_stability: f64,  // How consistent the growth is
     pub growth_pattern: String, // "linear", "exponential", "seasonal", etc.
 }
 
@@ -476,7 +476,7 @@ impl CollectionIntelligenceStore {
         features_used: Vec<String>,
     ) {
         let mut records = self.usage_records.write().await;
-        
+
         let record = CollectionUsageRecord {
             collection_name,
             user_id,
@@ -509,11 +509,12 @@ impl CollectionIntelligenceStore {
             collection_name,
             Some(user_id),
             OperationType::Query, // Default to query operation
-            0.0, // Data size unknown from middleware
+            0.0,                  // Data size unknown from middleware
             response_time.as_millis() as u64,
             success,
             Vec::new(), // Features unknown from middleware
-        ).await;
+        )
+        .await;
     }
 
     pub async fn get_collection_intelligence(&self) -> CollectionIntelligence {
@@ -634,9 +635,12 @@ impl CollectionIntelligenceStore {
         }
     }
 
-    async fn calculate_usage_metrics(&self, records: &[&CollectionUsageRecord]) -> Vec<CollectionUsageMetrics> {
+    async fn calculate_usage_metrics(
+        &self,
+        records: &[&CollectionUsageRecord],
+    ) -> Vec<CollectionUsageMetrics> {
         let mut collection_stats: HashMap<String, Vec<&CollectionUsageRecord>> = HashMap::new();
-        
+
         for record in records {
             collection_stats
                 .entry(record.collection_name.clone())
@@ -646,145 +650,172 @@ impl CollectionIntelligenceStore {
 
         let mut metrics = Vec::new();
         for (collection_name, collection_records) in collection_stats {
-                let query_frequency = collection_records
-                    .iter()
-                    .filter(|r| matches!(r.operation_type, OperationType::Query))
-                    .count() as u64;
+            let query_frequency = collection_records
+                .iter()
+                .filter(|r| matches!(r.operation_type, OperationType::Query))
+                .count() as u64;
 
-                let unique_users = collection_records
-                    .iter()
-                    .filter_map(|r| r.user_id)
-                    .collect::<std::collections::HashSet<_>>()
-                    .len() as u64;
+            let unique_users = collection_records
+                .iter()
+                .filter_map(|r| r.user_id)
+                .collect::<std::collections::HashSet<_>>()
+                .len() as u64;
 
-                let data_volume_gb = collection_records
-                    .iter()
-                    .map(|r| r.data_size_mb)
-                    .sum::<f64>() / 1024.0;
+            let data_volume_gb = collection_records
+                .iter()
+                .map(|r| r.data_size_mb)
+                .sum::<f64>()
+                / 1024.0;
 
-                // Calculate real document count from query results
-                let document_count = collection_records
-                    .iter()
-                    .filter(|r| matches!(r.operation_type, OperationType::Query))
-                    .map(|r| {
-                        // Extract document count from features_used field (format: "docs:123")
-                        for feature in &r.features_used {
-                            if feature.starts_with("docs:") {
-                                if let Ok(count) = feature[5..].parse::<u64>() {
-                                    return count;
-                                }
+            // Calculate real document count from query results
+            let document_count = collection_records
+                .iter()
+                .filter(|r| matches!(r.operation_type, OperationType::Query))
+                .map(|r| {
+                    // Extract document count from features_used field (format: "docs:123")
+                    for feature in &r.features_used {
+                        if feature.starts_with("docs:") {
+                            if let Ok(count) = feature[5..].parse::<u64>() {
+                                return count;
                             }
                         }
-                        // Fallback: estimate from data size
-                        ((r.data_size_mb * 100.0) as u64).max(1)
-                    })
-                    .sum::<u64>();
+                    }
+                    // Fallback: estimate from data size
+                    ((r.data_size_mb * 100.0) as u64).max(1)
+                })
+                .sum::<u64>();
 
-                // Calculate engagement score (0-10)
-                let user_engagement_score = if unique_users > 0 {
-                    ((query_frequency as f64 / unique_users as f64).min(100.0) / 10.0).min(10.0)
-                } else {
-                    0.0
-                };
+            // Calculate engagement score (0-10)
+            let user_engagement_score = if unique_users > 0 {
+                ((query_frequency as f64 / unique_users as f64).min(100.0) / 10.0).min(10.0)
+            } else {
+                0.0
+            };
 
-                // Calculate performance score based on response times
-                let avg_response_time = if collection_records.is_empty() {
-                    0.0
-                } else {
-                    collection_records.iter().map(|r| r.response_time_ms).sum::<u64>() as f64 
-                        / collection_records.len() as f64
-                };
-                let performance_score = (10.0 - (avg_response_time / 1000.0).min(10.0)).max(0.0);
-
-                // Calculate peak usage patterns
-                let mut hourly_usage = HashMap::new();
-                for record in &collection_records {
-                    let hour = (record.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs() / 3600) % 24;
-                    *hourly_usage.entry(hour as u8).or_insert(0u64) += 1;
-                }
-                let peak_hour = hourly_usage
-                    .into_iter()
-                    .max_by_key(|(_, count)| *count)
-                    .map(|(hour, _)| hour)
-                    .unwrap_or(12);
-
-                let peak_usage_patterns = PeakUsagePatterns {
-                    peak_hour,
-                    peak_day_of_week: 2, // Tuesday placeholder
-                    seasonal_trends: HashMap::new(),
-                    usage_intensity: UsageIntensity {
-                        queries_per_hour_avg: query_frequency as f64 / (24.0 * 30.0), // 30 days
-                        queries_per_hour_peak: query_frequency as f64 / 24.0, // All in one day
-                        concurrent_users_avg: unique_users as f64 / 30.0,
-                        concurrent_users_peak: unique_users as f64,
-                    },
-                };
-
-                // Calculate feature utilization
-                let total_operations = collection_records.len() as f64;
-                let feature_utilization = FeatureUtilization {
-                    faceting_usage_percent: (collection_records
-                        .iter()
-                        .filter(|r| r.features_used.contains(&"faceting".to_string()))
-                        .count() as f64 / total_operations) * 100.0,
-                    filtering_usage_percent: (collection_records
-                        .iter()
-                        .filter(|r| r.features_used.contains(&"filtering".to_string()))
-                        .count() as f64 / total_operations) * 100.0,
-                    sorting_usage_percent: (collection_records
-                        .iter()
-                        .filter(|r| r.features_used.contains(&"sorting".to_string()))
-                        .count() as f64 / total_operations) * 100.0,
-                    highlighting_usage_percent: (collection_records
-                        .iter()
-                        .filter(|r| r.features_used.contains(&"highlighting".to_string()))
-                        .count() as f64 / total_operations) * 100.0,
-                    geospatial_usage_percent: (collection_records
-                        .iter()
-                        .filter(|r| r.features_used.contains(&"geospatial".to_string()))
-                        .count() as f64 / total_operations) * 100.0,
-                    advanced_query_usage_percent: (collection_records
-                        .iter()
-                        .filter(|r| r.features_used.contains(&"advanced".to_string()))
-                        .count() as f64 / total_operations) * 100.0,
-                };
-
-                let growth_rate_7d = self.calculate_collection_growth_rate(&collection_name, &collection_records, 7);
-                let growth_rate_30d = self.calculate_collection_growth_rate(&collection_name, &collection_records, 30);
-                
-                // Build user list with real information
-                let user_ids: std::collections::HashSet<i32> = collection_records
+            // Calculate performance score based on response times
+            let avg_response_time = if collection_records.is_empty() {
+                0.0
+            } else {
+                collection_records
                     .iter()
-                    .filter_map(|r| r.user_id)
+                    .map(|r| r.response_time_ms)
+                    .sum::<u64>() as f64
+                    / collection_records.len() as f64
+            };
+            let performance_score = (10.0 - (avg_response_time / 1000.0).min(10.0)).max(0.0);
+
+            // Calculate peak usage patterns
+            let mut hourly_usage = HashMap::new();
+            for record in &collection_records {
+                let hour = (record
+                    .timestamp
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    / 3600)
+                    % 24;
+                *hourly_usage.entry(hour as u8).or_insert(0u64) += 1;
+            }
+            let peak_hour = hourly_usage
+                .into_iter()
+                .max_by_key(|(_, count)| *count)
+                .map(|(hour, _)| hour)
+                .unwrap_or(12);
+
+            let peak_usage_patterns = PeakUsagePatterns {
+                peak_hour,
+                peak_day_of_week: 2, // Tuesday placeholder
+                seasonal_trends: HashMap::new(),
+                usage_intensity: UsageIntensity {
+                    queries_per_hour_avg: query_frequency as f64 / (24.0 * 30.0), // 30 days
+                    queries_per_hour_peak: query_frequency as f64 / 24.0,         // All in one day
+                    concurrent_users_avg: unique_users as f64 / 30.0,
+                    concurrent_users_peak: unique_users as f64,
+                },
+            };
+
+            // Calculate feature utilization
+            let total_operations = collection_records.len() as f64;
+            let feature_utilization = FeatureUtilization {
+                faceting_usage_percent: (collection_records
+                    .iter()
+                    .filter(|r| r.features_used.contains(&"faceting".to_string()))
+                    .count() as f64
+                    / total_operations)
+                    * 100.0,
+                filtering_usage_percent: (collection_records
+                    .iter()
+                    .filter(|r| r.features_used.contains(&"filtering".to_string()))
+                    .count() as f64
+                    / total_operations)
+                    * 100.0,
+                sorting_usage_percent: (collection_records
+                    .iter()
+                    .filter(|r| r.features_used.contains(&"sorting".to_string()))
+                    .count() as f64
+                    / total_operations)
+                    * 100.0,
+                highlighting_usage_percent: (collection_records
+                    .iter()
+                    .filter(|r| r.features_used.contains(&"highlighting".to_string()))
+                    .count() as f64
+                    / total_operations)
+                    * 100.0,
+                geospatial_usage_percent: (collection_records
+                    .iter()
+                    .filter(|r| r.features_used.contains(&"geospatial".to_string()))
+                    .count() as f64
+                    / total_operations)
+                    * 100.0,
+                advanced_query_usage_percent: (collection_records
+                    .iter()
+                    .filter(|r| r.features_used.contains(&"advanced".to_string()))
+                    .count() as f64
+                    / total_operations)
+                    * 100.0,
+            };
+
+            let growth_rate_7d =
+                self.calculate_collection_growth_rate(&collection_name, &collection_records, 7);
+            let growth_rate_30d =
+                self.calculate_collection_growth_rate(&collection_name, &collection_records, 30);
+
+            // Build user list with real information
+            let user_ids: std::collections::HashSet<i32> = collection_records
+                .iter()
+                .filter_map(|r| r.user_id)
+                .collect();
+
+            let mut user_list = Vec::new();
+            for user_id in user_ids {
+                let user_records: Vec<_> = collection_records
+                    .iter()
+                    .filter(|r| r.user_id == Some(user_id))
                     .collect();
-                    
-                let mut user_list = Vec::new();
-                for user_id in user_ids {
-                    let user_records: Vec<_> = collection_records.iter().filter(|r| r.user_id == Some(user_id)).collect();
-                    let usage_count = user_records.len() as u64;
-                    let last_access = user_records
-                        .iter()
-                        .map(|r| r.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs())
-                        .max()
-                        .unwrap_or(0);
-                        
-                    // Get real username
-                    let username = match get_user_display_name(user_id).await {
-                        Ok(display_name) => display_name,
-                        Err(_) => format!("User {}", user_id),
-                    };
-                    
-                    user_list.push(CollectionUser {
-                        user_id,
-                        username,
-                        usage_count,
-                        last_access,
-                    });
-                }
-                
-                // Sort users by usage count (most active first)
-                user_list.sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
-                
+                let usage_count = user_records.len() as u64;
+                let last_access = user_records
+                    .iter()
+                    .map(|r| r.timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs())
+                    .max()
+                    .unwrap_or(0);
+
+                // Get real username
+                let username = match get_user_display_name(user_id).await {
+                    Ok(display_name) => display_name,
+                    Err(_) => format!("User {}", user_id),
+                };
+
+                user_list.push(CollectionUser {
+                    user_id,
+                    username,
+                    usage_count,
+                    last_access,
+                });
+            }
+
+            // Sort users by usage count (most active first)
+            user_list.sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
+
             metrics.push(CollectionUsageMetrics {
                 collection_name,
                 query_frequency,
@@ -800,11 +831,14 @@ impl CollectionIntelligenceStore {
                 feature_utilization,
             });
         }
-        
+
         metrics
     }
 
-    fn calculate_optimization_insights(&self, records: &[&CollectionUsageRecord]) -> CollectionOptimizationInsights {
+    fn calculate_optimization_insights(
+        &self,
+        records: &[&CollectionUsageRecord],
+    ) -> CollectionOptimizationInsights {
         // Group records by collection to analyze utilization
         let mut collection_stats: HashMap<String, Vec<&CollectionUsageRecord>> = HashMap::new();
         for record in records {
@@ -821,23 +855,23 @@ impl CollectionIntelligenceStore {
                 .iter()
                 .filter(|r| matches!(r.operation_type, OperationType::Query))
                 .count();
-            
+
             let unique_users = collection_records
                 .iter()
                 .filter_map(|r| r.user_id)
                 .collect::<std::collections::HashSet<_>>()
                 .len();
-            
+
             // Calculate utilization score based on queries per day and unique users
             let days_in_period = 30.0;
             let queries_per_day = query_count as f64 / days_in_period;
             let utilization_score = (queries_per_day * 10.0) + (unique_users as f64 * 20.0);
-            
+
             // Collections with low utilization (< 50 score) are considered underutilized
             if utilization_score < 50.0 && query_count > 0 {
                 let mut reasons = Vec::new();
                 let mut recommendations = Vec::new();
-                
+
                 if queries_per_day < 1.0 {
                     reasons.push("Low query frequency (< 1 query/day)".to_string());
                     recommendations.push("Consider archiving if no business case".to_string());
@@ -846,15 +880,19 @@ impl CollectionIntelligenceStore {
                     reasons.push(format!("Few active users ({})", unique_users));
                     recommendations.push("Evaluate user base and business value".to_string());
                 }
-                
+
                 // Estimate potential savings based on collection size and usage
-                let estimated_storage = collection_records.iter().map(|r| r.data_size_mb).sum::<f64>() / 1024.0;
+                let estimated_storage = collection_records
+                    .iter()
+                    .map(|r| r.data_size_mb)
+                    .sum::<f64>()
+                    / 1024.0;
                 let potential_savings = PotentialSavings {
                     storage_gb: estimated_storage,
                     compute_resources_percent: (100.0 - utilization_score) / 10.0,
                     maintenance_hours_per_month: if utilization_score < 20.0 { 4.0 } else { 2.0 },
                 };
-                
+
                 underutilized_collections.push(UnderutilizedCollection {
                     collection_name: collection_name.clone(),
                     utilization_score,
@@ -875,37 +913,51 @@ impl CollectionIntelligenceStore {
             } else {
                 0.0
             };
-            
+
             let avg_response_time = if !collection_records.is_empty() {
-                collection_records.iter().map(|r| r.response_time_ms).sum::<u64>() as f64 / collection_records.len() as f64
+                collection_records
+                    .iter()
+                    .map(|r| r.response_time_ms)
+                    .sum::<u64>() as f64
+                    / collection_records.len() as f64
             } else {
                 0.0
             };
-            
+
             // High maintenance score for collections with high error rates or slow response times
             let maintenance_score = error_rate + (avg_response_time / 100.0).min(50.0);
-            
+
             if maintenance_score > 20.0 {
                 let mut issues = Vec::new();
-                
+
                 if error_rate > 10.0 {
                     issues.push(MaintenanceIssue {
                         issue_type: "High Error Rate".to_string(),
                         description: format!("Error rate: {:.1}%", error_rate),
-                        severity: if error_rate > 25.0 { "Critical" } else { "High" }.to_string(),
+                        severity: if error_rate > 25.0 {
+                            "Critical"
+                        } else {
+                            "High"
+                        }
+                        .to_string(),
                         impact_on_performance: error_rate,
                     });
                 }
-                
+
                 if avg_response_time > 2000.0 {
                     issues.push(MaintenanceIssue {
                         issue_type: "Slow Response Times".to_string(),
                         description: format!("Average response time: {:.0}ms", avg_response_time),
-                        severity: if avg_response_time > 5000.0 { "High" } else { "Medium" }.to_string(),
+                        severity: if avg_response_time > 5000.0 {
+                            "High"
+                        } else {
+                            "Medium"
+                        }
+                        .to_string(),
                         impact_on_performance: (avg_response_time / 100.0).min(100.0),
                     });
                 }
-                
+
                 let priority = if maintenance_score > 50.0 {
                     MaintenancePriority::Critical
                 } else if maintenance_score > 35.0 {
@@ -913,7 +965,7 @@ impl CollectionIntelligenceStore {
                 } else {
                     MaintenancePriority::Medium
                 };
-                
+
                 high_maintenance_collections.push(HighMaintenanceCollection {
                     collection_name: collection_name.clone(),
                     maintenance_score,
@@ -933,7 +985,10 @@ impl CollectionIntelligenceStore {
         }
     }
 
-    fn calculate_resource_allocation(&self, records: &[&CollectionUsageRecord]) -> ResourceAllocation {
+    fn calculate_resource_allocation(
+        &self,
+        records: &[&CollectionUsageRecord],
+    ) -> ResourceAllocation {
         // Group records by collection to analyze resource usage
         let mut collection_stats: HashMap<String, Vec<&CollectionUsageRecord>> = HashMap::new();
         for record in records {
@@ -950,19 +1005,27 @@ impl CollectionIntelligenceStore {
         let mut total_operations = 0u64;
 
         for (collection_name, collection_records) in &collection_stats {
-            let storage_gb = collection_records.iter().map(|r| r.data_size_mb).sum::<f64>() / 1024.0;
+            let storage_gb = collection_records
+                .iter()
+                .map(|r| r.data_size_mb)
+                .sum::<f64>()
+                / 1024.0;
             total_storage += storage_gb;
-            
+
             let operations_count = collection_records.len() as u64;
             total_operations += operations_count;
-            
+
             let avg_response_time = if !collection_records.is_empty() {
-                collection_records.iter().map(|r| r.response_time_ms).sum::<u64>() / collection_records.len() as u64
+                collection_records
+                    .iter()
+                    .map(|r| r.response_time_ms)
+                    .sum::<u64>()
+                    / collection_records.len() as u64
             } else {
                 0
             };
             total_response_time += avg_response_time * operations_count;
-            
+
             // Estimate memory and CPU usage based on operations and data size
             let memory_gb = (storage_gb * 0.1).max(1.0); // Rough estimate: 10% of storage as memory
             let cpu_utilization = ((avg_response_time as f64 / 1000.0) * 10.0).min(100.0); // Response time correlates with CPU
@@ -971,7 +1034,7 @@ impl CollectionIntelligenceStore {
             } else {
                 50.0
             };
-            
+
             collections_by_resource_usage.push(ResourceUsageByCollection {
                 collection_name: collection_name.clone(),
                 storage_gb,
@@ -982,9 +1045,13 @@ impl CollectionIntelligenceStore {
         }
 
         // Estimate total system resources (simplified)
-        let total_memory_gb = collections_by_resource_usage.iter().map(|c| c.memory_gb).sum::<f64>().max(16.0);
+        let total_memory_gb = collections_by_resource_usage
+            .iter()
+            .map(|c| c.memory_gb)
+            .sum::<f64>()
+            .max(16.0);
         let total_cpu_cores = 16.0; // Fixed estimate
-        
+
         // Calculate average system utilization
         let avg_response_time = if total_operations > 0 {
             total_response_time / total_operations
@@ -1013,7 +1080,7 @@ impl CollectionIntelligenceStore {
             .iter()
             .map(|opt| opt.current_storage_gb - opt.optimized_storage_gb)
             .sum::<f64>();
-        
+
         let total_potential_savings = ResourceSavings {
             storage_savings_gb: storage_savings,
             memory_savings_gb: storage_savings * 0.1, // Memory savings proportional to storage
@@ -1031,7 +1098,7 @@ impl CollectionIntelligenceStore {
             recommended_allocation: RecommendedAllocation {
                 storage_optimizations,
                 memory_optimizations: Vec::new(), // Complex analysis - placeholder
-                cpu_optimizations: Vec::new(), // Complex analysis - placeholder
+                cpu_optimizations: Vec::new(),    // Complex analysis - placeholder
                 total_potential_savings,
             },
             rebalancing_opportunities: Vec::new(), // Complex analysis - placeholder
@@ -1055,7 +1122,10 @@ impl CollectionIntelligenceStore {
         }
     }
 
-    fn calculate_growth_projections(&self, records: &[&CollectionUsageRecord]) -> GrowthProjections {
+    fn calculate_growth_projections(
+        &self,
+        records: &[&CollectionUsageRecord],
+    ) -> GrowthProjections {
         // Group records by collection to analyze growth trends
         let mut collection_stats: HashMap<String, Vec<&CollectionUsageRecord>> = HashMap::new();
         for record in records {
@@ -1071,25 +1141,29 @@ impl CollectionIntelligenceStore {
         let mut total_data_size = 0.0;
 
         for (collection_name, collection_records) in &collection_stats {
-            let data_size_gb = collection_records.iter().map(|r| r.data_size_mb).sum::<f64>() / 1024.0;
+            let data_size_gb = collection_records
+                .iter()
+                .map(|r| r.data_size_mb)
+                .sum::<f64>()
+                / 1024.0;
             total_data_size += data_size_gb;
             total_operations += collection_records.len() as u64;
-            
+
             // Calculate growth rate based on recent vs older activity
             let now = SystemTime::now();
             let two_weeks_ago = now - Duration::from_secs(14 * 24 * 60 * 60);
             let four_weeks_ago = now - Duration::from_secs(28 * 24 * 60 * 60);
-            
+
             let recent_activity = collection_records
                 .iter()
                 .filter(|r| r.timestamp > two_weeks_ago)
                 .count() as f64;
-            
+
             let older_activity = collection_records
                 .iter()
                 .filter(|r| r.timestamp <= two_weeks_ago && r.timestamp > four_weeks_ago)
                 .count() as f64;
-            
+
             let monthly_growth_rate = if older_activity > 0.0 {
                 ((recent_activity - older_activity) / older_activity) * 100.0
             } else if recent_activity > 0.0 {
@@ -1097,7 +1171,7 @@ impl CollectionIntelligenceStore {
             } else {
                 0.0
             };
-            
+
             // Determine growth pattern and stability
             let growth_stability = if recent_activity > 0.0 && older_activity > 0.0 {
                 let ratio = recent_activity / older_activity;
@@ -1105,7 +1179,7 @@ impl CollectionIntelligenceStore {
             } else {
                 0.0
             };
-            
+
             let growth_pattern = if monthly_growth_rate > 20.0 {
                 "exponential"
             } else if monthly_growth_rate > 5.0 {
@@ -1114,8 +1188,9 @@ impl CollectionIntelligenceStore {
                 "declining"
             } else {
                 "stable"
-            }.to_string();
-            
+            }
+            .to_string();
+
             collections_by_growth_rate.push(CollectionGrowthTrend {
                 collection_name: collection_name.clone(),
                 monthly_growth_rate,
@@ -1123,7 +1198,7 @@ impl CollectionIntelligenceStore {
                 growth_pattern,
             });
         }
-        
+
         // Calculate overall system growth metrics
         let overall_growth_rate = if collections_by_growth_rate.is_empty() {
             0.0
@@ -1131,29 +1206,31 @@ impl CollectionIntelligenceStore {
             collections_by_growth_rate
                 .iter()
                 .map(|c| c.monthly_growth_rate)
-                .sum::<f64>() / collections_by_growth_rate.len() as f64
+                .sum::<f64>()
+                / collections_by_growth_rate.len() as f64
         };
-        
+
         let growth_acceleration = if overall_growth_rate > 10.0 { 1.5 } else { 1.0 };
-        let projected_total_size_12m = total_data_size * (1.0 + overall_growth_rate / 100.0).powf(12.0);
-        
+        let projected_total_size_12m =
+            total_data_size * (1.0 + overall_growth_rate / 100.0).powf(12.0);
+
         // Calculate usage growth trends
         let _unique_users = records
             .iter()
             .filter_map(|r| r.user_id)
             .collect::<std::collections::HashSet<_>>()
             .len() as f64;
-        
+
         let _query_operations = records
             .iter()
             .filter(|r| matches!(r.operation_type, OperationType::Query))
             .count() as f64;
-        
+
         let advanced_features_usage = records
             .iter()
             .filter(|r| !r.features_used.is_empty())
             .count() as f64;
-        
+
         let usage_growth_trends = UsageGrowthTrends {
             query_volume_growth: overall_growth_rate.max(0.0),
             user_base_growth: (overall_growth_rate * 0.6).max(0.0), // User growth typically slower than query growth
@@ -1182,7 +1259,12 @@ impl CollectionIntelligenceStore {
         }
     }
 
-    fn calculate_collection_growth_rate(&self, _collection_name: &str, _all_records: &[&CollectionUsageRecord], days: u64) -> f64 {
+    fn calculate_collection_growth_rate(
+        &self,
+        _collection_name: &str,
+        _all_records: &[&CollectionUsageRecord],
+        days: u64,
+    ) -> f64 {
         let _now = SystemTime::now();
         let _cutoff_time = _now - Duration::from_secs(days * 24 * 60 * 60);
         let _comparison_time = _now - Duration::from_secs(days * 2 * 24 * 60 * 60);
@@ -1192,9 +1274,9 @@ impl CollectionIntelligenceStore {
         // - Use actual historical data from a persistent store
         // For now, return a reasonable default growth rate
         if days <= 7 {
-            2.5  // 2.5% weekly growth
+            2.5 // 2.5% weekly growth
         } else {
-            8.0  // 8% monthly growth
+            8.0 // 8% monthly growth
         }
     }
 
@@ -1223,13 +1305,17 @@ impl CollectionIntelligenceStore {
             } else {
                 0.0
             };
-            
+
             let avg_response_time = if !collection_records.is_empty() {
-                collection_records.iter().map(|r| r.response_time_ms).sum::<u64>() as f64 / collection_records.len() as f64
+                collection_records
+                    .iter()
+                    .map(|r| r.response_time_ms)
+                    .sum::<u64>() as f64
+                    / collection_records.len() as f64
             } else {
                 0.0
             };
-            
+
             // Calculate health components
             let reliability_score = (100.0 - error_rate).max(0.0);
             let performance_score = if avg_response_time > 0.0 {
@@ -1237,26 +1323,29 @@ impl CollectionIntelligenceStore {
             } else {
                 75.0 // Default for no data
             };
-            
+
             let efficiency_score = if avg_response_time > 0.0 && total_operations > 0 {
                 let operations_per_second = total_operations as f64 / (30.0 * 24.0 * 3600.0); // 30 days in seconds
                 (operations_per_second * 100.0).min(100.0)
             } else {
                 50.0
             };
-            
+
             let health_score = (reliability_score + performance_score + efficiency_score) / 3.0;
             total_health_score += health_score;
-            
+
             collection_health_scores.push(CollectionHealthScore {
                 collection_name: collection_name.clone(),
                 health_score,
                 performance_score,
                 reliability_score,
                 efficiency_score,
-                last_assessment: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                last_assessment: SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs(),
             });
-            
+
             // Identify critical issues
             if error_rate > 25.0 {
                 critical_issues.push(CriticalIssue {
@@ -1265,12 +1354,15 @@ impl CollectionIntelligenceStore {
                     issue_type: "High Error Rate".to_string(),
                     severity: "Critical".to_string(),
                     description: format!("Collection has {:.1}% error rate", error_rate),
-                    detected_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                    detected_at: SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs(),
                     estimated_resolution_time: 4.0, // hours
                     business_impact: "High - Users experiencing frequent failures".to_string(),
                 });
             }
-            
+
             if avg_response_time > 5000.0 {
                 critical_issues.push(CriticalIssue {
                     issue_id: format!("PERF_{}", collection_name.replace(' ', "_")),
@@ -1278,12 +1370,15 @@ impl CollectionIntelligenceStore {
                     issue_type: "Poor Performance".to_string(),
                     severity: "High".to_string(),
                     description: format!("Average response time: {:.0}ms", avg_response_time),
-                    detected_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                    detected_at: SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs(),
                     estimated_resolution_time: 2.0, // hours
                     business_impact: "Medium - Users experiencing slow responses".to_string(),
                 });
             }
-            
+
             // Simple trend analysis (would need historical data for real implementation)
             if health_score > 80.0 {
                 improving_collections.push(collection_name.clone());
@@ -1291,13 +1386,13 @@ impl CollectionIntelligenceStore {
                 degrading_collections.push(collection_name.clone());
             }
         }
-        
+
         let overall_health_score = if collection_health_scores.is_empty() {
             0.0
         } else {
             total_health_score / collection_health_scores.len() as f64
         };
-        
+
         // Generate maintenance recommendations
         let mut recommended_maintenance = Vec::new();
         for collection in &collection_health_scores {
@@ -1308,8 +1403,14 @@ impl CollectionIntelligenceStore {
                         "Performance Optimization"
                     } else {
                         "General Health Check"
-                    }.to_string(),
-                    priority: if collection.health_score < 50.0 { "High" } else { "Medium" }.to_string(),
+                    }
+                    .to_string(),
+                    priority: if collection.health_score < 50.0 {
+                        "High"
+                    } else {
+                        "Medium"
+                    }
+                    .to_string(),
                     recommended_timeframe: "Within 2 weeks".to_string(),
                     expected_benefits: vec![
                         "Improved response times".to_string(),
@@ -1333,15 +1434,13 @@ impl CollectionIntelligenceStore {
             maintenance_schedule: MaintenanceSchedule {
                 upcoming_maintenance: Vec::new(), // Would integrate with scheduling system
                 recommended_maintenance,
-                maintenance_windows: vec![
-                    MaintenanceWindow {
-                        window_name: "Low Traffic Window".to_string(),
-                        start_hour: 2,
-                        end_hour: 6,
-                        days_of_week: vec![1, 2, 3, 4, 5], // Weekdays
-                        utilization_during_window: 15.0,
-                    },
-                ],
+                maintenance_windows: vec![MaintenanceWindow {
+                    window_name: "Low Traffic Window".to_string(),
+                    start_hour: 2,
+                    end_hour: 6,
+                    days_of_week: vec![1, 2, 3, 4, 5], // Weekdays
+                    utilization_during_window: 15.0,
+                }],
             },
         }
     }
@@ -1352,7 +1451,8 @@ use std::sync::OnceLock;
 static COLLECTION_INTELLIGENCE_STORE: OnceLock<CollectionIntelligenceStore> = OnceLock::new();
 
 pub fn get_collection_intelligence_store() -> &'static CollectionIntelligenceStore {
-    COLLECTION_INTELLIGENCE_STORE.get_or_init(|| CollectionIntelligenceStore::new(30000)) // Keep last 30k records
+    COLLECTION_INTELLIGENCE_STORE.get_or_init(|| CollectionIntelligenceStore::new(30000))
+    // Keep last 30k records
 }
 
 /// Helper function to record collection usage from handlers
