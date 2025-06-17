@@ -24,6 +24,10 @@ import {
   ListItemIcon,
   ListItemText,
   ListItemAvatar,
+  useTheme,
+  useMediaQuery,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import {
   Security,
@@ -39,6 +43,8 @@ import {
   Error as ErrorIcon,
   CheckCircle,
   AccountCircle,
+  ViewModule,
+  ViewList,
 } from "@mui/icons-material";
 import { UserActivity } from "../types";
 import { formatNumber } from "../utils/formatters";
@@ -67,6 +73,9 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
   onToggle,
   isVisible,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   /**
    * Returns an icon for each security event type.
    */
@@ -128,36 +137,59 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
   };
 
   return (
-    <Card sx={{ mb: 4 }}>
-      <CardContent>
+    <Card sx={{ 
+      mb: { xs: 3, md: 4 },
+      borderRadius: { xs: 2, md: 3 },
+    }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
+            alignItems: isMobile ? "flex-start" : "center",
+            mb: { xs: 2, md: 3 },
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 2, sm: 0 },
           }}
         >
           <Typography
-            variant="h5"
+            variant={isMobile ? "h6" : "h5"}
             sx={{
               fontWeight: 600,
               display: "flex",
               alignItems: "center",
               gap: 1,
+              fontSize: { xs: '1.25rem', md: '1.5rem' },
             }}
           >
-            <Security />
-            User Activity & Security Monitoring
+            <Security sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }} />
+            {isMobile ? "Activity Monitor" : "User Activity & Security Monitoring"}
           </Typography>
-          <Button
-            variant="outlined"
-            onClick={onToggle}
-            endIcon={isVisible ? <ExpandLess /> : <ExpandMore />}
-            size="small"
-          >
-            {isVisible ? "Hide Activity" : "Show Activity"}
-          </Button>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {!isMobile && isVisible && (
+              <Tooltip title={`Switch to ${viewMode === 'cards' ? 'Table' : 'Cards'} View`}>
+                <IconButton
+                  onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
+                  color="primary"
+                  size="small"
+                >
+                  {viewMode === 'cards' ? <ViewList /> : <ViewModule />}
+                </IconButton>
+              </Tooltip>
+            )}
+            <Button
+              variant="outlined"
+              onClick={onToggle}
+              endIcon={isVisible ? <ExpandLess /> : <ExpandMore />}
+              size={isMobile ? "small" : "medium"}
+              sx={{ 
+                minWidth: { xs: 'auto', sm: '140px' },
+                px: { xs: 1, sm: 2 },
+              }}
+            >
+              {isMobile ? (isVisible ? "Hide" : "Show") : (isVisible ? "Hide Activity" : "Show Activity")}
+            </Button>
+          </Stack>
         </Box>
 
         <Collapse in={isVisible}>
@@ -166,14 +198,21 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
           ) : !userActivity ? (
             <Alert severity="info">No user activity data available</Alert>
           ) : (
-            <Stack spacing={4}>
+            <Stack spacing={{ xs: 3, md: 4 }}>
               {/* Session Statistics Overview */}
               <Box>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                <Typography 
+                  variant={isMobile ? "subtitle1" : "h6"} 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 600,
+                    fontSize: { xs: '1.125rem', md: '1.25rem' },
+                  }}
+                >
                   Session Statistics
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6} md={2.4}>
+                <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                  <Grid item xs={6} sm={4} md={2.4}>
                     <Paper
                       sx={{
                         p: 2,
@@ -190,7 +229,7 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                       <Typography variant="body2">Active Sessions</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
+                  <Grid item xs={6} sm={4} md={2.4}>
                     <Paper
                       sx={{
                         p: 2,
@@ -207,7 +246,7 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                       <Typography variant="body2">Sessions (24h)</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
+                  <Grid item xs={6} sm={4} md={2.4}>
                     <Paper
                       sx={{
                         p: 2,
@@ -224,7 +263,7 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                       <Typography variant="body2">Sessions (7d)</Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
+                  <Grid item xs={6} sm={4} md={2.4}>
                     <Paper
                       sx={{
                         p: 2,
@@ -243,7 +282,7 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                       </Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
+                  <Grid item xs={6} sm={4} md={2.4}>
                     <Paper
                       sx={{
                         p: 2,
@@ -264,9 +303,9 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                 </Grid>
               </Box>
 
-              <Grid container spacing={3}>
+              <Grid container spacing={{ xs: 2, md: 3 }}>
                 {/* Recent Logins */}
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} lg={6}>
                   <Box>
                     <Typography
                       variant="h6"
@@ -278,11 +317,15 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                         gap: 1,
                       }}
                     >
-                      <Person />
-                      Recent Logins (24h)
+                      <Person sx={{ fontSize: { xs: '1.125rem', md: '1.25rem' } }} />
+                      {isMobile ? "Logins (24h)" : "Recent Logins (24h)"}
                     </Typography>
-                    <Paper sx={{ maxHeight: 400, overflow: "auto" }}>
-                      <List dense>
+                    <Paper sx={{ 
+                      maxHeight: { xs: 300, md: 400 }, 
+                      overflow: "auto",
+                      borderRadius: { xs: 2, md: 1 },
+                    }}>
+                      <List dense={!isMobile}>
                         {userActivity.recent_logins
                           .slice(0, 10)
                           .map((login, index) => (
@@ -335,7 +378,7 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                 </Grid>
 
                 {/* Recent Registrations */}
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} lg={6}>
                   <Box>
                     <Typography
                       variant="h6"
@@ -347,11 +390,15 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                         gap: 1,
                       }}
                     >
-                      <PersonAdd />
-                      Recent Registrations (7d)
+                      <PersonAdd sx={{ fontSize: { xs: '1.125rem', md: '1.25rem' } }} />
+                      {isMobile ? "Registrations (7d)" : "Recent Registrations (7d)"}
                     </Typography>
-                    <Paper sx={{ maxHeight: 400, overflow: "auto" }}>
-                      <List dense>
+                    <Paper sx={{ 
+                      maxHeight: { xs: 300, md: 400 }, 
+                      overflow: "auto",
+                      borderRadius: { xs: 2, md: 1 },
+                    }}>
+                      <List dense={!isMobile}>
                         {userActivity.user_registrations.map(
                           (registration, index) => (
                             <ListItem key={index} divider>
@@ -420,20 +467,21 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
               {/* Security Events */}
               <Box>
                 <Typography
-                  variant="h6"
+                  variant={isMobile ? "subtitle1" : "h6"}
                   gutterBottom
                   sx={{
                     fontWeight: 600,
                     display: "flex",
                     alignItems: "center",
                     gap: 1,
+                    fontSize: { xs: '1.125rem', md: '1.25rem' },
                   }}
                 >
-                  <Shield />
+                  <Shield sx={{ fontSize: { xs: '1.125rem', md: '1.25rem' } }} />
                   Security Events
                 </Typography>
-                <Paper>
-                  <List>
+                <Paper sx={{ borderRadius: { xs: 2, md: 1 } }}>
+                  <List dense={!isMobile}>
                     {userActivity.security_events.map((event, index) => (
                       <ListItem key={index} divider>
                         <ListItemIcon>
@@ -490,7 +538,7 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
               {userActivity.failed_login_attempts.length > 0 && (
                 <Box>
                   <Typography
-                    variant="h6"
+                    variant={isMobile ? "subtitle1" : "h6"}
                     gutterBottom
                     sx={{
                       fontWeight: 600,
@@ -498,46 +546,83 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
                       display: "flex",
                       alignItems: "center",
                       gap: 1,
+                      fontSize: { xs: '1.125rem', md: '1.25rem' },
                     }}
                   >
-                    <Warning />
-                    Failed Login Attempts
+                    <Warning sx={{ fontSize: { xs: '1.125rem', md: '1.25rem' } }} />
+                    {isMobile ? "Failed Logins" : "Failed Login Attempts"}
                   </Typography>
-                  <Paper>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Email</TableCell>
-                          <TableCell>Time</TableCell>
-                          <TableCell>IP Address</TableCell>
-                          <TableCell>Reason</TableCell>
-                          <TableCell align="right">Count</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {userActivity.failed_login_attempts.map(
-                          (attempt, index) => (
-                            <TableRow key={index}>
-                              <TableCell>{attempt.email}</TableCell>
-                              <TableCell>
-                                {formatTimeAgo(attempt.attempt_time)}
-                              </TableCell>
-                              <TableCell>
-                                {attempt.ip_address || "N/A"}
-                              </TableCell>
-                              <TableCell>{attempt.reason}</TableCell>
-                              <TableCell align="right">
-                                <Chip
-                                  size="small"
-                                  label={attempt.count}
-                                  color="error"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ),
-                        )}
-                      </TableBody>
-                    </Table>
+                  <Paper sx={{ borderRadius: { xs: 2, md: 1 } }}>
+                    {isMobile || viewMode === 'cards' ? (
+                      <List>
+                        {userActivity.failed_login_attempts.map((attempt, index) => (
+                          <ListItem key={index} divider sx={{ py: 2 }}>
+                            <ListItemIcon>
+                              <ErrorIcon color="error" />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                    {attempt.email}
+                                  </Typography>
+                                  <Chip
+                                    size="small"
+                                    label={attempt.count}
+                                    color="error"
+                                  />
+                                </Box>
+                              }
+                              secondary={
+                                <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {formatTimeAgo(attempt.attempt_time)} • {attempt.ip_address || "N/A"}
+                                  </Typography>
+                                  <Typography variant="caption">
+                                    {attempt.reason}
+                                  </Typography>
+                                </Stack>
+                              }
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    ) : (
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Email</TableCell>
+                            <TableCell>Time</TableCell>
+                            <TableCell>IP Address</TableCell>
+                            <TableCell>Reason</TableCell>
+                            <TableCell align="right">Count</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {userActivity.failed_login_attempts.map(
+                            (attempt, index) => (
+                              <TableRow key={index}>
+                                <TableCell>{attempt.email}</TableCell>
+                                <TableCell>
+                                  {formatTimeAgo(attempt.attempt_time)}
+                                </TableCell>
+                                <TableCell>
+                                  {attempt.ip_address || "N/A"}
+                                </TableCell>
+                                <TableCell>{attempt.reason}</TableCell>
+                                <TableCell align="right">
+                                  <Chip
+                                    size="small"
+                                    label={attempt.count}
+                                    color="error"
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ),
+                          )}
+                        </TableBody>
+                      </Table>
+                    )}
                   </Paper>
                 </Box>
               )}
@@ -545,7 +630,12 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
               <Typography
                 variant="caption"
                 display="block"
-                sx={{ textAlign: "center", color: "text.secondary" }}
+                sx={{ 
+                  textAlign: "center", 
+                  color: "text.secondary",
+                  fontSize: { xs: '0.75rem', md: '0.75rem' },
+                  px: { xs: 2, md: 0 },
+                }}
               >
                 Last updated:{" "}
                 {new Date(userActivity.last_updated).toLocaleString()}

@@ -19,11 +19,17 @@ import {
   Collapse,
   Tooltip,
   useTheme,
+  useMediaQuery,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   Stack,
   Badge,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Button,
 } from '@mui/material';
 import {
   Error as ErrorIcon,
@@ -36,6 +42,8 @@ import {
   Api,
   Assessment,
   Refresh,
+  ViewModule,
+  ViewList,
 } from '@mui/icons-material';
 import { useAuth } from '../../../../../hooks/useAuth';
 import { UserList } from '../../../../../components/ui';
@@ -106,10 +114,12 @@ const EnhancedApiAnalytics: React.FC<EnhancedApiAnalyticsProps> = ({
   isVisible,
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { accessToken } = useAuth();
   const [analytics, setAnalytics] = useState<EnhancedRequestAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   const fetchAnalytics = async () => {
     if (!accessToken) return;
@@ -166,29 +176,65 @@ const EnhancedApiAnalytics: React.FC<EnhancedApiAnalyticsProps> = ({
   };
 
   return (
-    <Card sx={{ mb: 4 }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <ErrorIcon color="error" />
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Enhanced API Analytics & Error Tracking
+    <Card sx={{ 
+      mb: { xs: 3, md: 4 },
+      borderRadius: { xs: 2, md: 3 },
+    }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: isMobile ? 'flex-start' : 'center', 
+          justifyContent: 'space-between', 
+          mb: { xs: 2, md: 3 },
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 },
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap' }}>
+            <ErrorIcon color="error" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }} />
+            <Typography 
+              variant={isMobile ? "h6" : "h6"} 
+              sx={{ 
+                fontWeight: 600,
+                fontSize: { xs: '1.125rem', md: '1.25rem' },
+                lineHeight: 1.2,
+              }}
+            >
+              {isMobile ? "API Error Tracking" : "Enhanced API Analytics & Error Tracking"}
             </Typography>
             {analytics && (
               <Chip
-                label={`${analytics.enhanced_error_tracking.error_details.length} Error Types`}
+                label={`${analytics.enhanced_error_tracking.error_details.length} Error${analytics.enhanced_error_tracking.error_details.length !== 1 ? 's' : ''}`}
                 color="error"
                 size="small"
+                sx={{ fontSize: { xs: '0.6875rem', md: '0.75rem' } }}
               />
             )}
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {!isMobile && isVisible && (
+              <Tooltip title={`Switch to ${viewMode === 'cards' ? 'Table' : 'Cards'} View`}>
+                <IconButton
+                  onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
+                  color="primary"
+                  size="small"
+                >
+                  {viewMode === 'cards' ? <ViewList /> : <ViewModule />}
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Refresh Analytics">
-              <IconButton onClick={fetchAnalytics} disabled={loading}>
+              <IconButton 
+                onClick={fetchAnalytics} 
+                disabled={loading}
+                size={isMobile ? "small" : "medium"}
+              >
                 <Refresh />
               </IconButton>
             </Tooltip>
-            <IconButton onClick={onToggle}>
+            <IconButton 
+              onClick={onToggle}
+              size={isMobile ? "small" : "medium"}
+            >
               <ExpandMore
                 sx={{
                   transform: isVisible ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -196,7 +242,7 @@ const EnhancedApiAnalytics: React.FC<EnhancedApiAnalyticsProps> = ({
                 }}
               />
             </IconButton>
-          </Box>
+          </Stack>
         </Box>
 
         {loading && <LinearProgress sx={{ mb: 2 }} />}

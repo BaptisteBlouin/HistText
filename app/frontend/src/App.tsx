@@ -23,6 +23,7 @@ import { Home } from "./containers/Home";
 import { Route, useNavigate, Routes } from "react-router-dom";
 import HistText from "./containers/HistText";
 import AdminPanel from "./containers/admin/AdminPanel";
+import AdminPanelEnhanced from "./containers/admin/AdminPanelEnhanced";
 
 import {
   Box,
@@ -736,6 +737,14 @@ const AppContent = () => {
           />
           <Route
             path="/Admin"
+            element={
+              <ProtectedRoute>
+                <AdminPanelEnhanced />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/Admin/classic"
             element={
               <ProtectedRoute>
                 <AdminPanel />

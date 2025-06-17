@@ -17,6 +17,10 @@ import {
   Chip,
   Stack,
   Divider,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  Fab,
 } from "@mui/material";
 import {
   People,
@@ -46,6 +50,8 @@ import {
   AccountTree,
   VisibilityOff,
   Visibility,
+  GetApp,
+  CloudUpload,
 } from "@mui/icons-material";
 import { useAuth, useAuthCheck } from "../../../../hooks/useAuth";
 
@@ -369,35 +375,50 @@ const Dashboard: React.FC = () => {
       onRetry={() => fetchComprehensiveStats({ force: true })}
     >
       <Fade in={true} timeout={600}>
-        <Box>
+        <Box sx={{ pb: isMobile ? 8 : 0 }}>
           {/* Header */}
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
-              mb: 4,
-              flexWrap: "wrap",
-              gap: 2,
+              alignItems: isMobile ? "stretch" : "center",
+              mb: { xs: 3, md: 4 },
+              flexDirection: { xs: "column", md: "row" },
+              gap: { xs: 2, md: 2 },
             }}
           >
-            <Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography
-                variant="h4"
+                variant={isMobile ? "h5" : "h4"}
                 sx={{
                   fontWeight: 700,
                   display: "flex",
                   alignItems: "center",
                   gap: 1,
+                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
                 }}
               >
-                <Assessment color="primary" />
-                System Dashboard
+                <Assessment color="primary" sx={{ fontSize: { xs: '1.5rem', md: '2rem' } }} />
+                {isMobile ? "Dashboard" : "System Dashboard"}
               </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Real-time monitoring and system analytics
+              <Typography 
+                variant={isMobile ? "body2" : "body1"} 
+                color="text.secondary"
+                sx={{ 
+                  fontSize: { xs: '0.875rem', md: '1rem' },
+                  mt: 0.5,
+                }}
+              >
+                {isMobile ? "Real-time monitoring" : "Real-time monitoring and system analytics"}
               </Typography>
-              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Stack 
+                direction={{ xs: "column", sm: "row" }} 
+                spacing={1} 
+                sx={{ 
+                  mt: 1,
+                  gap: { xs: 0.5, sm: 1 },
+                }}
+              >
                 <Chip
                   icon={<Schedule />}
                   label={
@@ -425,20 +446,30 @@ const Dashboard: React.FC = () => {
             </Box>
 
             {/* Controls */}
-            <Stack direction="row" spacing={2} alignItems="center">
-              <ExportImportControls
-                onExportAll={handleExportAll}
-                onExportTab={handleExportTab}
-                onImport={handleImport}
-                availableTabs={[
-                  { name: 'overview', label: 'Overview', icon: <Assessment fontSize="small" /> },
-                  { name: 'api-analytics', label: 'API Analytics', icon: <ErrorIcon fontSize="small" /> },
-                  { name: 'user-behavior', label: 'User Behavior', icon: <People fontSize="small" /> },
-                  { name: 'query-analytics', label: 'Query Analytics', icon: <Analytics fontSize="small" /> },
-                  { name: 'collections', label: 'Collections', icon: <Storage fontSize="small" /> },
-                  { name: 'system-health', label: 'System Health', icon: <Psychology fontSize="small" /> },
-                ]}
-              />
+            <Stack 
+              direction={{ xs: "column", sm: "row" }} 
+              spacing={{ xs: 1, sm: 2 }} 
+              alignItems={{ xs: "stretch", sm: "center" }}
+              sx={{ 
+                width: { xs: "100%", md: "auto" },
+                minWidth: { sm: 200 },
+              }}
+            >
+              {!isMobile && (
+                <ExportImportControls
+                  onExportAll={handleExportAll}
+                  onExportTab={handleExportTab}
+                  onImport={handleImport}
+                  availableTabs={[
+                    { name: 'overview', label: 'Overview', icon: <Assessment fontSize="small" /> },
+                    { name: 'api-analytics', label: 'API Analytics', icon: <ErrorIcon fontSize="small" /> },
+                    { name: 'user-behavior', label: 'User Behavior', icon: <People fontSize="small" /> },
+                    { name: 'query-analytics', label: 'Query Analytics', icon: <Analytics fontSize="small" /> },
+                    { name: 'collections', label: 'Collections', icon: <Storage fontSize="small" /> },
+                    { name: 'system-health', label: 'System Health', icon: <Psychology fontSize="small" /> },
+                  ]}
+                />
+              )}
               <FormControlLabel
                 control={
                   <Switch
@@ -447,12 +478,19 @@ const Dashboard: React.FC = () => {
                     size="small"
                   />
                 }
-                label="Auto Refresh"
+                label={isMobile ? "Auto" : "Auto Refresh"}
+                sx={{ 
+                  margin: 0,
+                  "& .MuiFormControlLabel-label": {
+                    fontSize: { xs: '0.875rem', md: '1rem' },
+                  },
+                }}
               />
-              <Tooltip title={showSystemDashboard ? "Hide System Dashboard" : "Show System Dashboard"}>
+              <Tooltip title={showSystemDashboard ? "Hide Stats" : "Show Stats"}>
                 <IconButton 
                   onClick={() => setShowSystemDashboard(!showSystemDashboard)} 
                   color="secondary"
+                  size={isMobile ? "small" : "medium"}
                 >
                   {showSystemDashboard ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
@@ -460,7 +498,11 @@ const Dashboard: React.FC = () => {
               <Tooltip
                 title={isDataFresh ? "Force Refresh" : "Refresh Stale Data"}
               >
-                <IconButton onClick={() => refreshAll(true)} color="primary">
+                <IconButton 
+                  onClick={() => refreshAll(true)} 
+                  color="primary"
+                  size={isMobile ? "small" : "medium"}
+                >
                   <Refresh />
                 </IconButton>
               </Tooltip>
@@ -470,9 +512,9 @@ const Dashboard: React.FC = () => {
           {stats && showSystemDashboard && (
             <>
               {/* Main Stats Grid */}
-              <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
                 {/* Row 1: Core System Stats */}
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} lg={3}>
                   <StatCard
                     icon={<People />}
                     title="Total Users"
@@ -483,7 +525,7 @@ const Dashboard: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} lg={3}>
                   <StatCard
                     icon={<Storage />}
                     title="Collections"
@@ -494,7 +536,7 @@ const Dashboard: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} lg={3}>
                   <StatCard
                     icon={<Description />}
                     title="Documents"
@@ -509,7 +551,7 @@ const Dashboard: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} lg={3}>
                   <StatCard
                     icon={<Dns />}
                     title="Database Status"
@@ -529,7 +571,7 @@ const Dashboard: React.FC = () => {
                 {/* Row 2: Performance & Activity */}
                 {analytics && (
                   <>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<Speed />}
                         title="Response Time"
@@ -545,7 +587,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<ErrorIcon />}
                         title="Error Rate"
@@ -561,7 +603,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<Api />}
                         title="API Requests"
@@ -571,7 +613,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<AccountTree />}
                         title="Active Endpoints"
@@ -586,7 +628,7 @@ const Dashboard: React.FC = () => {
                 {/* Row 3: Advanced Stats (if comprehensive data available) */}
                 {comprehensiveStats && (
                   <>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<Group />}
                         title="Active Sessions"
@@ -596,7 +638,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<PersonAdd />}
                         title="New Registrations"
@@ -608,7 +650,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<Memory />}
                         title="Cache Memory"
@@ -626,7 +668,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<Psychology />}
                         title="AI Embeddings"
@@ -640,7 +682,7 @@ const Dashboard: React.FC = () => {
                     </Grid>
 
                     {/* Row 4: System Health & Performance */}
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<Computer />}
                         title="System Load"
@@ -656,7 +698,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<DataUsage />}
                         title="Cache Efficiency"
@@ -674,7 +716,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<Timeline />}
                         title="Data Growth"
@@ -684,7 +726,7 @@ const Dashboard: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid item xs={12} sm={12} md={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
                       <StatCard
                         icon={<CheckCircle />}
                         title="System Health"
@@ -751,6 +793,31 @@ const Dashboard: React.FC = () => {
                   available. Click refresh to try loading comprehensive data
                   again.
             </Alert>
+          )}
+
+          {/* Mobile Floating Action Button */}
+          {isMobile && (
+            <SpeedDial
+              ariaLabel="Dashboard actions"
+              sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 1300 }}
+              icon={<SpeedDialIcon />}
+            >
+              <SpeedDialAction
+                icon={<Refresh />}
+                tooltipTitle="Refresh Data"
+                onClick={() => refreshAll(true)}
+              />
+              <SpeedDialAction
+                icon={showSystemDashboard ? <VisibilityOff /> : <Visibility />}
+                tooltipTitle={showSystemDashboard ? "Hide Stats" : "Show Stats"}
+                onClick={() => setShowSystemDashboard(!showSystemDashboard)}
+              />
+              <SpeedDialAction
+                icon={<GetApp />}
+                tooltipTitle="Export Data"
+                onClick={handleExportAll}
+              />
+            </SpeedDial>
           )}
         </Box>
       </Fade>

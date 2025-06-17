@@ -1,5 +1,6 @@
 import React, { useState, Suspense, useEffect } from "react";
 import { useAuth, useAuthCheck } from "../../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -24,6 +25,7 @@ import {
   LinearProgress,
   Alert,
   Fab,
+  Tooltip,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -39,6 +41,7 @@ import {
   DarkMode,
   LightMode,
   Settings,
+  ViewModule,
 } from "@mui/icons-material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -314,6 +317,7 @@ const ApiDocumentation: React.FC = () => {
 const AdminPanelContent: React.FC = () => {
   useAuthCheck();
   const auth = useAuth();
+  const navigate = useNavigate();
   const theme = useTheme();
   const { isMobile, isTablet } = useResponsive();
   const isAdmin = auth.session?.hasRole("Admin");
@@ -657,8 +661,27 @@ const AdminPanelContent: React.FC = () => {
         display: "flex",
         minHeight: "100vh",
         bgcolor: "background.default",
+        position: "relative",
       }}
     >
+      {/* Layout Toggle FAB */}
+      <Tooltip title="Switch to Enhanced Layout">
+        <Fab
+          size="small"
+          onClick={() => navigate('/Admin')}
+          sx={{
+            position: 'fixed',
+            top: { xs: 20, sm: 24 },
+            right: { xs: 20, sm: 24 },
+            zIndex: 1000,
+            bgcolor: 'primary.main',
+            color: 'white',
+            '&:hover': { bgcolor: 'primary.dark' },
+          }}
+        >
+          <ViewModule />
+        </Fab>
+      </Tooltip>
       {isMobile ? (
         <>
           <Fab

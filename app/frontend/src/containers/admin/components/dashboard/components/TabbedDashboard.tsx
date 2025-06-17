@@ -54,7 +54,10 @@ function TabPanel(props: TabPanelProps) {
     >
       {value === index && (
         <Fade in={true} timeout={300}>
-          <Box sx={{ py: 3 }}>
+          <Box sx={{ 
+            py: { xs: 2, md: 3 },
+            px: { xs: 1, sm: 2, md: 3 },
+          }}>
             {children}
           </Box>
         </Fade>
@@ -186,8 +189,18 @@ const TabbedDashboard: React.FC<TabbedDashboardProps> = ({
   ];
 
   return (
-    <Paper sx={{ width: '100%', bgcolor: 'background.paper' }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+    <Paper sx={{ 
+      width: '100%', 
+      bgcolor: 'background.paper',
+      borderRadius: { xs: 2, md: 3 },
+      overflow: 'hidden',
+    }}>
+      <Box sx={{ 
+        borderBottom: 1, 
+        borderColor: 'divider', 
+        px: { xs: 1, sm: 2 },
+        overflowX: 'auto',
+      }}>
         <Tabs
           value={value}
           onChange={handleChange}
@@ -196,25 +209,58 @@ const TabbedDashboard: React.FC<TabbedDashboardProps> = ({
           allowScrollButtonsMobile={isMobile}
           sx={{
             '& .MuiTabs-indicator': {
-              height: 3,
+              height: { xs: 2, md: 3 },
               borderRadius: '3px 3px 0 0',
             },
+            '& .MuiTabs-flexContainer': {
+              gap: { xs: 0, sm: 1 },
+            },
+            minHeight: { xs: 48, md: 56 },
           }}
         >
           {tabs.map((tab, index) => (
             <Tab
               key={index}
               label={
-                <Stack direction="row" alignItems="center" spacing={1}>
+                <Stack 
+                  direction="row" 
+                  alignItems="center" 
+                  spacing={{ xs: 0.5, sm: 1 }}
+                  sx={{ minWidth: 0 }}
+                >
                   {tab.badge !== null && tab.badge > 0 ? (
-                    <Badge badgeContent={tab.badge} color={tab.color} max={99}>
-                      {tab.icon}
+                    <Badge 
+                      badgeContent={tab.badge} 
+                      color={tab.color} 
+                      max={99}
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                          height: { xs: 16, sm: 20 },
+                          minWidth: { xs: 16, sm: 20 },
+                        },
+                      }}
+                    >
+                      {React.cloneElement(tab.icon as React.ReactElement, {
+                        sx: { fontSize: { xs: '1.25rem', sm: '1.5rem' } }
+                      })}
                     </Badge>
                   ) : (
-                    tab.icon
+                    React.cloneElement(tab.icon as React.ReactElement, {
+                      sx: { fontSize: { xs: '1.25rem', sm: '1.5rem' } }
+                    })
                   )}
                   {!isMobile && (
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontWeight: 500,
+                        fontSize: { sm: '0.875rem', md: '1rem' },
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
                       {tab.label}
                     </Typography>
                   )}
@@ -222,10 +268,16 @@ const TabbedDashboard: React.FC<TabbedDashboardProps> = ({
               }
               {...a11yProps(index)}
               sx={{
-                minHeight: 64,
+                minHeight: { xs: 48, md: 64 },
                 textTransform: 'none',
+                px: { xs: 1, sm: 2 },
+                minWidth: { xs: 60, sm: 'auto' },
                 '&.Mui-selected': {
                   color: `${tab.color}.main`,
+                },
+                '& .MuiTab-wrapper': {
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: { xs: 0.25, sm: 0.5 },
                 },
               }}
             />
@@ -235,7 +287,7 @@ const TabbedDashboard: React.FC<TabbedDashboardProps> = ({
 
       {/* Overview Tab */}
       <TabPanel value={value} index={0}>
-        <Stack spacing={3}>
+        <Stack spacing={{ xs: 2, md: 3 }}>
           {comprehensiveStats && (
             <SolrDatabaseStatus comprehensiveStats={comprehensiveStats} />
           )}

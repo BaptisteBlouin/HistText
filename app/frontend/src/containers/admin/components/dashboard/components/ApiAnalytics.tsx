@@ -19,6 +19,12 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  useTheme,
+  useMediaQuery,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
 } from "@mui/material";
 import {
   Analytics,
@@ -28,6 +34,11 @@ import {
   TrendingUp,
   TrendingDown,
   Timeline,
+  ViewModule,
+  ViewList,
+  Api,
+  Speed,
+  ErrorOutline,
 } from "@mui/icons-material";
 import { useAuth } from "../../../../../hooks/useAuth";
 import { RequestAnalytics } from "../types";
@@ -63,10 +74,13 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
   isVisible: propIsVisible,
 }) => {
   const { accessToken } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [internalIsVisible, setInternalIsVisible] = useState(false);
   const [previousData, setPreviousData] = useState<RequestAnalytics | null>(
     null,
   );
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use prop visibility if provided, otherwise use internal state
@@ -146,37 +160,56 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
   };
 
   return (
-    <Card sx={{ mb: 4 }}>
-      <CardContent>
+    <Card sx={{ 
+      mb: { xs: 3, md: 4 },
+      borderRadius: { xs: 2, md: 3 },
+    }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
+            alignItems: isMobile ? "flex-start" : "center",
+            mb: { xs: 2, md: 3 },
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 2, sm: 0 },
           }}
         >
           <Typography
-            variant="h5"
+            variant={isMobile ? "h6" : "h5"}
             sx={{
               fontWeight: 600,
               display: "flex",
               alignItems: "center",
               gap: 1,
+              fontSize: { xs: '1.25rem', md: '1.5rem' },
+              flexWrap: 'wrap',
             }}
           >
-            <Analytics />
-            API Usage Analytics
+            <Analytics sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }} />
+            {isMobile ? "API Analytics" : "API Usage Analytics"}
             {autoRefresh && isVisible && (
               <Chip
                 icon={<Timeline />}
                 label="Live"
                 color="success"
                 size="small"
+                sx={{ fontSize: { xs: '0.6875rem', md: '0.75rem' } }}
               />
             )}
           </Typography>
-          <Stack direction="row" spacing={1}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {!isMobile && isVisible && (
+              <Tooltip title={`Switch to ${viewMode === 'cards' ? 'Table' : 'Cards'} View`}>
+                <IconButton
+                  onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
+                  color="primary"
+                  size="small"
+                >
+                  {viewMode === 'cards' ? <ViewList /> : <ViewModule />}
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Refresh Analytics">
               <IconButton onClick={fetchAnalytics} disabled={analyticsLoading}>
                 <Refresh />
@@ -186,9 +219,13 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
               variant="outlined"
               onClick={handleToggle}
               endIcon={isVisible ? <ExpandLess /> : <ExpandMore />}
-              size="small"
+              size={isMobile ? "small" : "medium"}
+              sx={{ 
+                minWidth: { xs: 'auto', sm: '140px' },
+                px: { xs: 1, sm: 2 },
+              }}
             >
-              {isVisible ? "Hide Analytics" : "Show Analytics"}
+              {isMobile ? (isVisible ? "Hide" : "Show") : (isVisible ? "Hide Analytics" : "Show Analytics")}
             </Button>
           </Stack>
         </Box>
@@ -208,14 +245,21 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
           ) : !analytics ? (
             <Alert severity="info">No analytics data available</Alert>
           ) : (
-            <Stack spacing={3}>
+            <Stack spacing={{ xs: 3, md: 3 }}>
               {/* Overall API Stats with Trends */}
               <Box>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                <Typography 
+                  variant={isMobile ? "subtitle1" : "h6"} 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 600,
+                    fontSize: { xs: '1.125rem', md: '1.25rem' },
+                  }}
+                >
                   24-Hour Overview
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6} md={3}>
+                <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                  <Grid item xs={6} sm={6} md={3}>
                     <Paper
                       sx={{
                         p: 2,
@@ -235,7 +279,7 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                         )}
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid item xs={6} sm={6} md={3}>
                     <Paper
                       sx={{
                         p: 2,
@@ -255,7 +299,7 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                         )}
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid item xs={6} sm={6} md={3}>
                     <Paper
                       sx={{
                         p: 2,
@@ -281,7 +325,7 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                         )}
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid item xs={6} sm={6} md={3}>
                     <Paper
                       sx={{
                         p: 2,
@@ -301,10 +345,99 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
 
               {/* Most Used Endpoints */}
               <Box>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                <Typography 
+                  variant={isMobile ? "subtitle1" : "h6"} 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 600,
+                    fontSize: { xs: '1.125rem', md: '1.25rem' },
+                  }}
+                >
                   Most Used Endpoints
                 </Typography>
-                <Table size="small">
+                {isMobile || viewMode === 'cards' ? (
+                  <Stack spacing={1}>
+                    {Object.values(analytics.endpoint_stats)
+                      .sort((a, b) => b.request_count - a.request_count)
+                      .slice(0, 10)
+                      .map((endpoint, index) => (
+                        <Card key={index} variant="outlined" sx={{ borderRadius: 2 }}>
+                          <CardContent sx={{ p: 2 }}>
+                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                              <Chip
+                                label={endpoint.method}
+                                size="small"
+                                color={
+                                  endpoint.method === "GET"
+                                    ? "success"
+                                    : endpoint.method === "POST"
+                                      ? "primary"
+                                      : "default"
+                                }
+                              />
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  fontFamily: "monospace",
+                                  fontSize: "0.75rem",
+                                  flex: 1,
+                                  wordBreak: 'break-all',
+                                }}
+                              >
+                                {endpoint.path_pattern}
+                              </Typography>
+                            </Stack>
+                            <Grid container spacing={2}>
+                              <Grid item xs={4}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Requests
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  {formatNumber(endpoint.request_count)}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={4}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Avg Time
+                                </Typography>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ fontWeight: 600 }}
+                                  color={
+                                    endpoint.average_response_time_ms > 1000
+                                      ? "error"
+                                      : endpoint.average_response_time_ms > 500
+                                        ? "warning.main"
+                                        : "inherit"
+                                  }
+                                >
+                                  {endpoint.average_response_time_ms.toFixed(1)}ms
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={4}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Success Rate
+                                </Typography>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ fontWeight: 600 }}
+                                  color={
+                                    endpoint.success_rate_percent < 95
+                                      ? "error"
+                                      : "inherit"
+                                  }
+                                >
+                                  {endpoint.success_rate_percent.toFixed(1)}%
+                                </Typography>
+                              </Grid>
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </Stack>
+                ) : (
+                  <Paper sx={{ borderRadius: { xs: 2, md: 1 }, overflow: 'hidden' }}>
+                    <Table size="small">
                   <TableHead>
                     <TableRow>
                       <TableCell>Method</TableCell>
@@ -373,20 +506,79 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                         </TableRow>
                       ))}
                   </TableBody>
-                </Table>
+                    </Table>
+                  </Paper>
+                )}
               </Box>
 
               {/* Slowest Endpoints */}
               {analytics.top_slow_endpoints.length > 0 && (
                 <Box>
                   <Typography
-                    variant="h6"
+                    variant={isMobile ? "subtitle1" : "h6"}
                     gutterBottom
-                    sx={{ fontWeight: 600, color: "warning.main" }}
+                    sx={{ 
+                      fontWeight: 600, 
+                      color: "warning.main",
+                      fontSize: { xs: '1.125rem', md: '1.25rem' },
+                    }}
                   >
-                    Slowest Endpoints (Needs Attention)
+                    {isMobile ? "Slow Endpoints" : "Slowest Endpoints (Needs Attention)"}
                   </Typography>
-                  <Table size="small">
+                  {isMobile || viewMode === 'cards' ? (
+                    <Stack spacing={1}>
+                      {analytics.top_slow_endpoints
+                        .slice(0, 5)
+                        .map((endpoint, index) => (
+                          <Card key={index} variant="outlined" sx={{ borderRadius: 2, borderColor: 'warning.main' }}>
+                            <CardContent sx={{ p: 2 }}>
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                                <Chip
+                                  label={endpoint.method}
+                                  size="small"
+                                  color="warning"
+                                />
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontFamily: "monospace",
+                                    fontSize: "0.75rem",
+                                    flex: 1,
+                                    wordBreak: 'break-all',
+                                  }}
+                                >
+                                  {endpoint.path}
+                                </Typography>
+                              </Stack>
+                              <Grid container spacing={2}>
+                                <Grid item xs={6}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Avg Time
+                                  </Typography>
+                                  <Typography 
+                                    variant="body2" 
+                                    color="error"
+                                    sx={{ fontWeight: 600 }}
+                                  >
+                                    {endpoint.average_response_time_ms.toFixed(1)}ms
+                                  </Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Requests
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                    {formatNumber(endpoint.request_count)}
+                                  </Typography>
+                                </Grid>
+                              </Grid>
+                            </CardContent>
+                          </Card>
+                        ))}
+                    </Stack>
+                  ) : (
+                    <Paper sx={{ borderRadius: { xs: 2, md: 1 }, overflow: 'hidden' }}>
+                      <Table size="small">
                     <TableHead>
                       <TableRow>
                         <TableCell>Method</TableCell>
@@ -430,14 +622,21 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
                           </TableRow>
                         ))}
                     </TableBody>
-                  </Table>
+                      </Table>
+                    </Paper>
+                  )}
                 </Box>
               )}
 
               <Typography
                 variant="caption"
                 display="block"
-                sx={{ textAlign: "center", color: "text.secondary" }}
+                sx={{ 
+                  textAlign: "center", 
+                  color: "text.secondary",
+                  fontSize: { xs: '0.75rem', md: '0.75rem' },
+                  px: { xs: 2, md: 0 },
+                }}
               >
                 Last updated:{" "}
                 {new Date(analytics.last_updated * 1000).toLocaleString()}
