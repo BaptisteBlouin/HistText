@@ -67,6 +67,8 @@ import {
   Assignment,
   AdminPanelSettings,
   Shield,
+  ViewList,
+  ViewModule,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
@@ -910,10 +912,7 @@ const SolrDatabasePermissionsEnhanced: React.FC = () => {
           </Box>
           <Stack direction="row" spacing={1}>
             <Tooltip title={`Switch to ${viewMode === 'cards' ? 'Table' : 'Cards'} View`}>
-              <IconButton
-                onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
-                color="primary"
-              >
+              <IconButton onClick={() => setViewMode(v => v === 'cards' ? 'table' : 'cards')}>
                 {viewMode === 'cards' ? <ViewList /> : <ViewModule />}
               </IconButton>
             </Tooltip>

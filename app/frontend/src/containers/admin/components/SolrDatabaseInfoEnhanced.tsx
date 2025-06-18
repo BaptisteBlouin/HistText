@@ -538,7 +538,7 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
   const fetchCollections = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await authAxios.get("/api/solr_database_infos");
+      const { data } = await authAxios.get("/api/solr_database_info");
       setCollections(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Fetch collections failed:", err);
@@ -613,7 +613,7 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
     
     setAdding(true);
     try {
-      await authAxios.post("/api/solr_database_infos", newCollection);
+      await authAxios.post("/api/solr_database_info", newCollection);
       setNewCollection({ to_not_display: [] });
       setOpenAddDialog(false);
       fetchCollections();
@@ -638,7 +638,7 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
     
     setUpdating(true);
     try {
-      await authAxios.put(`/api/solr_database_infos/${editingCollectionId}`, editingCollection);
+      await authAxios.put(`/api/solr_database_info/${editingCollectionId}`, editingCollection);
       setEditingCollection({});
       setEditingCollectionId(null);
       setOpenEditDialog(false);
@@ -654,7 +654,7 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
 
   const handleDeleteCollection = async (collection: SolrDatabaseInfo) => {
     try {
-      await authAxios.delete(`/api/solr_database_infos/${collection.id}`);
+      await authAxios.delete(`/api/solr_database_info/${collection.id}`);
       showNotification(`Collection "${collection.collection_name}" deleted successfully`, "success");
       fetchCollections();
       setOpenDeleteDialog(false);
@@ -671,7 +671,7 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
     try {
       await Promise.all(
         selectedCollections.map(collection => 
-          authAxios.delete(`/api/solr_database_infos/${collection.id}`)
+          authAxios.delete(`/api/solr_database_info/${collection.id}`)
         )
       );
 
