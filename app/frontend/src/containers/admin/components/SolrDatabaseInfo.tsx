@@ -1,25 +1,21 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Box,
   Button,
-  TextField,
   Typography,
   Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
+  TextField,
   Card,
   CardContent,
-  Grid,
+  CardActions,
+  Chip,
   Stack,
   Alert,
   Fade,
   CircularProgress,
   InputAdornment,
   IconButton,
-  Tooltip,
+  Grid,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -27,33 +23,62 @@ import {
   Divider,
   FormControlLabel,
   Switch,
-  Badge,
+  useTheme,
+  alpha,
+  Collapse,
+  AppBar,
+  Toolbar,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  Checkbox,
+  Tooltip,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  LinearProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
+import { LoadingButton } from "@mui/lab";
 import { DataGrid, GridColDef, GridRenderCellParams, GridSelectionModel } from "@mui/x-data-grid";
-import { SkeletonLoader, CopyToClipboard } from "../../../components/ui";
 import {
   Add,
-  Edit,
   Delete,
   Search,
   Storage,
+  Description,
   Language,
+  TextFields,
+  Settings,
   Refresh,
-  Save,
-  Cancel,
-  Info,
-  DataObject,
   GetApp,
   DeleteSweep,
   SelectAll,
-  Autorenew,
   CloudUpload,
+  ExpandMore,
+  ExpandLess,
+  Clear,
+  Edit,
+  Info,
+  Storage as Database,
+  Collections,
+  Visibility,
+  VisibilityOff,
+  Code,
+  Translate,
+  FindInPage,
+  ViewModule,
+  ViewList,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
 import { useAuth } from "../../../hooks/useAuth";
+import { useResponsive } from "../../../lib/responsive-utils";
 
-/** Interface for a collection's metadata and configuration. */
 interface SolrDatabaseInfo {
   solr_database_id: number;
   collection_name: string;
@@ -65,22 +90,17 @@ interface SolrDatabaseInfo {
   to_not_display?: Array<string | null> | null;
 }
 
-/** Interface for a Solr database entry. */
 interface SolrDatabase {
   id: number;
   name: string;
 }
 
-/** Notification/snackbar state. */
 interface NotificationState {
   open: boolean;
   message: string;
   severity: "success" | "error" | "warning" | "info";
 }
 
-/**
- * Custom Axios instance with Authorization header attached.
- */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -98,65 +118,419 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
-/**
- * Main component for Solr database collection metadata management.
- * Allows admin to add, edit, or delete collection-level metadata and settings.
- */
-const SolrDatabaseInfoComponent: React.FC = () => {
-  const authAxios = useAuthAxios();
+// Enhanced Collection Info Card Component
+interface CollectionInfoCardProps {
+  collectionInfo: SolrDatabaseInfo;
+  database: SolrDatabase | undefined;
+  selected: boolean;
+  searchTerm: string;
+  expanded: boolean;
+  onSelect: (collectionInfo: SolrDatabaseInfo) => void;
+  onToggleExpand: (collectionInfo: SolrDatabaseInfo) => void;
+  onEdit: (collectionInfo: SolrDatabaseInfo) => void;
+  onDelete: (collectionInfo: SolrDatabaseInfo) => void;
+}
 
-  // --- State variables ---
-  const [solrDatabaseInfos, setSolrDatabaseInfos] = useState<
-    SolrDatabaseInfo[]
-  >([]);
-  const [solrDatabases, setSolrDatabases] = useState<SolrDatabase[]>([]);
-  const [selectedSolrDatabase, setSelectedSolrDatabase] =
-    useState<SolrDatabase | null>(null);
+const CollectionInfoCard: React.FC<CollectionInfoCardProps> = ({
+  collectionInfo,
+  database,
+  selected,
+  searchTerm,
+  expanded,
+  onSelect,
+  onToggleExpand,
+  onEdit,
+  onDelete,
+}) => {
+  const theme = useTheme();
+
+  const highlightSearchTerm = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>
+          {part}
+        </mark>
+      ) : part
+    );
+  };
+
+  const getLanguageChipColor = (lang: string) => {
+    const colors = ['primary', 'secondary', 'success', 'warning', 'error', 'info'];
+    return colors[lang.length % colors.length] as any;
+  };
+
+  return (
+    <Card
+      sx={{
+        mb: 2,
+        border: selected ? `2px solid ${theme.palette.primary.main}` : '1px solid',
+        borderColor: selected ? 'primary.main' : 'divider',
+        backgroundColor: selected ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: 4,
+        },
+      }}
+    >
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
+            <Checkbox
+              checked={selected}
+              onChange={() => onSelect(collectionInfo)}
+              size="small"
+            />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: '1rem', sm: '1.25rem' },
+                  lineHeight: 1.2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
+                <Collections color="primary" fontSize="small" />
+                {highlightSearchTerm(collectionInfo.collection_name, searchTerm)}
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ 
+                  fontSize: { xs: '0.875rem', sm: '0.95rem' },
+                  mt: 0.5,
+                }}
+              >
+                {database?.name || `Database ID: ${collectionInfo.solr_database_id}`}
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton
+              size="small"
+              onClick={() => onToggleExpand(collectionInfo)}
+            >
+              {expanded ? <ExpandLess /> : <ExpandMore />}
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* Description */}
+        {collectionInfo.description && (
+          <Typography
+            variant="body2"
+            sx={{ 
+              mb: 2,
+              fontStyle: 'italic',
+              color: 'text.secondary',
+            }}
+          >
+            {highlightSearchTerm(collectionInfo.description, searchTerm)}
+          </Typography>
+        )}
+
+        {/* Quick Info Chips */}
+        <Stack direction="row" spacing={1} sx={{ mb: expanded ? 2 : 0, flexWrap: 'wrap', gap: 1 }}>
+          <Chip
+            icon={<Language />}
+            label={collectionInfo.lang || 'No language'}
+            color={collectionInfo.lang ? getLanguageChipColor(collectionInfo.lang) : 'default'}
+            size="small"
+            variant="outlined"
+          />
+          <Chip
+            icon={<TextFields />}
+            label={collectionInfo.text_field || 'No text field'}
+            color={collectionInfo.text_field ? 'success' : 'default'}
+            size="small"
+            variant="outlined"
+          />
+          {collectionInfo.embeddings && (
+            <Chip
+              icon={<Code />}
+              label={collectionInfo.embeddings}
+              color="info"
+              size="small"
+              variant="filled"
+            />
+          )}
+          {collectionInfo.to_not_display?.length > 0 && (
+            <Chip
+              icon={<VisibilityOff />}
+              label={`${collectionInfo.to_not_display.length} hidden fields`}
+              color="warning"
+              size="small"
+              variant="outlined"
+            />
+          )}
+        </Stack>
+
+        {/* Expanded Details */}
+        <Collapse in={expanded}>
+          <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Configuration Details
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Text Field:</strong> {collectionInfo.text_field || 'Not configured'}
+                  <br />
+                  <strong>Tokenizer:</strong> {collectionInfo.tokenizer || 'Default'}
+                  <br />
+                  <strong>Language:</strong> {collectionInfo.lang || 'Not specified'}
+                  <br />
+                  <strong>Embeddings:</strong> {collectionInfo.embeddings || 'None'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Display Settings
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Hidden Fields:</strong>
+                  <br />
+                  {collectionInfo.to_not_display?.length > 0 ? (
+                    collectionInfo.to_not_display.map((field, index) => (
+                      <span key={index}>
+                        • {field}
+                        <br />
+                      </span>
+                    ))
+                  ) : (
+                    'No fields hidden'
+                  )}
+                </Typography>
+              </Grid>
+              {(collectionInfo.created_at || collectionInfo.updated_at) && (
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                    Timestamps
+                  </Typography>
+                  <Typography variant="body2">
+                    {collectionInfo.created_at && (
+                      <>
+                        <strong>Created:</strong> {new Date(collectionInfo.created_at).toLocaleString()}
+                        <br />
+                      </>
+                    )}
+                    {collectionInfo.updated_at && (
+                      <>
+                        <strong>Updated:</strong> {new Date(collectionInfo.updated_at).toLocaleString()}
+                      </>
+                    )}
+                  </Typography>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+        </Collapse>
+      </CardContent>
+
+      {/* Actions */}
+      <CardActions sx={{ p: { xs: 2, sm: 3 }, pt: 0, justifyContent: 'flex-end' }}>
+        <Button
+          size="small"
+          startIcon={<Edit />}
+          onClick={() => onEdit(collectionInfo)}
+          variant="outlined"
+        >
+          Edit
+        </Button>
+        <Button
+          size="small"
+          startIcon={<Delete />}
+          onClick={() => onDelete(collectionInfo)}
+          color="error"
+          variant="outlined"
+        >
+          Delete
+        </Button>
+      </CardActions>
+    </Card>
+  );
+};
+
+// Mobile Header Component
+interface MobileHeaderProps {
+  title: string;
+  subtitle: string;
+  selectedCount: number;
+  totalCount: number;
+  autoRefresh: boolean;
+  onToggleAutoRefresh: () => void;
+  onAddCollection: () => void;
+  onBulkDelete?: () => void;
+  onClearSelection?: () => void;
+}
+
+const MobileHeader: React.FC<MobileHeaderProps> = ({
+  title,
+  subtitle,
+  selectedCount,
+  totalCount,
+  autoRefresh,
+  onToggleAutoRefresh,
+  onAddCollection,
+  onBulkDelete,
+  onClearSelection,
+}) => {
+  const theme = useTheme();
+
+  return (
+    <AppBar 
+      position="sticky" 
+      sx={{ 
+        bgcolor: 'background.paper', 
+        color: 'text.primary',
+        boxShadow: 1,
+        mb: 2,
+      }}
+    >
+      <Toolbar sx={{ flexDirection: 'column', alignItems: 'stretch', py: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Database color="primary" fontSize="small" />
+              {title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
+            </Typography>
+          </Box>
+          <IconButton 
+            onClick={onToggleAutoRefresh} 
+            color={autoRefresh ? "primary" : "default"}
+            size="small"
+          >
+            <Refresh />
+          </IconButton>
+        </Box>
+
+        {selectedCount > 0 && (
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              p: 1,
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="body2" color="primary">
+              {selectedCount} of {totalCount} selected
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              {onBulkDelete && (
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<Delete />}
+                  onClick={onBulkDelete}
+                >
+                  Delete
+                </Button>
+              )}
+              {onClearSelection && (
+                <Button
+                  size="small"
+                  onClick={onClearSelection}
+                >
+                  Clear
+                </Button>
+              )}
+            </Stack>
+          </Box>
+        )}
+
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+          {totalCount} collection configurations
+          {autoRefresh && " • Auto-refresh enabled"}
+        </Typography>
+      </Toolbar>
+    </AppBar>
+  );
+};
+
+const SolrDatabaseInfoEnhanced: React.FC = () => {
+  const authAxios = useAuthAxios();
+  const theme = useTheme();
+  const { isMobile, isTablet } = useResponsive();
+
+  // State management
+  const [collections, setCollections] = useState<SolrDatabaseInfo[]>([]);
+  const [databases, setDatabases] = useState<SolrDatabase[]>([]);
+  const [newCollection, setNewCollection] = useState<Partial<SolrDatabaseInfo>>({
+    to_not_display: []
+  });
+  const [selectedSolrDatabase, setSelectedSolrDatabase] = useState<SolrDatabase | null>(null);
   const [aliases, setAliases] = useState<string[]>([]);
   const [availableFields, setAvailableFields] = useState<string[]>([]);
-  const [newCollectionName, setNewCollectionName] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newEmbeddings, setNewEmbeddings] = useState("");
-  const [newLang, setNewLang] = useState<string | null>(null);
-  const [newTextField, setNewTextField] = useState<string | null>(null);
-  const [newTokenizer, setNewTokenizer] = useState<string | null>(null);
-  const [newToNotDisplay, setNewToNotDisplay] = useState<Array<
-    string | null
-  > | null>(null);
-  const [editingRecord, setEditingRecord] = useState<SolrDatabaseInfo | null>(
-    null,
-  );
+  const [editingRecord, setEditingRecord] = useState<SolrDatabaseInfo | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [recordToDelete, setRecordToDelete] = useState<SolrDatabaseInfo | null>(
-    null,
-  );
   const [notification, setNotification] = useState<NotificationState>({
     open: false,
     message: "",
     severity: "info",
   });
-  const [selectedRows, setSelectedRows] = useState<GridSelectionModel>([]);
+  const [selectedCollections, setSelectedCollections] = useState<SolrDatabaseInfo[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openBulkDeleteDialog, setOpenBulkDeleteDialog] = useState(false);
+  const [collectionToDelete, setCollectionToDelete] = useState<SolrDatabaseInfo | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [adding, setAdding] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
 
-  /** Initial data fetch for Solr DBs and collection metadata info. */
   useEffect(() => {
-    fetchSolrDatabaseInfos();
-    fetchSolrDatabases();
+    fetchCollections();
+    fetchDatabases();
   }, []);
+
+  // Fetch collection aliases when database is selected
+  useEffect(() => {
+    if (selectedSolrDatabase) {
+      authAxios
+        .get(`/api/solr/aliases?solr_database_id=${selectedSolrDatabase.id}`)
+        .then((res) => setAliases(Array.isArray(res.data) ? res.data : []))
+        .catch(() => setAliases([]));
+    } else {
+      setAliases([]);
+    }
+  }, [selectedSolrDatabase, authAxios]);
+
+  // Fetch collection metadata when collection name changes
+  useEffect(() => {
+    if (selectedSolrDatabase && newCollection.collection_name) {
+      fetchCollectionMetadata(selectedSolrDatabase.id, newCollection.collection_name);
+    } else {
+      setAvailableFields([]);
+    }
+  }, [selectedSolrDatabase, newCollection.collection_name]);
 
   // Auto-refresh functionality
   useEffect(() => {
     if (autoRefresh) {
       const interval = setInterval(() => {
-        fetchSolrDatabaseInfos();
-      }, 30000); // Refresh every 30 seconds
+        fetchCollections();
+      }, 30000);
       setRefreshInterval(interval);
     } else {
       if (refreshInterval) {
@@ -171,26 +545,52 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     };
   }, [autoRefresh]);
 
-  /** Filters info records by search term with highlighting. */
-  const filteredInfos = useMemo(() => 
-    solrDatabaseInfos.filter((info) =>
-      `${info.collection_name} ${info.description} ${info.embeddings}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-    ), [solrDatabaseInfos, search]
-  );
+  const filteredCollections = useMemo(() => 
+    collections.filter((collection) => {
+      const searchText = search.toLowerCase();
+      return !searchText || 
+        collection.collection_name.toLowerCase().includes(searchText) ||
+        collection.description.toLowerCase().includes(searchText) ||
+        collection.embeddings.toLowerCase().includes(searchText) ||
+        (collection.lang && collection.lang.toLowerCase().includes(searchText)) ||
+        (collection.text_field && collection.text_field.toLowerCase().includes(searchText));
+    }), [collections, search]);
 
-  // Highlight search terms
-  const highlightText = (text: string, searchTerm: string) => {
-    if (!searchTerm.trim()) return text;
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    const parts = text.split(regex);
-    return parts.map((part, index) => 
-      regex.test(part) ? <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>{part}</mark> : part
+  const fetchCollections = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data } = await authAxios.get("/api/solr_database_info");
+      setCollections(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch collections failed:", err);
+      showNotification("Failed to fetch collection information", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [authAxios]);
+
+  const fetchDatabases = useCallback(async () => {
+    try {
+      const { data } = await authAxios.get("/api/solr_databases");
+      setDatabases(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch databases failed:", err);
+      showNotification("Failed to fetch databases", "error");
+    }
+  }, [authAxios]);
+
+  const showNotification = (
+    message: string,
+    severity: NotificationState["severity"] = "info",
+    duration: number = 5000,
+  ) => {
+    setNotification({ open: true, message, severity });
+    setTimeout(
+      () => setNotification((prev) => ({ ...prev, open: false })),
+      duration,
     );
   };
 
-  // Handle CSV file import for Solr database info
   const handleImportCSV = async () => {
     if (!importFile) {
       showNotification("Please select a file to import", "warning");
@@ -279,13 +679,13 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       // Show detailed results with longer duration for errors
       if (successCount > 0 && errors.length === 0) {
         showNotification(`Successfully imported all ${successCount} database info records`, "success");
-        fetchSolrDatabaseInfos();
+        fetchCollections();
       } else if (successCount > 0 && errors.length > 0) {
         const errorSummary = errors.length <= 2 ? 
           errors.join('; ') : 
           `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
         showNotification(`Imported ${successCount} records successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
-        fetchSolrDatabaseInfos();
+        fetchCollections();
       } else {
         const errorSummary = errors.length <= 2 ? 
           errors.join('; ') : 
@@ -304,10 +704,9 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     }
   };
 
-  // Export to CSV functionality
   const handleExportCSV = useCallback(() => {
     const csvHeaders = ['Database ID', 'Collection Name', 'Description', 'Embeddings', 'Language', 'Text Field', 'Tokenizer', 'Hidden Fields'];
-    const csvData = filteredInfos.map(info => [
+    const csvData = filteredCollections.map(info => [
       info.solr_database_id,
       info.collection_name,
       info.description,
@@ -329,115 +728,9 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     link.click();
     URL.revokeObjectURL(link.href);
     
-    showNotification(`Exported ${filteredInfos.length} database info records to CSV`, 'success');
-  }, [filteredInfos]);
+    showNotification(`Exported ${filteredCollections.length} database info records to CSV`, 'success');
+  }, [filteredCollections]);
 
-  // Bulk delete functionality
-  const handleBulkDelete = useCallback(() => {
-    if (selectedRows.length === 0) {
-      showNotification('No records selected for deletion', 'warning');
-      return;
-    }
-    
-    const selectedInfos = filteredInfos.filter(info => 
-      selectedRows.includes(`${info.solr_database_id}-${info.collection_name}`)
-    );
-    setRecordToDelete(selectedInfos[0]); // Use first selected for display
-    setOpenDeleteDialog(true);
-  }, [selectedRows, filteredInfos]);
-
-  // Bulk operations
-  const handleSelectAll = () => {
-    const allIds = filteredInfos.map(info => `${info.solr_database_id}-${info.collection_name}`);
-    setSelectedRows(allIds);
-  };
-
-  const handleDeselectAll = () => {
-    setSelectedRows([]);
-  };
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey) {
-        switch (event.key) {
-          case 'r':
-            event.preventDefault();
-            fetchSolrDatabaseInfos();
-            break;
-          case 'n':
-            event.preventDefault();
-            setOpenAddDialog(true);
-            break;
-          case 'a':
-            if (event.shiftKey) {
-              event.preventDefault();
-              const allIds = filteredInfos.map(info => `${info.solr_database_id}-${info.collection_name}`);
-              setSelectedRows(allIds);
-            }
-            break;
-          case 'e':
-            if (selectedRows.length > 0) {
-              event.preventDefault();
-              handleExportCSV();
-            }
-            break;
-          case 'Delete':
-          case 'Backspace':
-            if (selectedRows.length > 0) {
-              event.preventDefault();
-              handleBulkDelete();
-            }
-            break;
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedRows, filteredInfos, handleExportCSV, handleBulkDelete]);
-
-  /** Fetch Solr collection aliases for the selected DB. */
-  useEffect(() => {
-    if (selectedSolrDatabase) {
-      authAxios
-        .get(`/api/solr/aliases?solr_database_id=${selectedSolrDatabase.id}`)
-        .then((res) => setAliases(Array.isArray(res.data) ? res.data : []))
-        .catch(() => setAliases([]));
-    } else {
-      setAliases([]);
-    }
-    setNewCollectionName("");
-    setAvailableFields([]);
-  }, [selectedSolrDatabase]);
-
-  /** When a collection is selected, fetch its field metadata. */
-  useEffect(() => {
-    if (selectedSolrDatabase && newCollectionName) {
-      fetchCollectionMetadata(selectedSolrDatabase.id, newCollectionName);
-    } else {
-      setAvailableFields([]);
-    }
-  }, [selectedSolrDatabase, newCollectionName]);
-
-  /**
-   * Utility: show a snackbar notification.
-   */
-  const showNotification = (
-    message: string,
-    severity: NotificationState["severity"] = "info",
-    duration: number = 5000,
-  ) => {
-    setNotification({ open: true, message, severity });
-    setTimeout(
-      () => setNotification((prev) => ({ ...prev, open: false })),
-      duration,
-    );
-  };
-
-  /**
-   * Fetch field names (metadata) for a Solr collection.
-   */
   const fetchCollectionMetadata = async (
     solrDatabaseId: number,
     collectionName: string,
@@ -450,11 +743,6 @@ const SolrDatabaseInfoComponent: React.FC = () => {
         const fields = metadataResponse.data;
         const fieldNames = fields.map((field: any) => field.name);
         setAvailableFields(fieldNames);
-
-        if (!editingRecord) {
-          setNewTextField(null);
-          setNewToNotDisplay(null);
-        }
       }
     } catch (error) {
       console.error("Failed to fetch collection metadata:", error);
@@ -462,280 +750,209 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     }
   };
 
-  /**
-   * Load all Solr database info records (metadata/config for collections).
-   */
-  const fetchSolrDatabaseInfos = async () => {
-    try {
-      setLoading(true);
-      const { data } = await authAxios.get("/api/solr_database_info");
-      setSolrDatabaseInfos(data);
-    } catch (error) {
-      console.error("Failed to fetch database info:", error);
-      setSolrDatabaseInfos([]);
-      showNotification("Failed to fetch database information", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Load list of Solr databases for the dropdown.
-   */
-  const fetchSolrDatabases = async () => {
-    try {
-      const { data } = await authAxios.get("/api/solr_databases");
-      setSolrDatabases(data);
-    } catch (error) {
-      console.error("Failed to fetch databases:", error);
-      setSolrDatabases([]);
-      showNotification("Failed to fetch databases", "error");
-    }
-  };
-
-  /**
-   * Check if collection info already exists
-   */
-  const collectionInfoExists = (dbId: number, collectionName: string, excludeRecord?: SolrDatabaseInfo) => {
-    return solrDatabaseInfos.some(info => 
-      info.solr_database_id === dbId && 
-      info.collection_name.toLowerCase() === collectionName.toLowerCase() &&
-      !(excludeRecord && info.solr_database_id === excludeRecord.solr_database_id && 
-        info.collection_name === excludeRecord.collection_name)
-    );
-  };
-
-  /**
-   * Validate collection name format
-   */
-  const isValidCollectionName = (name: string) => {
-    // Collection names should be alphanumeric with underscores/hyphens
-    const collectionRegex = /^[a-zA-Z0-9_-]+$/;
-    return collectionRegex.test(name);
-  };
-
-  /**
-   * Validate database info form
-   */
-  const validateDatabaseInfoForm = () => {
+  const validateCollectionForm = (collectionData: Partial<SolrDatabaseInfo>, isEdit = false) => {
     const errors: string[] = [];
     
-    if (!selectedSolrDatabase) {
-      errors.push("Please select a Solr database");
+    if (!collectionData.solr_database_id && !selectedSolrDatabase) {
+      errors.push("Database selection is required");
     }
     
-    if (!newCollectionName.trim()) {
+    if (!collectionData.collection_name?.trim()) {
       errors.push("Collection name is required");
-    } else if (!isValidCollectionName(newCollectionName)) {
-      errors.push("Collection name can only contain letters, numbers, underscores, and hyphens");
-    } else if (selectedSolrDatabase && collectionInfoExists(selectedSolrDatabase.id, newCollectionName, editingRecord || undefined)) {
-      errors.push("Collection information already exists for this database");
+    } else if (!/^[a-zA-Z0-9_-]+$/.test(collectionData.collection_name)) {
+      errors.push("Collection name must contain only letters, numbers, underscores, and hyphens");
+    } else {
+      const dbId = collectionData.solr_database_id || selectedSolrDatabase?.id;
+      const existingCollection = collections.find(c => 
+        c.collection_name.toLowerCase() === collectionData.collection_name?.toLowerCase() &&
+        c.solr_database_id === dbId &&
+        (!isEdit || !(editingRecord && c.solr_database_id === editingRecord.solr_database_id && c.collection_name === editingRecord.collection_name))
+      );
+      if (existingCollection) {
+        errors.push("A collection with this name already exists for this database");
+      }
     }
     
-    if (!newDescription.trim()) {
+    if (!collectionData.description?.trim()) {
       errors.push("Description is required");
-    } else if (newDescription.length > 500) {
+    } else if (collectionData.description.length > 500) {
       errors.push("Description must be less than 500 characters");
     }
     
-    if (!newEmbeddings.trim()) {
+    if (!collectionData.embeddings?.trim()) {
       errors.push("Embeddings field is required");
     }
     
-    if (newLang && newLang.length > 10) {
-      errors.push("Language code should be 10 characters or less");
+    if (collectionData.lang && collectionData.lang.length > 10) {
+      errors.push("Language code must be less than 10 characters");
     }
     
     return errors;
   };
 
-  /**
-   * Submit new or edited record with enhanced validation.
-   */
-  const handleAddOrUpdate = async () => {
-    const validationErrors = validateDatabaseInfoForm();
+  const handleAddCollection = async () => {
+    const validationErrors = validateCollectionForm(newCollection);
     
     if (validationErrors.length > 0) {
       showNotification(validationErrors[0], "warning");
       return;
     }
     
-    const dbName = selectedSolrDatabase?.name || "Unknown";
-    
+    setAdding(true);
     try {
-      if (editingRecord) {
-        await authAxios.put(
-          `/api/solr_database_info/${selectedSolrDatabase!.id}/${encodeURIComponent(newCollectionName)}`,
-          {
-            description: newDescription,
-            embeddings: newEmbeddings,
-            lang: newLang,
-            text_field: newTextField,
-            tokenizer: newTokenizer,
-            to_not_display: newToNotDisplay,
-          },
-        );
-        showNotification(`Collection "${newCollectionName}" in database "${dbName}" updated successfully`, "success");
-      } else {
-        await authAxios.post("/api/solr_database_info", {
-          solr_database_id: selectedSolrDatabase!.id,
-          collection_name: newCollectionName,
-          description: newDescription,
-          embeddings: newEmbeddings,
-          lang: newLang,
-          text_field: newTextField,
-          tokenizer: newTokenizer,
-          to_not_display: newToNotDisplay,
-        });
-        showNotification(`Collection "${newCollectionName}" added to database "${dbName}" successfully`, "success");
-      }
-      fetchSolrDatabaseInfos();
-      resetForm();
-    } catch (error: any) {
-      console.error("Failed to save record:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred";
-      
-      if (error.response?.status === 409 || errorMessage.includes("already exists")) {
-        showNotification("Collection information already exists for this database", "error");
-      } else if (error.response?.status === 404) {
-        showNotification("Database or collection not found. Please refresh and try again.", "error");
-        fetchSolrDatabaseInfos();
-      } else if (error.response?.status === 400) {
-        showNotification(`Invalid collection data: ${errorMessage}`, "error");
-      } else if (error.response?.status === 422) {
-        showNotification("Please check your input and try again", "error");
-      } else {
-        showNotification(`Failed to save record: ${errorMessage}`, "error");
-      }
+      await authAxios.post("/api/solr_database_info", {
+        solr_database_id: selectedSolrDatabase!.id,
+        collection_name: newCollection.collection_name,
+        description: newCollection.description,
+        embeddings: newCollection.embeddings,
+        lang: newCollection.lang,
+        text_field: newCollection.text_field,
+        tokenizer: newCollection.tokenizer,
+        to_not_display: newCollection.to_not_display,
+      });
+      setNewCollection({ to_not_display: [] });
+      setSelectedSolrDatabase(null);
+      setOpenAddDialog(false);
+      fetchCollections();
+      showNotification(`Collection "${newCollection.collection_name}" added successfully`, "success");
+    } catch (err: any) {
+      console.error("Add collection failed:", err);
+      showNotification(`Failed to add collection: ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setAdding(false);
     }
   };
 
-  /**
-   * Populate form fields for editing a record.
-   */
-  const handleEdit = (record: SolrDatabaseInfo) => {
-    const db =
-      solrDatabases.find((db) => db.id === record.solr_database_id) || null;
-    setEditingRecord(record);
-    setSelectedSolrDatabase(db);
-    setNewCollectionName(record.collection_name);
-    setNewDescription(record.description);
-    setNewEmbeddings(record.embeddings);
-    setNewLang(record.lang ?? null);
-    setNewTextField(record.text_field ?? null);
-    setNewTokenizer(record.tokenizer ?? null);
-    setNewToNotDisplay(record.to_not_display ?? null);
-
-    if (db) {
-      fetchCollectionMetadata(db.id, record.collection_name);
-    }
-    setOpenAddDialog(true);
-  };
-
-  /**
-   * Delete a record with enhanced error handling.
-   */
-  const handleDelete = async (
-    solr_database_id: number,
-    collection_name: string,
-  ) => {
-    const dbName = solrDatabases.find(db => db.id === solr_database_id)?.name || "Unknown";
+  const handleUpdateCollection = async () => {
+    if (!editingRecord) return;
     
+    const validationErrors = validateCollectionForm(editingRecord, true);
+    
+    if (validationErrors.length > 0) {
+      showNotification(validationErrors[0], "warning");
+      return;
+    }
+    
+    setUpdating(true);
+    try {
+      await authAxios.put(
+        `/api/solr_database_info/${editingRecord.solr_database_id}/${encodeURIComponent(editingRecord.collection_name)}`,
+        {
+          description: editingRecord.description,
+          embeddings: editingRecord.embeddings,
+          lang: editingRecord.lang,
+          text_field: editingRecord.text_field,
+          tokenizer: editingRecord.tokenizer,
+          to_not_display: editingRecord.to_not_display,
+        }
+      );
+      setEditingRecord(null);
+      setOpenEditDialog(false);
+      fetchCollections();
+      showNotification(`Collection "${editingRecord.collection_name}" updated successfully`, "success");
+    } catch (err: any) {
+      console.error("Update collection failed:", err);
+      showNotification(`Failed to update collection: ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteCollection = async (collection: SolrDatabaseInfo) => {
     try {
       await authAxios.delete(
-        `/api/solr_database_info/${solr_database_id}/${encodeURIComponent(collection_name)}`,
+        `/api/solr_database_info/${collection.solr_database_id}/${encodeURIComponent(collection.collection_name)}`
       );
-      setSelectedRows((prev: any) => prev.filter((rowId: any) => rowId !== `${solr_database_id}-${collection_name}`));
-      fetchSolrDatabaseInfos();
+      showNotification(`Collection "${collection.collection_name}" deleted successfully`, "success");
+      fetchCollections();
       setOpenDeleteDialog(false);
-      setRecordToDelete(null);
-      showNotification(`Collection "${collection_name}" info deleted from database "${dbName}" successfully`, "success");
-    } catch (error: any) {
-      console.error("Failed to delete record:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred";
-      
-      if (error.response?.status === 404) {
-        showNotification("Collection information not found. It may have already been deleted.", "error");
-        fetchSolrDatabaseInfos(); // Refresh to sync with server
-      } else if (error.response?.status === 403) {
-        showNotification("You don't have permission to delete this collection information", "error");
-      } else if (error.response?.status === 409 || errorMessage.includes("constraint")) {
-        showNotification("Cannot delete: collection info may be referenced by other data", "error");
-      } else {
-        showNotification(`Failed to delete record: ${errorMessage}`, "error");
-      }
-      setOpenDeleteDialog(false);
-      setRecordToDelete(null);
+      setCollectionToDelete(null);
+    } catch (err: any) {
+      console.error("Delete collection failed:", err);
+      showNotification(`Failed to delete collection: ${err.response?.data?.message || err.message}`, "error");
     }
   };
 
-  /**
-   * Handle bulk deletion of selected records
-   */
-  const handleBulkDeleteConfirm = async () => {
-    if (selectedRows.length === 0) return;
-    
-    const selectedInfos = filteredInfos.filter(info => 
-      selectedRows.includes(`${info.solr_database_id}-${info.collection_name}`)
+  const handleBulkDelete = async () => {
+    if (selectedCollections.length === 0) return;
+
+    try {
+      await Promise.all(
+        selectedCollections.map(collection => 
+          authAxios.delete(
+            `/api/solr_database_info/${collection.solr_database_id}/${encodeURIComponent(collection.collection_name)}`
+          )
+        )
+      );
+
+      showNotification(
+        `Successfully deleted ${selectedCollections.length} collection(s)`,
+        "success"
+      );
+
+      setSelectedCollections([]);
+      setOpenBulkDeleteDialog(false);
+      fetchCollections();
+    } catch (err: any) {
+      console.error("Bulk delete failed:", err);
+      showNotification(`Failed to delete some collections: ${err.response?.data?.message || err.message}`, "error");
+    }
+  };
+
+  const handleSelectCollection = (collection: SolrDatabaseInfo) => {
+    const isSelected = selectedCollections.some(c => 
+      c.solr_database_id === collection.solr_database_id && c.collection_name === collection.collection_name
     );
     
-    let successCount = 0;
-    let errorCount = 0;
-    
-    for (const info of selectedInfos) {
-      try {
-        await authAxios.delete(
-          `/api/solr_database_info/${info.solr_database_id}/${encodeURIComponent(info.collection_name)}`
-        );
-        successCount++;
-      } catch (err) {
-        console.error(`Failed to delete info for ${info.collection_name}:`, err);
-        errorCount++;
-      }
+    if (isSelected) {
+      setSelectedCollections(selectedCollections.filter(c => 
+        !(c.solr_database_id === collection.solr_database_id && c.collection_name === collection.collection_name)
+      ));
+    } else {
+      setSelectedCollections([...selectedCollections, collection]);
     }
-    
-    if (successCount > 0) {
-      showNotification(`Successfully deleted ${successCount} record(s)`, 'success');
-    }
-    if (errorCount > 0) {
-      showNotification(`Failed to delete ${errorCount} record(s)`, 'error');
-    }
-    
-    setSelectedRows([]);
-    fetchSolrDatabaseInfos();
-    setOpenDeleteDialog(false);
-    setRecordToDelete(null);
   };
 
-  /** Resets the form and editing state to blank. */
+  const handleToggleCardExpansion = (collection: SolrDatabaseInfo) => {
+    const collectionKey = `${collection.solr_database_id}-${collection.collection_name}`;
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(collectionKey as any)) {
+      newExpanded.delete(collectionKey as any);
+    } else {
+      newExpanded.add(collectionKey as any);
+    }
+    setExpandedCards(newExpanded);
+  };
+
+  const handleEdit = (collection: SolrDatabaseInfo) => {
+    setEditingRecord(collection);
+    setOpenEditDialog(true);
+  };
+
+  const handleSelectAll = () => {
+    setSelectedCollections([...filteredCollections]);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedCollections([]);
+  };
+
   const resetForm = () => {
     setEditingRecord(null);
     setSelectedSolrDatabase(null);
-    setNewCollectionName("");
-    setNewDescription("");
-    setNewEmbeddings("");
-    setNewLang(null);
-    setNewTextField(null);
-    setNewTokenizer(null);
-    setNewToNotDisplay(null);
+    setNewCollection({ to_not_display: [] });
     setAvailableFields([]);
+    setAliases([]);
     setOpenAddDialog(false);
+    setOpenEditDialog(false);
   };
 
-  /** Handler for "Fields To Not Display" multiselect. */
-  const handleToNotDisplayChange = (
-    _: React.SyntheticEvent,
-    newValue: string[],
-  ) => {
-    setNewToNotDisplay(newValue.map((v) => v || null));
-  };
-
-  // --- DataGrid columns definition ---
+  // DataGrid columns for table view
   const columns: GridColDef[] = [
     {
-      field: "solr_database_id",
-      headerName: "Database ID",
-      width: 120,
+      field: "id",
+      headerName: "ID",
+      width: 80,
       renderCell: (params) => (
         <Chip label={params.value} size="small" variant="outlined" />
       ),
@@ -743,37 +960,22 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     {
       field: "collection_name",
       headerName: "Collection",
-      width: 220,
+      flex: 1,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <DataObject fontSize="small" color="primary" />
-          <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
-            {highlightText(params.value, search)}
+          <Collections fontSize="small" color="primary" />
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.value}
           </Typography>
-          <CopyToClipboard 
-            text={params.value} 
-            variant="icon" 
-            size="small" 
-            showToast={false}
-            tooltipTitle="Copy collection name"
-          />
         </Box>
       ),
     },
     {
       field: "description",
       headerName: "Description",
-      width: 200,
+      flex: 1,
       renderCell: (params) => (
-        <Typography variant="body2">{highlightText(params.value, search)}</Typography>
-      ),
-    },
-    {
-      field: "embeddings",
-      headerName: "Embeddings",
-      width: 150,
-      renderCell: (params) => (
-        <Chip label={highlightText(params.value, search)} size="small" color="info" />
+        <Typography variant="body2">{params.value}</Typography>
       ),
     },
     {
@@ -781,10 +983,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       headerName: "Language",
       width: 120,
       renderCell: (params) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Language fontSize="small" color="action" />
-          <Typography variant="body2">{params.value || "-"}</Typography>
-        </Box>
+        <Chip label={params.value || "N/A"} size="small" color="info" />
       ),
     },
     {
@@ -798,37 +997,12 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       ),
     },
     {
-      field: "tokenizer",
-      headerName: "Tokenizer",
-      width: 120,
+      field: "embeddings",
+      headerName: "Embeddings",
+      width: 150,
       renderCell: (params) => (
-        <Typography variant="body2">{params.value || "-"}</Typography>
+        <Chip label={params.value || "None"} size="small" color="warning" />
       ),
-    },
-    {
-      field: "to_not_display",
-      headerName: "Hidden Fields",
-      width: 200,
-      renderCell: (params) => {
-        const values = params.value as Array<string | null> | null;
-        if (!values || values.length === 0)
-          return <Typography variant="body2">-</Typography>;
-        return (
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-            {values.map(
-              (value, index) =>
-                value && (
-                  <Chip
-                    key={index}
-                    label={value}
-                    size="small"
-                    variant="outlined"
-                  />
-                ),
-            )}
-          </Box>
-        );
-      },
     },
     {
       field: "actions",
@@ -838,7 +1012,7 @@ const SolrDatabaseInfoComponent: React.FC = () => {
       filterable: false,
       renderCell: (params: GridRenderCellParams) => (
         <Stack direction="row" spacing={1}>
-          <Tooltip title="Edit Record">
+          <Tooltip title="Edit Collection">
             <IconButton
               size="small"
               color="primary"
@@ -847,12 +1021,12 @@ const SolrDatabaseInfoComponent: React.FC = () => {
               <Edit />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Delete Record">
+          <Tooltip title="Delete Collection">
             <IconButton
               size="small"
               color="error"
               onClick={() => {
-                setRecordToDelete(params.row);
+                setCollectionToDelete(params.row);
                 setOpenDeleteDialog(true);
               }}
             >
@@ -864,68 +1038,86 @@ const SolrDatabaseInfoComponent: React.FC = () => {
     },
   ];
 
-  // --- Render ---
-  return (
-    <Fade in={true} timeout={600}>
-      <Box>
-        {notification.open && (
-          <Alert
-            severity={notification.severity}
-            sx={{ mb: 3 }}
-            onClose={() =>
-              setNotification((prev) => ({ ...prev, open: false }))
-            }
-          >
-            {notification.message}
-          </Alert>
-        )}
+  // Speed Dial Actions for Mobile
+  const speedDialActions = [
+    {
+      icon: <Add />,
+      name: 'Add Collection',
+      onClick: () => setOpenAddDialog(true),
+    },
+    {
+      icon: <CloudUpload />,
+      name: 'Import CSV',
+      onClick: () => setOpenImportDialog(true),
+    },
+    {
+      icon: <GetApp />,
+      name: 'Export All',
+      onClick: handleExportCSV,
+    },
+    {
+      icon: <Refresh />,
+      name: 'Refresh',
+      onClick: fetchCollections,
+    },
+  ];
 
-        {/* Page header */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 4,
-          }}
+  return (
+    <Box sx={{ pb: isMobile ? 8 : 0 }}>
+      {notification.open && (
+        <Alert
+          severity={notification.severity}
+          sx={{ mb: 3 }}
+          onClose={() => setNotification((prev) => ({ ...prev, open: false }))}
         >
+          {notification.message}
+        </Alert>
+      )}
+
+      {/* Mobile Header */}
+      {isMobile ? (
+        <MobileHeader
+          title="Collection Info"
+          subtitle="Manage collection metadata"
+          selectedCount={selectedCollections.length}
+          totalCount={filteredCollections.length}
+          autoRefresh={autoRefresh}
+          onToggleAutoRefresh={() => setAutoRefresh(!autoRefresh)}
+          onAddCollection={() => setOpenAddDialog(true)}
+          onBulkDelete={selectedCollections.length > 0 ? () => setOpenBulkDeleteDialog(true) : undefined}
+          onClearSelection={selectedCollections.length > 0 ? handleClearSelection : undefined}
+        />
+      ) : (
+        // Desktop Header
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
           <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <Info color="primary" />
-              Database Information
+            <Typography variant="h4" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1 }}>
+              <Database color="primary" />
+              Solr Collection Information
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Manage collection metadata and configuration settings
+              Configure collection metadata, fields, and display settings
             </Typography>
+            {selectedCollections.length > 0 && (
+              <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+                {selectedCollections.length} collection{selectedCollections.length !== 1 ? 's' : ''} selected
+              </Typography>
+            )}
           </Box>
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Auto-refresh (30s)">
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={autoRefresh}
-                    onChange={(e) => setAutoRefresh(e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Autorenew fontSize="small" />
-                    Auto
-                  </Box>
-                }
-              />
+            <Tooltip title={`Switch to ${viewMode === 'cards' ? 'Table' : 'Cards'} View`}>
+              <IconButton
+                onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
+                color="primary"
+              >
+                {viewMode === 'cards' ? <ViewList /> : <ViewModule />}
+              </IconButton>
             </Tooltip>
-            <Tooltip title="Refresh Data (Ctrl+R)">
-              <IconButton onClick={fetchSolrDatabaseInfos} color="primary">
+            <Tooltip title="Toggle Auto-refresh (30s)">
+              <IconButton 
+                onClick={() => setAutoRefresh(!autoRefresh)} 
+                color={autoRefresh ? "primary" : "default"}
+              >
                 <Refresh />
               </IconButton>
             </Tooltip>
@@ -936,477 +1128,685 @@ const SolrDatabaseInfoComponent: React.FC = () => {
               sx={{
                 background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                 "&:hover": {
-                  background:
-                    "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
                 },
               }}
             >
-              Add Database Info (Ctrl+N)
+              Add Collection
             </Button>
           </Stack>
         </Box>
+      )}
 
+      {/* Search and Filters */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={8}>
+              <TextField
+                fullWidth
+                placeholder="Search collections by name, description, or configuration..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                size={isMobile ? "small" : "medium"}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search color="action" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: search && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setSearch("")}>
+                        <Clear />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                <Typography variant="body2" color="text.secondary">
+                  {filteredCollections.length} of {collections.length} collections
+                </Typography>
+              </Stack>
+            </Grid>
+          </Grid>
+          
+          {/* Results summary and bulk actions */}
+          {!isMobile && (
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color={selectedCollections.length > 0 ? "primary" : "text.secondary"}>
+                {selectedCollections.length > 0 
+                  ? `${selectedCollections.length} collection${selectedCollections.length !== 1 ? 's' : ''} selected`
+                  : `Showing ${filteredCollections.length} of ${collections.length} collections`
+                }
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                {selectedCollections.length > 0 ? (
+                  <>
+                    <Button
+                      size="small"
+                      startIcon={<SelectAll />}
+                      onClick={handleSelectAll}
+                      disabled={filteredCollections.length === 0}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      size="small"
+                      startIcon={<Clear />}
+                      onClick={handleClearSelection}
+                    >
+                      Clear Selection
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={() => setOpenBulkDeleteDialog(true)}
+                    >
+                      Delete ({selectedCollections.length})
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Tooltip title="Import from CSV">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<CloudUpload />}
+                        onClick={() => setOpenImportDialog(true)}
+                      >
+                        Import
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Export All to CSV">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredCollections.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Select All Collections">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredCollections.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </>
+                )}
+              </Stack>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Search and bulk operations */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  placeholder="Search by collection, description, or embeddings..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search color="action" />
-                      </InputAdornment>
-                    ),
+      {/* Content Area */}
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Fade in={true} timeout={600}>
+          <Box>
+            {filteredCollections.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Database sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  {search ? 'No collections found' : 'No collections configured yet'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  {search 
+                    ? `No collections match "${search}". Try a different search term.`
+                    : 'Get started by adding your first collection configuration.'
+                  }
+                </Typography>
+                {!search && (
+                  <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => setOpenAddDialog(true)}
+                    sx={{ mt: 2 }}
+                  >
+                    Add First Collection
+                  </Button>
+                )}
+              </Paper>
+            ) : viewMode === 'cards' ? (
+              <Grid container spacing={2}>
+                {filteredCollections.map((collection) => {
+                  const database = databases.find(db => db.id === collection.solr_database_id);
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={`${collection.solr_database_id}-${collection.collection_name}`}>
+                      <CollectionInfoCard
+                        collectionInfo={collection}
+                        database={database}
+                        selected={selectedCollections.some(c => 
+                          c.solr_database_id === collection.solr_database_id && c.collection_name === collection.collection_name
+                        )}
+                        searchTerm={search}
+                        expanded={expandedCards.has(`${collection.solr_database_id}-${collection.collection_name}`)}
+                        onSelect={handleSelectCollection}
+                        onToggleExpand={handleToggleCardExpansion}
+                        onEdit={handleEdit}
+                        onDelete={(collection) => {
+                          setCollectionToDelete(collection);
+                          setOpenDeleteDialog(true);
+                        }}
+                      />
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            ) : (
+              <Paper sx={{ height: 600, borderRadius: 3, overflow: "hidden" }}>
+                <DataGrid
+                  rows={filteredCollections}
+                  columns={columns}
+                  initialState={{
+                    pagination: {
+                      page: 0,
+                      pageSize: 10,
+                    },
+                  }}
+                  pageSize={100}
+                  getRowId={(row) => `${row.solr_database_id}-${row.collection_name}`}
+                  checkboxSelection
+                  rowSelectionModel={selectedCollections.map(c => `${c.solr_database_id}-${c.collection_name}`)}
+                  onRowSelectionModelChange={(newSelection: GridSelectionModel) => {
+                    const selectedIds = newSelection as string[];
+                    const newSelectedCollections = filteredCollections.filter(c => 
+                      selectedIds.includes(`${c.solr_database_id}-${c.collection_name}`)
+                    );
+                    setSelectedCollections(newSelectedCollections);
+                  }}
+                  disableSelectionOnClick={false}
+                  sx={{
+                    border: "none",
+                    "& .MuiDataGrid-cell": {
+                      outline: "none",
+                      borderBottom: "1px solid rgba(224, 224, 224, 0.4)",
+                    },
+                    "& .MuiDataGrid-columnHeaders": {
+                      backgroundColor: "rgba(103, 58, 183, 0.08)",
+                      borderBottom: "2px solid rgba(103, 58, 183, 0.2)",
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                    },
+                    "& .MuiDataGrid-row": {
+                      transition: "background-color 0.2s ease, transform 0.1s ease",
+                      "&:hover": {
+                        backgroundColor: "rgba(103, 58, 183, 0.08)",
+                        transform: "translateY(-1px)",
+                        boxShadow: "0 4px 12px rgba(103, 58, 183, 0.15)",
+                      },
+                    },
+                    "& .MuiDataGrid-footerContainer": {
+                      borderTop: "2px solid rgba(224, 224, 224, 0.3)",
+                      backgroundColor: "rgba(248, 249, 250, 0.8)",
+                    },
+                    "& .MuiDataGrid-selectedRowCount": {
+                      visibility: "hidden",
+                    },
                   }}
                 />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
-                  {selectedRows.length > 0 && (
-                    <>
-                      <Badge badgeContent={selectedRows.length} color="primary">
-                        <Tooltip title="Export Selected to CSV (Ctrl+E)">
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<GetApp />}
-                            onClick={handleExportCSV}
-                          >
-                            Export
-                          </Button>
-                        </Tooltip>
-                      </Badge>
-                      <Tooltip title="Delete Selected (Delete/Backspace)">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="error"
-                          startIcon={<DeleteSweep />}
-                          onClick={handleBulkDelete}
-                        >
-                          Delete ({selectedRows.length})
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Deselect All">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={handleDeselectAll}
-                        >
-                          Clear
-                        </Button>
-                      </Tooltip>
-                    </>
-                  )}
-                  {selectedRows.length === 0 && (
-                    <>
-                      <Tooltip title="Import from CSV">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<CloudUpload />}
-                          onClick={() => setOpenImportDialog(true)}
-                        >
-                          Import
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Export All to CSV">
-                        <span>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<GetApp />}
-                            onClick={handleExportCSV}
-                            disabled={filteredInfos.length === 0}
-                          >
-                            Export All
-                          </Button>
-                        </span>
-                      </Tooltip>
-                      <Tooltip title="Select All (Ctrl+Shift+A)">
-                        <span>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<SelectAll />}
-                            onClick={handleSelectAll}
-                            disabled={filteredInfos.length === 0}
-                          >
-                            Select All
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    </>
-                  )}
-                </Stack>
-              </Grid>
-            </Grid>
-            {selectedRows.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Divider />
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  {selectedRows.length} record(s) selected | Keyboard shortcuts: Ctrl+E (export), Delete (bulk delete), Ctrl+R (refresh)
-                </Typography>
-              </Box>
+              </Paper>
             )}
-          </CardContent>
-        </Card>
+          </Box>
+        </Fade>
+      )}
 
-        {/* Table of collection info */}
-        <Paper sx={{ height: 600, borderRadius: 3, overflow: "hidden" }}>
-          {loading ? (
-            <SkeletonLoader variant="admin" rows={10} />
-          ) : (
-            <DataGrid
-              rows={filteredInfos}
-              columns={columns}
-              initialState={{
-                pagination: {
-                  page: 0,
-                  pageSize: 10,
-                },
-              }}
-              pageSize={100}
-              getRowId={(row) =>
-                `${row.solr_database_id}-${row.collection_name}`
-              }
-              checkboxSelection
-              selectionModel={selectedRows}
-              onSelectionModelChange={(newSelection: any) => {
-                setSelectedRows(newSelection);
-              }}
-              disableSelectionOnClick={false}
-              sx={{
-                border: "none",
-                "& .MuiDataGrid-cell": {
-                  outline: "none",
-                  borderBottom: "1px solid rgba(224, 224, 224, 0.4)",
-                },
-                "& .MuiDataGrid-columnHeaders": {
-                  backgroundColor: "rgba(103, 58, 183, 0.08)",
-                  borderBottom: "2px solid rgba(103, 58, 183, 0.2)",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                },
-                "& .MuiDataGrid-row": {
-                  transition: "background-color 0.2s ease, transform 0.1s ease",
-                  "&:hover": {
-                    backgroundColor: "rgba(103, 58, 183, 0.08)",
-                    transform: "translateY(-1px)",
-                    boxShadow: "0 4px 12px rgba(103, 58, 183, 0.15)",
-                  },
-                },
-                "& .MuiDataGrid-footerContainer": {
-                  borderTop: "2px solid rgba(224, 224, 224, 0.3)",
-                  backgroundColor: "rgba(248, 249, 250, 0.8)",
-                },
-                "& .MuiDataGrid-selectedRowCount": {
-                  visibility: "hidden",
-                },
-              }}
-            />
-          )}
-        </Paper>
-
-        {/* Add/Edit Dialog */}
-        <Dialog
-          open={openAddDialog}
-          onClose={() => setOpenAddDialog(false)}
-          maxWidth="md"
-          fullWidth
+      {/* Mobile Speed Dial */}
+      {isMobile && (
+        <SpeedDial
+          ariaLabel="Collection actions"
+          sx={{ position: 'fixed', bottom: 16, right: 16 }}
+          icon={<SpeedDialIcon />}
         >
-          <DialogTitle
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
-            }}
-          >
-            {editingRecord ? <Edit /> : <Add />}
-            {editingRecord ? "Update Database Info" : "Add Database Info"}
-          </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
-            <Grid container spacing={3}>
-              {/* Solr DB selector */}
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Solr Database</InputLabel>
-                  <Select
-                    value={selectedSolrDatabase?.id || ""}
-                    onChange={(e) =>
-                      setSelectedSolrDatabase(
-                        solrDatabases.find(
-                          (db) => db.id === Number(e.target.value),
-                        ) || null,
-                      )
-                    }
-                    label="Solr Database"
-                  >
-                    {solrDatabases.map((db) => (
-                      <MenuItem key={db.id} value={db.id}>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <Storage fontSize="small" />
-                          {db.name}
-                          <Chip
-                            label={`ID: ${db.id}`}
-                            size="small"
-                            variant="outlined"
-                          />
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              {/* Collection name */}
-              <Grid item xs={12} md={6}>
-                <Autocomplete
-                  freeSolo
-                  options={aliases}
-                  value={newCollectionName}
-                  onChange={(_, value: string | null) =>
-                    setNewCollectionName(value || "")
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Collection Name *"
-                      required
-                      error={!newCollectionName}
-                      helperText={!newCollectionName && "Required"}
-                    />
-                  )}
-                />
-              </Grid>
-              {/* Description */}
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Description *"
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  fullWidth
-                  required
-                  error={!newDescription}
-                  helperText={!newDescription && "Required"}
-                />
-              </Grid>
-              {/* Embeddings */}
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Embeddings *"
-                  value={newEmbeddings}
-                  onChange={(e) => setNewEmbeddings(e.target.value)}
-                  fullWidth
-                  required
-                  error={!newEmbeddings}
-                  helperText={!newEmbeddings && "Required"}
-                />
-              </Grid>
-              {/* Language */}
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="Language"
-                  value={newLang || ""}
-                  onChange={(e) => setNewLang(e.target.value || null)}
-                  fullWidth
-                />
-              </Grid>
-              {/* Text field selector */}
-              <Grid item xs={12} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Text Field</InputLabel>
-                  <Select
-                    value={newTextField || ""}
-                    onChange={(e) => setNewTextField(e.target.value || null)}
-                    label="Text Field"
-                    disabled={availableFields.length === 0}
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
+          {speedDialActions.map((action) => (
+            <SpeedDialAction
+              key={action.name}
+              icon={action.icon}
+              tooltipTitle={action.name}
+              onClick={action.onClick}
+            />
+          ))}
+        </SpeedDial>
+      )}
+
+      {/* Add Collection Dialog */}
+      <Dialog
+        open={openAddDialog}
+        onClose={() => setOpenAddDialog(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Add />
+          Add New Collection Configuration
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel>Database</InputLabel>
+                <Select
+                  value={selectedSolrDatabase?.id || ''}
+                  onChange={(e) => {
+                    const db = databases.find(d => d.id === Number(e.target.value)) || null;
+                    setSelectedSolrDatabase(db);
+                    setNewCollection({ ...newCollection, solr_database_id: Number(e.target.value) });
+                  }}
+                  label="Database"
+                >
+                  {databases.map((database) => (
+                    <MenuItem key={database.id} value={database.id}>
+                      {database.name}
                     </MenuItem>
-                    {availableFields.map((field) => (
-                      <MenuItem key={field} value={field}>
-                        {field}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              {/* Tokenizer */}
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="Tokenizer"
-                  value={newTokenizer || ""}
-                  onChange={(e) => setNewTokenizer(e.target.value || null)}
-                  fullWidth
-                />
-              </Grid>
-              {/* Fields To Not Display multiselect */}
-              <Grid item xs={12}>
-                <Autocomplete
-                  multiple
-                  options={availableFields}
-                  value={(newToNotDisplay || []).filter(Boolean) as string[]}
-                  onChange={handleToNotDisplayChange}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Fields To Not Display" />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={option}
-                        size="small"
-                        {...getTagProps({ index })}
-                      />
-                    ))
-                  }
-                  disabled={availableFields.length === 0}
-                />
-              </Grid>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
-          </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
-            <Button onClick={resetForm} startIcon={<Cancel />}>
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleAddOrUpdate}
-              startIcon={editingRecord ? <Save /> : <Add />}
-              disabled={
-                !selectedSolrDatabase ||
-                !newCollectionName ||
-                !newDescription ||
-                !newEmbeddings
-              }
-              sx={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                "&:hover": {
-                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
-                },
-              }}
-            >
-              {editingRecord ? "Update" : "Add"} Record
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Confirm delete dialog */}
-        <Dialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-        >
-          <DialogTitle
-            sx={{
-              color: "error.main",
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
-          >
-            <Delete />
-            Confirm Delete
-          </DialogTitle>
-          <DialogContent>
-            {selectedRows.length > 1 ? (
-              <Typography>
-                Are you sure you want to delete {selectedRows.length} selected database info records? This action cannot be undone.
-              </Typography>
-            ) : (
-              <Typography>
-                Are you sure you want to delete the record for collection "
-                {recordToDelete?.collection_name}"? This action cannot be undone.
-              </Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={() => {
-                if (selectedRows.length > 1) {
-                  handleBulkDeleteConfirm();
-                } else if (recordToDelete) {
-                  handleDelete(
-                    recordToDelete.solr_database_id,
-                    recordToDelete.collection_name
-                  );
+            <Grid item xs={12} sm={6}>
+              <Autocomplete
+                freeSolo
+                options={aliases}
+                value={newCollection.collection_name || ""}
+                onChange={(_, value: string | null) => {
+                  setNewCollection({ ...newCollection, collection_name: value || "" });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Collection Name"
+                    required
+                    error={newCollection.collection_name ? !/^[a-zA-Z0-9_-]+$/.test(newCollection.collection_name) : false}
+                    helperText={
+                      !newCollection.collection_name?.trim() ? "Collection name is required" :
+                      !/^[a-zA-Z0-9_-]+$/.test(newCollection.collection_name) ? "Only letters, numbers, underscores, and hyphens allowed" : ""
+                    }
+                  />)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Description"
+                value={newCollection.description || ""}
+                onChange={(e) => setNewCollection({ ...newCollection, description: e.target.value })}
+                fullWidth
+                multiline
+                rows={2}
+                inputProps={{ maxLength: 500 }}
+                helperText={`${newCollection.description?.length || 0}/500 characters`}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Language"
+                value={newCollection.lang || ""}
+                onChange={(e) => setNewCollection({ ...newCollection, lang: e.target.value })}
+                fullWidth
+                placeholder="en, zh, fr, etc."
+                inputProps={{ maxLength: 10 }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Text Field</InputLabel>
+                <Select
+                  value={newCollection.text_field || ""}
+                  onChange={(e) => setNewCollection({ ...newCollection, text_field: e.target.value || null })}
+                  label="Text Field"
+                  disabled={availableFields.length === 0}
+                >
+                  <MenuItem value="">
+                    <em>None</em>
+                  </MenuItem>
+                  {availableFields.map((field) => (
+                    <MenuItem key={field} value={field}>
+                      {field}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Tokenizer"
+                value={newCollection.tokenizer || ""}
+                onChange={(e) => setNewCollection({ ...newCollection, tokenizer: e.target.value })}
+                fullWidth
+                placeholder="standard, keyword, whitespace"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Embeddings"
+                value={newCollection.embeddings || ""}
+                onChange={(e) => setNewCollection({ ...newCollection, embeddings: e.target.value })}
+                fullWidth
+                placeholder="word2vec, fasttext, bert"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Autocomplete
+                multiple
+                freeSolo
+                options={availableFields}
+                value={(newCollection.to_not_display || []).filter(Boolean) as string[]}
+                onChange={(_, value) => setNewCollection({ ...newCollection, to_not_display: value.map(v => v || null) })}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      variant="outlined"
+                      label={option}
+                      {...getTagProps({ index })}
+                      key={option}
+                      size="small"
+                    />
+                  ))
                 }
-              }}
-            >
-              Delete {selectedRows.length > 1 ? `${selectedRows.length} Records` : 'Record'}
-            </Button>
-          </DialogActions>
-        </Dialog>
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Fields to Hide"
+                    placeholder="Add field names to hide from display"
+                    helperText="Fields that should not be displayed in search results"
+                  />
+                )}
+                disabled={availableFields.length === 0}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={resetForm} disabled={adding}>
+            Cancel
+          </Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleAddCollection}
+            loading={adding}
+            disabled={
+              !selectedSolrDatabase ||
+              !newCollection.collection_name?.trim() ||
+              !newCollection.description?.trim() ||
+              !newCollection.embeddings?.trim()
+            }
+          >
+            Add Collection
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
 
-        {/* Import CSV Dialog */}
-        <Dialog
-          open={openImportDialog}
-          onClose={() => setOpenImportDialog(false)}
-          maxWidth="sm"
-          fullWidth
+      {/* Edit Collection Dialog */}
+      <Dialog
+        open={openEditDialog}
+        onClose={() => setOpenEditDialog(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Edit />
+          Edit Collection Configuration
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel>Database</InputLabel>
+                <Select
+                  value={editingRecord?.solr_database_id || ''}
+                  onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, solr_database_id: Number(e.target.value) } : null)}
+                  label="Database"
+                  disabled
+                >
+                  {databases.map((database) => (
+                    <MenuItem key={database.id} value={database.id}>
+                      {database.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Collection Name"
+                value={editingRecord?.collection_name || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, collection_name: e.target.value } : null)}
+                fullWidth
+                required
+                disabled
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Description"
+                value={editingRecord?.description || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, description: e.target.value } : null)}
+                fullWidth
+                multiline
+                rows={2}
+                inputProps={{ maxLength: 500 }}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Language"
+                value={editingRecord?.lang || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, lang: e.target.value || null } : null)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Text Field"
+                value={editingRecord?.text_field || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, text_field: e.target.value || null } : null)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Tokenizer"
+                value={editingRecord?.tokenizer || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, tokenizer: e.target.value || null } : null)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Embeddings"
+                value={editingRecord?.embeddings || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, embeddings: e.target.value } : null)}
+                fullWidth
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Autocomplete
+                multiple
+                freeSolo
+                options={availableFields}
+                value={(editingRecord?.to_not_display || []).filter(Boolean) as string[]}
+                onChange={(_, value) => setEditingRecord(editingRecord ? { ...editingRecord, to_not_display: value.map(v => v || null) } : null)}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      variant="outlined"
+                      label={option}
+                      {...getTagProps({ index })}
+                      key={option}
+                      size="small"
+                    />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Fields to Hide"
+                    placeholder="Add field names to hide from display"
+                  />
+                )}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={resetForm} disabled={updating}>
+            Cancel
+          </Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleUpdateCollection}
+            loading={updating}
+            disabled={
+              !editingRecord?.solr_database_id ||
+              !editingRecord?.collection_name?.trim() ||
+              !editingRecord?.description?.trim() ||
+              !editingRecord?.embeddings?.trim()
+            }
+          >
+            Save Changes
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+        <DialogTitle sx={{ color: "error.main" }}>Confirm Collection Deletion</DialogTitle>
+        <DialogContent>
+          {collectionToDelete && (
+            <Typography>
+              Are you sure you want to delete the collection configuration for "{collectionToDelete.collection_name}"? 
+              This action cannot be undone and will remove all metadata settings.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => collectionToDelete && handleDeleteCollection(collectionToDelete)}
+          >
+            Delete Collection
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Delete Dialog */}
+      <Dialog open={openBulkDeleteDialog} onClose={() => setOpenBulkDeleteDialog(false)}>
+        <DialogTitle sx={{ color: "error.main" }}>Confirm Bulk Collection Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete {selectedCollections.length} selected collection{selectedCollections.length !== 1 ? 's' : ''}? 
+            This action cannot be undone.
+          </Typography>
+          {selectedCollections.length > 0 && (
+            <Box sx={{ mt: 2, maxHeight: 200, overflow: 'auto' }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Collections to be deleted:
+              </Typography>
+              {selectedCollections.slice(0, 5).map((collection) => (
+                <Typography key={collection.id} variant="body2" sx={{ ml: 2 }}>
+                  • {collection.collection_name} ({databases.find(db => db.id === collection.solr_database_id)?.name || 'Unknown DB'})
+                </Typography>
+              ))}
+              {selectedCollections.length > 5 && (
+                <Typography variant="body2" sx={{ ml: 2, fontStyle: 'italic' }}>
+                  ... and {selectedCollections.length - 5} more
+                </Typography>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenBulkDeleteDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleBulkDelete}
+          >
+            Delete {selectedCollections.length} Collection{selectedCollections.length !== 1 ? 's' : ''}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import CSV Dialog */}
+      <Dialog
+        open={openImportDialog}
+        onClose={() => setOpenImportDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+          }}
         >
-          <DialogTitle
+          <CloudUpload />
+          Import Collection Info from CSV
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Upload a CSV file with columns: <strong>solr_database_id, collection_name, description, embeddings</strong>
+          </Typography>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+            style={{ marginBottom: '16px' }}
+          />
+          {importFile && (
+            <Typography variant="body2" color="success.main">
+              Selected: {importFile.name}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleImportCSV}
+            disabled={!importFile || importing}
+            loading={importing}
+            startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
             sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+              },
             }}
           >
-            <CloudUpload />
-            Import Solr Database Info from CSV
-          </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Upload a CSV file with columns: <strong>solr_database_id, collection_name, description, embeddings</strong>
-            </Typography>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-              style={{ marginBottom: '16px' }}
-            />
-            {importFile && (
-              <Typography variant="body2" color="success.main">
-                Selected: {importFile.name}
-              </Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
-            <Button
-              variant="contained"
-              onClick={handleImportCSV}
-              disabled={!importFile || importing}
-              startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
-              sx={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                "&:hover": {
-                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
-                },
-              }}
-            >
-              {importing ? 'Importing...' : 'Import'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
-    </Fade>
+            {importing ? 'Importing...' : 'Import'}
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 
-export default SolrDatabaseInfoComponent;
+export default SolrDatabaseInfoEnhanced;

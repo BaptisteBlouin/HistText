@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Security,
   Speed,
+  Analytics,
 } from '@mui/icons-material';
 import { useResponsive } from '../../../lib/responsive-utils';
 
@@ -207,7 +208,7 @@ const AdminDashboardCards: React.FC<AdminDashboardCardsProps> = ({
       title: 'Dashboard Overview',
       description: 'System status, analytics, and real-time monitoring',
       icon: <DashboardIcon />,
-      color: 'primary' as const,
+      color: 'error' as const,
       onClick: () => onNavigate(0),
       badge: 'Live',
       stats: dashboardStats ? [
@@ -216,11 +217,19 @@ const AdminDashboardCards: React.FC<AdminDashboardCardsProps> = ({
       ] : undefined,
     },
     {
+      title: 'Analytics Dashboard',
+      description: 'Comprehensive insights, API analytics, and user behavior tracking',
+      icon: <Analytics />,
+      color: 'success' as const,
+      onClick: () => onNavigate(1),
+      badge: 'Advanced',
+    },
+    {
       title: 'User Management',
       description: 'Manage users, roles, and permissions across the platform',
       icon: <People />,
-      color: 'secondary' as const,
-      onClick: () => onNavigate(1),
+      color: 'info' as const,
+      onClick: () => onNavigate(2),
       stats: dashboardStats ? [
         { label: 'Total Users', value: dashboardStats.users },
         { label: 'Active Roles', value: dashboardStats.roles },
@@ -230,8 +239,8 @@ const AdminDashboardCards: React.FC<AdminDashboardCardsProps> = ({
       title: 'Data Management',
       description: 'Configure databases, collections, and data access permissions',
       icon: <Storage />,
-      color: 'success' as const,
-      onClick: () => onNavigate(2),
+      color: 'info' as const,
+      onClick: () => onNavigate(3),
       stats: dashboardStats ? [
         { label: 'Databases', value: dashboardStats.databases },
         { label: 'Permissions', value: dashboardStats.permissions },
@@ -241,23 +250,23 @@ const AdminDashboardCards: React.FC<AdminDashboardCardsProps> = ({
       title: 'System Configuration',
       description: 'Application settings, integrations, and global configurations',
       icon: <Settings />,
-      color: 'error' as const,
-      onClick: () => onNavigate(3),
+      color: 'primary' as const,
+      onClick: () => onNavigate(4),
       badge: 'Critical',
     },
     {
       title: 'NLP Tools',
       description: 'Natural language processing, embeddings, and text analysis tools',
       icon: <Psychology />,
-      color: 'warning' as const,
-      onClick: () => onNavigate(4),
+      color: 'primary' as const,
+      onClick: () => onNavigate(5),
     },
     {
       title: 'API Documentation',
       description: 'Interactive API documentation and testing interface',
       icon: <MenuBook />,
-      color: 'info' as const,
-      onClick: () => onNavigate(5),
+      color: 'secondary' as const,
+      onClick: () => onNavigate(6),
     },
   ];
 

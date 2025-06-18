@@ -7,6 +7,7 @@ import {
   TextField,
   Card,
   CardContent,
+  CardActions,
   Chip,
   Stack,
   Alert,
@@ -24,8 +25,22 @@ import {
   Divider,
   FormControlLabel,
   Switch,
-  Badge as MuiBadge,
+  useTheme,
+  alpha,
+  Collapse,
+  AppBar,
+  Toolbar,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  Checkbox,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  ListItemSecondaryAction,
 } from "@mui/material";
+import { LoadingButton } from "@mui/lab";
 import { DataGrid, GridColDef, GridRenderCellParams, GridSelectionModel } from "@mui/x-data-grid";
 import {
   Add,
@@ -40,23 +55,27 @@ import {
   SelectAll,
   Autorenew,
   CloudUpload,
+  ExpandMore,
+  ExpandLess,
+  Clear,
+  PersonAdd,
+  Assignment,
+  Group,
+  FilterList,
+  ViewModule,
+  ViewList,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
 import { useAuth } from "../../../hooks/useAuth";
+import { useResponsive } from "../../../lib/responsive-utils";
 
-/**
- * User-role assignment record.
- */
 interface UserRole {
   user_id: number;
   role: string;
   created_at: string;
 }
 
-/**
- * User profile for role assignment.
- */
 interface User {
   id: number;
   email: string;
@@ -64,18 +83,12 @@ interface User {
   lastname?: string;
 }
 
-/**
- * Banner notification state.
- */
 interface NotificationState {
   open: boolean;
   message: string;
   severity: "success" | "error" | "warning" | "info";
 }
 
-/**
- * Axios instance with Authorization from useAuth.
- */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -93,12 +106,306 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
-/**
- * Role management interface for users. Assign and remove user roles.
- */
-const UserRoles: React.FC = () => {
-  const authAxios = useAuthAxios();
+// Enhanced UserRole Card Component
+interface UserRoleCardProps {
+  userRole: UserRole;
+  user: User | undefined;
+  selected: boolean;
+  searchTerm: string;
+  expanded: boolean;
+  onSelect: (userRole: UserRole) => void;
+  onToggleExpand: (userRole: UserRole) => void;
+  onDelete: (userRole: UserRole) => void;
+}
 
+const UserRoleCard: React.FC<UserRoleCardProps> = ({
+  userRole,
+  user,
+  selected,
+  searchTerm,
+  expanded,
+  onSelect,
+  onToggleExpand,
+  onDelete,
+}) => {
+  const theme = useTheme();
+
+  const getUserDisplayName = (user?: User) => {
+    if (!user) return `User ${userRole.user_id}`;
+    if (user.firstname && user.lastname) {
+      return `${user.firstname} ${user.lastname}`;
+    }
+    return user.email;
+  };
+
+  const getRoleColor = (role: string) => {
+    const colors = ['primary', 'secondary', 'success', 'warning', 'error', 'info'];
+    return colors[role.length % colors.length] as any;
+  };
+
+  const highlightSearchTerm = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>
+          {part}
+        </mark>
+      ) : part
+    );
+  };
+
+  return (
+    <Card
+      sx={{
+        mb: 2,
+        border: selected ? `2px solid ${theme.palette.primary.main}` : '1px solid',
+        borderColor: selected ? 'primary.main' : 'divider',
+        backgroundColor: selected ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: 4,
+        },
+      }}
+    >
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
+            <Checkbox
+              checked={selected}
+              onChange={() => onSelect(userRole)}
+              size="small"
+            />
+            <Avatar
+              sx={{
+                bgcolor: `${getRoleColor(userRole.role)}.main`,
+                width: { xs: 40, sm: 48 },
+                height: { xs: 40, sm: 48 },
+              }}
+            >
+              {user?.firstname?.charAt(0) || user?.email?.charAt(0) || userRole.user_id.toString().charAt(0)}
+            </Avatar>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: '1rem', sm: '1.25rem' },
+                  lineHeight: 1.2,
+                }}
+              >
+                {highlightSearchTerm(getUserDisplayName(user), searchTerm)}
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontSize: { xs: '0.875rem', sm: '0.95rem' } }}
+              >
+                {user?.email && highlightSearchTerm(user.email, searchTerm)}
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip
+              icon={<Badge />}
+              label={userRole.role}
+              color={getRoleColor(userRole.role)}
+              size="small"
+              variant="outlined"
+            />
+            <IconButton
+              size="small"
+              onClick={() => onToggleExpand(userRole)}
+            >
+              {expanded ? <ExpandLess /> : <ExpandMore />}
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* Quick Info */}
+        <Stack direction="row" spacing={1} sx={{ mb: expanded ? 2 : 0 }}>
+          <Chip
+            icon={<Person />}
+            label={`User ID: ${userRole.user_id}`}
+            size="small"
+            variant="outlined"
+          />
+          <Chip
+            label={`Assigned: ${new Date(userRole.created_at).toLocaleDateString()}`}
+            size="small"
+            variant="outlined"
+          />
+        </Stack>
+
+        {/* Expanded Details */}
+        <Collapse in={expanded}>
+          <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Role Assignment Date
+                </Typography>
+                <Typography variant="body2">
+                  {new Date(userRole.created_at).toLocaleString()}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  User Details
+                </Typography>
+                <Typography variant="body2">
+                  ID: {userRole.user_id}
+                  {user && (
+                    <>
+                      <br />
+                      Name: {getUserDisplayName(user)}
+                      <br />
+                      Email: {user.email}
+                    </>
+                  )}
+                </Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Role Information
+                </Typography>
+                <Typography variant="body2">
+                  This user has been assigned the "{userRole.role}" role, which grants specific permissions within the system.
+                </Typography>
+              </Grid>
+            </Grid>
+          </Box>
+        </Collapse>
+      </CardContent>
+
+      {/* Actions */}
+      <CardActions sx={{ p: { xs: 2, sm: 3 }, pt: 0, justifyContent: 'flex-end' }}>
+        <Button
+          size="small"
+          startIcon={<Delete />}
+          onClick={() => onDelete(userRole)}
+          color="error"
+          variant="outlined"
+        >
+          Remove Role
+        </Button>
+      </CardActions>
+    </Card>
+  );
+};
+
+// Mobile Header Component
+interface MobileHeaderProps {
+  title: string;
+  subtitle: string;
+  selectedCount: number;
+  totalCount: number;
+  autoRefresh: boolean;
+  onToggleAutoRefresh: () => void;
+  onAddAssignment: () => void;
+  onBulkDelete?: () => void;
+  onClearSelection?: () => void;
+}
+
+const MobileHeader: React.FC<MobileHeaderProps> = ({
+  title,
+  subtitle,
+  selectedCount,
+  totalCount,
+  autoRefresh,
+  onToggleAutoRefresh,
+  onAddAssignment,
+  onBulkDelete,
+  onClearSelection,
+}) => {
+  const theme = useTheme();
+
+  return (
+    <AppBar 
+      position="sticky" 
+      sx={{ 
+        bgcolor: 'background.paper', 
+        color: 'text.primary',
+        boxShadow: 1,
+        mb: 2,
+      }}
+    >
+      <Toolbar sx={{ flexDirection: 'column', alignItems: 'stretch', py: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Security color="primary" fontSize="small" />
+              {title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
+            </Typography>
+          </Box>
+          <IconButton 
+            onClick={onToggleAutoRefresh} 
+            color={autoRefresh ? "primary" : "default"}
+            size="small"
+          >
+            <Refresh />
+          </IconButton>
+        </Box>
+
+        {selectedCount > 0 && (
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              p: 1,
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="body2" color="primary">
+              {selectedCount} of {totalCount} selected
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              {onBulkDelete && (
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<Delete />}
+                  onClick={onBulkDelete}
+                >
+                  Remove
+                </Button>
+              )}
+              {onClearSelection && (
+                <Button
+                  size="small"
+                  onClick={onClearSelection}
+                >
+                  Clear
+                </Button>
+              )}
+            </Stack>
+          </Box>
+        )}
+
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+          {totalCount} role assignments total
+          {autoRefresh && " • Auto-refresh enabled"}
+        </Typography>
+      </Toolbar>
+    </AppBar>
+  );
+};
+
+const UserRolesEnhanced: React.FC = () => {
+  const authAxios = useAuthAxios();
+  const theme = useTheme();
+  const { isMobile, isTablet } = useResponsive();
+
+  // State management
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
@@ -112,7 +419,7 @@ const UserRoles: React.FC = () => {
     message: "",
     severity: "info",
   });
-  const [selectedRows, setSelectedRows] = useState<GridSelectionModel>([]);
+  const [selectedRows, setSelectedRows] = useState<UserRole[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -120,6 +427,10 @@ const UserRoles: React.FC = () => {
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [filterRole, setFilterRole] = useState<string>('');
+  const [adding, setAdding] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   useEffect(() => {
     fetchUserRoles();
@@ -131,7 +442,7 @@ const UserRoles: React.FC = () => {
     if (autoRefresh) {
       const interval = setInterval(() => {
         fetchUserRoles();
-      }, 30000); // Refresh every 30 seconds
+      }, 30000);
       setRefreshInterval(interval);
     } else {
       if (refreshInterval) {
@@ -148,50 +459,63 @@ const UserRoles: React.FC = () => {
 
   const filteredUserRoles = useMemo(() => 
     userRoles.filter((ur) => {
-      const user = users.find((u) => u.id === ur.user_id);
-      const searchTerm = search.toLowerCase();
-      return (
-        user?.email.toLowerCase().includes(searchTerm) ||
-        user?.firstname?.toLowerCase().includes(searchTerm) ||
-        user?.lastname?.toLowerCase().includes(searchTerm) ||
-        ur.role.toLowerCase().includes(searchTerm)
-      );
-    }), [userRoles, users, search]
-  );
+      const user = users.find(u => u.id === ur.user_id);
+      const searchText = search.toLowerCase();
+      const matchesSearch = !searchText || 
+        ur.role.toLowerCase().includes(searchText) ||
+        user?.email.toLowerCase().includes(searchText) ||
+        user?.firstname?.toLowerCase().includes(searchText) ||
+        user?.lastname?.toLowerCase().includes(searchText);
+      
+      const matchesRole = !filterRole || ur.role === filterRole;
+      
+      return matchesSearch && matchesRole;
+    }), [userRoles, users, search, filterRole]);
 
-  // Highlight search terms
-  const highlightText = (text: string, searchTerm: string) => {
-    if (!searchTerm.trim()) return text;
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    const parts = text.split(regex);
-    return parts.map((part, index) => 
-      regex.test(part) ? <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>{part}</mark> : part
+  const fetchUserRoles = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data } = await authAxios.get("/api/user_roles");
+      setUserRoles(Array.isArray(data) ? data : []);
+      
+      // Extract unique roles
+      const uniqueRoles = Array.from(new Set(data.map((ur: UserRole) => ur.role)));
+      setRoles(uniqueRoles);
+    } catch (err) {
+      console.error("Fetch user roles failed:", err);
+      showNotification("Failed to fetch user roles", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [authAxios]);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const { data } = await authAxios.get("/api/users");
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch users failed:", err);
+      showNotification("Failed to fetch users", "error");
+    }
+  }, [authAxios]);
+
+  const showNotification = (
+    message: string,
+    severity: NotificationState["severity"] = "info",
+    duration: number = 5000,
+  ) => {
+    setNotification({ open: true, message, severity });
+    setTimeout(
+      () => setNotification((prev) => ({ ...prev, open: false })),
+      duration,
     );
   };
 
-  /**
-   * Format user full name or fallback to email.
-   */
   const getUserDisplayName = (userId: number) => {
-    const user = users.find((u) => u.id === userId);
-    if (!user) return `User ${userId}`;
-    const fullName = `${user.firstname || ""} ${user.lastname || ""}`.trim();
-    return fullName || user.email;
+    const user = users.find(u => u.id === userId);
+    return user ? `${user.firstname} ${user.lastname}` : `User ${userId}`;
   };
 
-  /**
-   * Initials for user avatar display.
-   */
-  const getUserInitials = (userId: number) => {
-    const user = users.find((u) => u.id === userId);
-    if (!user) return "?";
-    if (user.firstname && user.lastname) {
-      return `${user.firstname.charAt(0)}${user.lastname.charAt(0)}`;
-    }
-    return user.email.charAt(0).toUpperCase();
-  };
-
-  // Handle CSV file import for user roles
   const handleImportCSV = async () => {
     if (!importFile) {
       showNotification("Please select a file to import", "warning");
@@ -245,7 +569,7 @@ const UserRoles: React.FC = () => {
           await authAxios.post('/api/user_roles', ur);
           successCount++;
         } catch (err: any) {
-          console.error(`Failed to import user role ${ur.user_id}-${ur.role}:`, err);
+          console.error(`Failed to import user role:`, err);
           
           let specificError = 'Unknown error';
           
@@ -271,11 +595,11 @@ const UserRoles: React.FC = () => {
             specificError = err.message;
           }
           
-          errors.push(`User ${ur.user_id} → ${ur.role}: ${specificError}`);
+          errors.push(`User${ur.user_id}/${ur.role}: ${specificError}`);
         }
       }
 
-      // Show detailed results with longer duration for errors
+      // Show detailed results
       if (successCount > 0 && errors.length === 0) {
         showNotification(`Successfully imported all ${successCount} user role assignments`, "success");
         fetchUserRoles();
@@ -283,13 +607,13 @@ const UserRoles: React.FC = () => {
         const errorSummary = errors.length <= 2 ? 
           errors.join('; ') : 
           `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
-        showNotification(`Imported ${successCount} user roles successfully. ${errors.length} failed: ${errorSummary}`, "warning");
+        showNotification(`Imported ${successCount} assignments successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
         fetchUserRoles();
       } else {
         const errorSummary = errors.length <= 2 ? 
           errors.join('; ') : 
           `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
-        showNotification(`Import failed for all user roles: ${errorSummary}`, "error");
+        showNotification(`Import failed for all assignments: ${errorSummary}`, "error", 15000);
       }
       
       setOpenImportDialog(false);
@@ -297,13 +621,12 @@ const UserRoles: React.FC = () => {
     } catch (err: any) {
       console.error('Import failed:', err);
       const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unknown error occurred';
-      showNotification(`Import failed: ${errorMsg}`, "error");
+      showNotification(`Import failed: ${errorMsg}`, "error", 10000);
     } finally {
       setImporting(false);
     }
   };
 
-  // Export to CSV functionality
   const handleExportCSV = useCallback(() => {
     const csvHeaders = ['User ID', 'User Name', 'Email', 'Role', 'Assigned Date'];
     const csvData = filteredUserRoles.map(ur => {
@@ -331,315 +654,143 @@ const UserRoles: React.FC = () => {
     showNotification(`Exported ${filteredUserRoles.length} user role assignments to CSV`, 'success');
   }, [filteredUserRoles, users]);
 
-  // Bulk delete functionality
-  const handleBulkDelete = useCallback(() => {
-    if (selectedRows.length === 0) {
-      showNotification('No role assignments selected for deletion', 'warning');
+  const handleAddAssignments = async () => {
+    if (selectedUsers.length === 0 || selectedRoles.length === 0) {
+      showNotification("Please select at least one user and one role", "warning");
       return;
     }
-    
-    const selectedRoles = filteredUserRoles.filter(ur => 
-      selectedRows.includes(`${ur.user_id}-${ur.role}`)
-    );
-    setRoleToDelete(selectedRoles[0]); // Use first selected for display
-    setOpenDeleteDialog(true);
-  }, [selectedRows, filteredUserRoles]);
 
-  // Bulk delete confirmation handler
-  const handleBulkDeleteConfirm = async () => {
-    if (selectedRows.length === 0) return;
-    
-    const selectedRoles = filteredUserRoles.filter(ur => 
-      selectedRows.includes(`${ur.user_id}-${ur.role}`)
-    );
-    
+    // Validate for existing assignments
+    const conflicts: string[] = [];
+    selectedUsers.forEach(userId => {
+      selectedRoles.forEach(role => {
+        const exists = userRoles.some(ur => ur.user_id === userId && ur.role === role);
+        if (exists) {
+          const user = users.find(u => u.id === userId);
+          const userName = user ? `${user.firstname} ${user.lastname}`.trim() || user.email : `User ${userId}`;
+          conflicts.push(`${userName} already has role "${role}"`);
+        }
+      });
+    });
+
+    if (conflicts.length > 0) {
+      const displayConflicts = conflicts.length <= 3 ? 
+        conflicts.join(', ') : 
+        `${conflicts.slice(0, 3).join(', ')} and ${conflicts.length - 3} more`;
+      showNotification(`Cannot assign roles: ${displayConflicts}`, "warning", 10000);
+      return;
+    }
+
+    setAdding(true);
     try {
-      const deletions = selectedRoles.map(ur => 
-        authAxios.delete(`/api/user_roles/${ur.user_id}/${encodeURIComponent(ur.role)}`)
+      const assignments = [];
+      for (const userId of selectedUsers) {
+        for (const role of selectedRoles) {
+          assignments.push({ user_id: userId, role });
+        }
+      }
+
+      await Promise.all(
+        assignments.map(assignment => 
+          authAxios.post("/api/user_roles", assignment)
+        )
       );
-      
-      await Promise.all(deletions);
-      setSelectedRows([]);
-      setOpenDeleteDialog(false);
-      setRoleToDelete(null);
+
+      showNotification(
+        `Successfully assigned ${selectedRoles.length} role(s) to ${selectedUsers.length} user(s)`,
+        "success"
+      );
+
+      setSelectedUsers([]);
+      setSelectedRoles([]);
+      setOpenAddDialog(false);
       fetchUserRoles();
-      
-      showNotification(`Successfully removed ${selectedRoles.length} role assignment(s)`, 'success');
     } catch (err: any) {
-      console.error('Bulk delete failed:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
-      showNotification(`Failed to remove some role assignments: ${errorMessage}`, 'error');
-      fetchUserRoles(); // Refresh to sync with server
+      console.error("Add assignments failed:", err);
+      showNotification(`Failed to assign roles: ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setAdding(false);
     }
   };
 
-  // Bulk operations
-  const handleSelectAll = () => {
-    const allIds = filteredUserRoles.map(ur => `${ur.user_id}-${ur.role}`);
-    setSelectedRows(allIds);
+  const handleDeleteAssignment = async (userRole: UserRole) => {
+    try {
+      await authAxios.delete(`/api/user_roles/${userRole.user_id}/${userRole.role}`);
+      const user = users.find(u => u.id === userRole.user_id);
+      const userName = user ? `${user.firstname} ${user.lastname}`.trim() || user.email : `User ${userRole.user_id}`;
+      
+      showNotification(`Removed role "${userRole.role}" from ${userName}`, "success");
+      fetchUserRoles();
+      setOpenDeleteDialog(false);
+      setRoleToDelete(null);
+    } catch (err: any) {
+      console.error("Delete assignment failed:", err);
+      showNotification(`Failed to remove role: ${err.response?.data?.message || err.message}`, "error");
+    }
   };
 
-  const handleDeselectAll = () => {
+  const handleBulkDelete = async () => {
+    if (selectedRows.length === 0) return;
+
+    try {
+      await Promise.all(
+        selectedRows.map(userRole => 
+          authAxios.delete(`/api/user_roles/${userRole.user_id}/${userRole.role}`)
+        )
+      );
+
+      showNotification(
+        `Successfully removed ${selectedRows.length} role assignment(s)`,
+        "success"
+      );
+
+      setSelectedRows([]);
+      fetchUserRoles();
+    } catch (err: any) {
+      console.error("Bulk delete failed:", err);
+      showNotification(`Failed to remove some assignments: ${err.response?.data?.message || err.message}`, "error");
+    }
+  };
+
+  const handleSelectAssignment = (userRole: UserRole) => {
+    const isSelected = selectedRows.some(row => 
+      row.user_id === userRole.user_id && row.role === userRole.role
+    );
+    
+    if (isSelected) {
+      setSelectedRows(selectedRows.filter(row => 
+        !(row.user_id === userRole.user_id && row.role === userRole.role)
+      ));
+    } else {
+      setSelectedRows([...selectedRows, userRole]);
+    }
+  };
+
+  const handleToggleCardExpansion = (userRole: UserRole) => {
+    const key = `${userRole.user_id}-${userRole.role}`;
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedCards(newExpanded);
+  };
+
+  const handleSelectAll = () => {
+    setSelectedRows([...filteredUserRoles]);
+  };
+
+  const handleClearSelection = () => {
     setSelectedRows([]);
   };
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey) {
-        switch (event.key) {
-          case 'r':
-            event.preventDefault();
-            fetchUserRoles();
-            break;
-          case 'n':
-            event.preventDefault();
-            setOpenAddDialog(true);
-            break;
-          case 'a':
-            if (event.shiftKey) {
-              event.preventDefault();
-              const allIds = filteredUserRoles.map(ur => `${ur.user_id}-${ur.role}`);
-              setSelectedRows(allIds);
-            }
-            break;
-          case 'e':
-            if (selectedRows.length > 0) {
-              event.preventDefault();
-              handleExportCSV();
-            }
-            break;
-          case 'Delete':
-          case 'Backspace':
-            if (selectedRows.length > 0) {
-              event.preventDefault();
-              handleBulkDelete();
-            }
-            break;
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedRows, filteredUserRoles, handleExportCSV, handleBulkDelete]);
-
-  /**
-   * Display feedback notification to the user.
-   */
-  const showNotification = (
-    message: string,
-    severity: NotificationState["severity"] = "info",
-  ) => {
-    setNotification({ open: true, message, severity });
-    setTimeout(
-      () => setNotification((prev) => ({ ...prev, open: false })),
-      5000,
-    );
-  };
-
-  /**
-   * Load all user-role assignments and available roles.
-   */
-  const fetchUserRoles = async () => {
-    try {
-      setLoading(true);
-      const { data } = await authAxios.get("/api/user_roles");
-      setUserRoles(data);
-      const uniqueRoles = Array.from(
-        new Set((data as UserRole[]).map((ur) => ur.role)),
-      ).filter((r): r is string => typeof r === "string");
-      setRoles(uniqueRoles);
-      if (selectedRoles.length === 0 && uniqueRoles.length > 0) {
-        setSelectedRoles([uniqueRoles[0]]);
-      }
-    } catch (err) {
-      console.error("Fetch user roles failed:", err);
-      showNotification("Failed to fetch user roles", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Load all users.
-   */
-  const fetchUsers = async () => {
-    try {
-      const { data } = await authAxios.get("/api/users");
-      setUsers(data);
-      if (selectedUsers.length === 0 && data.length > 0) {
-        setSelectedUsers([data[0].id]);
-      }
-    } catch (err) {
-      console.error("Fetch users failed:", err);
-      showNotification("Failed to fetch users", "error");
-    }
-  };
-
-  /**
-   * Check if a user-role combination already exists
-   */
-  const userRoleExists = (userId: number, role: string) => {
-    return userRoles.some(ur => ur.user_id === userId && ur.role === role);
-  };
-
-  /**
-   * Validate role assignment
-   */
-  const validateRoleAssignment = () => {
-    const errors: string[] = [];
-    
-    if (selectedUsers.length === 0) {
-      errors.push("Please select at least one user");
-    }
-    
-    if (selectedRoles.length === 0) {
-      errors.push("Please select at least one role");
-    }
-    
-    // Check for existing assignments
-    const existingAssignments = [];
-    for (const userId of selectedUsers) {
-      for (const role of selectedRoles) {
-        if (userRoleExists(userId, role)) {
-          const user = users.find(u => u.id === userId);
-          const userName = user ? getUserDisplayName(userId) : `User ${userId}`;
-          existingAssignments.push(`${userName} already has role "${role}"`);
-        }
-      }
-    }
-    
-    if (existingAssignments.length > 0) {
-      errors.push(...existingAssignments.slice(0, 3)); // Show max 3 conflicts
-      if (existingAssignments.length > 3) {
-        errors.push(`... and ${existingAssignments.length - 3} more conflicts`);
-      }
-    }
-    
-    return errors;
-  };
-
-  /**
-   * Assign multiple roles to multiple users with enhanced validation.
-   */
-  const handleAdd = async () => {
-    const validationErrors = validateRoleAssignment();
-    
-    if (validationErrors.length > 0) {
-      showNotification(validationErrors[0], "warning");
-      return;
-    }
-    
-    try {
-      const assignments = [];
-      const newAssignments = [];
-      
-      for (const userId of selectedUsers) {
-        for (const role of selectedRoles) {
-          if (!userRoleExists(userId, role)) {
-            assignments.push(
-              authAxios.post("/api/user_roles", { user_id: userId, role })
-            );
-            newAssignments.push(`${getUserDisplayName(userId)} → ${role}`);
-          }
-        }
-      }
-      
-      if (assignments.length === 0) {
-        showNotification("All selected role assignments already exist", "warning");
-        return;
-      }
-      
-      await Promise.all(assignments);
-      setSelectedUsers([]);
-      setSelectedRoles([]);
-      fetchUserRoles();
-      
-      const successMessage = newAssignments.length === 1 ? 
-        `Successfully assigned: ${newAssignments[0]}` :
-        `Successfully assigned ${newAssignments.length} role assignments`;
-      
-      showNotification(successMessage, "success");
-    } catch (err: any) {
-      console.error("Add user roles failed:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Unknown error occurred";
-      
-      if (err.response?.status === 409 || errorMessage.includes("already exists")) {
-        showNotification("Some role assignments already exist. Please refresh and try again.", "error");
-      } else if (err.response?.status === 404) {
-        showNotification("User or role not found. Please refresh and try again.", "error");
-      } else if (err.response?.status === 403) {
-        showNotification("You don't have permission to assign roles", "error");
-      } else {
-        showNotification(`Failed to assign roles: ${errorMessage}`, "error");
-      }
-      fetchUserRoles(); // Refresh data
-    }
-  };
-
-  /**
-   * Remove a role from a user with enhanced error handling.
-   */
-  const handleDelete = async (userId: number, role: string) => {
-    const userName = getUserDisplayName(userId);
-    
-    try {
-      await authAxios.delete(
-        `/api/user_roles/${userId}/${encodeURIComponent(role)}`,
-      );
-      fetchUserRoles();
-      showNotification(`Successfully removed role "${role}" from ${userName}`, "success");
-    } catch (err: any) {
-      console.error("Delete user role failed:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Unknown error occurred";
-      
-      if (err.response?.status === 404) {
-        showNotification("Role assignment not found. It may have already been removed.", "error");
-        fetchUserRoles(); // Refresh to sync with server
-      } else if (err.response?.status === 403) {
-        showNotification("You don't have permission to remove this role", "error");
-      } else if (err.response?.status === 409 || errorMessage.includes("constraint")) {
-        showNotification("Cannot remove role: it may be required for this user", "error");
-      } else {
-        showNotification(`Failed to remove role: ${errorMessage}`, "error");
-      }
-    }
-  };
-
-  /**
-   * Deterministically color roles for visual variety.
-   */
-  const getRoleColor = (role: string) => {
-    const colors = [
-      "primary",
-      "secondary",
-      "success",
-      "warning",
-      "error",
-      "info",
-    ];
-    const index = role.length % colors.length;
-    return colors[index] as any;
-  };
-
+  // DataGrid columns for table view
   const columns: GridColDef[] = [
-    {
-      field: "avatar",
-      headerName: "",
-      width: 80,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Avatar sx={{ bgcolor: `${getRoleColor(params.row.role)}.main` }}>
-          {getUserInitials(params.row.user_id)}
-        </Avatar>
-      ),
-    },
     {
       field: "user_id",
       headerName: "User ID",
-      width: 100,
+      width: 80,
       renderCell: (params) => (
         <Chip label={params.value} size="small" variant="outlined" />
       ),
@@ -647,41 +798,71 @@ const UserRoles: React.FC = () => {
     {
       field: "user_name",
       headerName: "User",
-      width: 250,
-      renderCell: (params) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Person fontSize="small" color="action" />
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {highlightText(getUserDisplayName(params.row.user_id), search)}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {highlightText(users.find((u) => u.id === params.row.user_id)?.email || "", search)}
-            </Typography>
+      flex: 1,
+      renderCell: (params: GridRenderCellParams) => {
+        const userRole = params.row as UserRole;
+        const user = users.find(u => u.id === userRole.user_id);
+        const getRoleColor = (role: string) => {
+          const colors = ['primary', 'secondary', 'success', 'warning', 'error', 'info'];
+          return colors[role.length % colors.length] as any;
+        };
+        
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Avatar
+              sx={{
+                bgcolor: `${getRoleColor(userRole.role)}.main`,
+                width: 32,
+                height: 32,
+                fontSize: '0.875rem'
+              }}
+            >
+              {user?.firstname?.charAt(0) || user?.email?.charAt(0) || userRole.user_id.toString().charAt(0)}
+            </Avatar>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {user?.firstname && user?.lastname ? `${user.firstname} ${user.lastname}` : user?.email || `User ${userRole.user_id}`}
+              </Typography>
+              {user?.email && user?.firstname && user?.lastname && (
+                <Typography variant="caption" color="text.secondary">
+                  {user.email}
+                </Typography>
+              )}
+            </Box>
           </Box>
-        </Box>
-      ),
+        );
+      },
     },
     {
       field: "role",
       headerName: "Role",
-      width: 200,
-      renderCell: (params) => (
-        <Chip
-          icon={<Badge />}
-          label={highlightText(params.value, search)}
-          color={getRoleColor(params.value)}
-          size="small"
-          sx={{ fontWeight: 600 }}
-        />
-      ),
+      flex: 1,
+      renderCell: (params) => {
+        const role = params.value as string;
+        const getRoleColor = (role: string) => {
+          const colors = ['primary', 'secondary', 'success', 'warning', 'error', 'info'];
+          return colors[role.length % colors.length] as any;
+        };
+        
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Badge color="primary" fontSize="small" />
+            <Chip
+              label={role}
+              color={getRoleColor(role)}
+              size="small"
+              variant="outlined"
+            />
+          </Box>
+        );
+      },
     },
     {
       field: "created_at",
-      headerName: "Assigned Date",
-      width: 180,
+      headerName: "Assigned",
+      width: 120,
       renderCell: (params) => (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="caption" color="text.secondary">
           {new Date(params.value).toLocaleDateString()}
         </Typography>
       ),
@@ -693,79 +874,104 @@ const UserRoles: React.FC = () => {
       sortable: false,
       filterable: false,
       renderCell: (params: GridRenderCellParams) => (
-        <Tooltip title="Remove Role">
-          <IconButton
-            size="small"
-            color="error"
-            onClick={() => handleDelete(params.row.user_id, params.row.role)}
-          >
-            <Delete />
-          </IconButton>
-        </Tooltip>
+        <Stack direction="row" spacing={1}>
+          <Tooltip title="Remove Role">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => {
+                setRoleToDelete(params.row as UserRole);
+                setOpenDeleteDialog(true);
+              }}
+            >
+              <Delete />
+            </IconButton>
+          </Tooltip>
+        </Stack>
       ),
     },
   ];
 
-  return (
-    <Fade in={true} timeout={600}>
-      <Box>
-        {notification.open && (
-          <Alert
-            severity={notification.severity}
-            sx={{ mb: 3 }}
-            onClose={() =>
-              setNotification((prev) => ({ ...prev, open: false }))
-            }
-          >
-            {notification.message}
-          </Alert>
-        )}
+  // Speed Dial Actions for Mobile
+  const speedDialActions = [
+    {
+      icon: <Add />,
+      name: 'Assign Roles',
+      onClick: () => setOpenAddDialog(true),
+    },
+    {
+      icon: <CloudUpload />,
+      name: 'Import CSV',
+      onClick: () => setOpenImportDialog(true),
+    },
+    {
+      icon: <GetApp />,
+      name: 'Export All',
+      onClick: handleExportCSV,
+    },
+    {
+      icon: <Refresh />,
+      name: 'Refresh',
+      onClick: fetchUserRoles,
+    },
+  ];
 
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 4,
-          }}
+  return (
+    <Box sx={{ pb: isMobile ? 8 : 0 }}>
+      {notification.open && (
+        <Alert
+          severity={notification.severity}
+          sx={{ mb: 3 }}
+          onClose={() => setNotification((prev) => ({ ...prev, open: false }))}
         >
+          {notification.message}
+        </Alert>
+      )}
+
+      {/* Mobile Header */}
+      {isMobile ? (
+        <MobileHeader
+          title="User Roles"
+          subtitle="Manage user role assignments"
+          selectedCount={selectedRows.length}
+          totalCount={filteredUserRoles.length}
+          autoRefresh={autoRefresh}
+          onToggleAutoRefresh={() => setAutoRefresh(!autoRefresh)}
+          onAddAssignment={() => setOpenAddDialog(true)}
+          onBulkDelete={selectedRows.length > 0 ? handleBulkDelete : undefined}
+          onClearSelection={selectedRows.length > 0 ? handleClearSelection : undefined}
+        />
+      ) : (
+        // Desktop Header
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
           <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
+            <Typography variant="h4" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1 }}>
               <Security color="primary" />
-              User Roles
+              User Role Management
             </Typography>
             <Typography variant="body1" color="text.secondary">
               Assign and manage user roles and permissions
             </Typography>
+            {selectedRows.length > 0 && (
+              <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+                {selectedRows.length} assignment{selectedRows.length !== 1 ? 's' : ''} selected
+              </Typography>
+            )}
           </Box>
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Auto-refresh (30s)">
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={autoRefresh}
-                    onChange={(e) => setAutoRefresh(e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Autorenew fontSize="small" />
-                    Auto
-                  </Box>
-                }
-              />
+            <Tooltip title={`Switch to ${viewMode === 'cards' ? 'Table' : 'Cards'} View`}>
+              <IconButton
+                onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
+                color="primary"
+              >
+                {viewMode === 'cards' ? <ViewList /> : <ViewModule />}
+              </IconButton>
             </Tooltip>
-            <Tooltip title="Refresh Data (Ctrl+R)">
-              <IconButton onClick={fetchUserRoles} color="primary">
+            <Tooltip title="Toggle Auto-refresh (30s)">
+              <IconButton 
+                onClick={() => setAutoRefresh(!autoRefresh)} 
+                color={autoRefresh ? "primary" : "default"}
+              >
                 <Refresh />
               </IconButton>
             </Tooltip>
@@ -780,415 +986,471 @@ const UserRoles: React.FC = () => {
                 },
               }}
             >
-              Assign Roles (Ctrl+N)
+              Assign Roles
             </Button>
           </Stack>
         </Box>
+      )}
 
-
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  placeholder="Search by user name, email, or role..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
-                  {selectedRows.length > 0 && (
-                    <>
-                      <MuiBadge badgeContent={selectedRows.length} color="primary">
-                        <Tooltip title="Export Selected to CSV (Ctrl+E)">
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<GetApp />}
-                            onClick={handleExportCSV}
-                          >
-                            Export
-                          </Button>
-                        </Tooltip>
-                      </MuiBadge>
-                      <Tooltip title="Remove Selected Roles (Delete/Backspace)">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="error"
-                          startIcon={<DeleteSweep />}
-                          onClick={handleBulkDelete}
-                        >
-                          Remove ({selectedRows.length})
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Deselect All">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={handleDeselectAll}
-                        >
-                          Clear
-                        </Button>
-                      </Tooltip>
-                    </>
-                  )}
-                  {selectedRows.length === 0 && (
-                    <>
-                      <Tooltip title="Import from CSV">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<CloudUpload />}
-                          onClick={() => setOpenImportDialog(true)}
-                        >
-                          Import
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Export All to CSV">
-                        <span>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<GetApp />}
-                            onClick={handleExportCSV}
-                            disabled={filteredUserRoles.length === 0}
-                          >
-                            Export All
-                          </Button>
-                        </span>
-                      </Tooltip>
-                      <Tooltip title="Select All (Ctrl+Shift+A)">
-                        <span>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<SelectAll />}
-                            onClick={handleSelectAll}
-                            disabled={filteredUserRoles.length === 0}
-                          >
-                            Select All
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    </>
-                  )}
-                </Stack>
-              </Grid>
+      {/* Search and Filters */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                placeholder="Search by user name, email, or role..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                size={isMobile ? "small" : "medium"}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search color="action" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: search && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setSearch("")}>
+                        <Clear />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
             </Grid>
-            {selectedRows.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Divider />
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  {selectedRows.length} role assignment(s) selected | Keyboard shortcuts: Ctrl+E (export), Delete (bulk remove), Ctrl+R (refresh)
-                </Typography>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-
-        <Paper sx={{ height: 600, borderRadius: 3, overflow: "hidden" }}>
-          {loading ? (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-              }}
-            >
-              <CircularProgress />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={filteredUserRoles}
-              columns={columns}
-              initialState={{
-                pagination: {
-                  page: 0,
-                  pageSize: 10,
-                },
-              }}
-              pageSize={100}
-              getRowId={(row) => `${row.user_id}-${row.role}`}
-              checkboxSelection
-              selectionModel={selectedRows}
-              onSelectionModelChange={(newSelection: any) => {
-                setSelectedRows(newSelection);
-              }}
-              disableSelectionOnClick={false}
-              sx={{
-                border: "none",
-                "& .MuiDataGrid-cell": {
-                  outline: "none",
-                  borderBottom: "1px solid rgba(224, 224, 224, 0.4)",
-                },
-                "& .MuiDataGrid-columnHeaders": {
-                  backgroundColor: "rgba(0, 200, 83, 0.08)",
-                  borderBottom: "2px solid rgba(0, 200, 83, 0.2)",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                },
-                "& .MuiDataGrid-row": {
-                  transition: "background-color 0.2s ease, transform 0.1s ease",
-                  "&:hover": {
-                    backgroundColor: "rgba(0, 200, 83, 0.08)",
-                    transform: "translateY(-1px)",
-                    boxShadow: "0 4px 12px rgba(0, 200, 83, 0.15)",
-                  },
-                },
-                "& .MuiDataGrid-footerContainer": {
-                  borderTop: "2px solid rgba(224, 224, 224, 0.3)",
-                  backgroundColor: "rgba(248, 249, 250, 0.8)",
-                },
-                "& .MuiDataGrid-selectedRowCount": {
-                  visibility: "hidden",
-                },
-              }}
-            />
-          )}
-        </Paper>
-
-        {/* Assign Roles Dialog */}
-        <Dialog
-          open={openAddDialog}
-          onClose={() => setOpenAddDialog(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
-            }}
-          >
-            <Add />
-            Assign Roles to Users
-          </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={6}>
+              <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
                 <Autocomplete
-                  multiple
-                  options={users}
-                  getOptionLabel={(user) => 
-                    `${user.firstname || ""} ${user.lastname || ""}`.trim() || user.email
-                  }
-                  value={users.filter(user => selectedUsers.includes(user.id))}
-                  onChange={(_, newValue) => {
-                    setSelectedUsers(newValue.map(user => user.id));
-                  }}
+                  size="small"
+                  options={['', ...roles]}
+                  value={filterRole}
+                  onChange={(_, value) => setFilterRole(value || '')}
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Select Users"
-                      placeholder="Choose users..."
+                      placeholder="Filter by role"
+                      sx={{ minWidth: 150 }}
                     />
                   )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((user, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={`${user.firstname || ""} ${user.lastname || ""}`.trim() || user.email}
-                        size="small"
-                        avatar={
-                          <Avatar sx={{ width: 20, height: 20, fontSize: "0.7rem" }}>
-                            {user.firstname?.charAt(0) || user.email.charAt(0)}
-                          </Avatar>
-                        }
-                        {...getTagProps({ index })}
-                      />
-                    ))
-                  }
-                  renderOption={(props, user) => (
-                    <Box component="li" {...props}>
-                      <Avatar
-                        sx={{ width: 24, height: 24, fontSize: "0.75rem", mr: 1 }}
-                      >
-                        {user.firstname?.charAt(0) || user.email.charAt(0)}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="body2">
-                          {`${user.firstname || ""} ${user.lastname || ""}`.trim() || user.email}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {user.email} (ID: {user.id})
-                        </Typography>
-                      </Box>
-                    </Box>
-                  )}
+                  getOptionLabel={(option) => option || 'All Roles'}
                 />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  options={roles}
-                  value={selectedRoles}
-                  onChange={(_, newValue) => {
-                    setSelectedRoles(newValue.filter(v => typeof v === 'string'));
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Select Roles"
-                      placeholder="Choose or type roles..."
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((role, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={role}
-                        size="small"
-                        color={getRoleColor(role)}
-                        {...getTagProps({ index })}
-                      />
-                    ))
-                  }
-                />
-              </Grid>
+              </Stack>
             </Grid>
-          </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
-            <Button onClick={() => setOpenAddDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => {
-                handleAdd();
-                setOpenAddDialog(false);
-              }}
-              disabled={selectedUsers.length === 0 || selectedRoles.length === 0}
-              startIcon={<Add />}
-              sx={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                "&:hover": {
-                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
-                },
-              }}
-            >
-              Assign {selectedRoles.length} Role{selectedRoles.length !== 1 ? 's' : ''} to {selectedUsers.length} User{selectedUsers.length !== 1 ? 's' : ''}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Delete confirmation dialog */}
-        <Dialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-        >
-          <DialogTitle
-            sx={{
-              color: "error.main",
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
-          >
-            <Delete />
-            Confirm Role Removal
-          </DialogTitle>
-          <DialogContent>
-            {selectedRows.length > 1 ? (
-              <Typography>
-                Are you sure you want to remove {selectedRows.length} selected role assignments? This action cannot be undone.
-              </Typography>
-            ) : (
-              <Typography>
-                Are you sure you want to remove the role "{roleToDelete?.role}" from {roleToDelete ? getUserDisplayName(roleToDelete.user_id) : 'this user'}? This action cannot be undone.
-              </Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={() => {
-                if (selectedRows.length > 1) {
-                  handleBulkDeleteConfirm();
-                } else if (roleToDelete) {
-                  handleDelete(roleToDelete.user_id, roleToDelete.role);
-                }
-                setOpenDeleteDialog(false);
-              }}
-            >
-              Remove {selectedRows.length > 1 ? `${selectedRows.length} Assignments` : 'Role'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Import CSV Dialog */}
-        <Dialog
-          open={openImportDialog}
-          onClose={() => setOpenImportDialog(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
-            }}
-          >
-            <CloudUpload />
-            Import User Roles from CSV
-          </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Upload a CSV file with columns: <strong>user_id, role</strong>
+          </Grid>
+          
+          {/* Results summary */}
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color={selectedRows.length > 0 ? "primary" : "text.secondary"}>
+              {selectedRows.length > 0 
+                ? `${selectedRows.length} assignment${selectedRows.length !== 1 ? 's' : ''} selected`
+                : `Showing ${filteredUserRoles.length} of ${userRoles.length} assignments`
+              }
             </Typography>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-              style={{ marginBottom: '16px' }}
-            />
-            {importFile && (
-              <Typography variant="body2" color="success.main">
-                Selected: {importFile.name}
-              </Typography>
+            {!isMobile && (
+              <Stack direction="row" spacing={1}>
+                {selectedRows.length > 0 ? (
+                  <>
+                    <Button
+                      size="small"
+                      startIcon={<SelectAll />}
+                      onClick={handleSelectAll}
+                      disabled={filteredUserRoles.length === 0}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      size="small"
+                      startIcon={<Clear />}
+                      onClick={handleClearSelection}
+                    >
+                      Clear Selection
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={handleBulkDelete}
+                    >
+                      Remove ({selectedRows.length})
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Tooltip title="Import from CSV">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<CloudUpload />}
+                        onClick={() => setOpenImportDialog(true)}
+                      >
+                        Import
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Export All to CSV">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredUserRoles.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Select All Assignments">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredUserRoles.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </>
+                )}
+              </Stack>
             )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
-            <Button
-              variant="contained"
-              onClick={handleImportCSV}
-              disabled={!importFile || importing}
-              startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
-              sx={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                "&:hover": {
-                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
-                },
-              }}
-            >
-              {importing ? 'Importing...' : 'Import'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
-    </Fade>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Content Area */}
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Fade in={true} timeout={600}>
+          <Box>
+            {filteredUserRoles.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Security sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  {search || filterRole ? 'No role assignments found' : 'No role assignments yet'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  {search || filterRole
+                    ? 'No assignments match your current filters. Try adjusting your search criteria.'
+                    : 'Get started by assigning roles to users in your system.'
+                  }
+                </Typography>
+                {!search && !filterRole && (
+                  <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => setOpenAddDialog(true)}
+                    sx={{ mt: 2 }}
+                  >
+                    Assign First Role
+                  </Button>
+                )}
+              </Paper>
+            ) : viewMode === 'cards' ? (
+              <Grid container spacing={2}>
+                {filteredUserRoles.map((userRole) => {
+                  const user = users.find(u => u.id === userRole.user_id);
+                  const key = `${userRole.user_id}-${userRole.role}`;
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={key}>
+                      <UserRoleCard
+                        userRole={userRole}
+                        user={user}
+                        selected={selectedRows.some(row => 
+                          row.user_id === userRole.user_id && row.role === userRole.role
+                        )}
+                        searchTerm={search}
+                        expanded={expandedCards.has(key)}
+                        onSelect={handleSelectAssignment}
+                        onToggleExpand={handleToggleCardExpansion}
+                        onDelete={(userRole) => {
+                          setRoleToDelete(userRole);
+                          setOpenDeleteDialog(true);
+                        }}
+                      />
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            ) : (
+              <Paper sx={{ height: 600, borderRadius: 3, overflow: "hidden" }}>
+                <DataGrid
+                  rows={filteredUserRoles}
+                  columns={columns}
+                  initialState={{
+                    pagination: {
+                      page: 0,
+                      pageSize: 10,
+                    },
+                  }}
+                  pageSize={100}
+                  getRowId={(row) => `${row.user_id}-${row.role}`}
+                  checkboxSelection
+                  selectionModel={selectedRows.map(row => `${row.user_id}-${row.role}`)}
+                  onSelectionModelChange={(newSelection: GridSelectionModel) => {
+                    const selectedKeys = newSelection as string[];
+                    const newSelectedRows = filteredUserRoles.filter(ur => 
+                      selectedKeys.includes(`${ur.user_id}-${ur.role}`)
+                    );
+                    setSelectedRows(newSelectedRows);
+                  }}
+                  disableSelectionOnClick={false}
+                  sx={{
+                    border: "none",
+                    "& .MuiDataGrid-cell": {
+                      outline: "none",
+                      borderBottom: "1px solid rgba(224, 224, 224, 0.4)",
+                    },
+                    "& .MuiDataGrid-columnHeaders": {
+                      backgroundColor: "rgba(156, 39, 176, 0.08)",
+                      borderBottom: "2px solid rgba(156, 39, 176, 0.2)",
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                    },
+                    "& .MuiDataGrid-row": {
+                      transition: "background-color 0.2s ease, transform 0.1s ease",
+                      "&:hover": {
+                        backgroundColor: "rgba(156, 39, 176, 0.08)",
+                        transform: "translateY(-1px)",
+                        boxShadow: "0 4px 12px rgba(156, 39, 176, 0.15)",
+                      },
+                    },
+                    "& .MuiDataGrid-footerContainer": {
+                      borderTop: "2px solid rgba(224, 224, 224, 0.3)",
+                      backgroundColor: "rgba(248, 249, 250, 0.8)",
+                    },
+                    "& .MuiDataGrid-selectedRowCount": {
+                      visibility: "hidden",
+                    },
+                  }}
+                />
+              </Paper>
+            )}
+          </Box>
+        </Fade>
+      )}
+
+      {/* Mobile Speed Dial */}
+      {isMobile && (
+        <SpeedDial
+          ariaLabel="Role assignment actions"
+          sx={{ position: 'fixed', bottom: 16, right: 16 }}
+          icon={<SpeedDialIcon />}
+        >
+          {speedDialActions.map((action) => (
+            <SpeedDialAction
+              key={action.name}
+              icon={action.icon}
+              tooltipTitle={action.name}
+              onClick={action.onClick}
+            />
+          ))}
+        </SpeedDial>
+      )}
+
+      {/* Add Role Assignment Dialog */}
+      <Dialog
+        open={openAddDialog}
+        onClose={() => setOpenAddDialog(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Assignment />
+          Assign Roles to Users
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Person color="primary" />
+                Select Users
+              </Typography>
+              <Autocomplete
+                multiple
+                options={users}
+                value={users.filter(u => selectedUsers.includes(u.id))}
+                onChange={(_, value) => setSelectedUsers(value.map(u => u.id))}
+                getOptionLabel={(user) => getUserDisplayName(user)}
+                renderOption={(props, user) => (
+                  <Box component="li" {...props}>
+                    <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+                      {user.firstname?.charAt(0) || user.email?.charAt(0)}
+                    </Avatar>
+                    <Box>
+                      <Typography variant="body2">{getUserDisplayName(user)}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {user.email}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((user, index) => (
+                    <Chip
+                      avatar={<Avatar>{user.firstname?.charAt(0) || user.email?.charAt(0)}</Avatar>}
+                      label={getUserDisplayName(user)}
+                      {...getTagProps({ index })}
+                      key={user.id}
+                      size="small"
+                    />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Choose users..."
+                    helperText={`${selectedUsers.length} user(s) selected`}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Badge color="primary" />
+                Select Roles
+              </Typography>
+              <Autocomplete
+                multiple
+                options={roles}
+                value={selectedRoles}
+                onChange={(_, value) => setSelectedRoles(value)}
+                renderTags={(value, getTagProps) =>
+                  value.map((role, index) => (
+                    <Chip
+                      label={role}
+                      {...getTagProps({ index })}
+                      key={role}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                    />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Choose roles..."
+                    helperText={`${selectedRoles.length} role(s) selected`}
+                  />
+                )}
+              />
+            </Grid>
+          </Grid>
+
+          {selectedUsers.length > 0 && selectedRoles.length > 0 && (
+            <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Assignment Preview:
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedRoles.length} role(s) will be assigned to {selectedUsers.length} user(s), 
+                creating {selectedUsers.length * selectedRoles.length} total assignment(s).
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setOpenAddDialog(false)} disabled={adding}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAddAssignments}
+            disabled={selectedUsers.length === 0 || selectedRoles.length === 0 || adding}
+            startIcon={adding ? <CircularProgress size={20} /> : <Add />}
+          >
+            {adding ? 'Assigning...' : 'Assign Roles'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+        <DialogTitle sx={{ color: "error.main" }}>Confirm Role Removal</DialogTitle>
+        <DialogContent>
+          {roleToDelete && (
+            <Typography>
+              Are you sure you want to remove the role "{roleToDelete.role}" from user {roleToDelete.user_id}? 
+              This action cannot be undone.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => roleToDelete && handleDeleteAssignment(roleToDelete)}
+          >
+            Remove Role
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import CSV Dialog */}
+      <Dialog
+        open={openImportDialog}
+        onClose={() => setOpenImportDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+          }}
+        >
+          <CloudUpload />
+          Import User Roles from CSV
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Upload a CSV file with columns: <strong>user_id, role</strong>
+          </Typography>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+            style={{ marginBottom: '16px' }}
+          />
+          {importFile && (
+            <Typography variant="body2" color="success.main">
+              Selected: {importFile.name}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleImportCSV}
+            disabled={!importFile || importing}
+            loading={importing}
+            startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+              },
+            }}
+          >
+            {importing ? 'Importing...' : 'Import'}
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 
-export default UserRoles;
+export default UserRolesEnhanced;

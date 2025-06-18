@@ -58,21 +58,11 @@ import { useAuth, useAuthCheck } from "../../../../hooks/useAuth";
 // Components
 import { LoadingWrapper } from "./components/LoadingStates";
 import { StatCard } from "./components/StatCard";
-import { SolrDatabaseStatus } from "./components/SolrDatabaseStatus";
-import { ApiAnalytics } from "./components/ApiAnalytics";
-import { EmbeddingCacheManagement } from "./components/EmbeddingCacheManagement";
-import { UserActivityMonitoring } from "./components/UserActivityMonitoring";
-import EnhancedApiAnalytics from "./components/EnhancedApiAnalytics";
-import UserBehaviorAnalytics from "./components/UserBehaviorAnalytics";
-import QueryAnalytics from "./components/QueryAnalytics";
-import CollectionIntelligence from "./components/CollectionIntelligence";
-import TabbedDashboard from "./components/TabbedDashboard";
 import ExportImportControls from "./components/ExportImportControls";
 
 // Hooks
 import { useDashboardData } from "./hooks/useDashboardData";
 import { useAnalytics } from "./hooks/useAnalytics";
-import { useUserActivity } from "./hooks/useUserActivity";
 
 // Utilities
 import { formatNumber } from "./utils/formatters";
@@ -120,11 +110,9 @@ const Dashboard: React.FC = () => {
   // Other data hooks
   const { analytics, analyticsLoading, fetchAnalytics } = useAnalytics(
     accessToken || null,
-    true, // Always fetch for TabbedDashboard
+    false, // Only fetch when needed
   );
 
-  const { userActivity, userActivityLoading, fetchUserActivity } =
-    useUserActivity(accessToken || null, true); // Always fetch for TabbedDashboard
 
   /**
    * Refresh all dashboard data (optionally force bypassing cache).
@@ -135,7 +123,6 @@ const Dashboard: React.FC = () => {
       const promises: Promise<void>[] = [
         fetchComprehensiveStats({ force }),
         fetchAnalytics(),
-        fetchUserActivity(),
       ];
 
       if (showEmbeddingDetails) {
@@ -150,7 +137,6 @@ const Dashboard: React.FC = () => {
     [
       fetchComprehensiveStats,
       fetchAnalytics,
-      fetchUserActivity,
       fetchEmbeddingDetails,
       fetchAdvancedStats,
       showEmbeddingDetails,
@@ -167,7 +153,6 @@ const Dashboard: React.FC = () => {
         version: '1.0',
         comprehensiveStats,
         analytics,
-        userActivity,
         embeddingDetails,
         advancedStats,
         settings: {
@@ -195,11 +180,11 @@ const Dashboard: React.FC = () => {
 
       switch (tabName) {
         case 'overview':
-          return { ...baseData, data: { comprehensiveStats, userActivity } };
+          return { ...baseData, data: { comprehensiveStats } };
         case 'api-analytics':
           return { ...baseData, data: { analytics } };
         case 'user-behavior':
-          return { ...baseData, data: { userActivity } };
+          return { ...baseData, data: { analytics } };
         case 'query-analytics':
           return { ...baseData, data: { analytics } };
         case 'collections':
@@ -409,7 +394,7 @@ const Dashboard: React.FC = () => {
                   mt: 0.5,
                 }}
               >
-                {isMobile ? "Real-time monitoring" : "Real-time monitoring and system analytics"}
+                {isMobile ? "System monitoring" : "Real-time system monitoring and core metrics"}
               </Typography>
               <Stack 
                 direction={{ xs: "column", sm: "row" }} 
@@ -755,24 +740,6 @@ const Dashboard: React.FC = () => {
             </>
           )}
 
-          {/* Tabbed Dashboard for Analytics - Always Visible */}
-          {stats && (
-            <TabbedDashboard
-                comprehensiveStats={comprehensiveStats}
-                analytics={analytics}
-                userActivity={userActivity}
-                embeddingDetails={embeddingDetails}
-                advancedStats={advancedStats}
-                detailsLoading={detailsLoading}
-                advancedLoading={advancedLoading}
-                userActivityLoading={userActivityLoading}
-                autoRefresh={autoRefresh}
-                onClearCache={clearEmbeddingCache}
-                onResetMetrics={resetMetrics}
-                fetchEmbeddingDetails={fetchEmbeddingDetails}
-                fetchAdvancedStats={fetchAdvancedStats}
-              />
-          )}
 
           {/* Fallback message */}
           {!comprehensiveStats && legacyStats && (

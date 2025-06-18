@@ -1,30 +1,44 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Box,
   Button,
   Typography,
+  Paper,
   TextField,
   Card,
   CardContent,
+  CardActions,
   Chip,
   Stack,
   Alert,
   Fade,
   CircularProgress,
   InputAdornment,
-  Tooltip,
   IconButton,
   Grid,
-  Paper,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Avatar,
   Divider,
-  Badge,
+  FormControlLabel,
+  Switch,
+  useTheme,
+  alpha,
+  Collapse,
+  AppBar,
+  Toolbar,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  Checkbox,
+  List,
+  ListItem,
+  ListItemText,
+  Tooltip,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { LoadingButton } from "@mui/lab";
+import { DataGrid, GridColDef, GridRenderCellParams, GridSelectionModel } from "@mui/x-data-grid";
 import {
   Add,
   Delete,
@@ -33,33 +47,36 @@ import {
   VpnKey,
   Shield,
   Refresh,
-  Cancel,
   GetApp,
   DeleteSweep,
   SelectAll,
   CloudUpload,
+  ExpandMore,
+  ExpandLess,
+  Clear,
+  Assignment,
+  Lock,
+  FilterList,
+  ViewModule,
+  ViewList,
 } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios, { AxiosHeaders } from "axios";
 import { useAuth } from "../../../hooks/useAuth";
+import { useResponsive } from "../../../lib/responsive-utils";
 
-/** Role-permission mapping record */
 interface RolePermission {
   role: string;
   permission: string;
   created_at: string;
 }
 
-/** Snackbar/alert notification state */
 interface NotificationState {
   open: boolean;
   message: string;
   severity: "success" | "error" | "warning" | "info";
 }
 
-/**
- * Returns an Axios instance with Authorization header set.
- */
 const useAuthAxios = () => {
   const { accessToken } = useAuth();
   return useMemo(() => {
@@ -77,23 +94,308 @@ const useAuthAxios = () => {
   }, [accessToken]);
 };
 
-/**
- * RolePermissions
- *
- * Admin UI for managing role-permission assignments.
- * - Lists all role-permission pairs.
- * - Lets admins add and remove permissions for roles.
- * - Inline search/filter.
- */
-const RolePermissions: React.FC = () => {
-  const authAxios = useAuthAxios();
+// Enhanced Role Permission Card Component
+interface RolePermissionCardProps {
+  rolePermission: RolePermission;
+  selected: boolean;
+  searchTerm: string;
+  expanded: boolean;
+  onSelect: (rolePermission: RolePermission) => void;
+  onToggleExpand: (rolePermission: RolePermission) => void;
+  onDelete: (rolePermission: RolePermission) => void;
+}
 
-  // Main data and UI state
+const RolePermissionCard: React.FC<RolePermissionCardProps> = ({
+  rolePermission,
+  selected,
+  searchTerm,
+  expanded,
+  onSelect,
+  onToggleExpand,
+  onDelete,
+}) => {
+  const theme = useTheme();
+
+  const getRoleColor = (role: string) => {
+    const colors = ['primary', 'secondary', 'success', 'warning', 'error', 'info'];
+    return colors[role.length % colors.length] as any;
+  };
+
+  const getPermissionColor = (permission: string) => {
+    const colors = ['info', 'success', 'warning', 'error', 'primary', 'secondary'];
+    return colors[permission.length % colors.length] as any;
+  };
+
+  const highlightSearchTerm = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>
+          {part}
+        </mark>
+      ) : part
+    );
+  };
+
+  return (
+    <Card
+      sx={{
+        mb: 2,
+        border: selected ? `2px solid ${theme.palette.primary.main}` : '1px solid',
+        borderColor: selected ? 'primary.main' : 'divider',
+        backgroundColor: selected ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: 4,
+        },
+      }}
+    >
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
+            <Checkbox
+              checked={selected}
+              onChange={() => onSelect(rolePermission)}
+              size="small"
+            />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: '1rem', sm: '1.25rem' },
+                  lineHeight: 1.2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
+                <Shield color="primary" fontSize="small" />
+                {highlightSearchTerm(rolePermission.role, searchTerm)}
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ 
+                  fontSize: { xs: '0.875rem', sm: '0.95rem' },
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mt: 0.5,
+                }}
+              >
+                <VpnKey fontSize="small" />
+                {highlightSearchTerm(rolePermission.permission, searchTerm)}
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton
+              size="small"
+              onClick={() => onToggleExpand(rolePermission)}
+            >
+              {expanded ? <ExpandLess /> : <ExpandMore />}
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* Quick Info */}
+        <Stack direction="row" spacing={1} sx={{ mb: expanded ? 2 : 0, flexWrap: 'wrap', gap: 1 }}>
+          <Chip
+            icon={<Shield />}
+            label={rolePermission.role}
+            color={getRoleColor(rolePermission.role)}
+            size="small"
+            variant="outlined"
+          />
+          <Chip
+            icon={<VpnKey />}
+            label={rolePermission.permission}
+            color={getPermissionColor(rolePermission.permission)}
+            size="small"
+            variant="filled"
+          />
+          <Chip
+            label={`Granted: ${new Date(rolePermission.created_at).toLocaleDateString()}`}
+            size="small"
+            variant="outlined"
+          />
+        </Stack>
+
+        {/* Expanded Details */}
+        <Collapse in={expanded}>
+          <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Role Details
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Role:</strong> {rolePermission.role}
+                  <br />
+                  <strong>Type:</strong> System Role
+                  <br />
+                  <strong>Scope:</strong> Application-wide
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Permission Details
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Permission:</strong> {rolePermission.permission}
+                  <br />
+                  <strong>Granted:</strong> {new Date(rolePermission.created_at).toLocaleString()}
+                  <br />
+                  <strong>Status:</strong> Active
+                </Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Permission Description
+                </Typography>
+                <Typography variant="body2">
+                  This permission grants the "{rolePermission.role}" role specific access rights within the system. 
+                  Users with this role can perform actions related to "{rolePermission.permission}".
+                </Typography>
+              </Grid>
+            </Grid>
+          </Box>
+        </Collapse>
+      </CardContent>
+
+      {/* Actions */}
+      <CardActions sx={{ p: { xs: 2, sm: 3 }, pt: 0, justifyContent: 'flex-end' }}>
+        <Button
+          size="small"
+          startIcon={<Delete />}
+          onClick={() => onDelete(rolePermission)}
+          color="error"
+          variant="outlined"
+        >
+          Revoke
+        </Button>
+      </CardActions>
+    </Card>
+  );
+};
+
+// Mobile Header Component
+interface MobileHeaderProps {
+  title: string;
+  subtitle: string;
+  selectedCount: number;
+  totalCount: number;
+  autoRefresh: boolean;
+  onToggleAutoRefresh: () => void;
+  onAddPermission: () => void;
+  onBulkDelete?: () => void;
+  onClearSelection?: () => void;
+}
+
+const MobileHeader: React.FC<MobileHeaderProps> = ({
+  title,
+  subtitle,
+  selectedCount,
+  totalCount,
+  autoRefresh,
+  onToggleAutoRefresh,
+  onAddPermission,
+  onBulkDelete,
+  onClearSelection,
+}) => {
+  const theme = useTheme();
+
+  return (
+    <AppBar 
+      position="sticky" 
+      sx={{ 
+        bgcolor: 'background.paper', 
+        color: 'text.primary',
+        boxShadow: 1,
+        mb: 2,
+      }}
+    >
+      <Toolbar sx={{ flexDirection: 'column', alignItems: 'stretch', py: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Security color="primary" fontSize="small" />
+              {title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
+            </Typography>
+          </Box>
+          <IconButton 
+            onClick={onToggleAutoRefresh} 
+            color={autoRefresh ? "primary" : "default"}
+            size="small"
+          >
+            <Refresh />
+          </IconButton>
+        </Box>
+
+        {selectedCount > 0 && (
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              p: 1,
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="body2" color="primary">
+              {selectedCount} of {totalCount} selected
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              {onBulkDelete && (
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<Delete />}
+                  onClick={onBulkDelete}
+                >
+                  Revoke
+                </Button>
+              )}
+              {onClearSelection && (
+                <Button
+                  size="small"
+                  onClick={onClearSelection}
+                >
+                  Clear
+                </Button>
+              )}
+            </Stack>
+          </Box>
+        )}
+
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+          {totalCount} role permissions total
+          {autoRefresh && " • Auto-refresh enabled"}
+        </Typography>
+      </Toolbar>
+    </AppBar>
+  );
+};
+
+const RolePermissionsEnhanced: React.FC = () => {
+  const authAxios = useAuthAxios();
+  const theme = useTheme();
+  const { isMobile, isTablet } = useResponsive();
+
+  // State management
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
-  const [availablePermissions, setAvailablePermissions] = useState<string[]>(
-    [],
-  );
+  const [availablePermissions, setAvailablePermissions] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [openAddDialog, setOpenAddDialog] = useState(false);
@@ -104,73 +406,90 @@ const RolePermissions: React.FC = () => {
     message: "",
     severity: "info",
   });
+  const [selectedRolePermissions, setSelectedRolePermissions] = useState<RolePermission[]>([]);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [permissionToDelete, setPermissionToDelete] = useState<RolePermission | null>(null);
+  const [openBulkDeleteDialog, setOpenBulkDeleteDialog] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [filterRole, setFilterRole] = useState<string>('');
+  const [filterPermission, setFilterPermission] = useState<string>('');
+  const [adding, setAdding] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
-  
-  // Enhanced functionality state
-  const [selectedRolePermissions, setSelectedRolePermissions] = useState<string[]>([]);
-  const [openBulkDeleteDialog, setOpenBulkDeleteDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [rolePermissionToDelete, setRolePermissionToDelete] = useState<RolePermission | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [autoRefresh, setAutoRefresh] = useState(false);
 
-  // On mount, fetch all required data for dropdowns and grid
   useEffect(() => {
     fetchPermissions();
-    fetchRoles();
-    fetchAvailablePermissions();
   }, []);
-  
-  /**
-   * Auto-refresh functionality
-   */
+
+  // Auto-refresh functionality
   useEffect(() => {
-    let interval: NodeJS.Timeout;
     if (autoRefresh) {
-      interval = setInterval(() => {
+      const interval = setInterval(() => {
         fetchPermissions();
-      }, 30000); // Refresh every 30 seconds
+      }, 30000);
+      setRefreshInterval(interval);
+    } else {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        setRefreshInterval(null);
+      }
     }
     return () => {
-      if (interval) clearInterval(interval);
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
     };
   }, [autoRefresh]);
 
-  /**
-   * Keyboard shortcuts
-   */
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key) {
-          case 'n':
-            e.preventDefault();
-            setOpenAddDialog(true);
-            break;
-          case 'r':
-            e.preventDefault();
-            fetchPermissions();
-            break;
-        }
-      } else if (e.key === 'Delete' && selectedRolePermissions.length > 0) {
-        e.preventDefault();
-        setOpenBulkDeleteDialog(true);
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        setSelectedRolePermissions([]);
-        setOpenAddDialog(false);
-        setOpenDeleteDialog(false);
-        setOpenBulkDeleteDialog(false);
-      }
-    };
+  const filteredPermissions = useMemo(() => 
+    permissions.filter((rp) => {
+      const searchText = search.toLowerCase();
+      const matchesSearch = !searchText || 
+        rp.role.toLowerCase().includes(searchText) ||
+        rp.permission.toLowerCase().includes(searchText);
+      
+      const matchesRole = !filterRole || rp.role === filterRole;
+      const matchesPermission = !filterPermission || rp.permission === filterPermission;
+      
+      return matchesSearch && matchesRole && matchesPermission;
+    }), [permissions, search, filterRole, filterPermission]);
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [selectedRolePermissions]);
+  const fetchPermissions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [permissionsRes, userRolesRes, dbPermissionsRes] = await Promise.all([
+        authAxios.get("/api/role_permissions"),
+        authAxios.get("/api/user_roles"),
+        authAxios.get("/api/solr_database_permissions"),
+      ]);
 
-  /** Show a notification/alert (auto-hides after 5s) */
+      setPermissions(Array.isArray(permissionsRes.data) ? permissionsRes.data : []);
+
+      // Extract unique roles and permissions
+      const uniqueRoles = Array.from(new Set([
+        ...permissionsRes.data.map((rp: RolePermission) => rp.role),
+        ...userRolesRes.data.map((ur: any) => ur.role)
+      ]));
+      setRoles(uniqueRoles);
+
+      const uniquePermissions = Array.from(new Set([
+        ...permissionsRes.data.map((rp: RolePermission) => rp.permission),
+        ...dbPermissionsRes.data.map((dp: any) => dp.permission)
+      ]));
+      setAvailablePermissions(uniquePermissions);
+
+    } catch (err) {
+      console.error("Fetch permissions failed:", err);
+      showNotification("Failed to fetch role permissions", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [authAxios]);
+
   const showNotification = (
     message: string,
     severity: NotificationState["severity"] = "info",
@@ -183,244 +502,6 @@ const RolePermissions: React.FC = () => {
     );
   };
 
-  /** Fetch all role-permission pairs */
-  const fetchPermissions = async () => {
-    try {
-      setLoading(true);
-      const { data } = await authAxios.get("/api/role_permissions");
-      setPermissions(data);
-      setLastRefresh(new Date());
-      setSelectedRolePermissions([]); // Clear selection on refresh
-    } catch (err) {
-      console.error("Fetch role permissions failed", err);
-      showNotification("Failed to fetch role permissions", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /** Fetch all unique roles in the system */
-  const fetchRoles = async () => {
-    try {
-      const { data } = await authAxios.get("/api/user_roles");
-      const roleList = [
-        ...new Set((data as { role: string }[]).map((item) => item.role)),
-      ];
-      setRoles(roleList);
-      if (selectedRoles.length === 0 && roleList.length > 0) {
-        setSelectedRoles([roleList[0]]);
-      }
-    } catch (err) {
-      console.error("Fetch roles failed", err);
-      showNotification("Failed to fetch roles", "error");
-    }
-  };
-
-  /** Fetch all unique permissions in the system */
-  const fetchAvailablePermissions = async () => {
-    try {
-      const { data } = await authAxios.get("/api/solr_database_permissions");
-      const perms = [
-        ...new Set(
-          (data as { permission: string }[]).map((item) => item.permission),
-        ),
-      ];
-      setAvailablePermissions(perms);
-      if (selectedPermissions.length === 0 && perms.length > 0) {
-        setSelectedPermissions([perms[0]]);
-      }
-    } catch (err) {
-      console.error("Fetch permissions failed", err);
-      showNotification("Failed to fetch available permissions", "error");
-    }
-  };
-
-  /**
-   * Check if a role-permission combination already exists
-   */
-  const rolePermissionExists = (role: string, permission: string) => {
-    return permissions.some(p => p.role === role && p.permission === permission);
-  };
-
-  /**
-   * Validate role permission assignment
-   */
-  const validatePermissionAssignment = () => {
-    const errors: string[] = [];
-    
-    if (selectedRoles.length === 0) {
-      errors.push("Please select at least one role");
-    }
-    
-    if (selectedPermissions.length === 0) {
-      errors.push("Please select at least one permission");
-    }
-    
-    // Check for existing assignments
-    const existingAssignments = [];
-    for (const role of selectedRoles) {
-      for (const permission of selectedPermissions) {
-        if (rolePermissionExists(role, permission)) {
-          existingAssignments.push(`Role "${role}" already has permission "${permission}"`);
-        }
-      }
-    }
-    
-    if (existingAssignments.length > 0) {
-      errors.push(...existingAssignments.slice(0, 3)); // Show max 3 conflicts
-      if (existingAssignments.length > 3) {
-        errors.push(`... and ${existingAssignments.length - 3} more conflicts`);
-      }
-    }
-    
-    return errors;
-  };
-
-  /** Assign multiple permissions to multiple roles with enhanced validation */
-  const handleAdd = async () => {
-    const validationErrors = validatePermissionAssignment();
-    
-    if (validationErrors.length > 0) {
-      showNotification(validationErrors[0], "warning");
-      return;
-    }
-    
-    try {
-      const assignments = [];
-      const newAssignments = [];
-      
-      for (const role of selectedRoles) {
-        for (const permission of selectedPermissions) {
-          if (!rolePermissionExists(role, permission)) {
-            assignments.push(
-              authAxios.post("/api/role_permissions", { role, permission })
-            );
-            newAssignments.push(`${role} → ${permission}`);
-          }
-        }
-      }
-      
-      if (assignments.length === 0) {
-        showNotification("All selected permission assignments already exist", "warning");
-        return;
-      }
-      
-      await Promise.all(assignments);
-      setSelectedRoles([]);
-      setSelectedPermissions([]);
-      fetchPermissions();
-      
-      const successMessage = newAssignments.length === 1 ? 
-        `Successfully assigned: ${newAssignments[0]}` :
-        `Successfully assigned ${newAssignments.length} permission assignments`;
-      
-      showNotification(successMessage, "success");
-    } catch (err: any) {
-      console.error("Add role permissions failed:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Unknown error occurred";
-      
-      if (err.response?.status === 409 || errorMessage.includes("already exists")) {
-        showNotification("Some permission assignments already exist. Please refresh and try again.", "error");
-      } else if (err.response?.status === 404) {
-        showNotification("Role or permission not found. Please refresh and try again.", "error");
-      } else if (err.response?.status === 403) {
-        showNotification("You don't have permission to assign role permissions", "error");
-      } else {
-        showNotification(`Failed to assign permissions: ${errorMessage}`, "error");
-      }
-      fetchPermissions(); // Refresh data
-    }
-  };
-
-  /** Remove a permission from a role with enhanced error handling */
-  const handleDelete = async (role: string, permission: string) => {
-    try {
-      await authAxios.delete(
-        `/api/role_permissions/${encodeURIComponent(role)}/${encodeURIComponent(permission)}`,
-      );
-      showNotification(`Successfully removed permission "${permission}" from role "${role}"`, "success");
-      setOpenDeleteDialog(false);
-      setRolePermissionToDelete(null);
-      fetchPermissions();
-    } catch (err: any) {
-      console.error("Delete role permission failed:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Unknown error occurred";
-      
-      if (err.response?.status === 404) {
-        showNotification("Permission assignment not found. It may have already been removed.", "error");
-        fetchPermissions(); // Refresh to sync with server
-      } else if (err.response?.status === 403) {
-        showNotification("You don't have permission to remove this role permission", "error");
-      } else if (err.response?.status === 409 || errorMessage.includes("constraint")) {
-        showNotification("Cannot remove permission: it may be required for this role", "error");
-      } else {
-        showNotification(`Failed to remove permission: ${errorMessage}`, "error");
-      }
-      setOpenDeleteDialog(false);
-      setRolePermissionToDelete(null);
-    }
-  };
-  
-  /**
-   * Open the dialog to confirm role permission deletion.
-   */
-  const handleDeleteDialogOpen = (rolePermission: RolePermission) => {
-    setRolePermissionToDelete(rolePermission);
-    setOpenDeleteDialog(true);
-  };
-
-  /**
-   * Handle bulk delete operation
-   */
-  const handleBulkDelete = async () => {
-    if (selectedRolePermissions.length === 0) return;
-    
-    try {
-      const deletePromises = selectedRolePermissions.map(id => {
-        const [role, permission] = id.split('-');
-        return authAxios.delete(
-          `/api/role_permissions/${encodeURIComponent(role)}/${encodeURIComponent(permission)}`
-        );
-      });
-      
-      await Promise.all(deletePromises);
-      
-      showNotification(
-        `Successfully deleted ${selectedRolePermissions.length} permission assignment${selectedRolePermissions.length !== 1 ? 's' : ''}`,
-        "success"
-      );
-      
-      setSelectedRolePermissions([]);
-      setOpenBulkDeleteDialog(false);
-      fetchPermissions();
-    } catch (err: any) {
-      console.error("Bulk delete failed:", err);
-      showNotification(
-        `Failed to delete some permission assignments: ${err.response?.data?.message || err.message}`,
-        "error"
-      );
-      setOpenBulkDeleteDialog(false);
-    }
-  };
-
-  /**
-   * Select all filtered role permissions
-   */
-  const handleSelectAll = () => {
-    const allPermissionIds = filteredPermissions.map(perm => `${perm.role}-${perm.permission}`);
-    setSelectedRolePermissions(allPermissionIds);
-  };
-
-  /**
-   * Deselect all role permissions
-   */
-  const handleDeselectAll = () => {
-    setSelectedRolePermissions([]);
-  };
-
-  /**
-   * Handle CSV file import for role permissions
-   */
   const handleImportCSV = async () => {
     if (!importFile) {
       showNotification("Please select a file to import", "warning");
@@ -474,47 +555,37 @@ const RolePermissions: React.FC = () => {
           await authAxios.post('/api/role_permissions', rp);
           successCount++;
         } catch (err: any) {
-          console.error(`Failed to import role permission ${rp.role}-${rp.permission}:`, err);
+          console.error(`Failed to import role permission:`, err);
           
           let specificError = 'Unknown error';
           
           if (err.response?.data) {
             const responseData = err.response.data;
             
-            // Handle the API structure: response.data.error.message
             if (responseData.error && responseData.error.message) {
               specificError = responseData.error.message;
-            } 
-            // Fallback: direct message in responseData
-            else if (responseData.message) {
+            } else if (responseData.message) {
               specificError = responseData.message;
-            }
-            // Fallback: error object as string
-            else if (responseData.error && typeof responseData.error === 'object') {
+            } else if (responseData.error && typeof responseData.error === 'object') {
               if (responseData.error.code) {
                 specificError = responseData.error.code.replace(/_/g, ' ');
               } else {
                 specificError = 'Validation error';
               }
-            }
-            // Handle string responses
-            else if (typeof responseData === 'string') {
+            } else if (typeof responseData === 'string') {
               specificError = responseData;
-            }
-            // Last resort fallback
-            else {
+            } else {
               specificError = 'Invalid request format';
             }
           } else if (err.message) {
             specificError = err.message;
           }
           
-          // Add role-permission and clean error message
-          errors.push(`${rp.role}-${rp.permission}: ${specificError}`);
+          errors.push(`${rp.role}/${rp.permission}: ${specificError}`);
         }
       }
 
-      // Show detailed results with longer duration for errors
+      // Show detailed results
       if (successCount > 0 && errors.length === 0) {
         showNotification(`Successfully imported all ${successCount} role permissions`, "success");
         fetchPermissions();
@@ -522,29 +593,26 @@ const RolePermissions: React.FC = () => {
         const errorSummary = errors.length <= 2 ? 
           errors.join('; ') : 
           `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
-        showNotification(`Imported ${successCount} role permissions successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
+        showNotification(`Imported ${successCount} permissions successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
         fetchPermissions();
       } else {
         const errorSummary = errors.length <= 2 ? 
           errors.join('; ') : 
           `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
-        showNotification(`Import failed for all role permissions: ${errorSummary}`, "error", 15000);
+        showNotification(`Import failed for all permissions: ${errorSummary}`, "error", 15000);
       }
       
       setOpenImportDialog(false);
       setImportFile(null);
     } catch (err: any) {
       console.error('Import failed:', err);
-      const errorMsg = err.response?.data?.message || err.response?.data || err.message || 'Unknown error occurred';
+      const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unknown error occurred';
       showNotification(`Import failed: ${errorMsg}`, "error", 10000);
     } finally {
       setImporting(false);
     }
   };
 
-  /**
-   * Export role permissions to CSV
-   */
   const handleExportCSV = () => {
     const csvData = permissions.map(perm => ({
       Role: perm.role,
@@ -570,100 +638,186 @@ const RolePermissions: React.FC = () => {
     showNotification(`Exported ${permissions.length} role permissions to CSV`, "success");
   };
 
-  /**
-   * Highlight search terms in text
-   */
-  const highlightSearchTerm = (text: string, searchTerm: string) => {
-    if (!searchTerm.trim()) return text;
-    
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    const parts = text.split(regex);
-    
-    return parts.map((part, index) => 
-      regex.test(part) ? (
-        <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>
-          {part}
-        </mark>
-      ) : part
+  const handleAddPermissions = async () => {
+    if (selectedRoles.length === 0 || selectedPermissions.length === 0) {
+      showNotification("Please select at least one role and one permission", "warning");
+      return;
+    }
+
+    // Validate for existing assignments
+    const conflicts: string[] = [];
+    selectedRoles.forEach(role => {
+      selectedPermissions.forEach(permission => {
+        const exists = permissions.some(rp => rp.role === role && rp.permission === permission);
+        if (exists) {
+          conflicts.push(`${role} already has permission "${permission}"`);
+        }
+      });
+    });
+
+    if (conflicts.length > 0) {
+      const displayConflicts = conflicts.length <= 3 ? 
+        conflicts.join(', ') : 
+        `${conflicts.slice(0, 3).join(', ')} and ${conflicts.length - 3} more`;
+      showNotification(`Cannot assign permissions: ${displayConflicts}`, "warning", 10000);
+      return;
+    }
+
+    setAdding(true);
+    try {
+      const assignments = [];
+      for (const role of selectedRoles) {
+        for (const permission of selectedPermissions) {
+          assignments.push({ role, permission });
+        }
+      }
+
+      await Promise.all(
+        assignments.map(assignment => 
+          authAxios.post("/api/role_permissions", assignment)
+        )
+      );
+
+      showNotification(
+        `Successfully granted ${selectedPermissions.length} permission(s) to ${selectedRoles.length} role(s)`,
+        "success"
+      );
+
+      setSelectedRoles([]);
+      setSelectedPermissions([]);
+      setOpenAddDialog(false);
+      fetchPermissions();
+    } catch (err: any) {
+      console.error("Add permissions failed:", err);
+      showNotification(`Failed to grant permissions: ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDeletePermission = async (rolePermission: RolePermission) => {
+    try {
+      await authAxios.delete(`/api/role_permissions/${rolePermission.role}/${rolePermission.permission}`);
+      
+      showNotification(`Revoked permission "${rolePermission.permission}" from role "${rolePermission.role}"`, "success");
+      fetchPermissions();
+      setOpenDeleteDialog(false);
+      setPermissionToDelete(null);
+    } catch (err: any) {
+      console.error("Delete permission failed:", err);
+      showNotification(`Failed to revoke permission: ${err.response?.data?.message || err.message}`, "error");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedRolePermissions.length === 0) return;
+
+    try {
+      await Promise.all(
+        selectedRolePermissions.map(rp => 
+          authAxios.delete(`/api/role_permissions/${rp.role}/${rp.permission}`)
+        )
+      );
+
+      showNotification(
+        `Successfully revoked ${selectedRolePermissions.length} permission(s)`,
+        "success"
+      );
+
+      setSelectedRolePermissions([]);
+      setOpenBulkDeleteDialog(false);
+      fetchPermissions();
+    } catch (err: any) {
+      console.error("Bulk delete failed:", err);
+      showNotification(`Failed to revoke some permissions: ${err.response?.data?.message || err.message}`, "error");
+    }
+  };
+
+  const handleSelectPermission = (rolePermission: RolePermission) => {
+    const isSelected = selectedRolePermissions.some(rp => 
+      rp.role === rolePermission.role && rp.permission === rolePermission.permission
     );
+    
+    if (isSelected) {
+      setSelectedRolePermissions(selectedRolePermissions.filter(rp => 
+        !(rp.role === rolePermission.role && rp.permission === rolePermission.permission)
+      ));
+    } else {
+      setSelectedRolePermissions([...selectedRolePermissions, rolePermission]);
+    }
   };
 
-  // Filter the table rows according to current search
-  const filteredPermissions = permissions.filter((p) =>
-    `${p.role} ${p.permission}`.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  // Utility for consistent coloring of role chips
-  const getRoleColor = (role: string) => {
-    const colors = [
-      "primary",
-      "secondary",
-      "success",
-      "warning",
-      "error",
-      "info",
-    ];
-    const index = role.length % colors.length;
-    return colors[index] as any;
+  const handleToggleCardExpansion = (rolePermission: RolePermission) => {
+    const key = `${rolePermission.role}-${rolePermission.permission}`;
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedCards(newExpanded);
   };
 
-  // Utility for consistent coloring of permission chips
-  const getPermissionColor = (permission: string) => {
-    if (permission.includes("read") || permission.includes("view"))
-      return "info";
-    if (permission.includes("write") || permission.includes("create"))
-      return "success";
-    if (permission.includes("delete") || permission.includes("remove"))
-      return "error";
-    if (permission.includes("admin")) return "warning";
-    return "default";
+  const handleSelectAll = () => {
+    setSelectedRolePermissions([...filteredPermissions]);
   };
 
-  // Table columns for the DataGrid
+  const handleClearSelection = () => {
+    setSelectedRolePermissions([]);
+  };
+
+  // DataGrid columns for table view
   const columns: GridColDef[] = [
-    {
-      field: "avatar",
-      headerName: "",
-      width: 80,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Avatar
-          sx={{ bgcolor: getRoleColor(params.row.role) === 'primary' ? "primary.main" : "secondary.main" }}
-        >
-          <Shield />
-        </Avatar>
-      ),
-    },
     {
       field: "role",
       headerName: "Role",
-      width: 200,
+      flex: 1,
       renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {highlightSearchTerm(params.value, search)}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Shield fontSize="small" color="primary" />
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {params.value}
+          </Typography>
+        </Box>
       ),
     },
     {
       field: "permission",
       headerName: "Permission",
       flex: 1,
-      renderCell: (params) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <VpnKey fontSize="small" color="action" />
-          <Typography variant="body2">
-            {highlightSearchTerm(params.value, search)}
-          </Typography>
-        </Box>
-      ),
+      renderCell: (params) => {
+        const permission = params.value as string;
+        const getPermissionColor = (permissionName: string) => {
+          if (permissionName.includes("read") || permissionName.includes("view"))
+            return "info";
+          if (permissionName.includes("write") || permissionName.includes("create"))
+            return "success";
+          if (permissionName.includes("delete") || permissionName.includes("remove"))
+            return "error";
+          if (permissionName.includes("admin")) return "warning";
+          return "default";
+        };
+        
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <VpnKey fontSize="small" color="action" />
+            <Typography variant="body2">{permission}</Typography>
+            <Chip
+              label={getPermissionColor(permission).toUpperCase()}
+              color={getPermissionColor(permission) as any}
+              size="small"
+              variant="outlined"
+            />
+          </Box>
+        );
+      },
     },
     {
       field: "created_at",
-      headerName: "Created Date",
-      width: 180,
+      headerName: "Granted",
+      width: 120,
       renderCell: (params) => (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="caption" color="text.secondary">
           {new Date(params.value).toLocaleDateString()}
         </Typography>
       ),
@@ -675,92 +829,99 @@ const RolePermissions: React.FC = () => {
       sortable: false,
       filterable: false,
       renderCell: (params: GridRenderCellParams) => (
-        <Tooltip title="Remove Permission">
-          <IconButton
-            size="small"
-            color="error"
-            onClick={() => handleDeleteDialogOpen(params.row)}
-          >
-            <Delete />
-          </IconButton>
-        </Tooltip>
+        <Stack direction="row" spacing={1}>
+          <Tooltip title="Revoke Permission">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => {
+                setPermissionToDelete(params.row as RolePermission);
+                setOpenDeleteDialog(true);
+              }}
+            >
+              <Delete />
+            </IconButton>
+          </Tooltip>
+        </Stack>
       ),
     },
   ];
 
-  return (
-    <Fade in={true} timeout={600}>
-      <Box>
-        {/* Inline notification (alert) */}
-        {notification.open && (
-          <Alert
-            severity={notification.severity}
-            sx={{ mb: 3 }}
-            onClose={() =>
-              setNotification((prev) => ({ ...prev, open: false }))
-            }
-          >
-            {notification.message}
-          </Alert>
-        )}
+  // Speed Dial Actions for Mobile
+  const speedDialActions = [
+    {
+      icon: <Add />,
+      name: 'Grant Permissions',
+      onClick: () => setOpenAddDialog(true),
+    },
+    {
+      icon: <CloudUpload />,
+      name: 'Import CSV',
+      onClick: () => setOpenImportDialog(true),
+    },
+    {
+      icon: <GetApp />,
+      name: 'Export All',
+      onClick: handleExportCSV,
+    },
+    {
+      icon: <Refresh />,
+      name: 'Refresh',
+      onClick: fetchPermissions,
+    },
+  ];
 
-        {/* Page Header */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 4,
-          }}
+  return (
+    <Box sx={{ pb: isMobile ? 8 : 0 }}>
+      {notification.open && (
+        <Alert
+          severity={notification.severity}
+          sx={{ mb: 3 }}
+          onClose={() => setNotification((prev) => ({ ...prev, open: false }))}
         >
+          {notification.message}
+        </Alert>
+      )}
+
+      {/* Mobile Header */}
+      {isMobile ? (
+        <MobileHeader
+          title="Role Permissions"
+          subtitle="Manage role-based permissions"
+          selectedCount={selectedRolePermissions.length}
+          totalCount={filteredPermissions.length}
+          autoRefresh={autoRefresh}
+          onToggleAutoRefresh={() => setAutoRefresh(!autoRefresh)}
+          onAddPermission={() => setOpenAddDialog(true)}
+          onBulkDelete={selectedRolePermissions.length > 0 ? () => setOpenBulkDeleteDialog(true) : undefined}
+          onClearSelection={selectedRolePermissions.length > 0 ? handleClearSelection : undefined}
+        />
+      ) : (
+        // Desktop Header
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
           <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
+            <Typography variant="h4" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1 }}>
               <Security color="primary" />
-              Role Permissions
+              Role Permission Management
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Configure permissions for each role in the system
+              Configure permissions for user roles
             </Typography>
             {selectedRolePermissions.length > 0 && (
               <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
-                {selectedRolePermissions.length} permission assignment{selectedRolePermissions.length !== 1 ? 's' : ''} selected
+                {selectedRolePermissions.length} permission{selectedRolePermissions.length !== 1 ? 's' : ''} selected
               </Typography>
             )}
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              Last updated: {lastRefresh.toLocaleTimeString()}
-              {autoRefresh && " • Auto-refresh enabled"}
-            </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            {selectedRolePermissions.length > 0 && (
-              <>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<Delete />}
-                  onClick={() => setOpenBulkDeleteDialog(true)}
-                  size="small"
-                >
-                  Delete ({selectedRolePermissions.length})
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<Cancel />}
-                  onClick={() => setSelectedRolePermissions([])}
-                  size="small"
-                >
-                  Clear Selection
-                </Button>
-              </>
-            )}
+            <Tooltip title={`Switch to ${viewMode === 'cards' ? 'Table' : 'Cards'} View`}>
+              <IconButton
+                onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
+                color="primary"
+              >
+                {viewMode === 'cards' ? <ViewList /> : <ViewModule />}
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Toggle Auto-refresh (30s)">
               <IconButton 
                 onClick={() => setAutoRefresh(!autoRefresh)} 
@@ -780,432 +941,508 @@ const RolePermissions: React.FC = () => {
                 },
               }}
             >
-              Assign Permissions
+              Grant Permissions
             </Button>
           </Stack>
         </Box>
+      )}
 
-
-        {/* Search and bulk operations */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  placeholder="Search by role or permission..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
-                  {selectedRolePermissions.length > 0 && (
-                    <>
-                      <Badge badgeContent={selectedRolePermissions.length} color="primary">
-                        <Tooltip title="Export Selected to CSV (Ctrl+E)">
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<GetApp />}
-                            onClick={handleExportCSV}
-                          >
-                            Export
-                          </Button>
-                        </Tooltip>
-                      </Badge>
-                      <Tooltip title="Delete Selected (Delete/Backspace)">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="error"
-                          startIcon={<DeleteSweep />}
-                          onClick={handleBulkDelete}
-                        >
-                          Delete ({selectedRolePermissions.length})
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Deselect All">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={handleDeselectAll}
-                        >
-                          Clear
-                        </Button>
-                      </Tooltip>
-                    </>
-                  )}
-                  {selectedRolePermissions.length === 0 && (
-                    <>
-                      <Tooltip title="Import from CSV">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<CloudUpload />}
-                          onClick={() => setOpenImportDialog(true)}
-                        >
-                          Import
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Export All to CSV">
-                        <span>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<GetApp />}
-                            onClick={handleExportCSV}
-                            disabled={filteredPermissions.length === 0}
-                          >
-                            Export All
-                          </Button>
-                        </span>
-                      </Tooltip>
-                      <Tooltip title="Select All (Ctrl+Shift+A)">
-                        <span>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<SelectAll />}
-                            onClick={handleSelectAll}
-                            disabled={filteredPermissions.length === 0}
-                          >
-                            Select All
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    </>
-                  )}
-                </Stack>
-              </Grid>
+      {/* Search and Filters */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                placeholder="Search roles and permissions..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                size={isMobile ? "small" : "medium"}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search color="action" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: search && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setSearch("")}>
+                        <Clear />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
             </Grid>
-            {selectedRolePermissions.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Divider />
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  {selectedRolePermissions.length} permission(s) selected | Keyboard shortcuts: Ctrl+E (export), Delete (bulk delete), Ctrl+R (refresh)
-                </Typography>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Permissions grid */}
-        <Paper sx={{ height: 600, borderRadius: 3, overflow: "hidden" }}>
-          {loading ? (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-              }}
-            >
-              <CircularProgress />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={filteredPermissions}
-              columns={columns}
-              initialState={{
-                pagination: {
-                  page: 0,
-                  pageSize: 10,
-                },
-              }}
-              pageSize={100}
-              getRowId={(row) => `${row.role}-${row.permission}`}
-              checkboxSelection
-              selectionModel={selectedRolePermissions}
-              onSelectionModelChange={(newSelection: any) => {
-                setSelectedRolePermissions(newSelection as string[]);
-              }}
-              disableSelectionOnClick={false}
-              sx={{
-                border: "none",
-                "& .MuiDataGrid-cell": {
-                  outline: "none",
-                  borderBottom: "1px solid rgba(224, 224, 224, 0.4)",
-                },
-                "& .MuiDataGrid-columnHeaders": {
-                  backgroundColor: "rgba(156, 39, 176, 0.08)",
-                  borderBottom: "2px solid rgba(156, 39, 176, 0.2)",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                },
-                "& .MuiDataGrid-row": {
-                  transition: "background-color 0.2s ease, transform 0.1s ease",
-                  "&:hover": {
-                    backgroundColor: "rgba(156, 39, 176, 0.08)",
-                    transform: "translateY(-1px)",
-                    boxShadow: "0 4px 12px rgba(156, 39, 176, 0.15)",
-                  },
-                },
-                "& .MuiDataGrid-footerContainer": {
-                  borderTop: "2px solid rgba(224, 224, 224, 0.3)",
-                  backgroundColor: "rgba(248, 249, 250, 0.8)",
-                },
-                "& .MuiDataGrid-selectedRowCount": {
-                  visibility: "hidden",
-                },
-              }}
-            />
-          )}
-        </Paper>
-
-        {/* Assign Permissions Dialog */}
-        <Dialog
-          open={openAddDialog}
-          onClose={() => setOpenAddDialog(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
-            }}
-          >
-            <Add />
-            Assign Permissions to Roles
-          </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={8}>
+              <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
                 <Autocomplete
-                  multiple
-                  options={roles}
-                  value={selectedRoles}
-                  onChange={(_, newValue) => {
-                    setSelectedRoles(newValue);
-                  }}
+                  size="small"
+                  options={['', ...roles]}
+                  value={filterRole}
+                  onChange={(_, value) => setFilterRole(value || '')}
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Select Roles"
-                      placeholder="Choose roles..."
+                      placeholder="Filter by role"
+                      sx={{ minWidth: 150 }}
                     />
                   )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((role, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={role}
-                        size="small"
-                        color={getRoleColor(role)}
-                        icon={<Shield fontSize="small" />}
-                        {...getTagProps({ index })}
-                      />
-                    ))
-                  }
-                  renderOption={(props, role) => (
-                    <Box component="li" {...props}>
-                      <Shield fontSize="small" sx={{ mr: 1 }} />
-                      {role}
-                    </Box>
-                  )}
+                  getOptionLabel={(option) => option || 'All Roles'}
                 />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
                 <Autocomplete
-                  multiple
-                  freeSolo
-                  options={availablePermissions}
-                  value={selectedPermissions}
-                  onChange={(_, newValue) => {
-                    setSelectedPermissions(newValue.filter(v => typeof v === 'string'));
-                  }}
+                  size="small"
+                  options={['', ...availablePermissions]}
+                  value={filterPermission}
+                  onChange={(_, value) => setFilterPermission(value || '')}
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Select Permissions"
-                      placeholder="Choose or type permissions..."
+                      placeholder="Filter by permission"
+                      sx={{ minWidth: 150 }}
                     />
                   )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((permission, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={permission}
-                        size="small"
-                        color={getPermissionColor(permission)}
-                        icon={<VpnKey fontSize="small" />}
-                        {...getTagProps({ index })}
-                      />
-                    ))
-                  }
-                  renderOption={(props, permission) => (
-                    <Box component="li" {...props}>
-                      <VpnKey fontSize="small" sx={{ mr: 1 }} />
-                      {permission}
-                    </Box>
-                  )}
+                  getOptionLabel={(option) => option || 'All Permissions'}
                 />
-              </Grid>
+              </Stack>
             </Grid>
-          </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
-            <Button onClick={() => setOpenAddDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => {
-                handleAdd();
-                setOpenAddDialog(false);
-              }}
-              disabled={selectedRoles.length === 0 || selectedPermissions.length === 0}
-              startIcon={<Add />}
-              sx={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                "&:hover": {
-                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
-                },
-              }}
-            >
-              Assign {selectedPermissions.length} Permission{selectedPermissions.length !== 1 ? 's' : ''} to {selectedRoles.length} Role{selectedRoles.length !== 1 ? 's' : ''}
-            </Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-        >
-          <DialogTitle sx={{ color: "error.main" }}>Confirm Delete</DialogTitle>
-          <DialogContent>
-            <Typography>
-              Are you sure you want to remove permission "{rolePermissionToDelete?.permission}" from role "{rolePermissionToDelete?.role}"? This
-              action cannot be undone.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={() => 
-                rolePermissionToDelete && 
-                handleDelete(rolePermissionToDelete.role, rolePermissionToDelete.permission)
+          </Grid>
+          
+          {/* Results summary and bulk actions */}
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color={selectedRolePermissions.length > 0 ? "primary" : "text.secondary"}>
+              {selectedRolePermissions.length > 0 
+                ? `${selectedRolePermissions.length} permission${selectedRolePermissions.length !== 1 ? 's' : ''} selected`
+                : `Showing ${filteredPermissions.length} of ${permissions.length} permissions`
               }
-            >
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Bulk Delete Confirmation Dialog */}
-        <Dialog
-          open={openBulkDeleteDialog}
-          onClose={() => setOpenBulkDeleteDialog(false)}
-        >
-          <DialogTitle sx={{ color: "error.main" }}>Confirm Bulk Delete</DialogTitle>
-          <DialogContent>
-            <Typography>
-              Are you sure you want to delete {selectedRolePermissions.length} selected permission assignment{selectedRolePermissions.length !== 1 ? 's' : ''}? 
-              This action cannot be undone.
             </Typography>
-            {selectedRolePermissions.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Permission assignments to be deleted:
+            {!isMobile && (
+              <Stack direction="row" spacing={1}>
+                {selectedRolePermissions.length > 0 ? (
+                  <>
+                    <Button
+                      size="small"
+                      startIcon={<SelectAll />}
+                      onClick={handleSelectAll}
+                      disabled={filteredPermissions.length === 0}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      size="small"
+                      startIcon={<Clear />}
+                      onClick={handleClearSelection}
+                    >
+                      Clear Selection
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={() => setOpenBulkDeleteDialog(true)}
+                    >
+                      Revoke ({selectedRolePermissions.length})
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Tooltip title="Import from CSV">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<CloudUpload />}
+                        onClick={() => setOpenImportDialog(true)}
+                      >
+                        Import
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Export All to CSV">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredPermissions.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Select All Permissions">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredPermissions.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </>
+                )}
+              </Stack>
+            )}
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Content Area */}
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Fade in={true} timeout={600}>
+          <Box>
+            {filteredPermissions.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Security sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  {search || filterRole || filterPermission ? 'No permissions found' : 'No role permissions yet'}
                 </Typography>
-                {selectedRolePermissions.slice(0, 5).map(id => {
-                  const [role, permission] = id.split('-');
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  {search || filterRole || filterPermission
+                    ? 'No permissions match your current filters. Try adjusting your search criteria.'
+                    : 'Get started by granting permissions to roles in your system.'
+                  }
+                </Typography>
+                {!search && !filterRole && !filterPermission && (
+                  <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => setOpenAddDialog(true)}
+                    sx={{ mt: 2 }}
+                  >
+                    Grant First Permission
+                  </Button>
+                )}
+              </Paper>
+            ) : viewMode === 'cards' ? (
+              <Grid container spacing={2}>
+                {filteredPermissions.map((rolePermission) => {
+                  const key = `${rolePermission.role}-${rolePermission.permission}`;
                   return (
-                    <Typography key={id} variant="body2" sx={{ ml: 2 }}>
-                      • {role} → {permission}
-                    </Typography>
+                    <Grid item xs={12} sm={6} md={4} key={key}>
+                      <RolePermissionCard
+                        rolePermission={rolePermission}
+                        selected={selectedRolePermissions.some(rp => 
+                          rp.role === rolePermission.role && rp.permission === rolePermission.permission
+                        )}
+                        searchTerm={search}
+                        expanded={expandedCards.has(key)}
+                        onSelect={handleSelectPermission}
+                        onToggleExpand={handleToggleCardExpansion}
+                        onDelete={(rolePermission) => {
+                          setPermissionToDelete(rolePermission);
+                          setOpenDeleteDialog(true);
+                        }}
+                      />
+                    </Grid>
                   );
                 })}
-                {selectedRolePermissions.length > 5 && (
-                  <Typography variant="body2" sx={{ ml: 2, fontStyle: 'italic' }}>
-                    ... and {selectedRolePermissions.length - 5} more
-                  </Typography>
-                )}
-              </Box>
+              </Grid>
+            ) : (
+              <Paper sx={{ height: 600, borderRadius: 3, overflow: "hidden" }}>
+                <DataGrid
+                  rows={filteredPermissions}
+                  columns={columns}
+                  initialState={{
+                    pagination: {
+                      page: 0,
+                      pageSize: 10,
+                    },
+                  }}
+                  pageSize={100}
+                  getRowId={(row) => `${row.role}-${row.permission}`}
+                  checkboxSelection
+                  selectionModel={selectedRolePermissions.map(rp => `${rp.role}-${rp.permission}`)}
+                  onSelectionModelChange={(newSelection: GridSelectionModel) => {
+                    const selectedKeys = newSelection as string[];
+                    const newSelectedPermissions = filteredPermissions.filter(rp => 
+                      selectedKeys.includes(`${rp.role}-${rp.permission}`)
+                    );
+                    setSelectedRolePermissions(newSelectedPermissions);
+                  }}
+                  disableSelectionOnClick={false}
+                  sx={{
+                    border: "none",
+                    "& .MuiDataGrid-cell": {
+                      outline: "none",
+                      borderBottom: "1px solid rgba(224, 224, 224, 0.4)",
+                    },
+                    "& .MuiDataGrid-columnHeaders": {
+                      backgroundColor: "rgba(255, 152, 0, 0.08)",
+                      borderBottom: "2px solid rgba(255, 152, 0, 0.2)",
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                    },
+                    "& .MuiDataGrid-row": {
+                      transition: "background-color 0.2s ease, transform 0.1s ease",
+                      "&:hover": {
+                        backgroundColor: "rgba(255, 152, 0, 0.08)",
+                        transform: "translateY(-1px)",
+                        boxShadow: "0 4px 12px rgba(255, 152, 0, 0.15)",
+                      },
+                    },
+                    "& .MuiDataGrid-footerContainer": {
+                      borderTop: "2px solid rgba(224, 224, 224, 0.3)",
+                      backgroundColor: "rgba(248, 249, 250, 0.8)",
+                    },
+                    "& .MuiDataGrid-selectedRowCount": {
+                      visibility: "hidden",
+                    },
+                  }}
+                />
+              </Paper>
             )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenBulkDeleteDialog(false)}>Cancel</Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={handleBulkDelete}
-            >
-              Delete {selectedRolePermissions.length} Assignment{selectedRolePermissions.length !== 1 ? 's' : ''}
-            </Button>
-          </DialogActions>
-        </Dialog>
+          </Box>
+        </Fade>
+      )}
 
-        {/* Import CSV Dialog */}
-        <Dialog
-          open={openImportDialog}
-          onClose={() => setOpenImportDialog(false)}
-          maxWidth="sm"
-          fullWidth
+      {/* Mobile Speed Dial */}
+      {isMobile && (
+        <SpeedDial
+          ariaLabel="Permission actions"
+          sx={{ position: 'fixed', bottom: 16, right: 16 }}
+          icon={<SpeedDialIcon />}
         >
-          <DialogTitle
+          {speedDialActions.map((action) => (
+            <SpeedDialAction
+              key={action.name}
+              icon={action.icon}
+              tooltipTitle={action.name}
+              onClick={action.onClick}
+            />
+          ))}
+        </SpeedDial>
+      )}
+
+      {/* Grant Permissions Dialog */}
+      <Dialog
+        open={openAddDialog}
+        onClose={() => setOpenAddDialog(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Assignment />
+          Grant Permissions to Roles
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Shield color="primary" />
+                Select Roles
+              </Typography>
+              <Autocomplete
+                multiple
+                options={roles}
+                value={selectedRoles}
+                onChange={(_, value) => setSelectedRoles(value)}
+                renderTags={(value, getTagProps) =>
+                  value.map((role, index) => (
+                    <Chip
+                      label={role}
+                      {...getTagProps({ index })}
+                      key={role}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                    />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Choose roles..."
+                    helperText={`${selectedRoles.length} role(s) selected`}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <VpnKey color="primary" />
+                Select Permissions
+              </Typography>
+              <Autocomplete
+                multiple
+                options={availablePermissions}
+                value={selectedPermissions}
+                onChange={(_, value) => setSelectedPermissions(value)}
+                renderTags={(value, getTagProps) =>
+                  value.map((permission, index) => (
+                    <Chip
+                      label={permission}
+                      {...getTagProps({ index })}
+                      key={permission}
+                      size="small"
+                      color="secondary"
+                      variant="filled"
+                    />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Choose permissions..."
+                    helperText={`${selectedPermissions.length} permission(s) selected`}
+                  />
+                )}
+              />
+            </Grid>
+          </Grid>
+
+          {selectedRoles.length > 0 && selectedPermissions.length > 0 && (
+            <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Permission Grant Preview:
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedPermissions.length} permission(s) will be granted to {selectedRoles.length} role(s), 
+                creating {selectedRoles.length * selectedPermissions.length} total permission assignment(s).
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setOpenAddDialog(false)} disabled={adding}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAddPermissions}
+            disabled={selectedRoles.length === 0 || selectedPermissions.length === 0 || adding}
+            startIcon={adding ? <CircularProgress size={20} /> : <Add />}
+          >
+            {adding ? 'Granting...' : 'Grant Permissions'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+        <DialogTitle sx={{ color: "error.main" }}>Confirm Permission Revocation</DialogTitle>
+        <DialogContent>
+          {permissionToDelete && (
+            <Typography>
+              Are you sure you want to revoke the permission "{permissionToDelete.permission}" from role "{permissionToDelete.role}"? 
+              This action cannot be undone.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => permissionToDelete && handleDeletePermission(permissionToDelete)}
+          >
+            Revoke Permission
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Delete Dialog */}
+      <Dialog open={openBulkDeleteDialog} onClose={() => setOpenBulkDeleteDialog(false)}>
+        <DialogTitle sx={{ color: "error.main" }}>Confirm Bulk Permission Revocation</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to revoke {selectedRolePermissions.length} selected permission{selectedRolePermissions.length !== 1 ? 's' : ''}? 
+            This action cannot be undone.
+          </Typography>
+          {selectedRolePermissions.length > 0 && (
+            <Box sx={{ mt: 2, maxHeight: 200, overflow: 'auto' }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Permissions to be revoked:
+              </Typography>
+              {selectedRolePermissions.slice(0, 5).map((rp, index) => (
+                <Typography key={index} variant="body2" sx={{ ml: 2 }}>
+                  • {rp.role} → {rp.permission}
+                </Typography>
+              ))}
+              {selectedRolePermissions.length > 5 && (
+                <Typography variant="body2" sx={{ ml: 2, fontStyle: 'italic' }}>
+                  ... and {selectedRolePermissions.length - 5} more
+                </Typography>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenBulkDeleteDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleBulkDelete}
+          >
+            Revoke {selectedRolePermissions.length} Permission{selectedRolePermissions.length !== 1 ? 's' : ''}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import CSV Dialog */}
+      <Dialog
+        open={openImportDialog}
+        onClose={() => setOpenImportDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+          }}
+        >
+          <CloudUpload />
+          Import Role Permissions from CSV
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Upload a CSV file with columns: <strong>role, permission</strong>
+          </Typography>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+            style={{ marginBottom: '16px' }}
+          />
+          {importFile && (
+            <Typography variant="body2" color="success.main">
+              Selected: {importFile.name}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleImportCSV}
+            disabled={!importFile || importing}
+            loading={importing}
+            startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
             sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+              },
             }}
           >
-            <CloudUpload />
-            Import Role Permissions from CSV
-          </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Upload a CSV file with columns: <strong>role, permission</strong>
-            </Typography>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-              style={{ marginBottom: '16px' }}
-            />
-            {importFile && (
-              <Typography variant="body2" color="success.main">
-                Selected: {importFile.name}
-              </Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
-            <Button
-              variant="contained"
-              onClick={handleImportCSV}
-              disabled={!importFile || importing}
-              startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
-              sx={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                "&:hover": {
-                  background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
-                },
-              }}
-            >
-              {importing ? 'Importing...' : 'Import'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
-    </Fade>
+            {importing ? 'Importing...' : 'Import'}
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 
-export default RolePermissions;
+export default RolePermissionsEnhanced;

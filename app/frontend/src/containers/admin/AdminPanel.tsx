@@ -3,28 +3,24 @@ import { useAuth, useAuthCheck } from "../../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
-  Typography,
-  Card,
-  Tabs,
-  Tab,
   Button,
+  Card,
+  CardContent,
   Container,
-  Paper,
-  Fade,
-  useTheme,
-  useMediaQuery,
   IconButton,
-  Drawer,
-  List,
   ListItem,
   ListItemIcon,
   ListItemText,
-  Divider,
-  Chip,
-  Stack,
+  Tabs,
+  Tab,
+  Typography,
   LinearProgress,
   Alert,
+  Drawer,
   Fab,
+  Stack,
+  alpha,
+  useTheme,
   Tooltip,
 } from "@mui/material";
 import {
@@ -36,62 +32,47 @@ import {
   MenuBook,
   Menu as MenuIcon,
   Close as CloseIcon,
-  AdminPanelSettings,
-  Home,
-  DarkMode,
-  LightMode,
-  Settings,
-  ViewModule,
+  Home as HomeIcon,
+  ArrowBack,
+  ChevronLeft,
+  Analytics as AnalyticsIcon,
 } from "@mui/icons-material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import BreadcrumbNavigation from "../../components/ui/BreadcrumbNavigation";
-import { useThemeMode } from "../../contexts/ThemeContext";
 import { useResponsive } from "../../lib/responsive-utils";
+import AdminDashboardCards from "./components/AdminDashboardCards";
 
+// Lazy‐loaded section components
 const Users = React.lazy(() => import("./components/Users"));
-const RolePermissions = React.lazy(
-  () => import("./components/RolePermissions"),
-);
 const UserRoles = React.lazy(() => import("./components/UserRoles"));
+const RolePermissions = React.lazy(() => import("./components/RolePermissions"));
 const SolrDatabase = React.lazy(() => import("./components/SolrDatabase"));
-const SolrDatabasePermissions = React.lazy(
-  () => import("./components/SolrDatabasePermissions"),
-);
-const SolrDatabaseInfo = React.lazy(
-  () => import("./components/SolrDatabaseInfo"),
-);
+const SolrDatabaseInfo = React.lazy(() => import("./components/SolrDatabaseInfo"));
+const SolrDatabasePermissions = React.lazy(() => import("./components/SolrDatabasePermissions"));
 const Dashboard = React.lazy(() => import("./components/dashboard"));
+const Analytics = React.lazy(() => import("./components/Analytics"));
 const PrecomputeNER = React.lazy(() => import("./components/PrecomputedNER"));
 const TokenizeSolr = React.lazy(() => import("./components/TokenizeSolr"));
-const ComputeWordEmbeddings = React.lazy(
-  () => import("./components/ComputeWordEmbeddings"),
-);
-const SystemConfiguration = React.lazy(
-  () => import("./components/SystemConfiguration"),
-);
+const ComputeWordEmbeddings = React.lazy(() => import("./components/ComputeWordEmbeddings"));
+const SystemConfiguration = React.lazy(() => import("./components/SystemConfiguration"));
 
-/**
- * Component displaying the Markdown-based system documentation.
- */
+// ReadMe tab component
 const ReadMeTab: React.FC = () => {
   const [content, setContent] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/docs/READMES.md")
-      .then((res) => {
-        if (!res.ok)
-          throw new Error(`Failed to fetch README: ${res.statusText}`);
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
         return res.text();
       })
-      .then((text) => {
+      .then(text => {
         setContent(text);
         setLoading(false);
       })
-      .catch((err) => {
-        console.error(err);
+      .catch(err => {
         setError(err.message);
         setLoading(false);
       });
@@ -99,704 +80,478 @@ const ReadMeTab: React.FC = () => {
 
   if (loading) {
     return (
-      <Box
-        sx={{
-          p: 4,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 2,
-        }}
-      >
-        <LinearProgress sx={{ width: "100%" }} />
-        <Typography>Loading Documentation...</Typography>
+      <Box sx={{ p: 4, textAlign: "center" }}>
+        <LinearProgress />
+        <Typography mt={2}>Loading documentation…</Typography>
       </Box>
     );
   }
-
   if (error) {
-    return (
-      <Alert severity="error" sx={{ m: 4 }}>
-        Error loading documentation: {error}
-      </Alert>
-    );
+    return <Alert severity="error">Error: {error}</Alert>;
   }
 
   return (
-    <Box
-      sx={{
-        p: { xs: 2, sm: 3, md: 4 },
-        ml: 0,
-        fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        fontSize: "16px",
-        lineHeight: 1.6,
-        color: "rgba(0, 0, 0, 0.87)",
-        maxWidth: "100%",
-        overflow: "auto",
-        "& h1": {
-          fontSize: "2rem",
-          mt: 4,
-          mb: 2,
-          pb: 1,
-          borderBottom: "1px solid #eaecef",
-          fontWeight: 600,
-          lineHeight: 1.25,
-          letterSpacing: "-0.01em",
-        },
-        "& h2": {
-          fontSize: "1.5rem",
-          mt: 3,
-          mb: 2,
-          pb: 0.5,
-          borderBottom: "1px solid #eaecef",
-          fontWeight: 600,
-          lineHeight: 1.25,
-          letterSpacing: "-0.01em",
-        },
-        "& h3": {
-          fontSize: "1.25rem",
-          mt: 3,
-          mb: 1.5,
-          fontWeight: 600,
-          lineHeight: 1.25,
-        },
-        "& a": {
-          color: "#0366d6",
-          textDecoration: "none",
-          "&:hover": {
-            textDecoration: "underline",
-          },
-        },
-        "& p": {
-          mt: 0,
-          mb: 1.5,
-          lineHeight: 1.6,
-        },
-        "& ul, & ol": {
-          mt: 0,
-          mb: 2,
-          paddingLeft: "2em",
-          "& li": {
-            mb: 0.5,
-          },
-        },
-        "& table": {
-          width: "100%",
-          borderCollapse: "collapse",
-          my: 2,
-          display: "block",
-          overflow: "auto",
-        },
-        "& th, & td": {
-          border: "1px solid #dfe2e5",
-          p: 1.5,
-        },
-        "& th": {
-          backgroundColor: "#f6f8fa",
-          fontWeight: 600,
-        },
-        "& pre": {
-          backgroundColor: "#f6f8fa",
-          borderRadius: 3,
-          fontSize: "0.85rem",
-          lineHeight: 1.45,
-          overflow: "auto",
-          p: 1.5,
-          mb: 2,
-          fontFamily:
-            'SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace',
-        },
-        "& :not(pre) > code": {
-          fontFamily:
-            'SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace',
-          backgroundColor: "rgba(27, 31, 35, 0.05)",
-          padding: "0.2em 0.4em",
-          borderRadius: 3,
-          fontSize: "85%",
-        },
-        "& blockquote": {
-          paddingLeft: 2,
-          marginLeft: 0,
-          marginRight: 0,
-          borderLeft: "0.25em solid #dfe2e5",
-          color: "#6a737d",
-        },
-        "& hr": {
-          height: "0.25em",
-          padding: 0,
-          margin: "24px 0",
-          backgroundColor: "#e1e4e8",
-          border: 0,
-        },
-        "& img": {
-          maxWidth: "100%",
-          boxSizing: "content-box",
-          backgroundColor: "#fff",
-        },
-      }}
-    >
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, maxHeight: "100%", overflow: "auto" }}>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </Box>
   );
 };
 
-/**
- * Component for linking to Swagger/OpenAPI API documentation.
- */
-const ApiDocumentation: React.FC = () => {
-  /**
-   * Opens Swagger UI in a new tab.
-   */
-  const handleOpenApiDocs = () => {
-    window.open("/swagger-ui/", "_blank");
-  };
+// API Documentation card
+const ApiDocumentation: React.FC = () => (
+  <Container maxWidth="md" sx={{ py: 4 }}>
+    <Card sx={{ textAlign: "center", p: 4 }}>
+      <MenuBook sx={{ fontSize: 80, color: "primary.main", mb: 3 }} />
+      <Typography variant="h4" fontWeight={600} gutterBottom>
+        API Documentation
+      </Typography>
+      <Typography color="text.secondary" paragraph>
+        Interactive Swagger UI for all endpoints.
+      </Typography>
+      <Button
+        variant="contained"
+        size="large"
+        onClick={() => window.open("/swagger-ui/", "_blank")}
+        sx={{
+          background: "linear-gradient(135deg,#667eea,#764ba2)",
+          "&:hover": { background: "linear-gradient(135deg,#5a6fd8,#6a4190)" },
+        }}
+      >
+        Open API Docs
+      </Button>
+    </Card>
+  </Container>
+);
 
+// SectionCard wrapper
+interface SectionCardProps {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  color?: "primary" | "secondary" | "success" | "warning" | "error" | "info";
+}
+const SectionCard: React.FC<SectionCardProps> = ({
+  title,
+  description,
+  icon,
+  children,
+  color = "primary",
+}) => {
+  const theme = useTheme();
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Card sx={{ textAlign: "center", p: 4 }}>
-        <MenuBook sx={{ fontSize: 80, color: "primary.main", mb: 3 }} />
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>
-          API Documentation
-        </Typography>
-        <Typography
-          variant="body1"
-          color="text.secondary"
-          paragraph
-          sx={{ mb: 4 }}
-        >
-          Access the complete API documentation with interactive endpoints using
-          Swagger UI. This documentation covers all available endpoints
-          organized into three main sections:
-        </Typography>
-
-        <Stack spacing={2} sx={{ mb: 4, textAlign: "left" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <People color="primary" />
-            <Typography variant="body1">
-              User Management API - accounts, roles, and permissions
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Storage color="primary" />
-            <Typography variant="body1">
-              Solr Administration API - database configurations and permissions
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Psychology color="primary" />
-            <Typography variant="body1">
-              HistText Core API - document search, metadata, and text analysis
-            </Typography>
-          </Box>
-        </Stack>
-
-        <Button
-          variant="contained"
-          size="large"
-          onClick={handleOpenApiDocs}
+    <Card sx={{ mb: 3, position: "relative", overflow: "hidden" }}>
+      <CardContent sx={{ p: 0 }}>
+        <Box
           sx={{
-            px: 4,
-            py: 1.5,
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
-            },
+            p: { xs: 2, sm: 3 },
+            background: `linear-gradient(135deg, ${alpha(
+              theme.palette[color].light,
+              0.1
+            )}, ${alpha(theme.palette[color].main, 0.05)})`,
+            borderBottom: "1px solid",
+            borderColor: "divider",
           }}
         >
-          Open API Documentation
-        </Button>
-      </Card>
-    </Container>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: "12px",
+                background: `linear-gradient(135deg, ${theme.palette[color].light}, ${theme.palette[color].main})`,
+                color: "#fff",
+              }}
+            >
+              {icon}
+            </Box>
+            <Box>
+              <Typography variant="h6" fontWeight={600}>
+                {title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {description}
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
+        <Box sx={{ p: { xs: 2, sm: 3 }, maxHeight: "70vh", overflow: "auto" }}>
+          {children}
+        </Box>
+      </CardContent>
+    </Card>
   );
 };
 
-/**
- * Main admin panel content component.
- * Handles tab selection, sidebar layout, and content rendering.
- */
-const AdminPanelContent: React.FC = () => {
+const AdminPanel: React.FC = () => {
   useAuthCheck();
   const auth = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
-  const { isMobile, isTablet } = useResponsive();
+  const { isMobile } = useResponsive();
   const isAdmin = auth.session?.hasRole("Admin");
-  const { darkMode, toggleDarkMode } = useThemeMode();
 
-  // State for tab selections and mobile drawer.
-  const [mainTab, setMainTab] = useState<number>(() => {
-    const storedTab = localStorage.getItem("adminMainTab");
-    return storedTab ? parseInt(storedTab, 10) : 0;
-  });
-  const [subTab, setSubTab] = useState<number>(0);
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [view, setView] = useState<"dashboard" | "section">("dashboard");
+  const [mainTab, setMainTab] = useState(0);
+  const [subTab, setSubTab] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  /**
-   * Handle selection of main navigation tab.
-   */
-  const handleMainTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setMainTab(newValue);
-    localStorage.setItem("adminMainTab", newValue.toString());
-    if (newValue !== 4) setSubTab(0);
-    if (isMobile) setMobileDrawerOpen(false);
-  };
-
-  /**
-   * Handle selection of subtabs within a section.
-   */
-  const handleSubTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setSubTab(newValue);
-  };
-
-  // Tab definitions for main navigation and subtabs.
   const mainTabs = [
-    { label: "Dashboard", icon: <DashboardIcon />, color: "primary" },
-    { label: "User Management", icon: <People />, color: "secondary" },
-    { label: "Data Management", icon: <Storage />, color: "success" },
-    { label: "System Configuration", icon: <Settings />, color: "error" },
-    { label: "NLP Tools", icon: <Psychology />, color: "warning" },
-    { label: "API Docs", icon: <MenuBook />, color: "info" },
+    { label: "Dashboard", icon: <DashboardIcon />, color: "primary" as const },
+    { label: "Analytics", icon: <AnalyticsIcon />, color: "info" as const },
+    { label: "Users", icon: <People />, color: "secondary" as const },
+    { label: "Data", icon: <Storage />, color: "success" as const },
+    { label: "Config", icon: <Security />, color: "error" as const },
+    { label: "NLP", icon: <Psychology />, color: "warning" as const },
+    { label: "API", icon: <MenuBook />, color: "warning" as const },
   ];
 
   const userSubTabs = [
     { label: "Users", component: Users },
-    { label: "User Roles", component: UserRoles },
-    { label: "Role Permissions", component: RolePermissions },
+    { label: "Roles", component: UserRoles },
+    { label: "Permissions", component: RolePermissions },
   ];
-
   const dataSubTabs = [
     { label: "Databases", component: SolrDatabase },
-    { label: "Database Info", component: SolrDatabaseInfo },
-    { label: "Database Permissions", component: SolrDatabasePermissions },
+    { label: "Info", component: SolrDatabaseInfo },
+    { label: "Permissions", component: SolrDatabasePermissions },
   ];
-
   const nlpSubTabs = [
-    { label: "Documentation", component: ReadMeTab },
-    { label: "Named Entity Recognition", component: PrecomputeNER },
-    { label: "Tokenization", component: TokenizeSolr },
-    { label: "Word Embeddings", component: ComputeWordEmbeddings },
+    { label: "Docs", component: ReadMeTab },
+    { label: "NER", component: PrecomputeNER },
+    { label: "Tokenize", component: TokenizeSolr },
+    { label: "Embeddings", component: ComputeWordEmbeddings },
   ];
 
-  // Authentication checks
-  if (!auth.session) {
+  const goSection = (index: number) => {
+    setMainTab(index);
+    setSubTab(0);
+    setView("section");
+    if (isMobile) setDrawerOpen(false);
+  };
+  const backToDashboard = () => setView("dashboard");
+  const toggleSidebar = () => setSidebarOpen(open => !open);
+  const toggleDrawer = () => setDrawerOpen(open => !open);
+
+  const ModernSidebar = ({
+    variant = "permanent",
+  }: {
+    variant?: "permanent" | "temporary";
+  }) => {
+    const width = variant === "permanent"
+      ? (sidebarOpen ? 280 : 72)
+      : 280;
+
     return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
-        <Paper
+      <Box
+        sx={{
+          width,
+          bgcolor: "background.paper",
+          borderRight: variant === "permanent" ? "1px solid" : "none",
+          borderColor: "divider",
+          transition: theme.transitions.create("width", {
+            duration: theme.transitions.duration.standard,
+          }),
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Box
           sx={{
-            p: 6,
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            color: "white",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: sidebarOpen ? "space-between" : "center",
+            p: 2,
+            background: "linear-gradient(135deg,#667eea,#764ba2)",
+            color: "#fff",
           }}
         >
-          <LinearProgress sx={{ mb: 3 }} />
-          <Typography variant="h5" gutterBottom>
-            Loading...
-          </Typography>
-          <Typography variant="body1">Checking authentication...</Typography>
-        </Paper>
-      </Container>
+          <Stack direction="row" alignItems="center" spacing={sidebarOpen ? 1 : 0}>
+            <Tooltip title="Admin Home">
+              <IconButton
+                onClick={() => {
+                  backToDashboard();
+                  navigate("/admin");
+                }}
+                sx={{ color: "#fff" }}
+              >
+                <HomeIcon />
+              </IconButton>
+            </Tooltip>
+            {sidebarOpen && (
+              <Button
+                variant="text"
+                color="inherit"
+                onClick={() => {
+                  backToDashboard();
+                  navigate("/admin");
+                }}
+                sx={{ textTransform: "none", fontWeight: 700 }}
+              >
+                Administration Panel
+              </Button>
+            )}
+          </Stack>
+          <Tooltip title={sidebarOpen ? "Collapse" : "Expand"}>
+            <IconButton
+              onClick={toggleSidebar}
+              sx={{
+                transform: sidebarOpen ? "rotate(0deg)" : "rotate(180deg)",
+                transition: "transform .3s",
+                color: "#fff",
+              }}
+            >
+              <ChevronLeft />
+            </IconButton>
+          </Tooltip>
+        </Box>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 1 }}>
+          {mainTabs.map((tab, idx) => (
+            <Tooltip
+              key={idx}
+              title={sidebarOpen ? "" : tab.label}
+              placement="right"
+              disableHoverListener={sidebarOpen}
+            >
+              <ListItem
+                button
+                onClick={() => goSection(idx)}
+                sx={{
+                  borderRadius: 2,
+                  bgcolor: mainTab === idx ? `${tab.color}.main` : "transparent",
+                  color: mainTab === idx ? `${tab.color}.contrastText` : "text.primary",
+                  px: sidebarOpen ? 2 : 1,
+                  justifyContent: sidebarOpen ? "flex-start" : "center",
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    color: "inherit",
+                    minWidth: sidebarOpen ? 40 : "auto",
+                    justifyContent: "center",
+                  }}
+                >
+                  {tab.icon}
+                </ListItemIcon>
+                {sidebarOpen && <ListItemText primary={tab.label} />}
+              </ListItem>
+            </Tooltip>
+          ))}
+        </Box>
+      </Box>
     );
-  }
+  };
 
-  if (!isAdmin) {
+  if (!auth.session)
     return (
-      <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
-        <Paper
-          sx={{
-            p: 6,
-            background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-            color: "white",
-          }}
-        >
-          <Security sx={{ fontSize: 80, mb: 3, opacity: 0.8 }} />
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>
-            Access Denied
-          </Typography>
-          <Typography variant="body1">
-            You need administrator privileges to access this panel.
-          </Typography>
-        </Paper>
+      <Container sx={{ textAlign: "center", p: 4 }}>
+        <LinearProgress sx={{ mb: 2 }} />
+        <Typography>Checking authentication…</Typography>
       </Container>
     );
-  }
+  if (!isAdmin)
+    return (
+      <Container sx={{ textAlign: "center", p: 4 }}>
+        <Security sx={{ fontSize: 80, color: theme.palette.error.main }} />
+        <Typography variant="h5">Access Denied</Typography>
+      </Container>
+    );
 
-  /**
-   * Renders the main panel content depending on the current tab.
-   */
-  const renderContent = () => {
+  const renderSection = () => {
     switch (mainTab) {
       case 0:
         return (
-          <Suspense fallback={<LinearProgress />}>
-            <Dashboard />
-          </Suspense>
+          <SectionCard
+            title="System Dashboard"
+            description="Live monitoring and analytics"
+            icon={<DashboardIcon />}
+            color="primary"
+          >
+            <Suspense fallback={<LinearProgress />}>
+              <Dashboard />
+            </Suspense>
+          </SectionCard>
         );
-
       case 1:
         return (
-          <Box>
+          <SectionCard
+            title="Analytics Dashboard"
+            description="Comprehensive insights & metrics"
+            icon={<AnalyticsIcon />}
+            color="info"
+          >
+            <Suspense fallback={<LinearProgress />}>
+              <Analytics />
+            </Suspense>
+          </SectionCard>
+        );
+      case 2:
+        return (
+          <SectionCard
+            title="User Management"
+            description="Users, roles & permissions"
+            icon={<People />}
+            color="secondary"
+          >
             <Tabs
               value={subTab}
-              onChange={handleSubTabChange}
+              onChange={(_, v) => setSubTab(v)}
               variant={isMobile ? "scrollable" : "fullWidth"}
-              scrollButtons="auto"
-              sx={{
-                mb: 3,
-                "& .MuiTab-root": {
-                  textTransform: "none",
-                  fontWeight: 600,
-                },
-              }}
+              sx={{ mb: 2 }}
             >
-              {userSubTabs.map((tab, index) => (
-                <Tab key={index} label={tab.label} />
+              {userSubTabs.map((t, i) => (
+                <Tab key={i} label={t.label} />
               ))}
             </Tabs>
             <Suspense fallback={<LinearProgress />}>
               {React.createElement(userSubTabs[subTab].component)}
             </Suspense>
-          </Box>
+          </SectionCard>
         );
-
-      case 2:
+      case 3:
         return (
-          <Box>
+          <SectionCard
+            title="Data Management"
+            description="Databases & access"
+            icon={<Storage />}
+            color="success"
+          >
             <Tabs
               value={subTab}
-              onChange={handleSubTabChange}
+              onChange={(_, v) => setSubTab(v)}
               variant={isMobile ? "scrollable" : "fullWidth"}
-              scrollButtons="auto"
-              sx={{
-                mb: 3,
-                "& .MuiTab-root": {
-                  textTransform: "none",
-                  fontWeight: 600,
-                },
-              }}
+              sx={{ mb: 2 }}
             >
-              {dataSubTabs.map((tab, index) => (
-                <Tab key={index} label={tab.label} />
+              {dataSubTabs.map((t, i) => (
+                <Tab key={i} label={t.label} />
               ))}
             </Tabs>
             <Suspense fallback={<LinearProgress />}>
               {React.createElement(dataSubTabs[subTab].component)}
             </Suspense>
-          </Box>
+          </SectionCard>
         );
-
-      case 3:
-        return (
-          <Suspense fallback={<LinearProgress />}>
-            <SystemConfiguration />
-          </Suspense>
-        );
-
       case 4:
         return (
-          <Box>
+          <SectionCard
+            title="System Configuration"
+            description="Global settings & options"
+            icon={<Security />}
+            color="error"
+          >
+            <Suspense fallback={<LinearProgress />}>
+              <SystemConfiguration />
+            </Suspense>
+          </SectionCard>
+        );
+      case 5:
+        return (
+          <SectionCard
+            title="NLP Tools"
+            description="Text analysis utilities"
+            icon={<Psychology />}
+            color="warning"
+          >
             <Tabs
               value={subTab}
-              onChange={handleSubTabChange}
-              variant={isMobile ? "scrollable" : "fullWidth"}
-              scrollButtons="auto"
-              sx={{
-                mb: 3,
-                "& .MuiTab-root": {
-                  textTransform: "none",
-                  fontWeight: 600,
-                },
-              }}
+              onChange={(_, v) => setSubTab(v)}
+              variant={isMobile ? "scrollable" : "fullWidth"}  
+              sx={{ mb: 2 }}
             >
-              {nlpSubTabs.map((tab, index) => (
-                <Tab key={index} label={tab.label} />
+              {nlpSubTabs.map((t, i) => (
+                <Tab key={i} label={t.label} />
               ))}
             </Tabs>
             <Suspense fallback={<LinearProgress />}>
               {React.createElement(nlpSubTabs[subTab].component)}
             </Suspense>
-          </Box>
+          </SectionCard>
         );
-
-      case 5:
-        return <ApiDocumentation />;
-
+      case 6:
+        return (
+          <SectionCard
+            title="API Documentation"
+            description="Interactive API explorer"
+            icon={<MenuBook />}
+            color="info"
+          >
+            <ApiDocumentation />
+          </SectionCard>
+        );
       default:
         return null;
     }
   };
 
-  // Sidebar (drawer or permanent) navigation content
-  const sidebarContent = (
-    <Box
-      sx={{
-        width: isMobile ? 280 : isTablet ? 260 : 280,
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: "background.paper",
-        color: "text.primary",
-      }}
-    >
-      <Box
-        sx={{
-          p: { xs: 2, sm: 3 },
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          color: "white",
-          textAlign: "center",
-        }}
-      >
-        <AdminPanelSettings sx={{ 
-          fontSize: { xs: 40, sm: 48 }, 
-          mb: 1, 
-          opacity: 0.9 
-        }} />
-        <Typography 
-          variant={isMobile ? "subtitle1" : "h6"} 
-          sx={{ 
-            fontWeight: 700, 
-            mb: 0.5,
-            fontSize: { xs: '1.125rem', sm: '1.25rem' }
-          }}
-        >
-          {isMobile ? "Admin" : "Admin Panel"}
-        </Typography>
-        {!isMobile && (
-          <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            System administration and configuration
-          </Typography>
-        )}
-      </Box>
-
-      <List sx={{ flex: 1, py: { xs: 1.5, sm: 2 }, px: 1 }}>
-        {mainTabs.map((tab, index) => (
-          <ListItem
-            key={index}
-            onClick={() =>
-              handleMainTabChange({} as React.SyntheticEvent, index)
-            }
-            sx={{
-              cursor: "pointer",
-              borderRadius: 3,
-              mx: 1,
-              my: 0.5,
-              p: { xs: 1.25, sm: 1.5 },
-              minHeight: { xs: 48, sm: 56 },
-              background:
-                mainTab === index
-                  ? `linear-gradient(135deg, ${(theme.palette as any)[tab.color]?.main || theme.palette.primary.main} 0%, ${(theme.palette as any)[tab.color]?.dark || theme.palette.primary.dark} 100%)`
-                  : "transparent",
-              color: mainTab === index ? "white" : "text.primary",
-              boxShadow:
-                mainTab === index ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
-              "&:hover": {
-                background:
-                  mainTab === index
-                    ? `linear-gradient(135deg, ${(theme.palette as any)[tab.color]?.dark || theme.palette.primary.dark} 0%, ${(theme.palette as any)[tab.color]?.main || theme.palette.primary.main} 100%)`
-                    : `linear-gradient(135deg, ${(theme.palette as any)[tab.color]?.light || theme.palette.primary.light} 0%, ${(theme.palette as any)[tab.color]?.main || theme.palette.primary.main} 100%)`,
-                color: "white",
-                transform: "translateY(-2px)",
-                boxShadow: `0 8px 25px rgba(${((theme.palette as any)[tab.color]?.main || theme.palette.primary.main).slice(4, -1)}, 0.3)`,
-              },
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          >
-            <ListItemIcon
-              sx={{
-                color: "inherit",
-                minWidth: { xs: 40, sm: 48 },
-                "& .MuiSvgIcon-root": {
-                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
-                  filter:
-                    mainTab === index
-                      ? "drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
-                      : "none",
-                },
-              }}
-            >
-              {tab.icon}
-            </ListItemIcon>
-            <ListItemText
-              primary={isMobile && tab.label.length > 12 ? 
-                tab.label.split(' ')[0] : tab.label}
-              primaryTypographyProps={{
-                fontWeight: mainTab === index ? 700 : 600,
-                fontSize: { xs: "0.875rem", sm: "0.95rem" },
-              }}
-            />
-            {mainTab === index && !isMobile && (
-              <Chip
-                size="small"
-                label="Active"
-                sx={{
-                  bgcolor: "rgba(255,255,255,0.25)",
-                  color: "white",
-                  fontWeight: 600,
-                  fontSize: "0.7rem",
-                }}
-              />
-            )}
-          </ListItem>
-        ))}
-      </List>
-
-      <Divider sx={{ mx: 2 }} />
-
-      <Box sx={{ p: 2, textAlign: "center" }}>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ fontWeight: 500 }}
-        >
-          HistText Admin v2.0
-        </Typography>
-      </Box>
-    </Box>
-  );
-
   return (
-    <Box
-      sx={{
-        display: "flex",
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        position: "relative",
-      }}
-    >
-      {/* Layout Toggle FAB */}
-      <Tooltip title="Switch to Enhanced Layout">
+    <Box sx={{ display: "flex", width: "100%", height: "100vh", bgcolor: "background.default" }}>
+      {!isMobile && <ModernSidebar variant="permanent" />}
+      {isMobile && (
+        <Drawer
+          variant="temporary"
+          open={drawerOpen}
+          onClose={toggleDrawer}
+          ModalProps={{ keepMounted: true }}
+          sx={{ "& .MuiDrawer-paper": { width: 280 } }}
+        >
+          <ModernSidebar variant="temporary" />
+        </Drawer>
+      )}
+      {isMobile && (
         <Fab
-          size="small"
-          onClick={() => navigate('/Admin')}
+          onClick={toggleDrawer}
+          size="medium"
           sx={{
             position: 'fixed',
-            top: { xs: 20, sm: 24 },
-            right: { xs: 20, sm: 24 },
-            zIndex: 1000,
-            bgcolor: 'primary.main',
-            color: 'white',
-            '&:hover': { bgcolor: 'primary.dark' },
+            top: { xs: 16, sm: 20 },
+            left: { xs: 16, sm: 20 },
+            zIndex: theme.zIndex.speedDial + 1,
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            transition: theme.transitions.create(['transform', 'box-shadow'], {
+              duration: theme.transitions.duration.short,
+            }),
+            '&:hover': {
+              transform: 'scale(1.05)',
+              boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
+            },
+            '&:active': {
+              transform: 'scale(0.95)',
+            },
           }}
         >
-          <ViewModule />
+          {drawerOpen ? <CloseIcon /> : <MenuIcon />}
         </Fab>
-      </Tooltip>
-      {isMobile ? (
-        <>
-          <Fab
-            onClick={() => setMobileDrawerOpen(true)}
-            size="medium"
-            sx={{
-              position: "fixed",
-              top: isMobile ? 76 : 16, // Position below main app menu FAB
-              left: isMobile ? 16 : 16,
-              zIndex: 1001, // Higher than main app FAB
-              bgcolor: "secondary.main",
-              color: "white",
-              "&:hover": { bgcolor: "secondary.dark" },
-            }}
-          >
-            <AdminPanelSettings />
-          </Fab>
-
-          <Drawer
-            anchor="left"
-            open={mobileDrawerOpen}
-            onClose={() => setMobileDrawerOpen(false)}
-            ModalProps={{ keepMounted: true }}
-            sx={{
-              "& .MuiDrawer-paper": {
-                bgcolor: "background.paper",
-              },
-            }}
-          >
-            <Box sx={{ display: "flex", justifyContent: "flex-end", p: 1 }}>
-              <IconButton onClick={() => setMobileDrawerOpen(false)}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-            {sidebarContent}
-          </Drawer>
-        </>
-      ) : (
-        <Paper
-          elevation={1}
-          sx={{
-            bgcolor: "background.paper",
-            borderRadius: 0,
-            borderRight: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          {sidebarContent}
-        </Paper>
       )}
-
       <Box
         component="main"
         sx={{
-          flex: 1,
+          flexGrow: 1,
+          width: isMobile
+            ? "100%"
+            : `calc(100% - ${sidebarOpen ? 280 : 72}px)`,
+          transition: theme.transitions.create("width", {
+            duration: theme.transitions.duration.standard,
+          }),
           overflow: "auto",
-          pt: isMobile ? 10 : 0, // Account for admin FAB position
-          px: { xs: 1, sm: 0 },
-          bgcolor: "background.default",
-          minHeight: "100vh",
+          p: { xs: 1, sm: 2, md: 3 },
+          height: '100vh'
         }}
       >
-        <Container 
-          maxWidth="xl" 
-          sx={{ 
-            py: { xs: 2, sm: 4 },
-            px: { xs: 1, sm: 3 }
-          }}
-        >
-          <Fade in={true} timeout={500}>
-            <Paper
-              elevation={0}
-              sx={{
-                bgcolor: "background.paper",
-                borderRadius: { xs: 2, sm: 4 },
-                p: { xs: 2, sm: 3 },
-                minHeight: "calc(100vh - 8rem)",
-                border: 1,
-                borderColor: "divider",
-              }}
-            >
-              <BreadcrumbNavigation 
-                darkMode={darkMode}
-                items={[
-                  {
-                    label: 'Home',
-                    path: '/',
-                    icon: <Home fontSize="small" />,
-                  },
-                  {
-                    label: 'Admin Panel',
-                    icon: <AdminPanelSettings fontSize="small" />,
-                  },
-                  {
-                    label: mainTabs[mainTab]?.label || 'Dashboard',
-                    icon: mainTabs[mainTab]?.icon || <DashboardIcon fontSize="small" />,
-                    current: true,
-                  },
-                ]}
-              />
-              {renderContent()}
-            </Paper>
-          </Fade>
-        </Container>
+        {view === "section" && (
+          <Box sx={{ mb: 2, display: "flex", alignItems: "center" }}>
+            <Button startIcon={<ArrowBack />} onClick={backToDashboard}>
+              Back to Home
+            </Button>
+          </Box>
+        )}
+        {view === "dashboard"
+          ? <AdminDashboardCards onNavigate={goSection} />
+          : renderSection()
+        }
       </Box>
     </Box>
   );
-};
-
-/**
- * Main admin panel component.
- * Uses the global app theme instead of separate admin theme.
- */
-const AdminPanel: React.FC = () => {
-  return <AdminPanelContent />;
 };
 
 export default AdminPanel;
