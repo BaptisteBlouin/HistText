@@ -722,15 +722,20 @@ const AdminPanelEnhanced: React.FC = () => {
           size="medium"
           sx={{
             position: 'fixed',
-            top: 20,
-            left: 20,
-            zIndex: theme.zIndex.speedDial,
+            top: { xs: 16, sm: 20 },
+            left: { xs: 16, sm: 20 },
+            zIndex: theme.zIndex.speedDial + 1,
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
             transition: theme.transitions.create(['transform', 'box-shadow'], {
               duration: theme.transitions.duration.short,
             }),
             '&:hover': {
-              transform: 'scale(1.1)',
+              transform: 'scale(1.05)',
               boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
+            },
+            '&:active': {
+              transform: 'scale(0.95)',
             },
           }}
         >
