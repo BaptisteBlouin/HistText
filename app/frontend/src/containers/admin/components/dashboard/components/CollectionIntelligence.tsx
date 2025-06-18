@@ -47,6 +47,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../../../../hooks/useAuth';
 import { UserList } from '../../../../../components/ui';
+import { useResponsive } from '../../../../../lib/responsive-utils';
 
 interface CollectionUsageMetrics {
   collection_name: string;
@@ -147,6 +148,7 @@ const CollectionIntelligence: React.FC<CollectionIntelligenceProps> = ({
   isVisible,
 }) => {
   const theme = useTheme();
+  const { isMobile } = useResponsive();
   const { accessToken } = useAuth();
   const [intelligence, setIntelligence] = useState<CollectionIntelligence | null>(null);
   const [loading, setLoading] = useState(false);
@@ -473,29 +475,29 @@ const CollectionIntelligence: React.FC<CollectionIntelligenceProps> = ({
                       All collections are well-utilized. No optimization opportunities identified.
                     </Alert>
                   )}
-                </AccordionDetails>
-              </Accordion>
+                  </AccordionDetails>
+                </Accordion>
 
-              {/* Capacity Planning & Growth */}
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <TrendingUp color="info" />
-                    Capacity Planning & Growth Projections
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Grid container spacing={3}>
+                {/* Capacity Planning & Growth */}
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant={isMobile ? 'subtitle1' : 'h6'} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <TrendingUp color="info" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
+                      {isMobile ? 'Capacity Planning' : 'Capacity Planning & Growth Projections'}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={{ xs: 2, sm: 3 }}>
                     {/* Current Resource Allocation */}
                     <Grid item xs={12} md={6}>
                       <Typography variant="subtitle1" sx={{ mb: 2 }}>
                         <Memory sx={{ mr: 1, verticalAlign: 'middle' }} />
                         Current Resource Allocation
                       </Typography>
-                      <Stack spacing={2}>
-                        <Paper sx={{ p: 2 }}>
+                      <Stack spacing={{ xs: 1.5, sm: 2 }}>
+                        <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
                           <Typography variant="subtitle2">Storage</Typography>
-                          <Typography variant="h5" color="primary.main">
+                          <Typography variant={isMobile ? 'h6' : 'h5'} color="primary.main">
                             {formatBytes(intelligence.resource_allocation.current_allocation.total_storage_gb)}
                           </Typography>
                           <LinearProgress
@@ -504,19 +506,19 @@ const CollectionIntelligence: React.FC<CollectionIntelligenceProps> = ({
                             color={intelligence.resource_allocation.capacity_planning.current_capacity_utilization > 80 ? 'error' : 'primary'}
                             sx={{ mt: 1 }}
                           />
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant={isMobile ? 'caption' : 'body2'} color="text.secondary">
                             {intelligence.resource_allocation.capacity_planning.current_capacity_utilization.toFixed(1)}% utilized
                           </Typography>
                         </Paper>
-                        <Paper sx={{ p: 2 }}>
+                        <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
                           <Typography variant="subtitle2">Memory</Typography>
-                          <Typography variant="h5" color="secondary.main">
+                          <Typography variant={isMobile ? 'h6' : 'h5'} color="secondary.main">
                             {intelligence.resource_allocation.current_allocation.total_memory_gb.toFixed(1)} GB
                           </Typography>
                         </Paper>
-                        <Paper sx={{ p: 2 }}>
+                        <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
                           <Typography variant="subtitle2">CPU Cores</Typography>
-                          <Typography variant="h5" color="success.main">
+                          <Typography variant={isMobile ? 'h6' : 'h5'} color="success.main">
                             {intelligence.resource_allocation.current_allocation.total_cpu_cores}
                           </Typography>
                         </Paper>
@@ -529,41 +531,41 @@ const CollectionIntelligence: React.FC<CollectionIntelligenceProps> = ({
                         <Schedule sx={{ mr: 1, verticalAlign: 'middle' }} />
                         Growth Projections
                       </Typography>
-                      <Stack spacing={2}>
-                        <Paper sx={{ p: 2 }}>
+                      <Stack spacing={{ xs: 1.5, sm: 2 }}>
+                        <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
                           <Typography variant="subtitle2" sx={{ mb: 1 }}>Storage Needs</Typography>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="body2">3 Months</Typography>
-                            <Typography variant="body2" color="primary.main">
+                            <Typography variant={isMobile ? 'caption' : 'body2'}>3 Months</Typography>
+                            <Typography variant={isMobile ? 'caption' : 'body2'} color="primary.main" sx={{ fontWeight: 600 }}>
                               {formatBytes(intelligence.resource_allocation.capacity_planning.projected_capacity_needs.storage_needs_3m)}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="body2">6 Months</Typography>
-                            <Typography variant="body2" color="warning.main">
+                            <Typography variant={isMobile ? 'caption' : 'body2'}>6 Months</Typography>
+                            <Typography variant={isMobile ? 'caption' : 'body2'} color="warning.main" sx={{ fontWeight: 600 }}>
                               {formatBytes(intelligence.resource_allocation.capacity_planning.projected_capacity_needs.storage_needs_6m)}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2">12 Months</Typography>
-                            <Typography variant="body2" color="error.main">
+                            <Typography variant={isMobile ? 'caption' : 'body2'}>12 Months</Typography>
+                            <Typography variant={isMobile ? 'caption' : 'body2'} color="error.main" sx={{ fontWeight: 600 }}>
                               {formatBytes(intelligence.resource_allocation.capacity_planning.projected_capacity_needs.storage_needs_12m)}
                             </Typography>
                           </Box>
                         </Paper>
                         
-                        <Paper sx={{ p: 2 }}>
+                        <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
                           <Typography variant="subtitle2" sx={{ mb: 2 }}>Usage Growth Trends</Typography>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="body2">Query Volume Growth</Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 0.5, sm: 0 } }}>
+                            <Typography variant={isMobile ? 'caption' : 'body2'}>Query Volume Growth</Typography>
                             <Chip
                               label={`+${intelligence.growth_projections.usage_growth_trends.query_volume_growth.toFixed(1)}%`}
                               size="small"
                               color="info"
                             />
                           </Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2">User Base Growth</Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 0.5, sm: 0 } }}>
+                            <Typography variant={isMobile ? 'caption' : 'body2'}>User Base Growth</Typography>
                             <Chip
                               label={`+${intelligence.growth_projections.usage_growth_trends.user_base_growth.toFixed(1)}%`}
                               size="small"
@@ -572,12 +574,12 @@ const CollectionIntelligence: React.FC<CollectionIntelligenceProps> = ({
                           </Box>
                         </Paper>
 
-                        <Paper sx={{ p: 2 }}>
+                        <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
                           <Typography variant="subtitle2" sx={{ mb: 1 }}>12-Month Projection</Typography>
-                          <Typography variant="h5" color="info.main">
+                          <Typography variant={isMobile ? 'h6' : 'h5'} color="info.main">
                             {formatBytes(intelligence.growth_projections.data_growth_trends.projected_total_size_12m)}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant={isMobile ? 'caption' : 'body2'} color="text.secondary">
                             Projected total system size
                           </Typography>
                         </Paper>
@@ -587,34 +589,34 @@ const CollectionIntelligence: React.FC<CollectionIntelligenceProps> = ({
                 </AccordionDetails>
               </Accordion>
 
-              {/* Health Assessment */}
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <HealthAndSafety color="success" />
-                    Collection Health Assessment
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Grid container spacing={3}>
+                {/* Health Assessment */}
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant={isMobile ? 'subtitle1' : 'h6'} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <HealthAndSafety color="success" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
+                      {isMobile ? 'Health Assessment' : 'Collection Health Assessment'}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={{ xs: 2, sm: 3 }}>
                     {/* Health Trends */}
                     <Grid item xs={12} md={4}>
                       <Typography variant="subtitle1" sx={{ mb: 2 }}>Health Trends</Typography>
-                      <Stack spacing={2}>
-                        <Paper sx={{ p: 2 }}>
+                      <Stack spacing={{ xs: 1.5, sm: 2 }}>
+                        <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
                           <Typography variant="subtitle2">7-Day Trend</Typography>
                           <Typography 
-                            variant="h5" 
+                            variant={isMobile ? 'h6' : 'h5'} 
                             color={intelligence.health_assessment.health_trends.health_score_trend_7d > 0 ? 'success.main' : 'error.main'}
                           >
                             {intelligence.health_assessment.health_trends.health_score_trend_7d > 0 ? '+' : ''}
                             {intelligence.health_assessment.health_trends.health_score_trend_7d.toFixed(1)}
                           </Typography>
                         </Paper>
-                        <Paper sx={{ p: 2 }}>
+                        <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
                           <Typography variant="subtitle2">30-Day Trend</Typography>
                           <Typography 
-                            variant="h5" 
+                            variant={isMobile ? 'h6' : 'h5'} 
                             color={intelligence.health_assessment.health_trends.health_score_trend_30d > 0 ? 'success.main' : 'error.main'}
                           >
                             {intelligence.health_assessment.health_trends.health_score_trend_30d > 0 ? '+' : ''}
@@ -630,13 +632,20 @@ const CollectionIntelligence: React.FC<CollectionIntelligenceProps> = ({
                         <CheckCircle sx={{ mr: 1, verticalAlign: 'middle' }} />
                         Improving Collections
                       </Typography>
-                      <Stack spacing={1}>
+                      <Stack spacing={1} sx={{ flexWrap: 'wrap' }}>
                         {intelligence.health_assessment.health_trends.improving_collections.length > 0 ? (
                           intelligence.health_assessment.health_trends.improving_collections.map((collection, index) => (
-                            <Chip key={index} label={collection} color="success" variant="outlined" />
+                            <Chip 
+                              key={index} 
+                              label={collection} 
+                              color="success" 
+                              variant="outlined" 
+                              size={isMobile ? 'small' : 'medium'}
+                              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                            />
                           ))
                         ) : (
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant={isMobile ? 'caption' : 'body2'} color="text.secondary">
                             No collections showing improvement
                           </Typography>
                         )}
@@ -649,13 +658,20 @@ const CollectionIntelligence: React.FC<CollectionIntelligenceProps> = ({
                         <BugReport sx={{ mr: 1, verticalAlign: 'middle' }} />
                         Attention Needed
                       </Typography>
-                      <Stack spacing={1}>
+                      <Stack spacing={1} sx={{ flexWrap: 'wrap' }}>
                         {intelligence.health_assessment.health_trends.degrading_collections.length > 0 ? (
                           intelligence.health_assessment.health_trends.degrading_collections.map((collection, index) => (
-                            <Chip key={index} label={collection} color="error" variant="outlined" />
+                            <Chip 
+                              key={index} 
+                              label={collection} 
+                              color="error" 
+                              variant="outlined" 
+                              size={isMobile ? 'small' : 'medium'}
+                              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                            />
                           ))
                         ) : (
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant={isMobile ? 'caption' : 'body2'} color="text.secondary">
                             No collections need attention
                           </Typography>
                         )}
@@ -663,18 +679,18 @@ const CollectionIntelligence: React.FC<CollectionIntelligenceProps> = ({
                     </Grid>
                   </Grid>
                 </AccordionDetails>
-              </Accordion>
+                </Accordion>
 
-              <Box sx={{ mt: 2, textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">
-                  Last updated: {formatTimestamp(intelligence.last_updated)}
-                </Typography>
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Last updated: {new Date(intelligence.last_updated * 1000).toLocaleString()}
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          )}
-        </Collapse>
-      </CardContent>
-    </Card>
+            )}
+          </Collapse>
+        </CardContent>
+      </Card>
   );
 };
 

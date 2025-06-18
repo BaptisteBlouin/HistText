@@ -52,7 +52,6 @@ import {
 } from "@mui/icons-material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import BreadcrumbNavigation from "../../components/ui/BreadcrumbNavigation";
 import { useThemeMode } from "../../contexts/ThemeContext";
 import { useResponsive } from "../../lib/responsive-utils";
 import AdminDashboardCards from "./components/AdminDashboardCards";
@@ -250,6 +249,7 @@ const AdminPanelEnhanced: React.FC = () => {
   const [mainTab, setMainTab] = useState<number>(0);
   const [subTab, setSubTab] = useState<number>(0);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Tab definitions
   const mainTabs = [
@@ -285,11 +285,205 @@ const AdminPanelEnhanced: React.FC = () => {
     setMainTab(section);
     setSubTab(subsection || 0);
     setCurrentView('section');
+    if (isMobile) {
+      setMobileDrawerOpen(false);
+    }
   };
 
   const handleBackToDashboard = () => {
     setCurrentView('dashboard');
   };
+
+  const handleToggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const handleMobileDrawerToggle = () => {
+    setMobileDrawerOpen(!mobileDrawerOpen);
+  };
+
+  // Modern Sidebar Component
+  const ModernSidebar = ({ variant = 'permanent' }: { variant?: 'permanent' | 'temporary' }) => (
+    <Box
+      sx={{
+        width: variant === 'permanent' ? (sidebarOpen ? { xs: 280, sm: 280, md: 300 } : { xs: 72, sm: 72, md: 80 }) : { xs: 280, sm: 300 },
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+        borderRight: variant === 'permanent' ? '1px solid' : 'none',
+        borderColor: 'divider',
+        transition: theme.transitions.create('width', {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.enteringScreen,
+        }),
+        overflow: 'hidden',
+        maxWidth: { xs: '85vw', sm: '400px' },
+        minWidth: variant === 'permanent' ? (sidebarOpen ? { xs: 260, sm: 280 } : { xs: 60, sm: 72 }) : { xs: 260, sm: 280 },
+      }}
+    >
+      {/* Sidebar Header */}
+      <Box
+        sx={{
+          p: sidebarOpen ? { xs: 2, sm: 2.5, md: 3 } : { xs: 1, sm: 1.25, md: 1.5 },
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          gap: { xs: 1, sm: 1.5, md: 2 },
+          minHeight: { xs: 60, sm: 70, md: 80 },
+          flexShrink: 0,
+        }}
+      >
+        <AdminPanelSettings sx={{ 
+          fontSize: sidebarOpen ? { xs: 28, sm: 32, md: 40 } : { xs: 24, sm: 28, md: 32 } 
+        }} />
+        {sidebarOpen && (
+          <Box sx={{ overflow: 'hidden' }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700, 
+                lineHeight: 1,
+                fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }
+              }}
+            >
+              Admin Panel
+            </Typography>
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                opacity: 0.8,
+                fontSize: { xs: '0.6875rem', sm: '0.75rem' }
+              }}
+            >
+              System Management
+            </Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* Navigation Menu */}
+      <Box sx={{ flex: 1, py: { xs: 1, sm: 1.5, md: 2 }, overflow: 'auto' }}>
+        <List sx={{ px: { xs: 0.5, sm: 1 } }}>
+          {mainTabs.map((tab, index) => (
+            <Tooltip
+              key={index}
+              title={sidebarOpen ? '' : tab.label}
+              placement="right"
+              disableHoverListener={sidebarOpen}
+            >
+              <ListItem
+                button
+                onClick={() => handleNavigateToSection(index)}
+                sx={{
+                  mx: { xs: 0.5, sm: 1 },
+                  mb: { xs: 0.25, sm: 0.5 },
+                  borderRadius: { xs: 1.5, sm: 2 },
+                  bgcolor: mainTab === index ? `${tab.color}.light` : 'transparent',
+                  color: mainTab === index ? `${tab.color}.contrastText` : 'text.primary',
+                  '&:hover': {
+                    bgcolor: mainTab === index ? `${tab.color}.main` : `${tab.color}.light`,
+                    color: 'white',
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                  justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                  px: sidebarOpen ? { xs: 1.5, sm: 2 } : { xs: 0.5, sm: 1 },
+                  py: { xs: 1, sm: 1.25 },
+                  minHeight: { xs: 40, sm: 44, md: 48 },
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    color: 'inherit',
+                    minWidth: sidebarOpen ? { xs: 32, sm: 36, md: 40 } : 'auto',
+                    justifyContent: 'center',
+                    '& .MuiSvgIcon-root': {
+                      fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' }
+                    }
+                  }}
+                >
+                  {tab.icon}
+                </ListItemIcon>
+                {sidebarOpen && (
+                  <ListItemText
+                    primary={tab.label}
+                    primaryTypographyProps={{ 
+                      fontWeight: 500,
+                      fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '1rem' },
+                      noWrap: true
+                    }}
+                  />
+                )}
+              </ListItem>
+            </Tooltip>
+          ))}
+        </List>
+      </Box>
+
+      {/* Sidebar Footer */}
+      <Box sx={{ 
+        p: sidebarOpen ? { xs: 1.5, sm: 2 } : { xs: 0.75, sm: 1 }, 
+        borderTop: '1px solid', 
+        borderColor: 'divider',
+        flexShrink: 0
+      }}>
+        {sidebarOpen ? (
+          <Stack spacing={{ xs: 0.75, sm: 1 }}>
+            <Button
+              variant="outlined"
+              onClick={handleToggleSidebar}
+              startIcon={<ViewModule />}
+              size="small"
+              fullWidth
+              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+            >
+              Collapse
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/Admin/classic')}
+              startIcon={<ViewList />}
+              size="small"
+              fullWidth
+              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+            >
+              Classic View
+            </Button>
+          </Stack>
+        ) : (
+          <Stack spacing={{ xs: 0.5, sm: 1 }} alignItems="center">
+            <Tooltip title="Expand Sidebar" placement="right">
+              <IconButton 
+                onClick={handleToggleSidebar} 
+                size="small"
+                sx={{ 
+                  width: { xs: 32, sm: 36 }, 
+                  height: { xs: 32, sm: 36 } 
+                }}
+              >
+                <ViewModule sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Classic View" placement="right">
+              <IconButton 
+                onClick={() => navigate('/Admin/classic')} 
+                size="small"
+                sx={{ 
+                  width: { xs: 32, sm: 36 }, 
+                  height: { xs: 32, sm: 36 } 
+                }}
+              >
+                <ViewList sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        )}
+      </Box>
+    </Box>
+  );
 
   // Authentication checks
   if (!auth.session) {
@@ -316,57 +510,6 @@ const AdminPanelEnhanced: React.FC = () => {
     );
   }
 
-  // Mobile Bottom Navigation for admin sections
-  const renderMobileBottomNav = () => {
-    if (!isMobile || currentView === 'dashboard') return null;
-
-    return (
-      <Paper
-        sx={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: theme.zIndex.appBar,
-          borderTop: `1px solid ${theme.palette.divider}`,
-          borderRadius: '16px 16px 0 0',
-          backgroundColor: alpha(theme.palette.background.paper, 0.95),
-          backdropFilter: 'blur(10px)',
-        }}
-        elevation={8}
-      >
-        <BottomNavigation
-          value={mainTab}
-          sx={{
-            backgroundColor: 'transparent',
-            height: 64,
-            '& .MuiBottomNavigationAction-root': {
-              minWidth: 0,
-              '&.Mui-selected': {
-                color: theme.palette.primary.main,
-              },
-            },
-          }}
-        >
-          {mainTabs.slice(0, 4).map((tab, index) => (
-            <BottomNavigationAction
-              key={index}
-              label={tab.label.split(' ')[0]} // Shortened labels for mobile
-              icon={tab.icon}
-              onClick={() => handleNavigateToSection(index)}
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                  borderRadius: '12px',
-                  margin: '4px',
-                },
-              }}
-            />
-          ))}
-        </BottomNavigation>
-      </Paper>
-    );
-  };
 
   // Content rendering based on current view
   const renderContent = () => {
@@ -535,14 +678,6 @@ const AdminPanelEnhanced: React.FC = () => {
             >
               Back to Dashboard
             </Button>
-            <BreadcrumbNavigation
-              darkMode={darkMode}
-              items={[
-                { label: 'Home', path: '/', icon: <Home fontSize="small" /> },
-                { label: 'Admin Panel', icon: <AdminPanelSettings fontSize="small" /> },
-                { label: mainTabs[mainTab]?.label || 'Dashboard', current: true },
-              ]}
-            />
           </Box>
         )}
 
@@ -552,42 +687,121 @@ const AdminPanelEnhanced: React.FC = () => {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      {/* Layout Toggle FAB */}
-      <Tooltip title="Switch to Classic Layout">
-        <Fab
-          size="small"
-          onClick={() => navigate('/Admin/classic')}
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <ModernSidebar variant="permanent" />
+      )}
+
+      {/* Mobile Drawer */}
+      {isMobile && (
+        <Drawer
+          variant="temporary"
+          open={mobileDrawerOpen}
+          onClose={handleMobileDrawerToggle}
+          ModalProps={{ keepMounted: true }}
           sx={{
-            position: 'fixed',
-            top: { xs: 20, sm: 24 },
-            right: { xs: 20, sm: 24 },
-            zIndex: 1000,
-            bgcolor: 'secondary.main',
-            color: 'white',
-            '&:hover': { bgcolor: 'secondary.dark' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: { xs: '85vw', sm: 320 },
+              maxWidth: '400px',
+              bgcolor: 'background.paper',
+            },
           }}
         >
-          <ViewList />
-        </Fab>
-      </Tooltip>
+          <ModernSidebar variant="temporary" />
+        </Drawer>
+      )}
 
-      <Container
-        maxWidth="xl"
+      {/* Mobile Menu Button */}
+      {isMobile && (
+        <Fab
+          color="primary"
+          aria-label="menu"
+          onClick={handleMobileDrawerToggle}
+          size="medium"
+          sx={{
+            position: 'fixed',
+            top: 20,
+            left: 20,
+            zIndex: theme.zIndex.speedDial,
+            transition: theme.transitions.create(['transform', 'box-shadow'], {
+              duration: theme.transitions.duration.short,
+            }),
+            '&:hover': {
+              transform: 'scale(1.1)',
+              boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
+            },
+          }}
+        >
+          {mobileDrawerOpen ? <CloseIcon /> : <MenuIcon />}
+        </Fab>
+      )}
+
+      {/* Main Content Area */}
+      <Box
+        component="main"
         sx={{
-          py: { xs: 2, sm: 4 },
-          px: { xs: 1, sm: 3 },
-          pb: isMobile ? 10 : undefined, // Space for mobile bottom nav
+          flexGrow: 1,
+          bgcolor: 'background.default',
+          minHeight: '100vh',
+          width: isMobile ? '100vw' : `calc(100vw - ${sidebarOpen ? '300px' : '80px'})`,
+          transition: theme.transitions.create(['margin', 'width'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
+          pt: isMobile ? 8 : 0, // Space for mobile menu button
+          overflow: 'auto',
         }}
       >
-        <Fade in={true} timeout={500}>
-          <Box>
-            {renderContent()}
+        {/* Content Header for sections */}
+        {currentView === 'section' && !isMobile && (
+          <Box
+            sx={{
+              p: 3,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <IconButton onClick={handleBackToDashboard} size="small">
+                  <ArrowBack />
+                </IconButton>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {mainTabs[mainTab]?.label}
+                </Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                onClick={handleToggleSidebar}
+                startIcon={sidebarOpen ? <ViewModule /> : <ViewList />}
+                size="small"
+              >
+                {sidebarOpen ? 'Collapse' : 'Expand'}
+              </Button>
+            </Box>
           </Box>
-        </Fade>
-      </Container>
+        )}
 
-      {renderMobileBottomNav()}
+        {/* Content */}
+        <Container
+          maxWidth={false}
+          sx={{
+            py: { xs: 1.5, sm: 2, md: 3 },
+            px: { xs: 1, sm: 2, md: 3 },
+            maxWidth: '100%',
+            height: '100%',
+          }}
+        >
+          <Fade in={true} timeout={500}>
+            <Box sx={{ height: '100%' }}>
+              {renderContent()}
+            </Box>
+          </Fade>
+        </Container>
+      </Box>
     </Box>
   );
 };

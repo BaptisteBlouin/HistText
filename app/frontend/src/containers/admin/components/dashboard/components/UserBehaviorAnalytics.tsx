@@ -19,6 +19,7 @@ import {
   Collapse,
   Tooltip,
   useTheme,
+  useMediaQuery,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -40,6 +41,8 @@ import {
   Psychology,
   AccountTree,
   TouchApp,
+  ViewModule,
+  ViewList,
 } from '@mui/icons-material';
 import { useAuth } from '../../../../../hooks/useAuth';
 
@@ -113,10 +116,12 @@ const UserBehaviorAnalytics: React.FC<UserBehaviorAnalyticsProps> = ({
   isVisible,
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { accessToken } = useAuth();
   const [analytics, setAnalytics] = useState<UserBehaviorAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   const fetchAnalytics = async () => {
     if (!accessToken) return;
@@ -177,29 +182,65 @@ const UserBehaviorAnalytics: React.FC<UserBehaviorAnalyticsProps> = ({
   };
 
   return (
-    <Card sx={{ mb: 4 }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Group color="primary" />
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              User Behavior Analytics & Patterns
+    <Card sx={{ 
+      mb: { xs: 3, md: 4 },
+      borderRadius: { xs: 2, md: 3 },
+    }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: isMobile ? 'flex-start' : 'center', 
+          justifyContent: 'space-between', 
+          mb: { xs: 2, md: 3 },
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 },
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap' }}>
+            <Group color="primary" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }} />
+            <Typography 
+              variant={isMobile ? "h6" : "h6"} 
+              sx={{ 
+                fontWeight: 600,
+                fontSize: { xs: '1.125rem', md: '1.25rem' },
+                lineHeight: 1.2,
+              }}
+            >
+              {isMobile ? "User Behavior" : "User Behavior Analytics & Patterns"}
             </Typography>
             {analytics && (
               <Chip
-                label={`${analytics.usage_patterns.most_active_users.length} Active Users`}
+                label={isMobile ? `${analytics.usage_patterns.most_active_users.length} Active` : `${analytics.usage_patterns.most_active_users.length} Active Users`}
                 color="primary"
                 size="small"
+                sx={{ fontSize: { xs: '0.6875rem', md: '0.75rem' } }}
               />
             )}
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {!isMobile && isVisible && (
+              <Tooltip title={`Switch to ${viewMode === 'cards' ? 'Table' : 'Cards'} View`}>
+                <IconButton
+                  onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
+                  color="primary"
+                  size="small"
+                >
+                  {viewMode === 'cards' ? <ViewList /> : <ViewModule />}
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Refresh Analytics">
-              <IconButton onClick={fetchAnalytics} disabled={loading}>
+              <IconButton 
+                onClick={fetchAnalytics} 
+                disabled={loading}
+                size={isMobile ? "small" : "medium"}
+              >
                 <Refresh />
               </IconButton>
             </Tooltip>
-            <IconButton onClick={onToggle}>
+            <IconButton 
+              onClick={onToggle}
+              size={isMobile ? "small" : "medium"}
+            >
               <ExpandMore
                 sx={{
                   transform: isVisible ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -207,7 +248,7 @@ const UserBehaviorAnalytics: React.FC<UserBehaviorAnalyticsProps> = ({
                 }}
               />
             </IconButton>
-          </Box>
+          </Stack>
         </Box>
 
         {loading && <LinearProgress sx={{ mb: 2 }} />}
@@ -222,98 +263,237 @@ const UserBehaviorAnalytics: React.FC<UserBehaviorAnalyticsProps> = ({
           {analytics && (
             <Box>
               {/* User Segments Overview */}
-              <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} md={4}>
-                  <Paper sx={{ p: 3, textAlign: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-                    <Star sx={{ fontSize: 40, mb: 1 }} />
-                    <Typography variant="h4">{analytics.user_segments.power_users.count}</Typography>
-                    <Typography variant="body2">Power Users</Typography>
-                    <Typography variant="body2">({analytics.user_segments.power_users.percentage.toFixed(1)}%)</Typography>
+              <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
+                <Grid item xs={12} sm={4} md={4}>
+                  <Paper sx={{ 
+                    p: { xs: 2, sm: 2.5, md: 3 }, 
+                    textAlign: 'center', 
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                    color: 'white',
+                    borderRadius: { xs: 2, md: 1 },
+                  }}>
+                    <Star sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, mb: 1 }} />
+                    <Typography 
+                      variant={isMobile ? "h5" : "h4"}
+                      sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}
+                    >
+                      {analytics.user_segments.power_users.count}
+                    </Typography>
+                    <Typography 
+                      variant="body2"
+                      sx={{ fontSize: { xs: '0.875rem', md: '0.875rem' } }}
+                    >
+                      {isMobile ? "Power" : "Power Users"}
+                    </Typography>
+                    <Typography 
+                      variant="body2"
+                      sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}
+                    >
+                      ({analytics.user_segments.power_users.percentage.toFixed(1)}%)
+                    </Typography>
                     <Chip
-                      label={`${analytics.user_segments.power_users.engagement_score.toFixed(1)} engagement`}
+                      label={isMobile ? `${analytics.user_segments.power_users.engagement_score.toFixed(1)}` : `${analytics.user_segments.power_users.engagement_score.toFixed(1)} engagement`}
                       size="small"
-                      sx={{ mt: 1, backgroundColor: 'rgba(255,255,255,0.2)' }}
+                      sx={{ 
+                        mt: 1, 
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                        fontSize: { xs: '0.65rem', md: '0.75rem' },
+                      }}
                     />
                   </Paper>
                 </Grid>
-                <Grid item xs={12} md={4}>
-                  <Paper sx={{ p: 3, textAlign: 'center', background: 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)', color: 'white' }}>
-                    <Person sx={{ fontSize: 40, mb: 1 }} />
-                    <Typography variant="h4">{analytics.user_segments.casual_users.count}</Typography>
-                    <Typography variant="body2">Casual Users</Typography>
-                    <Typography variant="body2">({analytics.user_segments.casual_users.percentage.toFixed(1)}%)</Typography>
+                <Grid item xs={12} sm={4} md={4}>
+                  <Paper sx={{ 
+                    p: { xs: 2, sm: 2.5, md: 3 }, 
+                    textAlign: 'center', 
+                    background: 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)', 
+                    color: 'white',
+                    borderRadius: { xs: 2, md: 1 },
+                  }}>
+                    <Person sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, mb: 1 }} />
+                    <Typography 
+                      variant={isMobile ? "h5" : "h4"}
+                      sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}
+                    >
+                      {analytics.user_segments.casual_users.count}
+                    </Typography>
+                    <Typography 
+                      variant="body2"
+                      sx={{ fontSize: { xs: '0.875rem', md: '0.875rem' } }}
+                    >
+                      {isMobile ? "Casual" : "Casual Users"}
+                    </Typography>
+                    <Typography 
+                      variant="body2"
+                      sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}
+                    >
+                      ({analytics.user_segments.casual_users.percentage.toFixed(1)}%)
+                    </Typography>
                     <Chip
-                      label={`${analytics.user_segments.casual_users.engagement_score.toFixed(1)} engagement`}
+                      label={isMobile ? `${analytics.user_segments.casual_users.engagement_score.toFixed(1)}` : `${analytics.user_segments.casual_users.engagement_score.toFixed(1)} engagement`}
                       size="small"
-                      sx={{ mt: 1, backgroundColor: 'rgba(255,255,255,0.2)' }}
+                      sx={{ 
+                        mt: 1, 
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                        fontSize: { xs: '0.65rem', md: '0.75rem' },
+                      }}
                     />
                   </Paper>
                 </Grid>
-                <Grid item xs={12} md={4}>
-                  <Paper sx={{ p: 3, textAlign: 'center', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white' }}>
-                    <Psychology sx={{ fontSize: 40, mb: 1 }} />
-                    <Typography variant="h4">{analytics.user_segments.new_users.count}</Typography>
-                    <Typography variant="body2">New Users</Typography>
-                    <Typography variant="body2">({analytics.user_segments.new_users.percentage.toFixed(1)}%)</Typography>
+                <Grid item xs={12} sm={4} md={4}>
+                  <Paper sx={{ 
+                    p: { xs: 2, sm: 2.5, md: 3 }, 
+                    textAlign: 'center', 
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+                    color: 'white',
+                    borderRadius: { xs: 2, md: 1 },
+                  }}>
+                    <Psychology sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, mb: 1 }} />
+                    <Typography 
+                      variant={isMobile ? "h5" : "h4"}
+                      sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}
+                    >
+                      {analytics.user_segments.new_users.count}
+                    </Typography>
+                    <Typography 
+                      variant="body2"
+                      sx={{ fontSize: { xs: '0.875rem', md: '0.875rem' } }}
+                    >
+                      {isMobile ? "New" : "New Users"}
+                    </Typography>
+                    <Typography 
+                      variant="body2"
+                      sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}
+                    >
+                      ({analytics.user_segments.new_users.percentage.toFixed(1)}%)
+                    </Typography>
                     <Chip
-                      label={`${analytics.user_segments.new_users.engagement_score.toFixed(1)} engagement`}
+                      label={isMobile ? `${analytics.user_segments.new_users.engagement_score.toFixed(1)}` : `${analytics.user_segments.new_users.engagement_score.toFixed(1)} engagement`}
                       size="small"
-                      sx={{ mt: 1, backgroundColor: 'rgba(255,255,255,0.2)' }}
+                      sx={{ 
+                        mt: 1, 
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                        fontSize: { xs: '0.65rem', md: '0.75rem' },
+                      }}
                     />
                   </Paper>
                 </Grid>
               </Grid>
 
               {/* Most Active Users */}
-              <Accordion defaultExpanded>
+              <Accordion defaultExpanded={!isMobile}>
                 <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <TrendingUp color="primary" />
-                    Most Active Users
+                  <Typography 
+                    variant={isMobile ? "subtitle1" : "h6"} 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1,
+                      fontSize: { xs: '1.125rem', md: '1.25rem' },
+                    }}
+                  >
+                    <TrendingUp color="primary" sx={{ fontSize: { xs: '1.125rem', md: '1.25rem' } }} />
+                    {isMobile ? "Active Users" : "Most Active Users"}
                   </Typography>
                 </AccordionSummary>
-                <AccordionDetails>
-                  <Grid container spacing={2}>
-                    {analytics.usage_patterns.most_active_users.slice(0, 8).map((user, index) => (
+                <AccordionDetails sx={{ p: { xs: 1, sm: 2 } }}>
+                  <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                    {analytics.usage_patterns.most_active_users.slice(0, isMobile ? 4 : 8).map((user, index) => (
                       <Grid item xs={12} sm={6} md={3} key={user.user_id}>
-                        <Paper sx={{ p: 2 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                            <Avatar sx={{ bgcolor: 'primary.main' }}>
+                        <Paper sx={{ 
+                          p: { xs: 1.5, sm: 2 },
+                          borderRadius: { xs: 2, md: 1 },
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, mb: 2 }}>
+                            <Avatar sx={{ 
+                              bgcolor: 'primary.main',
+                              width: { xs: 32, sm: 40 },
+                              height: { xs: 32, sm: 40 },
+                              fontSize: { xs: '0.875rem', sm: '1rem' },
+                            }}>
                               {user.username.charAt(0).toUpperCase()}
                             </Avatar>
-                            <Box>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                              <Typography 
+                                variant="subtitle2" 
+                                sx={{ 
+                                  fontWeight: 600,
+                                  fontSize: { xs: '0.875rem', sm: '0.875rem' },
+                                  lineHeight: 1.2,
+                                  wordBreak: 'break-word',
+                                }}
+                              >
                                 {user.username}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography 
+                                variant="body2" 
+                                color="text.secondary"
+                                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                              >
                                 ID: {user.user_id}
                               </Typography>
                             </Box>
                           </Box>
                           
                           <Stack spacing={1}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2">Requests</Typography>
-                              <Chip label={user.request_count} size="small" color="primary" />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography 
+                                variant="body2"
+                                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                              >
+                                Requests
+                              </Typography>
+                              <Chip 
+                                label={user.request_count} 
+                                size="small" 
+                                color="primary"
+                                sx={{ fontSize: '0.65rem' }}
+                              />
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2">Sessions</Typography>
-                              <Typography variant="body2">{user.session_count}</Typography>
+                              <Typography 
+                                variant="body2"
+                                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                              >
+                                Sessions
+                              </Typography>
+                              <Typography 
+                                variant="body2"
+                                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                              >
+                                {user.session_count}
+                              </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2">Avg Session</Typography>
-                              <Typography variant="body2">{user.average_session_duration_minutes.toFixed(1)}min</Typography>
+                              <Typography 
+                                variant="body2"
+                                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                              >
+                                Avg Session
+                              </Typography>
+                              <Typography 
+                                variant="body2"
+                                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                              >
+                                {user.average_session_duration_minutes.toFixed(1)}min
+                              </Typography>
                             </Box>
                           </Stack>
 
-                          {user.favorite_features.length > 0 && (
+                          {!isMobile && user.favorite_features.length > 0 && (
                             <Box sx={{ mt: 2 }}>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: '0.75rem' }}>
                                 Favorite Features:
                               </Typography>
                               <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
                                 {user.favorite_features.slice(0, 2).map((feature, idx) => (
-                                  <Chip key={idx} label={feature} size="small" variant="outlined" />
+                                  <Chip 
+                                    key={idx} 
+                                    label={feature} 
+                                    size="small" 
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.6rem' }}
+                                  />
                                 ))}
                               </Stack>
                             </Box>
@@ -476,8 +656,15 @@ const UserBehaviorAnalytics: React.FC<UserBehaviorAnalyticsProps> = ({
                 </AccordionDetails>
               </Accordion>
 
-              <Box sx={{ mt: 2, textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">
+              <Box sx={{ mt: { xs: 2, md: 3 }, textAlign: 'center' }}>
+                <Typography 
+                  variant="caption" 
+                  color="text.secondary"
+                  sx={{ 
+                    fontSize: { xs: '0.75rem', md: '0.75rem' },
+                    px: { xs: 2, md: 0 },
+                  }}
+                >
                   Last updated: {formatTimestamp(analytics.last_updated)}
                 </Typography>
               </Box>

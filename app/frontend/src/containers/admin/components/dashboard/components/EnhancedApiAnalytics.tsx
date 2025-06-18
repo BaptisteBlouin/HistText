@@ -257,155 +257,309 @@ const EnhancedApiAnalytics: React.FC<EnhancedApiAnalyticsProps> = ({
           {analytics && (
             <Box>
               {/* Overview Stats */}
-              <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center' }}>
-                    <Typography variant="h4" color="error.main">
+              <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
+                <Grid item xs={6} sm={6} md={3}>
+                  <Paper sx={{ 
+                    p: { xs: 1.5, sm: 2 }, 
+                    textAlign: 'center',
+                    borderRadius: { xs: 2, md: 1 },
+                  }}>
+                    <Typography 
+                      variant={isMobile ? "h5" : "h4"} 
+                      color="error.main"
+                      sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
+                    >
                       {analytics.enhanced_error_tracking.error_details.length}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Unique Error Types
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    >
+                      {isMobile ? "Errors" : "Unique Error Types"}
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center' }}>
-                    <Typography variant="h4" color="warning.main">
+                <Grid item xs={6} sm={6} md={3}>
+                  <Paper sx={{ 
+                    p: { xs: 1.5, sm: 2 }, 
+                    textAlign: 'center',
+                    borderRadius: { xs: 2, md: 1 },
+                  }}>
+                    <Typography 
+                      variant={isMobile ? "h5" : "h4"} 
+                      color="warning.main"
+                      sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
+                    >
                       {analytics.enhanced_error_tracking.top_failing_endpoints.length}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Failing Endpoints
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    >
+                      {isMobile ? "Failing" : "Failing Endpoints"}
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center' }}>
-                    <Typography variant="h4" color="info.main">
+                <Grid item xs={6} sm={6} md={3}>
+                  <Paper sx={{ 
+                    p: { xs: 1.5, sm: 2 }, 
+                    textAlign: 'center',
+                    borderRadius: { xs: 2, md: 1 },
+                  }}>
+                    <Typography 
+                      variant={isMobile ? "h5" : "h4"} 
+                      color="info.main"
+                      sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
+                    >
                       {analytics.error_rate_percent.toFixed(1)}%
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Overall Error Rate
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    >
+                      {isMobile ? "Error Rate" : "Overall Error Rate"}
                     </Typography>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center' }}>
-                    <Typography variant="h4" color="success.main">
+                <Grid item xs={6} sm={6} md={3}>
+                  <Paper sx={{ 
+                    p: { xs: 1.5, sm: 2 }, 
+                    textAlign: 'center',
+                    borderRadius: { xs: 2, md: 1 },
+                  }}>
+                    <Typography 
+                      variant={isMobile ? "h5" : "h4"} 
+                      color="success.main"
+                      sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
+                    >
                       {analytics.average_response_time_ms.toFixed(0)}ms
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Avg Response Time
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    >
+                      {isMobile ? "Avg Time" : "Avg Response Time"}
                     </Typography>
                   </Paper>
                 </Grid>
               </Grid>
 
               {/* Error Details Section */}
-              <Accordion defaultExpanded>
+              <Accordion defaultExpanded={!isMobile}>
                 <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Warning color="error" />
-                    Error Details & Categorization
+                  <Typography 
+                    variant={isMobile ? "subtitle1" : "h6"} 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1,
+                      fontSize: { xs: '1.125rem', md: '1.25rem' },
+                    }}
+                  >
+                    <Warning color="error" sx={{ fontSize: { xs: '1.125rem', md: '1.25rem' } }} />
+                    {isMobile ? "Error Details" : "Error Details & Categorization"}
                   </Typography>
                 </AccordionSummary>
-                <AccordionDetails>
-                  <TableContainer component={Paper}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Endpoint</TableCell>
-                          <TableCell>Error Type</TableCell>
-                          <TableCell>Frequency</TableCell>
-                          <TableCell>Affected Users</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Last Occurrence</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {analytics.enhanced_error_tracking.error_details
-                          .slice(0, 10)
-                          .map((error, index) => (
-                            <TableRow key={index}>
-                              <TableCell>
-                                <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                <AccordionDetails sx={{ p: { xs: 1, sm: 2 } }}>
+                  {isMobile || viewMode === 'cards' ? (
+                    <Stack spacing={2}>
+                      {analytics.enhanced_error_tracking.error_details
+                        .slice(0, isMobile ? 5 : 10)
+                        .map((error, index) => (
+                          <Card key={index} variant="outlined" sx={{ borderRadius: 2 }}>
+                            <CardContent sx={{ p: 2 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    wordBreak: 'break-all',
+                                    flex: 1,
+                                    mr: 1,
+                                  }}
+                                >
                                   {error.endpoint}
                                 </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={error.error_type}
-                                  color={getErrorSeverityColor(error.error_type) as any}
-                                  size="small"
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Badge badgeContent={error.frequency} color="error">
-                                  <TrendingUp fontSize="small" />
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {error.affected_user_list && error.affected_user_list.length > 0 ? (
-                                  <UserList
-                                    users={error.affected_user_list.map(user => ({
-                                      user_id: user.user_id,
-                                      username: user.username,
-                                      error_count: user.error_count,
-                                      last_error: user.last_error,
-                                    }))}
-                                    variant="compact"
-                                    title="Affected Users"
-                                    maxVisibleUsers={3}
-                                  />
-                                ) : (
-                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-                                    <Person fontSize="small" />
-                                    {error.affected_users}
-                                  </Box>
-                                )}
-                              </TableCell>
-                              <TableCell>
                                 <Chip
                                   label={error.status_code}
                                   color={error.status_code >= 500 ? 'error' : 'warning'}
                                   size="small"
                                 />
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2" color="text.secondary">
+                              </Box>
+                              <Grid container spacing={1} sx={{ mb: 1 }}>
+                                <Grid item xs={6}>
+                                  <Chip
+                                    label={error.error_type}
+                                    color={getErrorSeverityColor(error.error_type) as any}
+                                    size="small"
+                                    sx={{ fontSize: '0.65rem' }}
+                                  />
+                                </Grid>
+                                <Grid item xs={6}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                                    <TrendingUp fontSize="small" color="error" />
+                                    <Typography variant="caption" color="error">
+                                      {error.frequency}
+                                    </Typography>
+                                  </Box>
+                                </Grid>
+                              </Grid>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Person fontSize="small" color="action" />
+                                  <Typography variant="caption" color="text.secondary">
+                                    {error.affected_users} affected
+                                  </Typography>
+                                </Box>
+                                <Typography variant="caption" color="text.secondary">
                                   {formatTimestamp(error.last_occurrence)}
                                 </Typography>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        ))}
+                    </Stack>
+                  ) : (
+                    <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Endpoint</TableCell>
+                            <TableCell>Error Type</TableCell>
+                            <TableCell>Frequency</TableCell>
+                            <TableCell>Affected Users</TableCell>
+                            <TableCell>Status</TableCell>
+                            <TableCell>Last Occurrence</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {analytics.enhanced_error_tracking.error_details
+                            .slice(0, 10)
+                            .map((error, index) => (
+                              <TableRow key={index}>
+                                <TableCell>
+                                  <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                                    {error.endpoint}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Chip
+                                    label={error.error_type}
+                                    color={getErrorSeverityColor(error.error_type) as any}
+                                    size="small"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Badge badgeContent={error.frequency} color="error">
+                                    <TrendingUp fontSize="small" />
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {error.affected_user_list && error.affected_user_list.length > 0 ? (
+                                    <UserList
+                                      users={error.affected_user_list.map(user => ({
+                                        user_id: user.user_id,
+                                        username: user.username,
+                                        error_count: user.error_count,
+                                        last_error: user.last_error,
+                                      }))}
+                                      variant="compact"
+                                      title="Affected Users"
+                                      maxVisibleUsers={3}
+                                    />
+                                  ) : (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                                      <Person fontSize="small" />
+                                      {error.affected_users}
+                                    </Box>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Chip
+                                    label={error.status_code}
+                                    color={error.status_code >= 500 ? 'error' : 'warning'}
+                                    size="small"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {formatTimestamp(error.last_occurrence)}
+                                  </Typography>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
                 </AccordionDetails>
               </Accordion>
 
               {/* Top Failing Endpoints */}
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Api color="warning" />
-                    Top Failing Endpoints
+                  <Typography 
+                    variant={isMobile ? "subtitle1" : "h6"} 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1,
+                      fontSize: { xs: '1.125rem', md: '1.25rem' },
+                    }}
+                  >
+                    <Api color="warning" sx={{ fontSize: { xs: '1.125rem', md: '1.25rem' } }} />
+                    {isMobile ? "Failing Endpoints" : "Top Failing Endpoints"}
                   </Typography>
                 </AccordionSummary>
-                <AccordionDetails>
-                  <Grid container spacing={2}>
+                <AccordionDetails sx={{ p: { xs: 1, sm: 2 } }}>
+                  <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                     {analytics.enhanced_error_tracking.top_failing_endpoints
-                      .slice(0, 6)
+                      .slice(0, isMobile ? 4 : 6)
                       .map((endpoint, index) => (
-                        <Grid item xs={12} md={6} key={index}>
-                          <Paper sx={{ p: 2 }}>
-                            <Typography variant="subtitle2" sx={{ fontFamily: 'monospace', mb: 1 }}>
-                              {endpoint.method} {endpoint.endpoint}
+                        <Grid item xs={12} sm={6} md={6} key={index}>
+                          <Paper sx={{ 
+                            p: { xs: 1.5, sm: 2 },
+                            borderRadius: { xs: 2, md: 1 },
+                          }}>
+                            <Typography 
+                              variant="subtitle2" 
+                              sx={{ 
+                                fontFamily: 'monospace', 
+                                mb: 1,
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                wordBreak: 'break-all',
+                              }}
+                            >
+                              <Chip 
+                                label={endpoint.method} 
+                                size="small" 
+                                color="warning" 
+                                sx={{ mr: 1, fontSize: '0.65rem' }}
+                              />
+                              {endpoint.endpoint}
                             </Typography>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography 
+                                variant="body2" 
+                                color="text.secondary"
+                                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                              >
                                 Failure Rate
                               </Typography>
-                              <Typography variant="body2" color="error.main" sx={{ fontWeight: 600 }}>
+                              <Typography 
+                                variant="body2" 
+                                color="error.main" 
+                                sx={{ 
+                                  fontWeight: 600,
+                                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                }}
+                              >
                                 {endpoint.failure_rate_percent.toFixed(1)}%
                               </Typography>
                             </Box>
@@ -413,14 +567,28 @@ const EnhancedApiAnalytics: React.FC<EnhancedApiAnalyticsProps> = ({
                               variant="determinate"
                               value={endpoint.failure_rate_percent}
                               color="error"
-                              sx={{ mb: 1 }}
+                              sx={{ mb: 1, height: { xs: 6, sm: 4 } }}
                             />
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography 
+                              variant="body2" 
+                              color="text.secondary"
+                              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                            >
                               {endpoint.error_count} errors of {endpoint.total_requests} requests
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                              Most common: {endpoint.most_common_error}
-                            </Typography>
+                            {!isMobile && (
+                              <Typography 
+                                variant="body2" 
+                                color="text.secondary" 
+                                sx={{ 
+                                  mt: 1,
+                                  fontSize: '0.75rem',
+                                  wordBreak: 'break-word',
+                                }}
+                              >
+                                Most common: {endpoint.most_common_error}
+                              </Typography>
+                            )}
                           </Paper>
                         </Grid>
                       ))}
@@ -431,27 +599,52 @@ const EnhancedApiAnalytics: React.FC<EnhancedApiAnalyticsProps> = ({
               {/* Error Patterns */}
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Assessment color="info" />
-                    Error Patterns & Correlations
+                  <Typography 
+                    variant={isMobile ? "subtitle1" : "h6"} 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1,
+                      fontSize: { xs: '1.125rem', md: '1.25rem' },
+                    }}
+                  >
+                    <Assessment color="info" sx={{ fontSize: { xs: '1.125rem', md: '1.25rem' } }} />
+                    {isMobile ? "Error Patterns" : "Error Patterns & Correlations"}
                   </Typography>
                 </AccordionSummary>
-                <AccordionDetails>
-                  <Grid container spacing={3}>
+                <AccordionDetails sx={{ p: { xs: 1, sm: 2 } }}>
+                  <Grid container spacing={{ xs: 2, md: 3 }}>
                     {/* Time of Day Correlation */}
                     <Grid item xs={12} md={4}>
-                      <Typography variant="subtitle1" sx={{ mb: 2 }}>
-                        <Schedule sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Errors by Hour
+                      <Typography 
+                        variant={isMobile ? "body1" : "subtitle1"} 
+                        sx={{ 
+                          mb: 2,
+                          fontSize: { xs: '1rem', md: '1.125rem' },
+                          fontWeight: 600,
+                        }}
+                      >
+                        <Schedule sx={{ mr: 1, verticalAlign: 'middle', fontSize: { xs: '1rem', md: '1.125rem' } }} />
+                        {isMobile ? "By Hour" : "Errors by Hour"}
                       </Typography>
                       <Stack spacing={1}>
                         {Object.entries(analytics.enhanced_error_tracking.error_patterns.time_of_day_correlation)
                           .sort(([,a], [,b]) => b - a)
-                          .slice(0, 5)
+                          .slice(0, isMobile ? 3 : 5)
                           .map(([hour, count]) => (
-                            <Box key={hour} sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2">{hour}:00</Typography>
-                              <Chip label={count} size="small" color="error" />
+                            <Box key={hour} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography 
+                                variant="body2"
+                                sx={{ fontSize: { xs: '0.875rem', md: '0.875rem' } }}
+                              >
+                                {hour}:00
+                              </Typography>
+                              <Chip 
+                                label={count} 
+                                size="small" 
+                                color="error"
+                                sx={{ fontSize: '0.65rem' }}
+                              />
                             </Box>
                           ))}
                       </Stack>
@@ -459,42 +652,89 @@ const EnhancedApiAnalytics: React.FC<EnhancedApiAnalyticsProps> = ({
 
                     {/* Endpoint Correlation */}
                     <Grid item xs={12} md={8}>
-                      <Typography variant="subtitle1" sx={{ mb: 2 }}>
-                        <Api sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Top Error-Prone Endpoints
+                      <Typography 
+                        variant={isMobile ? "body1" : "subtitle1"} 
+                        sx={{ 
+                          mb: 2,
+                          fontSize: { xs: '1rem', md: '1.125rem' },
+                          fontWeight: 600,
+                        }}
+                      >
+                        <Api sx={{ mr: 1, verticalAlign: 'middle', fontSize: { xs: '1rem', md: '1.125rem' } }} />
+                        {isMobile ? "Error-Prone" : "Top Error-Prone Endpoints"}
                       </Typography>
-                      <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
-                        <Table size="small" stickyHeader>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Endpoint</TableCell>
-                              <TableCell align="right">Error Count</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {Object.entries(analytics.enhanced_error_tracking.error_patterns.endpoint_correlation)
-                              .sort(([,a], [,b]) => b - a)
-                              .slice(0, 8)
-                              .map(([endpoint, count]) => (
-                                <TableRow key={endpoint}>
-                                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                                    {endpoint}
-                                  </TableCell>
-                                  <TableCell align="right">
-                                    <Chip label={count} size="small" color="error" />
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                      {isMobile ? (
+                        <Stack spacing={1}>
+                          {Object.entries(analytics.enhanced_error_tracking.error_patterns.endpoint_correlation)
+                            .sort(([,a], [,b]) => b - a)
+                            .slice(0, 4)
+                            .map(([endpoint, count]) => (
+                              <Card key={endpoint} variant="outlined" sx={{ borderRadius: 2 }}>
+                                <CardContent sx={{ p: 1.5 }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography 
+                                      sx={{ 
+                                        fontFamily: 'monospace', 
+                                        fontSize: '0.75rem',
+                                        wordBreak: 'break-all',
+                                        flex: 1,
+                                        mr: 1,
+                                      }}
+                                    >
+                                      {endpoint}
+                                    </Typography>
+                                    <Chip 
+                                      label={count} 
+                                      size="small" 
+                                      color="error"
+                                      sx={{ fontSize: '0.65rem' }}
+                                    />
+                                  </Box>
+                                </CardContent>
+                              </Card>
+                            ))}
+                        </Stack>
+                      ) : (
+                        <TableContainer component={Paper} sx={{ maxHeight: 300, borderRadius: 2 }}>
+                          <Table size="small" stickyHeader>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Endpoint</TableCell>
+                                <TableCell align="right">Error Count</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {Object.entries(analytics.enhanced_error_tracking.error_patterns.endpoint_correlation)
+                                .sort(([,a], [,b]) => b - a)
+                                .slice(0, 8)
+                                .map(([endpoint, count]) => (
+                                  <TableRow key={endpoint}>
+                                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                                      {endpoint}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Chip label={count} size="small" color="error" />
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
                     </Grid>
                   </Grid>
                 </AccordionDetails>
               </Accordion>
 
-              <Box sx={{ mt: 2, textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">
+              <Box sx={{ mt: { xs: 2, md: 3 }, textAlign: 'center' }}>
+                <Typography 
+                  variant="caption" 
+                  color="text.secondary"
+                  sx={{ 
+                    fontSize: { xs: '0.75rem', md: '0.75rem' },
+                    px: { xs: 2, md: 0 },
+                  }}
+                >
                   Last updated: {formatTimestamp(analytics.last_updated)}
                 </Typography>
               </Box>
