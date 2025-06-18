@@ -109,7 +109,7 @@ const SystemConfiguration: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<Configuration | null>(null);
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [formData, setFormData] = useState<ConfigurationFormData>({
     config_key: '',
     config_value: '',

@@ -430,7 +430,7 @@ const UserRolesEnhanced: React.FC = () => {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [filterRole, setFilterRole] = useState<string>('');
   const [adding, setAdding] = useState(false);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
 
   useEffect(() => {
     fetchUserRoles();

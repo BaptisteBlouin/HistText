@@ -416,7 +416,7 @@ const RolePermissionsEnhanced: React.FC = () => {
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterPermission, setFilterPermission] = useState<string>('');
   const [adding, setAdding] = useState(false);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);

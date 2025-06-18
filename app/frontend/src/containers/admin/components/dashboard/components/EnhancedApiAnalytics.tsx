@@ -119,7 +119,7 @@ const EnhancedApiAnalytics: React.FC<EnhancedApiAnalyticsProps> = ({
   const [analytics, setAnalytics] = useState<EnhancedRequestAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
 
   const fetchAnalytics = async () => {
     if (!accessToken) return;

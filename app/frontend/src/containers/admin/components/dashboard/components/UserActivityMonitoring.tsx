@@ -75,7 +75,7 @@ export const UserActivityMonitoring: React.FC<UserActivityMonitoringProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   /**
    * Returns an icon for each security event type.
    */

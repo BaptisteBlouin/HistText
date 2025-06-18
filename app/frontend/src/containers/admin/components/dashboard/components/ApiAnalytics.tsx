@@ -80,7 +80,7 @@ export const ApiAnalytics: React.FC<ApiAnalyticsProps> = ({
   const [previousData, setPreviousData] = useState<RequestAnalytics | null>(
     null,
   );
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use prop visibility if provided, otherwise use internal state

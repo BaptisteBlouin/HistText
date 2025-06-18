@@ -494,7 +494,7 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);

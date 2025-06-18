@@ -423,7 +423,7 @@ const UsersEnhanced: React.FC = () => {
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deletingBulk, setDeletingBulk] = useState(false);
-  const [viewMode, setViewMode] = useState<'card' | 'table'>(isMobile ? 'card' : 'card');
+  const [viewMode, setViewMode] = useState<'card' | 'table'>(isMobile ? 'card' : 'table');
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 

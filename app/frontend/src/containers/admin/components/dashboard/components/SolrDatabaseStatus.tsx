@@ -56,7 +56,7 @@ export const SolrDatabaseStatus: React.FC<SolrDatabaseStatusProps> = ({
   const theme = useTheme();
   const { isMobile, isTablet } = useResponsive();
   const [showSolrDetails, setShowSolrDetails] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
   // Force cards mode on mobile
   React.useEffect(() => {
