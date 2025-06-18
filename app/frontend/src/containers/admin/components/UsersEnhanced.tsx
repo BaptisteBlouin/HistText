@@ -501,6 +501,151 @@ const UsersEnhanced: React.FC = () => {
     );
   };
 
+  const handleImportCSV = async () => {
+    if (!importFile) {
+      showNotification("Please select a file to import", "warning");
+      return;
+    }
+
+    setImporting(true);
+    
+    try {
+      const text = await importFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        showNotification("CSV file must contain header and at least one data row", "error");
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const expectedHeaders = ['email', 'firstname', 'lastname', 'password'];
+      
+      // Validate headers
+      const missingHeaders = expectedHeaders.filter(h => !headers.some(header => header.toLowerCase().includes(h)));
+      if (missingHeaders.length > 0) {
+        showNotification(`Missing required columns: ${missingHeaders.join(', ')}. Expected: email, firstname, lastname, password`, "error");
+        return;
+      }
+
+      // Parse CSV data
+      const userData = [];
+      const activatedIndex = headers.findIndex(h => h.toLowerCase().includes('activated'));
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        if (values.length >= 4) {
+          userData.push({
+            email: values[headers.findIndex(h => h.toLowerCase().includes('email'))],
+            firstname: values[headers.findIndex(h => h.toLowerCase().includes('firstname'))],
+            lastname: values[headers.findIndex(h => h.toLowerCase().includes('lastname'))],
+            hash_password: values[headers.findIndex(h => h.toLowerCase().includes('password'))],
+            activated: activatedIndex >= 0 ? values[activatedIndex].toLowerCase() === 'true' : true,
+          });
+        }
+      }
+
+      if (userData.length === 0) {
+        showNotification("No valid user data found in CSV", "error");
+        return;
+      }
+
+      // Import users
+      let successCount = 0;
+      const errors: string[] = [];
+      
+      for (const user of userData) {
+        try {
+          await authAxios.post('/api/users', user);
+          successCount++;
+        } catch (err: any) {
+          console.error(`Failed to import user ${user.email}:`, err);
+          
+          let specificError = 'Unknown error';
+          
+          if (err.response?.data) {
+            const responseData = err.response.data;
+            
+            if (responseData.error && responseData.error.message) {
+              specificError = responseData.error.message;
+            } else if (responseData.message) {
+              specificError = responseData.message;
+            } else if (responseData.error && typeof responseData.error === 'object') {
+              if (responseData.error.code) {
+                specificError = responseData.error.code.replace(/_/g, ' ');
+              } else {
+                specificError = 'Validation error';
+              }
+            } else if (typeof responseData === 'string') {
+              specificError = responseData;
+            } else {
+              specificError = 'Invalid request format';
+            }
+          } else if (err.message) {
+            specificError = err.message;
+          }
+          
+          errors.push(`${user.email}: ${specificError}`);
+        }
+      }
+
+      // Show detailed results
+      if (successCount > 0 && errors.length === 0) {
+        showNotification(`Successfully imported all ${successCount} users`, "success");
+        fetchUsers();
+      } else if (successCount > 0 && errors.length > 0) {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Imported ${successCount} users successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
+        fetchUsers();
+      } else {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Import failed for all users: ${errorSummary}`, "error", 15000);
+      }
+      
+      setOpenImportDialog(false);
+      setImportFile(null);
+    } catch (err: any) {
+      console.error('Import failed:', err);
+      const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unknown error occurred';
+      showNotification(`Import failed: ${errorMsg}`, "error", 10000);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    const csvData = users.map(user => ({
+      ID: user.id,
+      "First Name": user.firstname,
+      "Last Name": user.lastname,
+      Email: user.email,
+      Status: user.activated ? "Active" : "Inactive",
+      "Created At": new Date(user.created_at).toLocaleDateString(),
+      "Updated At": new Date(user.updated_at).toLocaleDateString()
+    }));
+    
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showNotification(`Exported ${users.length} users to CSV`, "success");
+  };
+
   const isValidEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -825,7 +970,7 @@ const UsersEnhanced: React.FC = () => {
     {
       icon: <GetApp />,
       name: 'Export All',
-      onClick: () => {/* handleExportCSV */},
+      onClick: handleExportCSV,
     },
     {
       icon: <Refresh />,
@@ -971,36 +1116,79 @@ const UsersEnhanced: React.FC = () => {
             </Grid>
           </Grid>
           
-          {/* Results summary */}
+          {/* Results summary and bulk actions */}
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="body2" color="text.secondary">
               Showing {filteredUsers.length} of {users.length} users
             </Typography>
-            {!isMobile && selectedUsers.length > 0 && (
+            {!isMobile && (
               <Stack direction="row" spacing={1}>
-                <Button
-                  size="small"
-                  startIcon={<SelectAll />}
-                  onClick={handleSelectAll}
-                  disabled={filteredUsers.length === 0}
-                >
-                  Select All
-                </Button>
-                <Button
-                  size="small"
-                  startIcon={<Clear />}
-                  onClick={handleDeselectAll}
-                >
-                  Clear Selection
-                </Button>
-                <Button
-                  size="small"
-                  color="error"
-                  startIcon={<Delete />}
-                  onClick={() => setOpenBulkDeleteDialog(true)}
-                >
-                  Delete ({selectedUsers.length})
-                </Button>
+                {selectedUsers.length > 0 ? (
+                  <>
+                    <Button
+                      size="small"
+                      startIcon={<SelectAll />}
+                      onClick={handleSelectAll}
+                      disabled={filteredUsers.length === 0}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      size="small"
+                      startIcon={<Clear />}
+                      onClick={handleDeselectAll}
+                    >
+                      Clear Selection
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={() => setOpenBulkDeleteDialog(true)}
+                    >
+                      Delete ({selectedUsers.length})
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Tooltip title="Import from CSV">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<CloudUpload />}
+                        onClick={() => setOpenImportDialog(true)}
+                      >
+                        Import
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Export All to CSV">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredUsers.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Select All Users">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredUsers.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </>
+                )}
               </Stack>
             )}
           </Box>
@@ -1352,6 +1540,61 @@ const UsersEnhanced: React.FC = () => {
             loading={deletingBulk}
           >
             Delete {selectedUsers.length} User{selectedUsers.length !== 1 ? 's' : ''}
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import CSV Dialog */}
+      <Dialog
+        open={openImportDialog}
+        onClose={() => setOpenImportDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+          }}
+        >
+          <CloudUpload />
+          Import Users from CSV
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Upload a CSV file with columns: <strong>email, firstname, lastname, password, activated (optional)</strong>
+          </Typography>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+            style={{ marginBottom: '16px' }}
+          />
+          {importFile && (
+            <Typography variant="body2" color="success.main">
+              Selected: {importFile.name}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleImportCSV}
+            disabled={!importFile || importing}
+            loading={importing}
+            startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+              },
+            }}
+          >
+            {importing ? 'Importing...' : 'Import'}
           </LoadingButton>
         </DialogActions>
       </Dialog>

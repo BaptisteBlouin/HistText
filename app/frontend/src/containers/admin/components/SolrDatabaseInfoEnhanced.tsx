@@ -80,17 +80,14 @@ import { useAuth } from "../../../hooks/useAuth";
 import { useResponsive } from "../../../lib/responsive-utils";
 
 interface SolrDatabaseInfo {
-  id?: number;
   solr_database_id: number;
   collection_name: string;
   description: string;
   embeddings: string;
-  lang: string;
-  text_field: string;
-  tokenizer: string;
-  to_not_display: string[];
-  created_at?: string;
-  updated_at?: string;
+  lang?: string | null;
+  text_field?: string | null;
+  tokenizer?: string | null;
+  to_not_display?: Array<string | null> | null;
 }
 
 interface SolrDatabase {
@@ -475,8 +472,10 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
   const [newCollection, setNewCollection] = useState<Partial<SolrDatabaseInfo>>({
     to_not_display: []
   });
-  const [editingCollection, setEditingCollection] = useState<Partial<SolrDatabaseInfo>>({});
-  const [editingCollectionId, setEditingCollectionId] = useState<number | null>(null);
+  const [selectedSolrDatabase, setSelectedSolrDatabase] = useState<SolrDatabase | null>(null);
+  const [aliases, setAliases] = useState<string[]>([]);
+  const [availableFields, setAvailableFields] = useState<string[]>([]);
+  const [editingRecord, setEditingRecord] = useState<SolrDatabaseInfo | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<NotificationState>({
@@ -492,17 +491,39 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openBulkDeleteDialog, setOpenBulkDeleteDialog] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<SolrDatabaseInfo | null>(null);
-  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [availableFields, setAvailableFields] = useState<string[]>([]);
-  const [availableCollections, setAvailableCollections] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [openImportDialog, setOpenImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     fetchCollections();
     fetchDatabases();
   }, []);
+
+  // Fetch collection aliases when database is selected
+  useEffect(() => {
+    if (selectedSolrDatabase) {
+      authAxios
+        .get(`/api/solr/aliases?solr_database_id=${selectedSolrDatabase.id}`)
+        .then((res) => setAliases(Array.isArray(res.data) ? res.data : []))
+        .catch(() => setAliases([]));
+    } else {
+      setAliases([]);
+    }
+  }, [selectedSolrDatabase, authAxios]);
+
+  // Fetch collection metadata when collection name changes
+  useEffect(() => {
+    if (selectedSolrDatabase && newCollection.collection_name) {
+      fetchCollectionMetadata(selectedSolrDatabase.id, newCollection.collection_name);
+    } else {
+      setAvailableFields([]);
+    }
+  }, [selectedSolrDatabase, newCollection.collection_name]);
 
   // Auto-refresh functionality
   useEffect(() => {
@@ -531,8 +552,8 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
         collection.collection_name.toLowerCase().includes(searchText) ||
         collection.description.toLowerCase().includes(searchText) ||
         collection.embeddings.toLowerCase().includes(searchText) ||
-        collection.lang.toLowerCase().includes(searchText) ||
-        collection.text_field.toLowerCase().includes(searchText);
+        (collection.lang && collection.lang.toLowerCase().includes(searchText)) ||
+        (collection.text_field && collection.text_field.toLowerCase().includes(searchText));
     }), [collections, search]);
 
   const fetchCollections = useCallback(async () => {
@@ -570,10 +591,169 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
     );
   };
 
+  const handleImportCSV = async () => {
+    if (!importFile) {
+      showNotification("Please select a file to import", "warning");
+      return;
+    }
+
+    setImporting(true);
+    
+    try {
+      const text = await importFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        showNotification("CSV file must contain header and at least one data row", "error");
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const expectedHeaders = ['solr_database_id', 'collection_name', 'description', 'embeddings'];
+      
+      // Validate headers
+      const missingHeaders = expectedHeaders.filter(h => !headers.some(header => header.toLowerCase().includes(h)));
+      if (missingHeaders.length > 0) {
+        showNotification(`Missing required columns: ${missingHeaders.join(', ')}. Expected: solr_database_id, collection_name, description, embeddings`, "error");
+        return;
+      }
+
+      // Parse CSV data
+      const databaseInfoData = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        if (values.length >= 4) {
+          databaseInfoData.push({
+            solr_database_id: parseInt(values[headers.findIndex(h => h.toLowerCase().includes('solr_database_id'))]),
+            collection_name: values[headers.findIndex(h => h.toLowerCase().includes('collection_name'))],
+            description: values[headers.findIndex(h => h.toLowerCase().includes('description'))],
+            embeddings: values[headers.findIndex(h => h.toLowerCase().includes('embeddings'))],
+          });
+        }
+      }
+
+      if (databaseInfoData.length === 0) {
+        showNotification("No valid database info data found in CSV", "error");
+        return;
+      }
+
+      // Import database info records
+      let successCount = 0;
+      const errors: string[] = [];
+      
+      for (const dbInfo of databaseInfoData) {
+        try {
+          await authAxios.post('/api/solr_database_info', dbInfo);
+          successCount++;
+        } catch (err: any) {
+          console.error(`Failed to import database info ${dbInfo.collection_name}:`, err);
+          
+          let specificError = 'Unknown error';
+          
+          if (err.response?.data) {
+            const responseData = err.response.data;
+            
+            if (responseData.error && responseData.error.message) {
+              specificError = responseData.error.message;
+            } else if (responseData.message) {
+              specificError = responseData.message;
+            } else if (responseData.error && typeof responseData.error === 'object') {
+              if (responseData.error.code) {
+                specificError = responseData.error.code.replace(/_/g, ' ');
+              } else {
+                specificError = 'Validation error';
+              }
+            } else if (typeof responseData === 'string') {
+              specificError = responseData;
+            } else {
+              specificError = 'Invalid request format';
+            }
+          } else if (err.message) {
+            specificError = err.message;
+          }
+          
+          errors.push(`${dbInfo.collection_name}: ${specificError}`);
+        }
+      }
+
+      // Show detailed results with longer duration for errors
+      if (successCount > 0 && errors.length === 0) {
+        showNotification(`Successfully imported all ${successCount} database info records`, "success");
+        fetchCollections();
+      } else if (successCount > 0 && errors.length > 0) {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Imported ${successCount} records successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
+        fetchCollections();
+      } else {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Import failed for all database info records: ${errorSummary}`, "error", 15000);
+      }
+      
+      setOpenImportDialog(false);
+      setImportFile(null);
+    } catch (err: any) {
+      console.error('Import failed:', err);
+      const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unknown error occurred';
+      showNotification(`Import failed: ${errorMsg}`, "error", 10000);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleExportCSV = useCallback(() => {
+    const csvHeaders = ['Database ID', 'Collection Name', 'Description', 'Embeddings', 'Language', 'Text Field', 'Tokenizer', 'Hidden Fields'];
+    const csvData = filteredCollections.map(info => [
+      info.solr_database_id,
+      info.collection_name,
+      info.description,
+      info.embeddings,
+      info.lang || '',
+      info.text_field || '',
+      info.tokenizer || '',
+      info.to_not_display ? info.to_not_display.filter(Boolean).join(';') : ''
+    ]);
+    
+    const csvContent = [csvHeaders, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `solr_database_info_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    showNotification(`Exported ${filteredCollections.length} database info records to CSV`, 'success');
+  }, [filteredCollections]);
+
+  const fetchCollectionMetadata = async (
+    solrDatabaseId: number,
+    collectionName: string,
+  ) => {
+    try {
+      const metadataResponse = await authAxios.get(
+        `/api/solr/collection_metadata?collection=${encodeURIComponent(collectionName)}&solr_database_id=${solrDatabaseId}`,
+      );
+      if (metadataResponse.data && Array.isArray(metadataResponse.data)) {
+        const fields = metadataResponse.data;
+        const fieldNames = fields.map((field: any) => field.name);
+        setAvailableFields(fieldNames);
+      }
+    } catch (error) {
+      console.error("Failed to fetch collection metadata:", error);
+      setAvailableFields([]);
+    }
+  };
+
   const validateCollectionForm = (collectionData: Partial<SolrDatabaseInfo>, isEdit = false) => {
     const errors: string[] = [];
     
-    if (!collectionData.solr_database_id) {
+    if (!collectionData.solr_database_id && !selectedSolrDatabase) {
       errors.push("Database selection is required");
     }
     
@@ -582,18 +762,25 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
     } else if (!/^[a-zA-Z0-9_-]+$/.test(collectionData.collection_name)) {
       errors.push("Collection name must contain only letters, numbers, underscores, and hyphens");
     } else {
+      const dbId = collectionData.solr_database_id || selectedSolrDatabase?.id;
       const existingCollection = collections.find(c => 
         c.collection_name.toLowerCase() === collectionData.collection_name?.toLowerCase() &&
-        c.solr_database_id === collectionData.solr_database_id &&
-        (!isEdit || c.id !== editingCollectionId)
+        c.solr_database_id === dbId &&
+        (!isEdit || !(editingRecord && c.solr_database_id === editingRecord.solr_database_id && c.collection_name === editingRecord.collection_name))
       );
       if (existingCollection) {
         errors.push("A collection with this name already exists for this database");
       }
     }
     
-    if (collectionData.description && collectionData.description.length > 500) {
+    if (!collectionData.description?.trim()) {
+      errors.push("Description is required");
+    } else if (collectionData.description.length > 500) {
       errors.push("Description must be less than 500 characters");
+    }
+    
+    if (!collectionData.embeddings?.trim()) {
+      errors.push("Embeddings field is required");
     }
     
     if (collectionData.lang && collectionData.lang.length > 10) {
@@ -613,8 +800,18 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
     
     setAdding(true);
     try {
-      await authAxios.post("/api/solr_database_info", newCollection);
+      await authAxios.post("/api/solr_database_info", {
+        solr_database_id: selectedSolrDatabase!.id,
+        collection_name: newCollection.collection_name,
+        description: newCollection.description,
+        embeddings: newCollection.embeddings,
+        lang: newCollection.lang,
+        text_field: newCollection.text_field,
+        tokenizer: newCollection.tokenizer,
+        to_not_display: newCollection.to_not_display,
+      });
       setNewCollection({ to_not_display: [] });
+      setSelectedSolrDatabase(null);
       setOpenAddDialog(false);
       fetchCollections();
       showNotification(`Collection "${newCollection.collection_name}" added successfully`, "success");
@@ -627,9 +824,9 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
   };
 
   const handleUpdateCollection = async () => {
-    if (!editingCollectionId) return;
+    if (!editingRecord) return;
     
-    const validationErrors = validateCollectionForm(editingCollection, true);
+    const validationErrors = validateCollectionForm(editingRecord, true);
     
     if (validationErrors.length > 0) {
       showNotification(validationErrors[0], "warning");
@@ -638,12 +835,21 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
     
     setUpdating(true);
     try {
-      await authAxios.put(`/api/solr_database_info/${editingCollectionId}`, editingCollection);
-      setEditingCollection({});
-      setEditingCollectionId(null);
+      await authAxios.put(
+        `/api/solr_database_info/${editingRecord.solr_database_id}/${encodeURIComponent(editingRecord.collection_name)}`,
+        {
+          description: editingRecord.description,
+          embeddings: editingRecord.embeddings,
+          lang: editingRecord.lang,
+          text_field: editingRecord.text_field,
+          tokenizer: editingRecord.tokenizer,
+          to_not_display: editingRecord.to_not_display,
+        }
+      );
+      setEditingRecord(null);
       setOpenEditDialog(false);
       fetchCollections();
-      showNotification(`Collection "${editingCollection.collection_name}" updated successfully`, "success");
+      showNotification(`Collection "${editingRecord.collection_name}" updated successfully`, "success");
     } catch (err: any) {
       console.error("Update collection failed:", err);
       showNotification(`Failed to update collection: ${err.response?.data?.message || err.message}`, "error");
@@ -654,7 +860,9 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
 
   const handleDeleteCollection = async (collection: SolrDatabaseInfo) => {
     try {
-      await authAxios.delete(`/api/solr_database_info/${collection.id}`);
+      await authAxios.delete(
+        `/api/solr_database_info/${collection.solr_database_id}/${encodeURIComponent(collection.collection_name)}`
+      );
       showNotification(`Collection "${collection.collection_name}" deleted successfully`, "success");
       fetchCollections();
       setOpenDeleteDialog(false);
@@ -671,7 +879,9 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
     try {
       await Promise.all(
         selectedCollections.map(collection => 
-          authAxios.delete(`/api/solr_database_info/${collection.id}`)
+          authAxios.delete(
+            `/api/solr_database_info/${collection.solr_database_id}/${encodeURIComponent(collection.collection_name)}`
+          )
         )
       );
 
@@ -690,37 +900,32 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
   };
 
   const handleSelectCollection = (collection: SolrDatabaseInfo) => {
-    const isSelected = selectedCollections.some(c => c.id === collection.id);
+    const isSelected = selectedCollections.some(c => 
+      c.solr_database_id === collection.solr_database_id && c.collection_name === collection.collection_name
+    );
     
     if (isSelected) {
-      setSelectedCollections(selectedCollections.filter(c => c.id !== collection.id));
+      setSelectedCollections(selectedCollections.filter(c => 
+        !(c.solr_database_id === collection.solr_database_id && c.collection_name === collection.collection_name)
+      ));
     } else {
       setSelectedCollections([...selectedCollections, collection]);
     }
   };
 
   const handleToggleCardExpansion = (collection: SolrDatabaseInfo) => {
+    const collectionKey = `${collection.solr_database_id}-${collection.collection_name}`;
     const newExpanded = new Set(expandedCards);
-    if (newExpanded.has(collection.id!)) {
-      newExpanded.delete(collection.id!);
+    if (newExpanded.has(collectionKey as any)) {
+      newExpanded.delete(collectionKey as any);
     } else {
-      newExpanded.add(collection.id!);
+      newExpanded.add(collectionKey as any);
     }
     setExpandedCards(newExpanded);
   };
 
-  const handleEditOpen = (collection: SolrDatabaseInfo) => {
-    setEditingCollectionId(collection.id!);
-    setEditingCollection({
-      solr_database_id: collection.solr_database_id,
-      collection_name: collection.collection_name,
-      description: collection.description,
-      embeddings: collection.embeddings,
-      lang: collection.lang,
-      text_field: collection.text_field,
-      tokenizer: collection.tokenizer,
-      to_not_display: collection.to_not_display || [],
-    });
+  const handleEdit = (collection: SolrDatabaseInfo) => {
+    setEditingRecord(collection);
     setOpenEditDialog(true);
   };
 
@@ -730,6 +935,16 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
 
   const handleClearSelection = () => {
     setSelectedCollections([]);
+  };
+
+  const resetForm = () => {
+    setEditingRecord(null);
+    setSelectedSolrDatabase(null);
+    setNewCollection({ to_not_display: [] });
+    setAvailableFields([]);
+    setAliases([]);
+    setOpenAddDialog(false);
+    setOpenEditDialog(false);
   };
 
   // DataGrid columns for table view
@@ -801,7 +1016,7 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
             <IconButton
               size="small"
               color="primary"
-              onClick={() => handleEditOpen(params.row)}
+              onClick={() => handleEdit(params.row)}
             >
               <Edit />
             </IconButton>
@@ -833,12 +1048,12 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
     {
       icon: <CloudUpload />,
       name: 'Import CSV',
-      onClick: () => {/* handleImportCSV */},
+      onClick: () => setOpenImportDialog(true),
     },
     {
       icon: <GetApp />,
       name: 'Export All',
-      onClick: () => {/* handleExportCSV */},
+      onClick: handleExportCSV,
     },
     {
       icon: <Refresh />,
@@ -960,35 +1175,81 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
           </Grid>
           
           {/* Results summary and bulk actions */}
-          {!isMobile && selectedCollections.length > 0 && (
+          {!isMobile && (
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="primary">
-                {selectedCollections.length} collection{selectedCollections.length !== 1 ? 's' : ''} selected
+              <Typography variant="body2" color={selectedCollections.length > 0 ? "primary" : "text.secondary"}>
+                {selectedCollections.length > 0 
+                  ? `${selectedCollections.length} collection${selectedCollections.length !== 1 ? 's' : ''} selected`
+                  : `Showing ${filteredCollections.length} of ${collections.length} collections`
+                }
               </Typography>
               <Stack direction="row" spacing={1}>
-                <Button
-                  size="small"
-                  startIcon={<SelectAll />}
-                  onClick={handleSelectAll}
-                  disabled={filteredCollections.length === 0}
-                >
-                  Select All
-                </Button>
-                <Button
-                  size="small"
-                  startIcon={<Clear />}
-                  onClick={handleClearSelection}
-                >
-                  Clear Selection
-                </Button>
-                <Button
-                  size="small"
-                  color="error"
-                  startIcon={<Delete />}
-                  onClick={() => setOpenBulkDeleteDialog(true)}
-                >
-                  Delete ({selectedCollections.length})
-                </Button>
+                {selectedCollections.length > 0 ? (
+                  <>
+                    <Button
+                      size="small"
+                      startIcon={<SelectAll />}
+                      onClick={handleSelectAll}
+                      disabled={filteredCollections.length === 0}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      size="small"
+                      startIcon={<Clear />}
+                      onClick={handleClearSelection}
+                    >
+                      Clear Selection
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={() => setOpenBulkDeleteDialog(true)}
+                    >
+                      Delete ({selectedCollections.length})
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Tooltip title="Import from CSV">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<CloudUpload />}
+                        onClick={() => setOpenImportDialog(true)}
+                      >
+                        Import
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Export All to CSV">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredCollections.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Select All Collections">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredCollections.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </>
+                )}
               </Stack>
             </Box>
           )}
@@ -1031,16 +1292,18 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
                 {filteredCollections.map((collection) => {
                   const database = databases.find(db => db.id === collection.solr_database_id);
                   return (
-                    <Grid item xs={12} sm={6} md={4} key={collection.id}>
+                    <Grid item xs={12} sm={6} md={4} key={`${collection.solr_database_id}-${collection.collection_name}`}>
                       <CollectionInfoCard
                         collectionInfo={collection}
                         database={database}
-                        selected={selectedCollections.some(c => c.id === collection.id)}
+                        selected={selectedCollections.some(c => 
+                          c.solr_database_id === collection.solr_database_id && c.collection_name === collection.collection_name
+                        )}
                         searchTerm={search}
-                        expanded={expandedCards.has(collection.id!)}
+                        expanded={expandedCards.has(`${collection.solr_database_id}-${collection.collection_name}`)}
                         onSelect={handleSelectCollection}
                         onToggleExpand={handleToggleCardExpansion}
-                        onEdit={handleEditOpen}
+                        onEdit={handleEdit}
                         onDelete={(collection) => {
                           setCollectionToDelete(collection);
                           setOpenDeleteDialog(true);
@@ -1062,13 +1325,13 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
                     },
                   }}
                   pageSize={100}
-                  getRowId={(row) => row.id || `${row.solr_database_id}-${row.collection_name}`}
+                  getRowId={(row) => `${row.solr_database_id}-${row.collection_name}`}
                   checkboxSelection
-                  selectionModel={selectedCollections.map(c => c.id)}
-                  onSelectionModelChange={(newSelection: GridSelectionModel) => {
-                    const selectedIds = newSelection as number[];
+                  rowSelectionModel={selectedCollections.map(c => `${c.solr_database_id}-${c.collection_name}`)}
+                  onRowSelectionModelChange={(newSelection: GridSelectionModel) => {
+                    const selectedIds = newSelection as string[];
                     const newSelectedCollections = filteredCollections.filter(c => 
-                      selectedIds.includes(c.id!)
+                      selectedIds.includes(`${c.solr_database_id}-${c.collection_name}`)
                     );
                     setSelectedCollections(newSelectedCollections);
                   }}
@@ -1144,8 +1407,12 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
               <FormControl fullWidth required>
                 <InputLabel>Database</InputLabel>
                 <Select
-                  value={newCollection.solr_database_id || ''}
-                  onChange={(e) => setNewCollection({ ...newCollection, solr_database_id: Number(e.target.value) })}
+                  value={selectedSolrDatabase?.id || ''}
+                  onChange={(e) => {
+                    const db = databases.find(d => d.id === Number(e.target.value)) || null;
+                    setSelectedSolrDatabase(db);
+                    setNewCollection({ ...newCollection, solr_database_id: Number(e.target.value) });
+                  }}
                   label="Database"
                 >
                   {databases.map((database) => (
@@ -1157,17 +1424,24 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                label="Collection Name"
+              <Autocomplete
+                freeSolo
+                options={aliases}
                 value={newCollection.collection_name || ""}
-                onChange={(e) => setNewCollection({ ...newCollection, collection_name: e.target.value })}
-                fullWidth
-                required
-                error={newCollection.collection_name ? !/^[a-zA-Z0-9_-]+$/.test(newCollection.collection_name) : false}
-                helperText={
-                  !newCollection.collection_name?.trim() ? "Collection name is required" :
-                  !/^[a-zA-Z0-9_-]+$/.test(newCollection.collection_name) ? "Only letters, numbers, underscores, and hyphens allowed" : ""
-                }
+                onChange={(_, value: string | null) => {
+                  setNewCollection({ ...newCollection, collection_name: value || "" });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Collection Name"
+                    required
+                    error={newCollection.collection_name ? !/^[a-zA-Z0-9_-]+$/.test(newCollection.collection_name) : false}
+                    helperText={
+                      !newCollection.collection_name?.trim() ? "Collection name is required" :
+                      !/^[a-zA-Z0-9_-]+$/.test(newCollection.collection_name) ? "Only letters, numbers, underscores, and hyphens allowed" : ""
+                    }
+                  />)}
               />
             </Grid>
             <Grid item xs={12}>
@@ -1193,13 +1467,24 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                label="Text Field"
-                value={newCollection.text_field || ""}
-                onChange={(e) => setNewCollection({ ...newCollection, text_field: e.target.value })}
-                fullWidth
-                placeholder="content, text, body"
-              />
+              <FormControl fullWidth>
+                <InputLabel>Text Field</InputLabel>
+                <Select
+                  value={newCollection.text_field || ""}
+                  onChange={(e) => setNewCollection({ ...newCollection, text_field: e.target.value || null })}
+                  label="Text Field"
+                  disabled={availableFields.length === 0}
+                >
+                  <MenuItem value="">
+                    <em>None</em>
+                  </MenuItem>
+                  {availableFields.map((field) => (
+                    <MenuItem key={field} value={field}>
+                      {field}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
@@ -1224,8 +1509,8 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
                 multiple
                 freeSolo
                 options={availableFields}
-                value={newCollection.to_not_display || []}
-                onChange={(_, value) => setNewCollection({ ...newCollection, to_not_display: value })}
+                value={(newCollection.to_not_display || []).filter(Boolean) as string[]}
+                onChange={(_, value) => setNewCollection({ ...newCollection, to_not_display: value.map(v => v || null) })}
                 renderTags={(value, getTagProps) =>
                   value.map((option, index) => (
                     <Chip
@@ -1245,12 +1530,13 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
                     helperText="Fields that should not be displayed in search results"
                   />
                 )}
+                disabled={availableFields.length === 0}
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setOpenAddDialog(false)} disabled={adding}>
+          <Button onClick={resetForm} disabled={adding}>
             Cancel
           </Button>
           <LoadingButton
@@ -1258,8 +1544,10 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
             onClick={handleAddCollection}
             loading={adding}
             disabled={
-              !newCollection.solr_database_id ||
-              !newCollection.collection_name?.trim()
+              !selectedSolrDatabase ||
+              !newCollection.collection_name?.trim() ||
+              !newCollection.description?.trim() ||
+              !newCollection.embeddings?.trim()
             }
           >
             Add Collection
@@ -1285,9 +1573,10 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
               <FormControl fullWidth required>
                 <InputLabel>Database</InputLabel>
                 <Select
-                  value={editingCollection.solr_database_id || ''}
-                  onChange={(e) => setEditingCollection({ ...editingCollection, solr_database_id: Number(e.target.value) })}
+                  value={editingRecord?.solr_database_id || ''}
+                  onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, solr_database_id: Number(e.target.value) } : null)}
                   label="Database"
+                  disabled
                 >
                   {databases.map((database) => (
                     <MenuItem key={database.id} value={database.id}>
@@ -1300,53 +1589,56 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Collection Name"
-                value={editingCollection.collection_name || ""}
-                onChange={(e) => setEditingCollection({ ...editingCollection, collection_name: e.target.value })}
+                value={editingRecord?.collection_name || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, collection_name: e.target.value } : null)}
                 fullWidth
                 required
+                disabled
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
                 label="Description"
-                value={editingCollection.description || ""}
-                onChange={(e) => setEditingCollection({ ...editingCollection, description: e.target.value })}
+                value={editingRecord?.description || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, description: e.target.value } : null)}
                 fullWidth
                 multiline
                 rows={2}
                 inputProps={{ maxLength: 500 }}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Language"
-                value={editingCollection.lang || ""}
-                onChange={(e) => setEditingCollection({ ...editingCollection, lang: e.target.value })}
+                value={editingRecord?.lang || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, lang: e.target.value || null } : null)}
                 fullWidth
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Text Field"
-                value={editingCollection.text_field || ""}
-                onChange={(e) => setEditingCollection({ ...editingCollection, text_field: e.target.value })}
+                value={editingRecord?.text_field || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, text_field: e.target.value || null } : null)}
                 fullWidth
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Tokenizer"
-                value={editingCollection.tokenizer || ""}
-                onChange={(e) => setEditingCollection({ ...editingCollection, tokenizer: e.target.value })}
+                value={editingRecord?.tokenizer || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, tokenizer: e.target.value || null } : null)}
                 fullWidth
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Embeddings"
-                value={editingCollection.embeddings || ""}
-                onChange={(e) => setEditingCollection({ ...editingCollection, embeddings: e.target.value })}
+                value={editingRecord?.embeddings || ""}
+                onChange={(e) => setEditingRecord(editingRecord ? { ...editingRecord, embeddings: e.target.value } : null)}
                 fullWidth
+                required
               />
             </Grid>
             <Grid item xs={12}>
@@ -1354,8 +1646,8 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
                 multiple
                 freeSolo
                 options={availableFields}
-                value={editingCollection.to_not_display || []}
-                onChange={(_, value) => setEditingCollection({ ...editingCollection, to_not_display: value })}
+                value={(editingRecord?.to_not_display || []).filter(Boolean) as string[]}
+                onChange={(_, value) => setEditingRecord(editingRecord ? { ...editingRecord, to_not_display: value.map(v => v || null) } : null)}
                 renderTags={(value, getTagProps) =>
                   value.map((option, index) => (
                     <Chip
@@ -1379,13 +1671,19 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setOpenEditDialog(false)} disabled={updating}>
+          <Button onClick={resetForm} disabled={updating}>
             Cancel
           </Button>
           <LoadingButton
             variant="contained"
             onClick={handleUpdateCollection}
             loading={updating}
+            disabled={
+              !editingRecord?.solr_database_id ||
+              !editingRecord?.collection_name?.trim() ||
+              !editingRecord?.description?.trim() ||
+              !editingRecord?.embeddings?.trim()
+            }
           >
             Save Changes
           </LoadingButton>
@@ -1450,6 +1748,61 @@ const SolrDatabaseInfoEnhanced: React.FC = () => {
           >
             Delete {selectedCollections.length} Collection{selectedCollections.length !== 1 ? 's' : ''}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import CSV Dialog */}
+      <Dialog
+        open={openImportDialog}
+        onClose={() => setOpenImportDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+          }}
+        >
+          <CloudUpload />
+          Import Collection Info from CSV
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Upload a CSV file with columns: <strong>solr_database_id, collection_name, description, embeddings</strong>
+          </Typography>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+            style={{ marginBottom: '16px' }}
+          />
+          {importFile && (
+            <Typography variant="body2" color="success.main">
+              Selected: {importFile.name}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleImportCSV}
+            disabled={!importFile || importing}
+            loading={importing}
+            startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+              },
+            }}
+          >
+            {importing ? 'Importing...' : 'Import'}
+          </LoadingButton>
         </DialogActions>
       </Dialog>
     </Box>

@@ -461,6 +461,9 @@ const SolrDatabaseEnhanced: React.FC = () => {
   const [adding, setAdding] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [openImportDialog, setOpenImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     fetchDatabases();
@@ -520,6 +523,145 @@ const SolrDatabaseEnhanced: React.FC = () => {
       duration,
     );
   };
+
+  const handleImportCSV = async () => {
+    if (!importFile) {
+      showNotification("Please select a file to import", "warning");
+      return;
+    }
+
+    setImporting(true);
+    
+    try {
+      const text = await importFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        showNotification("CSV file must contain header and at least one data row", "error");
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const expectedHeaders = ['name', 'url', 'server_port', 'local_port'];
+      
+      // Validate headers
+      const missingHeaders = expectedHeaders.filter(h => !headers.some(header => header.toLowerCase().includes(h)));
+      if (missingHeaders.length > 0) {
+        showNotification(`Missing required columns: ${missingHeaders.join(', ')}. Expected: name, url, server_port, local_port`, "error");
+        return;
+      }
+
+      // Parse CSV data
+      const databaseData = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        if (values.length >= 4) {
+          databaseData.push({
+            name: values[headers.findIndex(h => h.toLowerCase().includes('name'))],
+            url: values[headers.findIndex(h => h.toLowerCase().includes('url'))],
+            server_port: parseInt(values[headers.findIndex(h => h.toLowerCase().includes('server_port'))]),
+            local_port: parseInt(values[headers.findIndex(h => h.toLowerCase().includes('local_port'))]),
+          });
+        }
+      }
+
+      if (databaseData.length === 0) {
+        showNotification("No valid database data found in CSV", "error");
+        return;
+      }
+
+      // Import databases
+      let successCount = 0;
+      const errors: string[] = [];
+      
+      for (const db of databaseData) {
+        try {
+          await authAxios.post('/api/solr_databases', db);
+          successCount++;
+        } catch (err: any) {
+          console.error(`Failed to import database ${db.name}:`, err);
+          
+          let specificError = 'Unknown error';
+          
+          if (err.response?.data) {
+            const responseData = err.response.data;
+            
+            if (responseData.error && responseData.error.message) {
+              specificError = responseData.error.message;
+            } else if (responseData.message) {
+              specificError = responseData.message;
+            } else if (responseData.error && typeof responseData.error === 'object') {
+              if (responseData.error.code) {
+                specificError = responseData.error.code.replace(/_/g, ' ');
+              } else {
+                specificError = 'Validation error';
+              }
+            } else if (typeof responseData === 'string') {
+              specificError = responseData;
+            } else {
+              specificError = 'Invalid request format';
+            }
+          } else if (err.message) {
+            specificError = err.message;
+          }
+          
+          errors.push(`${db.name}: ${specificError}`);
+        }
+      }
+
+      // Show detailed results
+      if (successCount > 0 && errors.length === 0) {
+        showNotification(`Successfully imported all ${successCount} databases`, "success");
+        fetchDatabases();
+      } else if (successCount > 0 && errors.length > 0) {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Imported ${successCount} databases successfully. ${errors.length} failed: ${errorSummary}`, "warning", 10000);
+        fetchDatabases();
+      } else {
+        const errorSummary = errors.length <= 2 ? 
+          errors.join('; ') : 
+          `${errors.slice(0, 2).join('; ')}... and ${errors.length - 2} more errors`;
+        showNotification(`Import failed for all databases: ${errorSummary}`, "error", 15000);
+      }
+      
+      setOpenImportDialog(false);
+      setImportFile(null);
+    } catch (err: any) {
+      console.error('Import failed:', err);
+      const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unknown error occurred';
+      showNotification(`Import failed: ${errorMsg}`, "error", 10000);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleExportCSV = useCallback(() => {
+    const csvHeaders = ['ID', 'Name', 'URL', 'Server Port', 'Local Port', 'Created At', 'Updated At'];
+    const csvData = filteredDatabases.map(db => [
+      db.id,
+      db.name,
+      db.url,
+      db.server_port,
+      db.local_port,
+      new Date(db.created_at).toISOString(),
+      new Date(db.updated_at).toISOString()
+    ]);
+    
+    const csvContent = [csvHeaders, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `solr_databases_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    showNotification(`Exported ${filteredDatabases.length} databases to CSV`, 'success');
+  }, [filteredDatabases]);
 
   const validateDatabaseForm = (dbData: Partial<SolrDatabase>, isEdit = false) => {
     const errors: string[] = [];
@@ -820,12 +962,12 @@ const SolrDatabaseEnhanced: React.FC = () => {
     {
       icon: <CloudUpload />,
       name: 'Import CSV',
-      onClick: () => {/* handleImportCSV */},
+      onClick: () => setOpenImportDialog(true),
     },
     {
       icon: <GetApp />,
       name: 'Export All',
-      onClick: () => {/* handleExportCSV */},
+      onClick: handleExportCSV,
     },
     {
       icon: <Refresh />,
@@ -947,35 +1089,81 @@ const SolrDatabaseEnhanced: React.FC = () => {
           </Grid>
           
           {/* Results summary and bulk actions */}
-          {!isMobile && selectedDatabases.length > 0 && (
+          {!isMobile && (
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="primary">
-                {selectedDatabases.length} database{selectedDatabases.length !== 1 ? 's' : ''} selected
+              <Typography variant="body2" color={selectedDatabases.length > 0 ? "primary" : "text.secondary"}>
+                {selectedDatabases.length > 0 
+                  ? `${selectedDatabases.length} database${selectedDatabases.length !== 1 ? 's' : ''} selected`
+                  : `Showing ${filteredDatabases.length} of ${solrDatabases.length} databases`
+                }
               </Typography>
               <Stack direction="row" spacing={1}>
-                <Button
-                  size="small"
-                  startIcon={<SelectAll />}
-                  onClick={handleSelectAll}
-                  disabled={filteredDatabases.length === 0}
-                >
-                  Select All
-                </Button>
-                <Button
-                  size="small"
-                  startIcon={<Clear />}
-                  onClick={handleClearSelection}
-                >
-                  Clear Selection
-                </Button>
-                <Button
-                  size="small"
-                  color="error"
-                  startIcon={<Delete />}
-                  onClick={() => setOpenBulkDeleteDialog(true)}
-                >
-                  Delete ({selectedDatabases.length})
-                </Button>
+                {selectedDatabases.length > 0 ? (
+                  <>
+                    <Button
+                      size="small"
+                      startIcon={<SelectAll />}
+                      onClick={handleSelectAll}
+                      disabled={filteredDatabases.length === 0}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      size="small"
+                      startIcon={<Clear />}
+                      onClick={handleClearSelection}
+                    >
+                      Clear Selection
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={() => setOpenBulkDeleteDialog(true)}
+                    >
+                      Delete ({selectedDatabases.length})
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Tooltip title="Import from CSV">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<CloudUpload />}
+                        onClick={() => setOpenImportDialog(true)}
+                      >
+                        Import
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Export All to CSV">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<GetApp />}
+                          onClick={handleExportCSV}
+                          disabled={filteredDatabases.length === 0}
+                        >
+                          Export All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Select All Databases">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SelectAll />}
+                          onClick={handleSelectAll}
+                          disabled={filteredDatabases.length === 0}
+                        >
+                          Select All
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </>
+                )}
               </Stack>
             </Box>
           )}
@@ -1338,6 +1526,61 @@ const SolrDatabaseEnhanced: React.FC = () => {
           >
             Delete {selectedDatabases.length} Database{selectedDatabases.length !== 1 ? 's' : ''}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import CSV Dialog */}
+      <Dialog
+        open={openImportDialog}
+        onClose={() => setOpenImportDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+          }}
+        >
+          <CloudUpload />
+          Import Solr Databases from CSV
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Upload a CSV file with columns: <strong>name, url, server_port, local_port</strong>
+          </Typography>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+            style={{ marginBottom: '16px' }}
+          />
+          {importFile && (
+            <Typography variant="body2" color="success.main">
+              Selected: {importFile.name}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleImportCSV}
+            disabled={!importFile || importing}
+            loading={importing}
+            startIcon={importing ? <CircularProgress size={20} /> : <CloudUpload />}
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)",
+              },
+            }}
+          >
+            {importing ? 'Importing...' : 'Import'}
+          </LoadingButton>
         </DialogActions>
       </Dialog>
     </Box>
