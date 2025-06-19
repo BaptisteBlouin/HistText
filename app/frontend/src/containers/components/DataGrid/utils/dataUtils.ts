@@ -1,5 +1,5 @@
 const contentCache = new Map();
-const MAX_CACHE_SIZE = 1000;
+const MAX_CACHE_SIZE = 0;
 
 /**
  * Maintains the size of the contentCache by trimming to last 500 entries if over MAX_CACHE_SIZE.
