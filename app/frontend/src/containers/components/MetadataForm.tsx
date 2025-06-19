@@ -1042,7 +1042,6 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: "primary.main", textAlign: "center" }}>
                   <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
-                    <PlayArrow />
                     Execute Search
                   </Box>
                 </Typography>
