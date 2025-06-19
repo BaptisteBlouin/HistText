@@ -201,65 +201,66 @@ pub async fn query_collection(
         .unwrap_or_else(|| "All".to_string());
 
     // Check if query caching is enabled
-    let query_cache_enabled = {
-        use crate::models::app_configurations::AppConfigurations;
-        use crate::services::database::Database;
-
-        let db = Database::new();
-        let db_data = web::Data::new(db);
-
-        crate::services::crud::execute_db_query(db_data, |conn| {
-            let value =
-                AppConfigurations::get_string_value(conn, "cache_enable_query_results", "true");
-            Ok(value.to_lowercase() == "true")
-        })
-        .await
-        .unwrap_or(true)
-    };
-
+    //let query_cache_enabled = {
+    //    use crate::models::app_configurations::AppConfigurations;
+    //    use crate::services::database::Database;
+    //
+    //    let db = Database::new();
+    //    let db_data = web::Data::new(db);
+    //
+    //    crate::services::crud::execute_db_query(db_data, |conn| {
+    //        let value =
+    //            AppConfigurations::get_string_value(conn, "cache_enable_query_results", "true");
+    //        Ok(value.to_lowercase() == "true")
+    //    })
+    //    .await
+    //    .unwrap_or(true)
+    //};
+    //let query_cache_enabled = false;
     // Generate cache key for this query if caching is enabled
-    let cache_key = if query_cache_enabled {
-        Some(format!(
-            "query_{}_{}_{}_{}_{}_{}_{}",
-            solr_database_id_value,
-            collection_requested,
-            query.query.as_deref().unwrap_or("*:*"),
-            start,
-            rows,
-            query.get_ner.unwrap_or(false),
-            stats_level
-        ))
-    } else {
-        None
-    };
+    let cache_key: Option<String> = None;
+    //let cache_key = if query_cache_enabled {
+    //    Some(format!(
+    //        "query_{}_{}_{}_{}_{}_{}_{}",
+    //        solr_database_id_value,
+    //        collection_requested,
+    //        query.query.as_deref().unwrap_or("*:*"),
+    //        start,
+    //        rows,
+    //        query.get_ner.unwrap_or(false),
+    //        stats_level
+    //    ))
+    //} else {
+    //    None
+    //};
 
     // Check cache for existing result
-    if let Some(ref key) = cache_key {
-        use crate::services::query_cache;
-
-        let cache_ttl = {
-            use crate::models::app_configurations::AppConfigurations;
-            use crate::services::database::Database;
-
-            let db = Database::new();
-            let db_data = web::Data::new(db);
-
-            crate::services::crud::execute_db_query(db_data, |conn| {
-                Ok(AppConfigurations::get_number_value(
-                    conn,
-                    "cache_ttl_seconds",
-                    3600i64,
-                ) as u64)
-            })
-            .await
-            .unwrap_or(3600u64)
-        };
-
-        if let Some(cached_result) = query_cache::get_cached_query(key, cache_ttl).await {
-            info!("Returning cached query result for key: {}", key);
-            return Ok(HttpResponse::Ok().json(cached_result));
-        }
-    }
+    //if let Some(ref key) = cache_key {
+    //    use crate::services::query_cache;
+    //
+    //    let cache_ttl = {
+    //        use crate::models::app_configurations::AppConfigurations;
+    //        use crate::services::database::Database;
+    //
+    //        let db = Database::new();
+    //        let db_data = web::Data::new(db);
+    //
+    //        crate::services::crud::execute_db_query(db_data, |conn| {
+    //            Ok(AppConfigurations::get_number_value(
+    //                conn,
+    //                "cache_ttl_seconds",
+    //                3600i64,
+    //            ) as u64)
+    //        })
+    //        .await
+    //        .unwrap_or(3600u64)
+    //    };
+    //
+    //    if let Some(cached_result) = query_cache::get_cached_query(key, cache_ttl).await {
+    //        info!("Returning cached query result for key: {}", key);
+    //        return Ok(HttpResponse::Ok().json(cached_result));
+    //    }
+    //}
 
     info!("Starting query_collection processing");
 
