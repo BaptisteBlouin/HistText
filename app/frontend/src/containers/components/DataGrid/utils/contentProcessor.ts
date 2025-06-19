@@ -203,12 +203,8 @@ export const processContent = (
 
   // Optimized cache key generation (keep full content processing)
   const highlightTerms = getHighlightTermsForField(formData, field);
-  const cacheKey = `${documentId}_${field}_${stringValue.slice(0, 50)}_${viewNER}_${showConcordance}_${highlightTerms.slice(0, 3).join("_")}`;
 
-  // Check cache first for performance
-  if (contentCache.has(cacheKey)) {
-    return contentCache.get(cacheKey);
-  }
+
 
   // Apply concordance - NO length limits
   if (showConcordance && isMainTextColumn) {
@@ -233,10 +229,7 @@ export const processContent = (
   // Apply search highlighting with limited terms for performance (keep this optimization)
   const limitedHighlightTerms = highlightTerms.slice(0, 10);
   elements = processContentWithHighlights(elements, limitedHighlightTerms);
-
-  // Cache the result
-  contentCache.set(cacheKey, elements);
-  manageCacheSize();
+  
 
   return elements;
 };
