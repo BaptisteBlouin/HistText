@@ -457,6 +457,58 @@ const AppContent = () => {
             </ListItem>
           )}
         </Box>
+        <Box sx={{ mb: 2 }}>
+        {collapsed ? (
+          <Tooltip title="Open Documentation" placement="right">
+            <IconButton
+              onClick={() => window.open("/docs/HistText_Tutorial.html", "_blank")}
+              sx={{
+                width: "100%",
+                height: 48,
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                mb: 1,
+                "&:hover": {
+                  backgroundColor: "primary.light",
+                  borderColor: "primary.main",
+                  color: "white",
+                },
+              }}
+            >
+              <Description sx={{ color: "primary.main" }} />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <ListItem
+            button
+            onClick={() => window.open("/docs/HistText_Tutorial.html", "_blank")}
+            sx={{
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              mb: 1,
+              "&:hover": {
+                backgroundColor: "primary.light",
+                borderColor: "primary.main",
+                color: "white",
+                "& .MuiListItemIcon-root": {
+                  color: "white",
+                },
+              },
+            }}
+          >
+            <ListItemIcon>
+              <Description sx={{ color: "primary.main" }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="Documentation"
+              secondary="HistText Tutorial"
+              secondaryTypographyProps={{ fontSize: "0.75rem" }}
+            />
+          </ListItem>
+        )}
+      </Box>
         {auth.isAuthenticated ? (
           <Box>
             {collapsed ? (
