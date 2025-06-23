@@ -40,6 +40,82 @@ export const Home = () => {
   const iframeUrl = config.HOME_URL || "https://www.enpchina.eu/2024/09/03/poc/";
   const displayLogo = config.USE_HOME_LOGO !== false;
 
+  // Function to detect if URL is YouTube and convert it to embed format
+  const processYouTubeUrl = (url: string) => {
+    // Check if it's already an embed URL
+    if (url.includes('youtube.com/embed/') || url.includes('youtu.be/embed/')) {
+      // If it's a videoseries (playlist), add index=1 to start from first video if not already specified
+      if (url.includes('videoseries') && !url.includes('index=')) {
+        const separator = url.includes('?') ? '&' : '?';
+        return { isYouTube: true, embedUrl: `${url}${separator}index=1` };
+      }
+      return { isYouTube: true, embedUrl: url };
+    }
+    
+    // Regular expressions for different YouTube URL formats
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const playlistRegex = /[?&]list=([a-zA-Z0-9_-]+)/;
+    const timestampRegex = /[?&]t=([0-9]+)/;
+    const startRegex = /[?&]start=([0-9]+)/;
+    
+    const videoMatch = url.match(youtubeRegex);
+    const playlistMatch = url.match(playlistRegex);
+    const timestampMatch = url.match(timestampRegex);
+    const startMatch = url.match(startRegex);
+    
+    // Handle regular video URLs with optional playlist
+    if (videoMatch) {
+      const videoId = videoMatch[1];
+      let embedUrl = `https://www.youtube.com/embed/${videoId}`;
+      const params = [];
+      
+      // If there's a playlist, add it to the embed URL
+      if (playlistMatch) {
+        const playlistId = playlistMatch[1];
+        params.push(`list=${playlistId}`);
+      }
+      
+      // Handle timestamp parameters (t= or start=)
+      if (startMatch) {
+        params.push(`start=${startMatch[1]}`);
+      } else if (timestampMatch) {
+        params.push(`start=${timestampMatch[1]}`);
+      }
+      
+      // Add parameters to URL
+      if (params.length > 0) {
+        embedUrl += `?${params.join('&')}`;
+      }
+      
+      return { isYouTube: true, embedUrl };
+    }
+    
+    // Handle playlist-only URLs (like /playlist?list=... or watch?list=... without v=)
+    if (playlistMatch && url.includes('youtube.com')) {
+      const playlistId = playlistMatch[1];
+      let embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}`;
+      
+      // Always start from the first video for playlist-only URLs
+      embedUrl += '&index=1';
+      
+      return { isYouTube: true, embedUrl };
+    }
+    
+    // Handle YouTube channel URLs (convert to channel page - not embeddable)
+    const channelRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/(?:channel\/|c\/|user\/|@)([a-zA-Z0-9_-]+)/;
+    const channelMatch = url.match(channelRegex);
+    
+    if (channelMatch) {
+      // YouTube channels can't be embedded, return original URL as non-YouTube
+      return { isYouTube: false, embedUrl: url };
+    }
+    
+    // If no YouTube patterns match, treat as regular URL
+    return { isYouTube: false, embedUrl: url };
+  };
+
+  const { isYouTube, embedUrl } = processYouTubeUrl(iframeUrl);
+
   const features = [
     {
       icon: <Description />,
@@ -268,17 +344,36 @@ export const Home = () => {
                   position: "relative",
                   height: isMobile ? "400px" : "600px",
                   overflow: "hidden",
+                  // For YouTube videos, use responsive aspect ratio
+                  ...(isYouTube && {
+                    height: "auto",
+                    paddingBottom: "56.25%", // 16:9 aspect ratio
+                  }),
                 }}
               >
                 <iframe
-                  src={iframeUrl}
+                  src={embedUrl}
                   width="100%"
-                  height="100%"
-                  title="HistText Information"
+                  height={isYouTube ? "100%" : "100%"}
+                  title={isYouTube ? "YouTube video player" : "HistText Information"}
                   style={{
                     border: "none",
                     display: "block",
+                    ...(isYouTube && {
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                    }),
                   }}
+                  // YouTube-specific attributes
+                  {...(isYouTube && {
+                    frameBorder: "0",
+                    allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+                    referrerPolicy: "strict-origin-when-cross-origin",
+                    allowFullScreen: true,
+                  })}
                 />
               </Box>
             </CardContent>
