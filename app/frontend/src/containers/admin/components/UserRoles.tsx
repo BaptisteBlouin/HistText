@@ -431,6 +431,7 @@ const UserRolesEnhanced: React.FC = () => {
   const [filterRole, setFilterRole] = useState<string>('');
   const [adding, setAdding] = useState(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
+  const [roleInputValue, setRoleInputValue] = useState('');
 
   useEffect(() => {
     fetchUserRoles();
@@ -513,7 +514,11 @@ const UserRolesEnhanced: React.FC = () => {
 
   const getUserDisplayName = (userId: number) => {
     const user = users.find(u => u.id === userId);
-    return user ? `${user.firstname} ${user.lastname}` : `User ${userId}`;
+    if (!user) return `User ${userId}`;
+    if (user.firstname && user.lastname) {
+      return `${user.firstname} ${user.lastname}`;
+    }
+    return user.email;
   };
 
   const handleImportCSV = async () => {
@@ -655,7 +660,13 @@ const UserRolesEnhanced: React.FC = () => {
   }, [filteredUserRoles, users]);
 
   const handleAddAssignments = async () => {
-    if (selectedUsers.length === 0 || selectedRoles.length === 0) {
+    // Include typed role if there's one in the input
+    const allRoles = [...selectedRoles];
+    if (roleInputValue.trim() && !allRoles.includes(roleInputValue.trim())) {
+      allRoles.push(roleInputValue.trim());
+    }
+
+    if (selectedUsers.length === 0 || allRoles.length === 0) {
       showNotification("Please select at least one user and one role", "warning");
       return;
     }
@@ -663,7 +674,7 @@ const UserRolesEnhanced: React.FC = () => {
     // Validate for existing assignments
     const conflicts: string[] = [];
     selectedUsers.forEach(userId => {
-      selectedRoles.forEach(role => {
+      allRoles.forEach(role => {
         const exists = userRoles.some(ur => ur.user_id === userId && ur.role === role);
         if (exists) {
           const user = users.find(u => u.id === userId);
@@ -685,7 +696,7 @@ const UserRolesEnhanced: React.FC = () => {
     try {
       const assignments = [];
       for (const userId of selectedUsers) {
-        for (const role of selectedRoles) {
+        for (const role of allRoles) {
           assignments.push({ user_id: userId, role });
         }
       }
@@ -697,12 +708,13 @@ const UserRolesEnhanced: React.FC = () => {
       );
 
       showNotification(
-        `Successfully assigned ${selectedRoles.length} role(s) to ${selectedUsers.length} user(s)`,
+        `Successfully assigned ${allRoles.length} role(s) to ${selectedUsers.length} user(s)`,
         "success"
       );
 
       setSelectedUsers([]);
       setSelectedRoles([]);
+      setRoleInputValue('');
       setOpenAddDialog(false);
       fetchUserRoles();
     } catch (err: any) {
@@ -1278,14 +1290,21 @@ const UserRolesEnhanced: React.FC = () => {
                 options={users}
                 value={users.filter(u => selectedUsers.includes(u.id))}
                 onChange={(_, value) => setSelectedUsers(value.map(u => u.id))}
-                getOptionLabel={(user) => getUserDisplayName(user)}
+                getOptionLabel={(user) => {
+                  if (user.firstname && user.lastname) {
+                    return `${user.firstname} ${user.lastname}`;
+                  }
+                  return user.email;
+                }}
                 renderOption={(props, user) => (
                   <Box component="li" {...props}>
                     <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
                       {user.firstname?.charAt(0) || user.email?.charAt(0)}
                     </Avatar>
                     <Box>
-                      <Typography variant="body2">{getUserDisplayName(user)}</Typography>
+                      <Typography variant="body2">
+                        {user.firstname && user.lastname ? `${user.firstname} ${user.lastname}` : user.email}
+                      </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {user.email}
                       </Typography>
@@ -1296,7 +1315,7 @@ const UserRolesEnhanced: React.FC = () => {
                   value.map((user, index) => (
                     <Chip
                       avatar={<Avatar>{user.firstname?.charAt(0) || user.email?.charAt(0)}</Avatar>}
-                      label={getUserDisplayName(user)}
+                      label={user.firstname && user.lastname ? `${user.firstname} ${user.lastname}` : user.email}
                       {...getTagProps({ index })}
                       key={user.id}
                       size="small"
@@ -1319,9 +1338,19 @@ const UserRolesEnhanced: React.FC = () => {
               </Typography>
               <Autocomplete
                 multiple
+                freeSolo
                 options={roles}
                 value={selectedRoles}
-                onChange={(_, value) => setSelectedRoles(value)}
+                inputValue={roleInputValue}
+                onInputChange={(_, newInputValue) => {
+                  setRoleInputValue(newInputValue);
+                }}
+                onChange={(_, value) => {
+                  // Handle both existing roles and new typed roles
+                  const newRoles = value.map(role => typeof role === 'string' ? role.trim() : role).filter(role => role !== '');
+                  setSelectedRoles(newRoles);
+                  setRoleInputValue(''); // Clear input after selection
+                }}
                 renderTags={(value, getTagProps) =>
                   value.map((role, index) => (
                     <Chip
@@ -1337,23 +1366,33 @@ const UserRolesEnhanced: React.FC = () => {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    placeholder="Choose roles..."
-                    helperText={`${selectedRoles.length} role(s) selected`}
+                    placeholder="Choose or create roles..."
+                    helperText={`${selectedRoles.length} role(s) selected${roleInputValue.trim() ? ` (typing: "${roleInputValue.trim()}")` : '. Type to create new roles.'}`}
                   />
                 )}
               />
             </Grid>
           </Grid>
 
-          {selectedUsers.length > 0 && selectedRoles.length > 0 && (
+          {selectedUsers.length > 0 && (selectedRoles.length > 0 || roleInputValue.trim()) && (
             <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
                 Assignment Preview:
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {selectedRoles.length} role(s) will be assigned to {selectedUsers.length} user(s), 
-                creating {selectedUsers.length * selectedRoles.length} total assignment(s).
+                {(() => {
+                  const allRoles = [...selectedRoles];
+                  if (roleInputValue.trim() && !allRoles.includes(roleInputValue.trim())) {
+                    allRoles.push(roleInputValue.trim());
+                  }
+                  return `${allRoles.length} role(s) will be assigned to ${selectedUsers.length} user(s), creating ${selectedUsers.length * allRoles.length} total assignment(s).`;
+                })()}
               </Typography>
+              {roleInputValue.trim() && !selectedRoles.includes(roleInputValue.trim()) && (
+                <Typography variant="caption" color="primary" sx={{ mt: 1, display: 'block' }}>
+                  • New role "{roleInputValue.trim()}" will be created
+                </Typography>
+              )}
             </Box>
           )}
         </DialogContent>
@@ -1364,7 +1403,7 @@ const UserRolesEnhanced: React.FC = () => {
           <Button
             variant="contained"
             onClick={handleAddAssignments}
-            disabled={selectedUsers.length === 0 || selectedRoles.length === 0 || adding}
+            disabled={selectedUsers.length === 0 || (selectedRoles.length === 0 && !roleInputValue.trim()) || adding}
             startIcon={adding ? <CircularProgress size={20} /> : <Add />}
           >
             {adding ? 'Assigning...' : 'Assign Roles'}
