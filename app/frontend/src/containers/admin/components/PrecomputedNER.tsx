@@ -411,7 +411,7 @@ const PrecomputeNER: React.FC = () => {
     setNerCommand(nerCmd);
 
     // Generate upload command
-    const uploadCmd = `python -m histtext_toolkit.cli upload "${collectionName}-ner" --solr-host ${solrHost} --solr-port ${solrPort}  "${cacheDir}/${cacheModelName}/${collectionName}/${textField}/*.jsonl" --schema "${cacheDir}/${collectionName}-ner.yaml"`;
+    const uploadCmd = `python -m histtext_toolkit.cli upload "${collectionName}-ner" --solr-host ${solrHost} --solr-port ${solrPort}  "${cacheDir}/${cacheModelName}/${collectionName}/${textField}/*.jsonl" --schema "${cacheDir}/${collectionName}_ner.yaml"`;
 
     setUploadCommand(uploadCmd);
   };

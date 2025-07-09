@@ -132,15 +132,26 @@ def upload(config, log_level, solr_host, solr_port, cache_dir, collection, jsonl
     async def _upload():
         from .operations.upload import upload_jsonl_files
         from .solr.client import SolrClient
+        import glob
         
         cfg = setup_config_and_logging(config, log_level, solr_host, solr_port, cache_dir)
+        
+        # Expand glob patterns in jsonl_files
+        expanded_files = []
+        for pattern in jsonl_files:
+            matches = glob.glob(pattern)
+            if matches:
+                expanded_files.extend(matches)
+            else:
+                # If no matches, treat as literal filename (preserves existing behavior)
+                expanded_files.append(pattern)
         
         solr_client = SolrClient(cfg.solr.host, cfg.solr.port, cfg.solr.username, cfg.solr.password)
         await solr_client.start_session()
         
         try:
             total_docs = await upload_jsonl_files(
-                solr_client, collection, list(jsonl_files), str(schema) if schema else None, batch_size
+                solr_client, collection, expanded_files, str(schema) if schema else None, batch_size
             )
             click.echo(f"Successfully uploaded {total_docs} documents to {collection}")
         finally:
