@@ -1,3 +1,5 @@
+
+
 ![Latest Release](https://img.shields.io/github/v/release/BaptisteBlouin/HistText?label=version) ![License: Dual](https://img.shields.io/badge/License-Dual-blue)
 
 # HistText  
@@ -280,7 +282,7 @@ If you prefer to run the application natively on your host (or for development o
    cargo run --release --bin script
    ```
    
-   This will execute the script binary (located at src/bin/script.rs) which performs one-time setup tasks. Specifically, the script will:
+   This will execute the script binary (located at app/backend/bin/admin_once.rs) which performs one-time setup tasks. Specifically, the script will:
    - Initialize the Argon2 password hashing configuration (using the SECRET_KEY from the environment for salt generation).
    - Generate cryptographically secure random salts for hashing.
    - Create a default admin user with credentials admin / admin (if no admin user exists yet).
